@@ -11,6 +11,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 from questions import BASE_URL, question_generator
+import pyperclip
+import re
+from typing import List
 
 
 class GenerateQuestions:
@@ -96,10 +99,10 @@ class GenerateQuestions:
         except Exception as a:
             print(f"There was an error in index : {a}")
 
-            # In your Deepwiki class where you save to collections.json
+            # In your Deepwiki class where you save to questions.json
 
     def save_to_questions(self, question_gotten, url):
-        """Save question and URL to collections.json"""
+        """Save question and URL to questions.json"""
         collections_file = "questions.json"
 
         # Load existing data or start fresh
@@ -111,13 +114,14 @@ class GenerateQuestions:
             else:
                 data = []
         except json.JSONDecodeError:
-            print("Invalid collections.json, creating new file")
+            print("Invalid questions.json, creating new file")
             data = []
 
         # Add new entry
         data.append({
             "question": question_gotten,
             "url": url,
+            "questions_generated": False
         })
 
         # Save with proper formatting
@@ -126,3 +130,98 @@ class GenerateQuestions:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Error saving to collections: {e}")
+
+
+class GetQuestions:
+    def __init__(self, teardown=False):
+
+        s = Service(ChromeDriverManager().install())
+        self.options = webdriver.ChromeOptions()
+
+        # --- Add these two lines here ---
+        # self.options.add_argument("--headless")
+        # self.options.add_argument("--window-size=1920,1080")
+        # ---------------------------------
+
+        # removed headless so the browser window is visible
+        # ensure window is visible and starts maximized
+        self.options.add_argument('--start-maximized')
+        self.teardown = teardown
+        # keep chrome open after chromedriver exits
+        self.options.add_experimental_option("detach", True)
+        self.options.add_experimental_option(
+            "excludeSwitches",
+            ['enable-logging'])
+        self.driver = webdriver.Chrome(
+            options=self.options,
+            service=s)
+        self.driver.implicitly_wait(50)
+        self.collections_url = []
+        super(GetQuestions, self).__init__()
+
+    def get_questions(self, url):
+
+        try:
+            self.driver.get(url)
+
+            wait = WebDriverWait(self.driver, 120)
+            #  this would click the copy button
+            copy_button_selector = (By.CSS_SELECTOR, '[aria-label="Copy"]')
+            all_copy_buttons = wait.until(
+                EC.presence_of_all_elements_located(copy_button_selector)
+            )
+            last_copy_button = all_copy_buttons[-1]
+            wait.until(EC.element_to_be_clickable(last_copy_button)).click()
+
+            xpath = "//div[@role='menuitem' and normalize-space(text())='Copy response']"
+            el = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+            el.click()
+
+            clipboard_content = pyperclip.paste()
+
+            questions = self.get_questions(clipboard_content)
+
+            with open("all_questions.json", "w") as f:
+                data = json.load(f)
+                data.append({
+                    "url": url,
+                    "questions": questions
+                })
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            # Clear textarea for next question
+            self.mark_questions_generated(url)
+            time.sleep(1)  # give it a moment to clear
+        except Exception as e:
+            print(f"There was an error in index {url}: {e}")
+
+    def get_questions(self, clip_board_content: str) -> List[str]:
+        """
+        Extracts and returns all StabilityPool.sol audit questions from a raw text block.
+        This is resilient to truncation, missing brackets, or malformed list endings.
+        """
+
+        # Extract all quoted questions safely
+        questions = re.findall(r'"([^"]+)"', clip_board_content)
+
+        return questions
+
+    def mark_questions_generated(self, url):
+        """Mark this URL's report as generated in questions.json"""
+        if not url:
+            return
+
+        try:
+            with open("questions.json", "r") as f:
+                data = json.load(f)
+
+            # Find and update the item
+            for item in data:
+                if item.get("url") == url:
+                    item["questions_generated"] = True
+                    break
+
+            with open("questions.json", "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Error marking report as generated: {e}")
