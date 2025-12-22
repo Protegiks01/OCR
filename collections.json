@@ -3598,5 +3598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd220b79-9d45-429a-b183-ed77524e6d68",
     "timestamp": "2025-12-22 22:44:27.771065",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [Console.log dependency] The module assumes console.log is available and synchronous - if the Node.js process is started with console redirection or in an environment where console.log is unavailable/async, can this cause exceptions or deadlocks during breadcrumb addition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dbeef190-ba3d-4233-82fb-29e0f7afbb23",
+    "timestamp": "2025-12-22 22:45:35.482373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: arrBreadcrumbs] [Memory forensics] Since breadcrumbs contain detailed traces of recent protocol operations, can an attacker who gains read access to node memory (e.g., via heap dump, core dump, or side-channel) extract sensitive information about unit validation logic, network topology, or witness operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b07a120-3d49-405f-9a58-b57f44ebd37a",
+    "timestamp": "2025-12-22 22:45:47.934082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [CPU overhead] Each breadcrumb addition involves Date() creation, toString() conversion, string concatenation, length check, potential shift(), array push(), and console.log() - can this CPU overhead accumulate during high-throughput scenarios (e.g., network sync, validation storms) to cause node performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_507c8c9a-34f9-4f6d-9a33-338d01aaa3a2",
+    "timestamp": "2025-12-22 22:46:01.376025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [I/O blocking] Console.log() may perform blocking I/O if stdout is buffered or redirected to a file - can this cause critical async operations in validation.js, network.js, or main_chain.js to stall while waiting for console writes to complete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_94d071d6-49ba-44d1-ab30-ef93b7564df8",
+    "timestamp": "2025-12-22 22:46:14.741045",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: arrBreadcrumbs] [GC pressure] Continuously shifting and pushing breadcrumbs creates short-lived string objects that increase garbage collection pressure - can this cause GC pauses during critical operations like main chain advancement or unit validation, leading to network delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1dbd56fe-59e2-4a1b-ba8d-ceb1dba03e7b",
+    "timestamp": "2025-12-22 22:46:28.795112",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: validation.js conflicting units] When validation.js logs 'found conflicting units' breadcrumbs, can an attacker intentionally create units that trigger maximum breadcrumb additions (by crafting units with many conflicting ancestors) to cause DoS via memory exhaustion or console flooding?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0af3737b-5000-41de-a8cf-bcc8219a7f40",
+    "timestamp": "2025-12-22 22:46:43.766638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: network.js peer connections] Network.js logs peer connection URLs in breadcrumbs (e.g., 'connected to <url>') - can an attacker operating a malicious peer with specially crafted hostnames or URLs cause injection attacks, log corruption, or information disclosure when these URLs are logged?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2513d766-0790-4e9b-ac14-48db1db68c0c",
+    "timestamp": "2025-12-22 22:46:59.911195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: main_chain.js mutex operations] Main_chain.js adds breadcrumbs while holding write locks - can breadcrumb addition failures or delays (e.g., console.log blocking) cause mutex deadlocks that freeze main chain advancement and trigger total network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5bd30aa-daa2-4280-873f-4e018a2a2cf8",
+    "timestamp": "2025-12-22 22:47:17.240354",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: writer.js unit writing] Writer.js logs breadcrumbs during unit writing - if an attacker crafts units that maximize breadcrumb additions during writing, can the accumulated overhead cause unit writing delays that lead to transaction processing delays (≥1 hour) violating Immunefi medium severity impact?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_630d43fa-3e0b-4a13-b9b3-c6e7f308b1a7",
+    "timestamp": "2025-12-22 22:47:35.904119",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [Console.log dependency] The module assumes console.log is available and synchronous - if the Node.js process is started with console redirection or in an environment where console.log is unavailable/async, can this cause exceptions or deadlocks during breadcrumb addition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d997a442-a1e2-4fbf-adce-3d62b3f40165",
+    "timestamp": "2025-12-22 22:47:55.962171",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: arrBreadcrumbs] [Memory forensics] Since breadcrumbs contain detailed traces of recent protocol operations, can an attacker who gains read access to node memory (e.g., via heap dump, core dump, or side-channel) extract sensitive information about unit validation logic, network topology, or witness operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e9ae75d-e777-454d-8861-4cfda9ab286b",
+    "timestamp": "2025-12-22 22:48:16.908771",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [CPU overhead] Each breadcrumb addition involves Date() creation, toString() conversion, string concatenation, length check, potential shift(), array push(), and console.log() - can this CPU overhead accumulate during high-throughput scenarios (e.g., network sync, validation storms) to cause node performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c75902a-f56f-4289-9bb2-cf264f641fb5",
+    "timestamp": "2025-12-22 22:48:38.197056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [I/O blocking] Console.log() may perform blocking I/O if stdout is buffered or redirected to a file - can this cause critical async operations in validation.js, network.js, or main_chain.js to stall while waiting for console writes to complete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85dff55b-20e6-403f-b69b-a7db5a26c8e3",
+    "timestamp": "2025-12-22 22:49:00.241016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: arrBreadcrumbs] [GC pressure] Continuously shifting and pushing breadcrumbs creates short-lived string objects that increase garbage collection pressure - can this cause GC pauses during critical operations like main chain advancement or unit validation, leading to network delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6912b0ff-dd71-403e-9e18-5caff0abb5bb",
+    "timestamp": "2025-12-22 22:49:22.891339",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: validation.js conflicting units] When validation.js logs 'found conflicting units' breadcrumbs, can an attacker intentionally create units that trigger maximum breadcrumb additions (by crafting units with many conflicting ancestors) to cause DoS via memory exhaustion or console flooding?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_480a5886-a05d-439e-8159-b2b253c14850",
+    "timestamp": "2025-12-22 22:49:47.254770",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: network.js peer connections] Network.js logs peer connection URLs in breadcrumbs (e.g., 'connected to <url>') - can an attacker operating a malicious peer with specially crafted hostnames or URLs cause injection attacks, log corruption, or information disclosure when these URLs are logged?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f53c2bed-dfed-4734-af1c-8ed0a31f4b13",
+    "timestamp": "2025-12-22 22:50:11.341332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: main_chain.js mutex operations] Main_chain.js adds breadcrumbs while holding write locks - can breadcrumb addition failures or delays (e.g., console.log blocking) cause mutex deadlocks that freeze main chain advancement and trigger total network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_907cf61d-a3be-474c-b562-653d07d3864b",
+    "timestamp": "2025-12-22 22:50:35.981125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Usage: writer.js unit writing] Writer.js logs breadcrumbs during unit writing - if an attacker crafts units that maximize breadcrumb additions during writing, can the accumulated overhead cause unit writing delays that lead to transaction processing delays (≥1 hour) violating Immunefi medium severity impact?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e0f1bfa-d8f6-4a78-8df6-62f76ed61d14",
+    "timestamp": "2025-12-22 22:51:00.514182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Input Validation] Can a malicious peer send a catchup request with last_stable_mci = last_known_mci = 0 to bypass the validation check at line 28-29, potentially causing the node to prepare an invalid catchup chain that starts from genesis and creates consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ecf3b60-f44d-423f-ba2f-5e1b840fde4b",
+    "timestamp": "2025-12-22 22:51:25.880710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Integer Overflow] Can an attacker send catchupRequest with extremely large last_stable_mci and last_known_mci values (near Number.MAX_SAFE_INTEGER) to cause integer overflow when calculating bTooLong = (last_ball_mci - last_stable_mci > MAX_CATCHUP_CHAIN_LENGTH) at line 65, bypassing the length limit check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16f038da-fd53-4bf9-9d90-18726d6190be",
+    "timestamp": "2025-12-22 22:51:51.793179",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Witness List Manipulation] If catchupRequest.witnesses contains duplicate witness addresses or invalid witness addresses, does the validation at line 30-31 detect this before passing to witnessProof.prepareWitnessProof(), potentially causing the witness proof generation to fail or produce incorrect proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2d4f116-ceed-4058-a108-754b5008dec0",
+    "timestamp": "2025-12-22 22:52:17.258938",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Race Condition] If two peers request catchup chains simultaneously with the same last_stable_mci but different witness lists, can the mutex lock at line 33 prevent race conditions where the prepareCatchupChain operations interleave, potentially causing inconsistent objCatchupChain objects to be returned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_19b72903-113d-4681-a30b-4e7b366325ac",
+    "timestamp": "2025-12-22 22:52:42.679444",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Database Query Race] At line 46-52, the query checks if last_known_mci is stable, but if a new unit is added to the main chain and becomes stable between this check and the witnessProof.prepareWitnessProof() call at line 55, can this cause the catchup chain to become invalid or contain already-stable units that shouldn't be included?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_757d21cc-1741-4d45-ad51-d71124a86cfb",
+    "timestamp": "2025-12-22 22:53:08.862199",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [DOS - Excessive Chain Length] Can a malicious peer request a catchup with last_stable_mci = 0 and last_known_mci = MAX_CATCHUP_CHAIN_LENGTH + 1000000, causing the node to spend excessive CPU and memory preparing a catchup chain that exceeds MAX_CATCHUP_CHAIN_LENGTH, leading to resource exhaustion and network delay?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5193acc-2c96-439e-88ee-289fd485bd46",
+    "timestamp": "2025-12-22 22:53:34.640553",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Proofchain Ball Calculation] When bTooLong is true at line 65 and proofChain.buildProofChainOnMc() is called at line 76, if the buildProofChainOnMc() function fails to populate objCatchupChain.proofchain_balls or populates it incorrectly, does the subsequent code at line 77 safely handle an empty array or out-of-bounds access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7134e92c-1414-4260-b9e8-9e16c82f719b",
+    "timestamp": "2025-12-22 22:53:59.965279",
+    "report_generated": false
   }
 ]
