@@ -2098,5 +2098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd180931-f59d-44d6-8ccf-5847b7bfb0da",
     "timestamp": "2025-12-22 21:50:29.773854",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [freeze non-existent var] When freezing a variable that doesn't exist and locals[''] is falsy, an error is returned. But can attackers exploit the locals[''] flag to freeze non-existent vars conditionally?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1efe3b57-f8c5-4617-8127-321688668719",
+    "timestamp": "2025-12-22 21:51:55.967986",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [array_length on non-arrays] What happens when array_length is called on non-arrays? Is this an error or does it return undefined?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03e9ace9-883c-4818-af68-37ef1a15a587",
+    "timestamp": "2025-12-22 21:52:08.603742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_array vs is_assoc] Can objects that are both array-like and associative cause confusion in type checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_715ee6c1-2969-4eac-b759-09a8d092921b",
+    "timestamp": "2025-12-22 21:52:22.300029",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [exists undefined vs null] Does exists() distinguish between undefined and null values? Can this cause confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_378b8e7d-c77f-464c-bde8-bd9cf08f0116",
+    "timestamp": "2025-12-22 21:52:35.836856",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [reverse mutability] Does reverse() mutate the original array or return a new one? Can mutation cause unexpected side effects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75d9f2ac-4478-4c1e-9503-08a58be59e3c",
+    "timestamp": "2025-12-22 21:52:49.907886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [keys on non-objects] What happens when keys() is called on non-object types? Is this validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c47ec48e-d359-4a6a-8248-2d1458fbfeba",
+    "timestamp": "2025-12-22 21:53:05.212508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_aa false positives] Can regular addresses that happen to have AA-like properties pass is_aa checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96464546-6c56-4d7f-8fb2-b6222a5029ab",
+    "timestamp": "2025-12-22 21:53:22.029998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_valid_address checksum] Does is_valid_address verify checksums, or only format? Can invalid checksums pass validation but fail execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc6e8393-9bb4-44ae-bc76-18b1db52a790",
+    "timestamp": "2025-12-22 21:53:39.829973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_valid_amount negative check] Does is_valid_amount properly reject negative amounts and zero?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8108ab5-34c7-4765-ace6-beb46d0eeee3",
+    "timestamp": "2025-12-22 21:53:59.138120",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_integer precision] Can very large numbers that appear as integers in strings fail the is_integer check due to floating point precision issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2366dbfd-988d-49c9-99ba-add6c9bf088b",
+    "timestamp": "2025-12-22 21:54:19.843593",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [index_of negative return] The index_of operation returns -1 when not found. Can code that doesn't check for -1 cause array access errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_284ddc14-c7e3-4cd3-a792-dd76c6787182",
+    "timestamp": "2025-12-22 21:54:41.404046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [contains performance] For very long strings and patterns, contains operations may be O(n*m). Can this be used for DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b64965cd-ff70-4a0f-9b8b-9a10af6f8c21",
+    "timestamp": "2025-12-22 21:55:03.585340",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [starts_with/ends_with case sensitivity] Are these operations case-sensitive? Can case differences cause non-deterministic behavior across locales?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6be229e-9e4b-45f9-9fa0-f0daf265b64f",
+    "timestamp": "2025-12-22 21:55:27.213836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [has_only complexity] The has_only operation increments complexity by 1, but pattern matching may be expensive for long strings. Can this be exploited?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_29e749e1-8e86-4436-a7e1-25fe4e54b6d9",
+    "timestamp": "2025-12-22 21:55:51.142069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [reduce initial_value type] Is the initial_value in reduce validated for type compatibility with the accumulator?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bee92b20-648a-4993-8609-84c88c082edb",
+    "timestamp": "2025-12-22 21:56:16.030353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [reduce callback arguments] Reduce callbacks must have 2 or 3 arguments, but the validation allows null count_args. Can this lead to runtime errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26118aae-32af-4016-9888-1c38096a57e5",
+    "timestamp": "2025-12-22 21:56:42.808983",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [map/filter callback arguments] Callbacks must have 1 or 2 arguments, but can attackers use rest parameters or default arguments to bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5b65e7f-7fe1-47c5-836f-e8073cb7c58b",
+    "timestamp": "2025-12-22 21:57:09.404297",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [foreach callback complexity] Callback complexity is multiplied by count, but can the complexity calculation overflow for large counts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d36b656-eb3d-4ab1-b85b-5cf1f9f3fdc2",
+    "timestamp": "2025-12-22 21:57:37.649448",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [foreach count limit] The count is limited to 100, but can attackers nest multiple foreach loops to create O(100^n) complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2671f502-f2de-4e81-a786-937b66369dc1",
+    "timestamp": "2025-12-22 21:58:04.616306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [ifelse complexity undercount] Both if and else blocks are validated, but only one executes. Can attackers create expensive branches that only execute in rare cases?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee5f8fe8-3ebd-4e17-80be-97c108f3b767",
+    "timestamp": "2025-12-22 21:58:32.689025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [ifelse else_block null handling] When else_block is null, the code restores bInIf. Can this cause issues if the if_block modified bInIf?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1c677c2-d254-4acb-b824-ebc75d2fab4b",
+    "timestamp": "2025-12-22 21:58:58.338333",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [ifelse bInIf flag manipulation] The bInIf flag tracks whether code is inside conditional blocks. Can nested if-else statements cause the flag to be set incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2884717c-93ef-475b-b990-c1cb9cc28c2b",
+    "timestamp": "2025-12-22 21:59:26.266706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [block statement validation order] In block statements, are all statements validated even if early statements would throw errors? Can validation order affect the result?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_052218e1-41f0-4f7a-a0d3-1118e9822521",
+    "timestamp": "2025-12-22 21:59:52.949497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [response_var_assignment naming collision] Can response var names collide with trigger data or other reserved names to cause confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d95641ff-00e9-46e5-915b-d8ea090a70ac",
+    "timestamp": "2025-12-22 22:00:20.698282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [response_var_assignment in getters] Response var assignments are rejected in getters, but can indirect assignment through function calls bypass this?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c84f50e2-6edd-48fb-ac26-3840deca4b54",
+    "timestamp": "2025-12-22 22:00:50.073320",
+    "report_generated": false
   }
 ]
