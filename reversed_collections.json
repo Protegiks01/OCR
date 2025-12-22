@@ -898,5 +898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c6a5712-6667-4838-b2ba-e18f4432dace",
     "timestamp": "2025-12-22 19:44:27.403211",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 3] [db.js Initialization] The script assumes db.js is already initialized when required - if db.js requires explicit initialization (connecting to database, running migrations), can check_stability.js operate on uninitialized or partially-initialized database state, causing incorrect results or corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6a637e0-5411-4a45-8224-99c14dd35d75",
+    "timestamp": "2025-12-22 19:45:47.777104",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 4] [main_chain.js Dependency] The script directly requires main_chain.js without version checking or integrity validation - if main_chain.js is compromised (backdoor, modification), can malicious code execute when check_stability.js runs, potentially stealing keys, corrupting database, or manipulating stability results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b07070ab-40f4-4797-b803-c68940fcd017",
+    "timestamp": "2025-12-22 19:46:00.293301",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Query Timeout Bypass] Does determineIfStableInLaterUnits() implement query timeouts to prevent indefinite hanging - if not, can an attacker craft inputs that cause infinite loops in graph traversal (main_chain.js lines 912-977) hanging the script and consuming resources indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f427dda2-5aa2-471c-9c20-d3260f647e31",
+    "timestamp": "2025-12-22 19:46:13.717403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 7-8] [Memory Exhaustion] If an attacker provides args[1] with millions of comma-separated unit hashes (multi-MB command-line argument), will the split() operation and subsequent array processing exhaust Node.js heap memory, causing OOM crash and process termination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3629e39c-2c97-4397-a66f-a8b70c33d193",
+    "timestamp": "2025-12-22 19:46:27.279530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Slow Query Attack] If an attacker provides earlier_unit and arrLaterUnits that trigger expensive graph traversal in determineIfStableInLaterUnits() (deep DAG, many alternative branches), can repeated execution of check_stability.js consume CPU and database resources, causing temporary network transaction delays ≥1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c266d325-1fd8-4ee1-a4ec-21cbfaadd925",
+    "timestamp": "2025-12-22 19:46:41.836290",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 3] [Configuration Mismatch] If the db.js module is initialized with testnet configuration but check_stability.js is used to verify mainnet units, can this cause cross-chain stability checks that return incorrect results, potentially enabling cross-chain replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7469b2a-795a-41b2-aaf5-1396b8fd556d",
+    "timestamp": "2025-12-22 19:46:57.423643",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Testnet Hardcoded Exceptions] The determineIfStableInLaterUnits() function has testnet-specific hardcoded hash checks (constants.bTestnet conditions in main_chain.js lines 765-773) - if check_stability.js is used on mainnet with testnet configuration or vice versa, can this cause incorrect stability results leading to chain split between testnet and mainnet nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58dbcb37-7d77-4942-a9c1-37aa12240c97",
+    "timestamp": "2025-12-22 19:47:15.199105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Whitespace Handling] If args[1] contains spaces around commas (e.g., 'unit1 , unit2'), will split(',') produce array elements with leading/trailing whitespace that don't match database hashes, causing false negative stability results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c06b7a7-0e52-42e9-919b-971b5bfbb73d",
+    "timestamp": "2025-12-22 19:47:33.432807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 7-8] [Unicode/Encoding Issues] If command-line arguments contain non-ASCII characters or different Unicode encodings, can string comparison in determineIfStableInLaterUnits() fail to match database unit hashes, causing incorrect stability results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1cadcd7f-082f-4af1-a877-ac97646a9604",
+    "timestamp": "2025-12-22 19:47:52.278575",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Case Sensitivity] If unit hashes in args[0] or args[1] have incorrect case (though base64 is case-sensitive), will determineIfStableInLaterUnits() fail to find matching units in the database, silently returning false stability when the correct-case units would return true?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5e1ebda-2572-47eb-8a98-64670e0efd2c",
+    "timestamp": "2025-12-22 19:48:11.206161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Duplicate Later Units] If args[1] contains duplicate unit hashes (e.g., 'unit1,unit2,unit1'), will determineIfStableInLaterUnits() deduplicate them or process duplicates, potentially causing incorrect witness coverage calculations or performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de527ca6-6eca-450c-b9dc-32913fe1508b",
+    "timestamp": "2025-12-22 19:48:31.630884",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Single Element Array] If args[1] contains a single unit hash with no commas, arrLaterUnits will have one element - does determineIfStableInLaterUnits() correctly handle the case where only one later unit is provided, or does it assume multiple units for statistical consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52dfc050-400a-406b-ad02-97a4096b431f",
+    "timestamp": "2025-12-22 19:48:53.164217",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Empty Array] If args[1] is an empty string '', the split(',') produces arrLaterUnits=[''] (array with one empty string element) - will determineIfStableInLaterUnits() handle this as an error or attempt to query for a unit with empty hash, causing SQL errors or incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af27b445-025a-49f0-8e14-6e78d1423e62",
+    "timestamp": "2025-12-22 19:49:15.828165",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 10, 13] [Information Disclosure] Does logging the full earlier_unit hash and arrLaterUnits expose sensitive information about node state, pending units, or stability determination logic that could assist attackers in timing attacks or identifying vulnerable units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c66724d1-1148-49b6-a654-fc193b759227",
+    "timestamp": "2025-12-22 19:49:38.677957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 10] [Logging Injection] The console.log statement directly interpolates earlier_unit and arrLaterUnits from untrusted command-line input - if these contain ANSI escape codes, can they manipulate terminal output to hide errors, forge log messages, or execute terminal commands on operators' machines?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5749e04-667c-4c82-b9a7-c74a61a34794",
+    "timestamp": "2025-12-22 19:50:02.061859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 13] [Output Parsing] If this script's console output is parsed by automated systems (monitoring, CI/CD), can malicious input cause injection of fake success/failure messages (e.g., earlier_unit containing '\\\\n--- stable? true' to forge results), leading to incorrect operational decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8a935d5-ddce-44ed-8753-3b1724267dd1",
+    "timestamp": "2025-12-22 19:50:26.150880",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 13] [Boolean Type Assumption] The script assumes bStable is a boolean, but if determineIfStableInLaterUnits() returns undefined, null, or non-boolean type due to errors, will console.log output misleading results that appear as valid stability determinations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d90a056e-d03e-4d5d-86ae-c4c436431193",
+    "timestamp": "2025-12-22 19:50:50.884874",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Async Callback Ordering] If multiple calls to check_stability.js are executed in rapid succession with overlapping database queries, can callback execution order become non-deterministic, causing console.log output to interleave incorrectly and confuse automated log parsing or monitoring systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d34c038-398c-4445-ac5c-b821a444f1cc",
+    "timestamp": "2025-12-22 19:51:16.830879",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 3-12] [Database Transaction Isolation] Does the determineIfStableInLaterUnits() function execute within a database transaction with appropriate isolation level, or can dirty reads of partially committed unit data cause incorrect stability calculations that diverge from other nodes' results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3555542-0cc4-4c61-aef2-c1f136ccaf4f",
+    "timestamp": "2025-12-22 19:51:43.901943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Concurrent Modification] If check_stability.js is executed while the node is actively processing new units and updating main chain assignments, can concurrent database writes cause non-deterministic results where the same earlier_unit/arrLaterUnits combination returns different stability values on successive runs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_19f01db4-b372-4f3c-819e-9780605ff68e",
+    "timestamp": "2025-12-22 19:52:11.394684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 3-12] [TOCTOU Race] Between reading earlier_unit properties (storage.readPropsOfUnits in main_chain.js line 771) and determining stability, if another process modifies unit properties (is_on_main_chain, main_chain_index, is_free) in the database, can this cause time-of-check-time-of-use race conditions leading to incorrect stability results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8524883-d56a-4fd0-af74-a6d8a2575c00",
+    "timestamp": "2025-12-22 19:52:39.544983",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Best Children Traversal DOS] The createListOfBestChildrenIncludedByLaterUnits() function (main_chain.js lines 904-1055) recursively traverses the DAG - if an attacker crafts a unit with an extremely deep or wide best children tree, can calling check_stability.js trigger stack overflow or timeout in this traversal, causing process crash or hanging indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3bceed15-550e-4c40-b301-2900cfc76458",
+    "timestamp": "2025-12-22 19:53:07.231229",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Alternative Branch Detection] The determineIfStableInLaterUnits() checks for alternative branches (main_chain.js lines 886-901) - if an attacker can construct a DAG where alternative branches are not properly detected due to timing windows or race conditions, can this cause incorrect stability=true results for units that should remain unstable, enabling double-spend attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c37bc11d-396f-4993-b352-a078b8856ab4",
+    "timestamp": "2025-12-22 19:53:34.365678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Witness Coverage Bypass] The stability determination requires collecting 7+ unique witnesses (constants.MAJORITY_OF_WITNESSES in main_chain.js lines 818-823) - if an attacker can craft a scenario where check_stability.js tests units that reference a corrupted witness list with duplicate witnesses counted twice (as noted in the bug comment at main_chain.js line 860), can this return incorrect stable=true results, allowing unstable units to be treated as confirmed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51e0d841-4793-40ac-b4fc-6ccf8cb5b6b9",
+    "timestamp": "2025-12-22 19:53:59.546966",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Max Later LIMCI Comparison] The determineIfStableInLaterUnits() logic compares max_later_limci with objEarlierUnitProps.main_chain_index (main_chain.js lines 776-779) - if integer overflow occurs in max_later_limci calculation (when summing very large MCI values), can this cause incorrect stability determinations where earlier units appear stable when they're not, enabling double-spend attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8ff1e49-8b86-47fb-b2b0-9dcaf0be3da8",
+    "timestamp": "2025-12-22 19:54:25.733434",
+    "report_generated": false
   }
 ]
