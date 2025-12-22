@@ -1,0 +1,186 @@
+[
+  {
+    "question": "bold/contracts/src/Dependencies/AddRemoveManagers.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_65c7177b-088c-4181-863b-c8bd5a81eb89"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/AggregatorV3Interface.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_54c742f3-3dc0-425e-a5c2-53060d3900fc"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/Constants.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_9db86da5-f192-4837-87e6-8ff8b81e0315"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/LiquityBase.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3bbdbf88-9cb7-4aa5-aa41-5eb40e0ac251"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/LiquityBaseInit.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_aa439748-6732-42eb-850d-d86f04a4cb3b"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/LiquityMath.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_4f352113-a21b-4aa0-89b3-bdd1c985bf0a"
+  },
+  {
+    "question": "bold/contracts/src/Dependencies/Ownable.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_60bf65bc-5373-46ff-b9da-f2416c0fca59"
+  },
+  {
+    "question": "bold/contracts/src/PriceFeeds/FXPriceFeed.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3bb239e3-1148-4c18-b4fa-6a4defb779f9"
+  },
+  {
+    "question": "bold/contracts/src/Types/BatchId.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_4742eeaf-2851-47c3-b8a7-c217c77449b1"
+  },
+  {
+    "question": "bold/contracts/src/Types/LatestBatchData.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_1589ca9d-ee97-4c67-a21d-fc54dc7342ba"
+  },
+  {
+    "question": "bold/contracts/src/Types/LatestTroveData.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_1b3c67d3-b672-464e-8e49-8090782a41ba"
+  },
+  {
+    "question": "bold/contracts/src/Types/TroveChange.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3e256ac0-91f7-427c-8b98-e448944de361"
+  },
+  {
+    "question": "bold/contracts/src/Types/TroveId.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_0ac731ea-4da1-4f93-aa38-efe2d7d818cb"
+  },
+  {
+    "question": "bold/contracts/src/ActivePool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_a7e28625-bd61-4947-9456-726826588b79"
+  },
+  {
+    "question": "bold/contracts/src/AddressesRegistry.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_d6ea59a6-a54e-4d38-91b6-7cdebced4ecd"
+  },
+  {
+    "question": "bold/contracts/src/BatchManagerOperations.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_fc29a264-9b29-4b91-9ff4-4e21667218ee"
+  },
+  {
+    "question": "bold/contracts/src/BorrowerOperations.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_dd9df7ac-3634-4711-97c9-955ce4a91e06"
+  },
+  {
+    "question": "bold/contracts/src/CollateralRegistry.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_9ab9746b-4f2c-4655-8104-315d4fcfa171"
+  },
+  {
+    "question": "bold/contracts/src/CollSurplusPool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_a2c888ec-8f11-4515-b6f7-927bd7de1264"
+  },
+  {
+    "question": "bold/contracts/src/DefaultPool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3787e192-ae61-4562-9014-4a3618d48e67"
+  },
+  {
+    "question": "bold/contracts/src/GasPool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_fe8c5e1d-4e91-4ad2-a7d5-62dd0df88a52"
+  },
+  {
+    "question": "bold/contracts/src/HintHelpers.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_d9f999f3-78df-4f82-9572-5725105a0600"
+  },
+  {
+    "question": "bold/contracts/src/MultiTroveGetter.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_06b7c862-3042-4db4-9d1b-e539816094cd"
+  },
+  {
+    "question": "bold/contracts/src/SortedTroves.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_19a5bcfd-14a2-4174-b6c4-c8a67bde231a"
+  },
+  {
+    "question": "bold/contracts/src/StabilityPool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_4e666ad4-e62d-4432-92ac-a348d5facd56"
+  },
+  {
+    "question": "bold/contracts/src/SystemParams.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_81cc602a-1310-4b29-b0bb-d0f8c627f154"
+  },
+  {
+    "question": "bold/contracts/src/TroveManager.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_5bde9a14-189b-40e2-8e6d-f23f213cd5c9"
+  },
+  {
+    "question": "bold/contracts/src/TroveNFT.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_e0281f0b-2e61-4059-bbaf-bd88acaba83c"
+  },
+  {
+    "question": "mento-core/contracts/libraries/LiquidityStrategyTypes.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_07a6e5cf-a31f-4e0c-b491-274e4c331d2d"
+  },
+  {
+    "question": "mento-core/contracts/libraries/TradingLimitsV2.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_b45bc9ad-23b0-4b72-a147-55dcffeb310a"
+  },
+  {
+    "question": "mento-core/contracts/liquidityStrategies/CDPLiquidityStrategy.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_5d9f0b2e-9fcc-4121-88eb-2cd0dc8747cd"
+  },
+  {
+    "question": "mento-core/contracts/liquidityStrategies/LiquidityStrategy.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_35e565d1-01aa-4bbc-864f-ae4d21ce3d64"
+  },
+  {
+    "question": "mento-core/contracts/liquidityStrategies/ReserveLiquidityStrategy.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_112865ea-34fd-4c41-ad28-b971be232af8"
+  },
+  {
+    "question": "mento-core/contracts/oracles/OracleAdapter.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3e8fa14a-b9fb-4d15-8d69-5d42670276c2"
+  },
+  {
+    "question": "mento-core/contracts/oracles/breakers/MarketHoursBreaker.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_37a609e3-b201-4d52-a784-e054e1148fc2"
+  },
+  {
+    "question": "mento-core/contracts/swap/router/Router.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_88f68677-a280-4be1-a2eb-10ad51da5bc7"
+  },
+  {
+    "question": "mento-core/contracts/swap/virtual/VirtualPool.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_907dc80d-0d2c-4c89-b6fa-75fb1ec861da"
+  },
+  {
+    "question": "mento-core/contracts/swap/virtual/VirtualPoolFactory.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_687f45db-ea34-40ca-bd7c-1059daf55720"
+  },
+  {
+    "question": "mento-core/contracts/swap/FPMM.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_c77d37cd-20da-47c8-83c4-bb00c520b48b"
+  },
+  {
+    "question": "mento-core/contracts/swap/FPMMFactory.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_023517ba-17f7-4a3b-9370-c050b2db297b"
+  },
+  {
+    "question": "mento-core/contracts/swap/FPMMProxy.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_fb29c9fd-2059-4f14-b0f4-9194a9e15900"
+  },
+  {
+    "question": "mento-core/contracts/swap/FactoryRegistry.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_ccf60902-7d3c-47b9-b4de-e65b67986676"
+  },
+  {
+    "question": "mento-core/contracts/swap/OneToOneFPMM.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_a68787cc-3f55-424d-821c-15cecbe620f3"
+  },
+  {
+    "question": "mento-core/contracts/swap/ReserveV2.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_cdd8bee4-2c15-472b-b6a3-5fd215518c32"
+  },
+  {
+    "question": "mento-core/contracts/tokens/StableTokenV3.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_f3468a7e-93d5-4816-945e-b649bb6d1628"
+  },
+  {
+    "question": "mento-core/contracts/tokens/StableTokenSpoke.sol",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_fa12a761-dea2-4ae7-8807-dda33e39341c"
+  }
+]
