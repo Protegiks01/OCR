@@ -2848,5 +2848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a068a09-698b-4bc1-802d-00fc4cf34b4e",
     "timestamp": "2025-12-22 21:56:43.394876",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [SQL Injection via Address List] Although addresses are escaped using db.escape() (line 131), if the array contains extremely long strings or special characters that cause db.escape() to fail or produce invalid SQL, could this crash the query or leak information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44983bad-05e0-42d3-bca8-6c9dcfd61a86",
+    "timestamp": "2025-12-22 21:57:53.316536",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Balance Increment Bug] The balance aggregation uses += operator (line 151). If the assocBalances structure is corrupted or if row.balance is not a number (e.g., NULL, undefined, string), could this cause NaN to propagate through all balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71e2a82e-78a1-4b79-9b4f-95ba41a0cdbe",
+    "timestamp": "2025-12-22 21:58:05.785825",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Sequence Filter Missing] Unlike readBalance() and readOutputsBalance(), this function's outputs query doesn't explicitly filter by sequence='good' (line 135). If bad sequence units have is_spent=0, will their outputs be incorrectly included in shared address balances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b38b1fd-79c5-4e8e-9961-df2cc99e1364",
+    "timestamp": "2025-12-22 21:58:19.178590",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Cross-Asset Total Bug] The function calculates total = stable + pending for each asset and address (line 155), but if stable or pending are undefined because is_stable returned unexpected values (not 0 or 1), could this result in incorrect totals?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa99ecdc-4305-473a-a099-470e3491dd01",
+    "timestamp": "2025-12-22 21:58:32.711395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [exclude_from_circulation Type] The function accepts exclude_from_circulation as an array (line 164), but if calling code passes a Set, Map, or other iterable, will the .includes() check (line 180) work correctly, or could this cause addresses that should be excluded to be counted in circulating supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f79c4755-b207-4002-a8da-37d73bf876b9",
+    "timestamp": "2025-12-22 21:58:46.829436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Total Supply Manipulation] The function calculates total_amount by summing all unspent outputs including those in exclude_from_circulation addresses (line 179), then separately calculates circulating_amount (line 182). If an attacker controls addresses in exclude_from_circulation and can manipulate is_spent flags, can they inflate or deflate the reported circulating supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e325975-4283-4139-af9d-40e09484847e",
+    "timestamp": "2025-12-22 21:59:01.764965",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Asset Filter Missing] The first query filters for 'asset IS null' (line 174), meaning it only counts base asset outputs. If calling code expects this function to return total supply for custom assets as well, will this missing functionality cause supply calculations to be completely wrong for all non-base assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09c4f35c-e83a-4728-b95a-538ffa70619f",
+    "timestamp": "2025-12-22 21:59:18.127343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Integer Overflow in Supply] If the total supply of base asset outputs exceeds MAX_SAFE_INTEGER (2^53-1 bytes, approximately 9 million gigabytes), will the SUM(amount) aggregation (line 174) overflow and wrap around, causing the reported total supply to be incorrect?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42ec0853-2075-4acc-aec2-2f219a773034",
+    "timestamp": "2025-12-22 21:59:36.166579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Commission Output Separation] The function adds headers_commission_amount and payload_commission_amount to both total_amount and circulating_amount (lines 189-191), but should these be excluded from circulating supply if they're locked/unvested? Could this overstate the actual circulating supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d739616-e8bc-40b3-aaf7-6f2bb89e2140",
+    "timestamp": "2025-12-22 21:59:54.734211",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [UNION Query Injection] The second query uses UNION to combine headers_commission_outputs and witnessing_outputs (line 186). If either table name is dynamically constructed or if there's SQL injection in the table names, could this query extract data from other tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c27efe02-05d2-4aed-8c97-340233f46502",
+    "timestamp": "2025-12-22 22:00:15.634963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Address Count Accuracy] The function counts supply.addresses from the number of distinct addresses with unspent outputs (line 176). If the same address appears in both outputs and witnessing_outputs tables, is it counted once or twice? Could this inflate the address count metric?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5fa95a0-a383-4a18-9fc7-3ef3d94fddc5",
+    "timestamp": "2025-12-22 22:00:36.695142",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [forEach Type Safety] The function uses rows.forEach() (lines 177, 188) assuming rows is an array. If a database error returns a non-array result or if rows is null/undefined, will this cause a crash that halts supply calculation queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fb69301-b7e0-4890-862f-6ad712ab9818",
+    "timestamp": "2025-12-22 22:00:58.447933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Exclude List Bypass] If exclude_from_circulation contains address strings, but the database stores addresses in a different encoding (e.g., uppercase vs lowercase, with checksums), will the .includes() check (line 180) fail to match, causing excluded addresses to be incorrectly counted in circulating supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb0da39c-9188-4cdb-8179-0f22256f7d30",
+    "timestamp": "2025-12-22 22:01:20.287008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readAllUnspentOutputs()] [Missing Error Handling] Neither query has explicit error handling (lines 174, 186). If a database error occurs, will the handleSupply callback be invoked with partial or zero data, potentially causing calling code to report incorrect supply metrics?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5c55f45-2434-4d21-b1fb-49c3ebaaae9f",
+    "timestamp": "2025-12-22 22:01:42.988472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Database Transaction Isolation] None of the functions use explicit database transactions or locks. If multiple balance queries execute concurrently while outputs are being marked as spent, can different queries return inconsistent views of the UTXO set, causing balance calculation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ea4e1a5-6349-4835-80f2-5870438ed8da",
+    "timestamp": "2025-12-22 22:02:07.520205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [is_spent Race Condition] All functions rely on is_spent=0 to identify unspent outputs. If the database update that sets is_spent=1 is not atomic with the unit commit, can there be a window where outputs are already spent on the DAG but still show as unspent in balance queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f560a09-803f-4aec-b921-c43157777e66",
+    "timestamp": "2025-12-22 22:02:33.629555",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Asset Type Validation] None of the functions validate that asset identifiers are valid unit hashes (44 characters, base64). Can an attacker insert rows into outputs table with invalid asset values that cause db.escape() or other downstream functions to behave incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd7d37dc-c822-40f3-b4ba-07e10be48c98",
+    "timestamp": "2025-12-22 22:02:58.504482",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Database Connection Pooling] If the db module uses connection pooling and a connection is reused between queries with different transaction isolation levels, can this cause non-repeatable reads where the same address shows different balances between sequential queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7acdd0b-fd27-4639-a5de-122acf25959b",
+    "timestamp": "2025-12-22 22:03:22.798718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Callback Execution Order] All functions use asynchronous callbacks. If calling code doesn't properly sequence balance queries and transaction composition, can a race condition occur where a transaction is composed using stale balance data that doesn't reflect recently confirmed units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1045d9e-f468-428e-8f9a-5540e6cf8cd9",
+    "timestamp": "2025-12-22 22:03:45.368161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Memory Leak in Aggregation] If assocBalances objects accumulate many assets and addresses without cleanup (especially in long-running processes), can this cause memory exhaustion over time, eventually crashing the node after hours of operation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_47c382d0-6d3a-47f9-b1f1-2fe71888ec3a",
+    "timestamp": "2025-12-22 22:04:07.661716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Console.log Performance] Line 60 logs timing information using console.log(). If this function is called thousands of times per second during high transaction volume, can the console I/O become a bottleneck that delays balance queries and transaction composition for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a880e6c1-ac1e-43bd-8432-ff71ef34329e",
+    "timestamp": "2025-12-22 22:04:29.088956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [NULL vs Undefined Handling] The code doesn't consistently distinguish between NULL (from database) and undefined (from JavaScript). If asset or amount fields are NULL vs undefined, could this cause unexpected behavior in the || operator or arithmetic operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4ea21f3-1115-4dd8-8f07-0877fb3da747",
+    "timestamp": "2025-12-22 22:04:52.358467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Database Schema Mismatch] If the database schema doesn't match expectations (e.g., amount column is TEXT instead of INTEGER, or is_stable is 0/1 instead of boolean), will the SUM aggregations and balance calculations produce incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8252caa-7bd5-48a8-abe2-29ab5e9a6179",
+    "timestamp": "2025-12-22 22:05:15.584685",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Witness vs Non-Witness Output Priority] The functions don't distinguish between outputs created by regular transactions vs witness transactions. If witnesses can create outputs with special properties, could this allow witness-created outputs to be double-counted or excluded incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c0ba9dc-de26-4831-b6dc-c42025e76344",
+    "timestamp": "2025-12-22 22:05:40.144424",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Security Context Leak] If balance query functions are exposed via an API or RPC interface, can an attacker enumerate all addresses and their balances on the node by calling these functions repeatedly with different wallet/address parameters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4dfdb243-48bb-42b7-89f6-776173ce854d",
+    "timestamp": "2025-12-22 22:06:04.942713",
+    "report_generated": false
   }
 ]
