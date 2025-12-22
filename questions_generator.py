@@ -179,7 +179,7 @@ class GetQuestions:
 
             clipboard_content = pyperclip.paste()
 
-            questions = self.get_questions(clipboard_content)
+            questions = self.get_question_content(clipboard_content)
 
             with open("all_questions.json", "w") as f:
                 data = json.load(f)
@@ -195,7 +195,7 @@ class GetQuestions:
         except Exception as e:
             print(f"There was an error in index {url}: {e}")
 
-    def get_questions(self, clip_board_content: str) -> List[str]:
+    def get_question_content(self, clip_board_content: str) -> List[str]:
         """
         Extracts and returns all StabilityPool.sol audit questions from a raw text block.
         This is resilient to truncation, missing brackets, or malformed list endings.
