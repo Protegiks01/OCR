@@ -1348,5 +1348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3041ed4e-9f45-485d-acb0-d346c3e93799",
     "timestamp": "2025-12-22 20:16:07.955676",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Encrypted package vulnerability] On line 223, device.createEncryptedPackage() encrypts contract details - if encryption is weak or key derivation is flawed, can an attacker decrypt the contract terms and gain unfair advantage in dispute?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e0339ad-a0c6-4f53-a6ac-5ba814998f16",
+    "timestamp": "2025-12-22 20:17:29.220845",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Private asset amount exposure] On lines 227-231, if asset is private, asset and amount are included in dispute data - does this violate privacy guarantees by exposing private asset details to arbstore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec7de4f3-3e78-4b22-a41d-d03563d7e5d5",
+    "timestamp": "2025-12-22 20:17:41.726615",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [HTTP request injection] On line 233, httpRequest() posts JSON data to arbstore - can an attacker manipulate data fields to inject additional JSON properties or commands that exploit arbstore server vulnerabilities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0fd81519-d00a-4ec9-8862-0e88faaee0ac",
+    "timestamp": "2025-12-22 20:17:55.127578",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Arbstore address race] On lines 237-247, arbstore_address and arbstore_device_address are retrieved and stored - if these requests fail or return incorrect values, can disputes be misdirected or lost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d2b9adb-645c-4cd0-90d1-47f1d021fe8b",
+    "timestamp": "2025-12-22 20:18:08.624119",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Status update before confirmation] On line 250, status is updated to 'in_dispute' before receiving HTTP response confirmation - if arbstore rejects the dispute, can the contract remain stuck in 'in_dispute' status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f33f1fae-d034-4fd9-9ebc-970f3ca90005",
+    "timestamp": "2025-12-22 20:18:22.810401",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Watched address insertion race] On line 253, arbiter_address is added to my_watched_addresses using INSERT IGNORE - if multiple disputes are opened simultaneously, can race conditions cause some arbiter responses to be missed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fcf7cd3-2ee5-4dbf-a182-be384028abac",
+    "timestamp": "2025-12-22 20:18:38.073903",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Double dispute submission] If openDispute() is called multiple times on the same contract (e.g., by different cosigners), can multiple disputes be created, confusing the arbstore and causing incorrect resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_508610d3-f55c-496b-8222-957767a4422f",
+    "timestamp": "2025-12-22 20:18:55.162116",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: appeal()] [Status check bypass] On line 266, only 'dispute_resolved' status is allowed - but if arbiter resolution is not yet stable, can appeals be submitted prematurely and processed before the resolution is confirmed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc75b06f-a7b1-46da-bb22-8652fd9ed5e5",
+    "timestamp": "2025-12-22 20:19:13.016600",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: appeal()] [Arbstore address fallback] On lines 268-273, the function uses arbiter_address or arbstore_address depending on availability - can an attacker exploit this fallback logic to redirect appeals to a malicious arbstore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39e85870-3d37-4d8e-bc13-6afdba7803a1",
+    "timestamp": "2025-12-22 20:19:31.231820",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: appeal()] [Contract data exposure] On line 283, contract title, text, and creation_date are sent unencrypted to arbstore - can an attacker intercept this data and gain unfair advantage in the appeal process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b958331-0548-4836-8e26-5ce15e6b9507",
+    "timestamp": "2025-12-22 20:19:51.237486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: appeal()] [Appeal status update timing] On line 288, status is set to 'in_appeal' before receiving arbstore response - if arbstore rejects or fails to process the appeal, can the contract remain stuck in 'in_appeal' status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7f9e6e9-8fbf-43a2-ace3-0269cac6fe9b",
+    "timestamp": "2025-12-22 20:20:11.496255",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: httpRequest()] [URL parsing vulnerability] On line 318, url.parse(host) is used - can an attacker exploit URL parsing vulnerabilities (e.g., SSRF, protocol smuggling) by providing malicious host values in arbstore URL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3871fe35-cf02-4857-95fa-830a7395cfe8",
+    "timestamp": "2025-12-22 20:20:32.998957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: httpRequest()] [Content-Length calculation] On line 324, TextEncoder is used to calculate content length - can Unicode or multi-byte character encoding cause length mismatch, leading to truncated requests or server errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84b9d38d-c0c9-4a00-9dab-87c04ac6a004",
+    "timestamp": "2025-12-22 20:20:54.558907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: httpRequest()] [Response size DOS] On lines 331-334, response data is accumulated without size limit - can an attacker cause arbstore to return huge responses, causing memory exhaustion and daemon crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a341c15-a3ae-4336-a009-562935c7d7da",
+    "timestamp": "2025-12-22 20:21:17.695900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: httpRequest()] [JSON parse error handling] On lines 336-344, JSON.parse() is wrapped in try-catch - but if parsing succeeds but data.error is a non-string value (e.g., object), can this cause incorrect error handling or type confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31e49635-e866-4000-b41d-1326c5069994",
+    "timestamp": "2025-12-22 20:21:42.733749",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: httpRequest()] [Request timeout missing] The http.request() call has no timeout setting - can a malicious arbstore hang the connection indefinitely, causing DOS by exhausting connection pool?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93759360-fb25-4415-8917-117f55e5d2a7",
+    "timestamp": "2025-12-22 20:22:08.779797",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: parseWinnerFromUnit()] [Author address validation] On line 635, objUnit.authors[0].address is compared to arbiter_address - can an attacker forge a unit with arbiter address as author but invalid signatures, causing incorrect winner parsing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd5e0238-54e4-4f3e-92f8-88f6fe029deb",
+    "timestamp": "2025-12-22 20:22:33.322763",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: parseWinnerFromUnit()] [Multiple data feed messages] On lines 640-645, the function iterates through all messages and updates winner for each matching data feed - if arbiter posts multiple conflicting data feeds in one unit, which winner is used? Can this cause non-deterministic resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78aa4edf-8343-459d-87ba-ed5bc86342ec",
+    "timestamp": "2025-12-22 20:22:58.546415",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: parseWinnerFromUnit()] [Winner validation insufficient] On line 646, winner is only checked to be either my_address or peer_address - but if arbiter posts a winner value that doesn't match either (e.g., typo or different capitalization), does the function silently fail or can this lock funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_953f96fd-8281-4f18-a187-a38812047162",
+    "timestamp": "2025-12-22 20:23:25.178046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: parseWinnerFromUnit()] [Return value handling] The function returns undefined for invalid cases - do all callers properly handle undefined return values, or can undefined winner cause null pointer exceptions in downstream processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90d003ff-375f-49cc-87a0-a2ecd9d12bc8",
+    "timestamp": "2025-12-22 20:23:51.834745",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: arbiter_contract_update] [Watched address duplicate] On lines 655-660, when status becomes 'in_dispute', arbiter_address is added to my_watched_addresses - if this event fires multiple times, can duplicate entries cause database errors or performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a00b45e3-640d-465d-8ba3-23b7d2b6c643",
+    "timestamp": "2025-12-22 20:24:19.324931",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions payment] [SQL injection in arrNewUnits] On line 665, arrNewUnits.map(db.escape) is used in IN clause - if db.escape() is not properly implemented or has edge cases, can SQL injection occur through unit hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17280de4-f17d-45ab-9005-609296cdf1b5",
+    "timestamp": "2025-12-22 20:24:46.188940",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions payment] [SUM aggregation race] On line 668, SUM(outputs.amount) is compared to contract.amount - if payments arrive in multiple small outputs across different units, can race conditions cause partial payment detection or double-counting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf08d6fb-7e13-4900-bb5b-a05a52be7337",
+    "timestamp": "2025-12-22 20:25:13.526532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions payment] [Status transition race] On lines 671-679, if status is 'accepted' and unit not yet received, the code waits for arbiter_contract_update event - can this event never fire if unit message is lost, causing contract to remain stuck in 'accepted' status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c738cd2-9bd1-498c-a60e-57579dee9a72",
+    "timestamp": "2025-12-22 20:25:39.644782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions payment] [Recursive event handling] On line 674, newtxs(arrNewUnits) is called recursively from event listener - can infinite recursion occur if unit message arrives during payment processing, causing stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c925a806-6608-473e-abc0-e60f59a8b635",
+    "timestamp": "2025-12-22 20:26:06.911792",
+    "report_generated": false
   }
 ]
