@@ -1,10 +1,18 @@
+import json
+
 BASE_URL = "https://deepwiki.com/byteball/ocore"
 
 
+def get_questions():
+    try:
+        with open("all_questions.json", "r") as f:
+            return json.load(f)
 
-questions = [
+    except:
+        return []
 
-]
+
+questions = get_questions()
 
 questions_generator = [
     "byteball/ocore/aa_addresses.js",
@@ -86,7 +94,8 @@ questions_generator = [
     "byteball/ocore/tools/viewkv.js"
 ]
 
-def question_format(question:  str) -> str:
+
+def question_format(question: str) -> str:
     """
     Generates a comprehensive security audit prompt for Obyte (Byteball) Protocol.
 
@@ -645,6 +654,7 @@ runExploit().then(success => {{
 Now investigate the security question thoroughly and produce your finding.
 """
     return prompt
+
 
 def validation_format(report: str) -> str:
     """
@@ -1355,6 +1365,7 @@ Ask yourself:
                                                                                                       **Be ruthlessly skeptical.  The bar for validity is EXTREMELY high.**
 """
     return prompt
+
 
 def question_generator(target_file: str) -> str:
     """

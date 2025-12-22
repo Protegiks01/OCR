@@ -181,13 +181,25 @@ class GetQuestions:
 
             questions = self.get_question_content(clipboard_content)
 
-            with open("all_questions.json", "w") as f:
-                data = json.load(f)
-                data.append({
-                    "url": url,
-                    "questions": questions
-                })
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            # Load existing data or start fresh
+            try:
+                if os.path.exists("all_questions.json"):
+                    with open("all_questions.json", "r") as f:
+                        content = f.read().strip()
+                        data = json.loads(content) if content else []
+                else:
+                    data = []
+            except json.JSONDecodeError:
+                print("Invalid questions.json, creating new file")
+                data = []
+
+            data.extend(questions)
+            # Save with proper formatting
+            try:
+                with open("all_questions.json", "w") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error saving to collections: {e}")
 
             # Clear textarea for next question
             self.mark_questions_generated(url)
@@ -197,14 +209,12 @@ class GetQuestions:
 
     def get_question_content(self, clip_board_content: str) -> List[str]:
         """
-        Extracts and returns all StabilityPool.sol audit questions from a raw text block.
-        This is resilient to truncation, missing brackets, or malformed list endings.
-        """
-
-        # Extract all quoted questions safely
-        questions = re.findall(r'"([^"]+)"', clip_board_content)
-
-        return questions
+            Extracts security audit questions from the provided text using regex.
+            """
+        pattern = r'"(\[File:.*?)"'
+        questions = re.findall(pattern, clip_board_content, flags=re.DOTALL)
+        # Optional: Clean up whitespace (strip) for each question found
+        return [q.strip() for q in questions]
 
     def mark_questions_generated(self, url):
         """Mark this URL's report as generated in questions.json"""
