@@ -3148,5 +3148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f4deb52-2840-4bcf-8a61-99affa7ffdc1",
     "timestamp": "2025-12-22 22:16:06.607491",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Pairing Code Format] If pairing_code contains multiple '@' symbols (e.g., 'pubkey1@hub@extra'), does indexOf('@') return the first occurrence, and could this cause incorrect pubkey extraction if the format is 'pubkey@hub' but hub contains '@'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_19f51392-f463-41cf-9920-419558dc3fbd",
+    "timestamp": "2025-12-22 22:17:29.654701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Non-String Pairing Code] If bot.pairing_code is not a string (e.g., number, object, null), will substr() and indexOf() throw an exception, crashing the async.eachSeries iteration and preventing completion of load()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b63173db-2472-40f7-aa1e-de11754167b3",
+    "timestamp": "2025-12-22 22:17:42.286517",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Whitespace in Pubkey] If the extracted pubkey contains leading/trailing whitespace or newlines due to malformed pairing_code, will objectHash.getDeviceAddress() produce an incorrect device address, causing false negative pairing status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b3e1b52-16eb-43dc-9cb2-b4afd26106e2",
+    "timestamp": "2025-12-22 22:17:55.347626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Device Address Collision] Can two different pubkeys in pairing codes result in the same device address from getDeviceAddress() due to hash collisions, causing multiple bots to share the same isPaired status incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_283787e0-b2f7-4291-8942-abd2c4c6baa7",
+    "timestamp": "2025-12-22 22:18:08.881299",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Invalid Pubkey Format] If the extracted pubkey is not valid base64 or has incorrect length (not 44 characters as expected), will objectHash.getDeviceAddress() fail silently, throw an exception, or produce a malformed device address that breaks SQL query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82d330c6-aaab-4a72-b9d9-907d92f1c147",
+    "timestamp": "2025-12-22 22:18:23.475377",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Device Address Length] If getDeviceAddress() returns a device address longer than 33 characters (the CHAR(33) constraint in correspondent_devices table), will the SQL query fail or truncate the address, causing incorrect pairing checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4b646b3-ff48-41aa-afd9-106bda69efdd",
+    "timestamp": "2025-12-22 22:18:38.870990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [SQL Injection] Although the query uses parameterized queries with '?' placeholder, if device_address contains special characters or SQL syntax, could this bypass parameter binding in certain database engines and enable SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ff96460-f36a-475e-a7f8-88f1024f3370",
+    "timestamp": "2025-12-22 22:18:56.399047",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Database Unavailability] If db.query() fails due to database connection loss or corruption, is the error caught and handled, or will the callback never be invoked, causing load() to hang indefinitely with async.eachSeries stuck?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee84bb9f-fff6-4535-a150-43e2b958c5e9",
+    "timestamp": "2025-12-22 22:19:14.312220",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Query Result Interpretation] The code assumes rows.length == 1 means paired, but what if a database race condition or corruption causes multiple rows with the same device_address to exist - will isPaired be true even if the wrong correspondent is matched?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7db3b6a4-5720-401f-82e8-68815b77da05",
+    "timestamp": "2025-12-22 22:19:33.107713",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Null Device Address] If objectHash.getDeviceAddress() returns null or undefined due to an error, will the SQL query search for 'NULL' string or actual NULL value, and could this match unintended correspondent_devices entries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_583c6b25-0a75-475a-9469-477cfa5a2c52",
+    "timestamp": "2025-12-22 22:19:53.567090",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Cache Race Condition] If load() is called multiple times concurrently (e.g., from different parts of the application), can multiple hub requests complete simultaneously and cause bots_cache to be overwritten non-atomically, losing bot data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e663b06c-586d-479d-95b7-32b576ee5c22",
+    "timestamp": "2025-12-22 22:20:14.600446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Cache Inconsistency] Between the time bot.isPaired is set in async.eachSeries and bots_cache assignment, if another load() call completes, will the first call's processed bots be lost, causing stale pairing status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c3cdaa1-9288-423c-b276-6e49da6bb5c0",
+    "timestamp": "2025-12-22 22:20:36.208452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Partial Cache Update] If async.eachSeries fails mid-iteration (e.g., database error on one bot), will bots_cache be partially updated with some bots having isPaired and others not, causing inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c65587cb-27ff-42f0-aca2-985034d782ee",
+    "timestamp": "2025-12-22 22:20:58.259923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Cache Stale Data] If a bot's pairing status changes in the database after load() completes, will getBotByID() return stale isPaired status from bots_cache, misleading the application about pairing state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a60c169-19ee-4b9f-a453-0b030df22034",
+    "timestamp": "2025-12-22 22:21:21.909725",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Cache Cleared Race] If bots_cache is set to empty array or cleared between checking for-loop condition and accessing bots_cache[i], could this cause an out-of-bounds access or return undefined?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9fc7982c-c5d0-455e-a71d-8dcb9e88b352",
+    "timestamp": "2025-12-22 22:21:45.000693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Variable: bots_cache] [Global State Mutation] Since bots_cache is a module-level array, can malicious code in other modules directly modify it (push/pop/splice), injecting fake bots or removing legitimate ones to manipulate pairing checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ce3c365-066a-40db-b77f-503cf3e590a8",
+    "timestamp": "2025-12-22 22:22:09.105740",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Hub Request Failure] If device.requestFromHub() returns an error (network timeout, hub down, malformed response), the error is passed to callback but bots_cache may retain old stale data - could this cause operations to proceed with outdated bot information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb519ae8-6b8c-4e5c-b02e-144cfab2a771",
+    "timestamp": "2025-12-22 22:22:33.838736",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Callback Error Propagation] If err != null in the hub response, the callback is invoked with (err, null), but bots_cache is not cleared - will subsequent getBotByID() calls return stale cached bots even after load failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_29a411bb-cd2e-463d-8eff-4cf8aeb778ed",
+    "timestamp": "2025-12-22 22:22:58.647910",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Uncaught Exceptions] If bot.pairing_code.substr() throws an exception due to null/undefined pairing_code, will this be caught by async.eachSeries, or will it propagate and crash the entire load() operation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_890dfb92-0129-4401-824b-9f3003aa4889",
+    "timestamp": "2025-12-22 22:23:23.527804",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Database Error Silence] If db.query() silently fails without invoking the callback (database engine bug), will async.eachSeries hang forever, preventing load() from completing and blocking bot-dependent operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e076c246-0ec4-4117-b620-e63ef0715869",
+    "timestamp": "2025-12-22 22:23:48.064883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Async Error Handling] If setPairingStatus() throws a synchronous exception before calling cb(), will async.eachSeries catch it, or will the uncaught exception crash the node and prevent transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6197f03c-e357-4a32-bc8b-b5056d5bc931",
+    "timestamp": "2025-12-22 22:24:13.269824",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Multiple Callback Invocations] If multiple bots in bots_cache have the same ID, will setPairingStatus() be called multiple times, and will the callback cb be invoked multiple times, causing unexpected behavior in calling code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c312d9a-938b-4542-afd6-dfc553b8756a",
+    "timestamp": "2025-12-22 22:24:36.543700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [No Bot Found] If no bot matches the requested ID, getBotByID() returns undefined implicitly without invoking the callback - will calling code hang waiting for callback, causing application freeze?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5a71faf-6d60-45ed-bdb1-2256f5b2ca75",
+    "timestamp": "2025-12-22 22:24:59.770845",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setBotPairingStatus()] [Callback Before State Update] The callback cb(bot) is invoked immediately after setting bot.isPaired, but is this synchronous mutation visible to other concurrent operations on the same bot object before callback completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad6fe474-25a9-43ac-b0f7-cc322d468f89",
+    "timestamp": "2025-12-22 22:25:22.172370",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Callback Timing] The final callback cb(err, bots) is invoked after bots_cache assignment, but if calling code immediately calls getBotByID(), is there a guarantee that bots_cache is fully updated with all isPaired fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_274e5d9c-fe5c-4ae6-b8f5-a787ac45e78c",
+    "timestamp": "2025-12-22 22:25:46.040840",
+    "report_generated": false
   }
 ]
