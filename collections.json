@@ -2248,5 +2248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2699d664-d4fa-48ba-98d9-356b57e69a15",
     "timestamp": "2025-12-22 21:15:40.929586",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendOutputsSpentInArchivedUnit()] [Nested Callback Chain] The function chains three callbacks (transfer, headers commission, witnessing) sequentially - if any callback invokes its continuation (cb) prematurely due to an error condition, can subsequent unspending steps be skipped, leaving some outputs incorrectly marked as spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a861f27-54cb-404a-9c09-e34b42df80a7",
+    "timestamp": "2025-12-22 21:17:00.677056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendOutputsSpentInArchivedUnit()] [Callback Completion Order] The three unspending operations execute in a fixed order (transfer → headers → witnessing) - if witnessing outputs must be unspent before transfer outputs for correctness, can this ordering cause temporary inconsistent states that other concurrent transactions can observe?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62ba0cc3-764f-4492-820f-e987035cda47",
+    "timestamp": "2025-12-22 21:17:13.855909",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Query Execution Async] The conn.query() is asynchronous and the callback adds UPDATE queries to arrQueries - if the array is modified by another process between query completion and callback execution, can queries be lost or duplicated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8721fa49-a92a-46d1-a096-6dd778703c5d",
+    "timestamp": "2025-12-22 21:17:27.463055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Row Iteration Non-Atomic] The rows.forEach() loop adds multiple UPDATE queries - if arrQueries is executed before forEach completes due to a race condition, can some outputs be missed and remain permanently marked as spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb9096d9-23bf-4324-94f9-e1f053cc3191",
+    "timestamp": "2025-12-22 21:17:41.189831",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Unit Parameter Trust] The unit parameter (objJoint.unit.unit) is passed directly to multiple DELETE and UPDATE statements - if the caller provides a malicious objJoint with crafted unit values containing SQL syntax, can this bypass parameterized queries and enable SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b5ba3fb-b73b-4081-96dc-3e78b83c4ad4",
+    "timestamp": "2025-12-22 21:17:55.443641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Row Data Trust] The function uses row.src_unit, row.src_message_index, row.src_output_index directly from query results - if database data is corrupted or manipulated, can malicious values in these fields cause UPDATE statements to target wrong outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38b56c38-a2f5-4d31-bedf-b02bcc320315",
+    "timestamp": "2025-12-22 21:18:11.313812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Address Field Injection] The row.address field is used directly in UPDATE statements - if addresses contain SQL special characters or escape sequences, can this cause syntax errors or security vulnerabilities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de875ea7-3ac6-4806-ad97-68b0668bd4fc",
+    "timestamp": "2025-12-22 21:18:29.330607",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint() and generateQueriesToVoidJoint()] [Dual Path Consistency] Both functions call generateQueriesToUnspendOutputsSpentInArchivedUnit() but then diverge in what they delete - if the unspending logic depends on certain records (e.g., messages) still existing during execution, can the subsequent deletions in removeJoint break assumptions that voidJoint preserves?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17cb0601-62da-45a4-bff8-81da07143bd9",
+    "timestamp": "2025-12-22 21:18:47.323158",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Archived JSON Completeness] The full objJoint is serialized to JSON and stored - if objJoint contains sensitive private keys, signatures, or other data that shouldn't be archived, can this create a security leak or compliance violation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4c0bb95-262f-45bc-8e4e-21ef0262f287",
+    "timestamp": "2025-12-22 21:19:05.685802",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Reason Immutability] Once a unit is archived with a specific reason, can it be re-archived with a different reason, and if so, does the INSERT with getIgnore() prevent this or allow duplicate records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a347f1d-d9d3-47bb-b7b9-c1c618d7be10",
+    "timestamp": "2025-12-22 21:19:25.324579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [All Functions] [Transaction Scope] The file generates queries but doesn't explicitly wrap them in BEGIN/COMMIT - if the caller doesn't properly manage transaction boundaries and a subset of queries fails, can the database be left in a partially-archived state with some tables cleaned but others not?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3460ee09-cc2e-445a-9695-f2ce3d91d8af",
+    "timestamp": "2025-12-22 21:19:46.758247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [All Functions] [Rollback Safety] If a query in the arrQueries array fails during execution and triggers a rollback, but the rows.forEach() callbacks have already executed and produced side effects, can those side effects persist even though the database rolled back?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a07d64b2-bb61-416e-a6fe-266cfa7bb23f",
+    "timestamp": "2025-12-22 21:20:09.079233",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Nested Transaction] The SELECT query executes inside what might be a larger transaction - if the outer transaction has a different isolation level, can the SELECT see uncommitted data from other transactions, leading to incorrect unspending decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66c30aca-f847-45a6-8853-0b30c1ea3bf5",
+    "timestamp": "2025-12-22 21:20:31.654396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Genesis Unit Archiving] If the genesis unit is somehow passed to this function, can deleting it break the entire DAG structure since all units transitively reference genesis, causing network consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f929baa-a4af-40a8-b555-5db6041a9bf4",
+    "timestamp": "2025-12-22 21:20:54.874067",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Self-Spending Unit] If a unit theoretically spends its own outputs (circular reference), can the unspending logic correctly handle this or create an infinite loop or inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8baba7e1-2757-427d-965f-e98ef910e135",
+    "timestamp": "2025-12-22 21:21:18.457868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Zero Rows Result] If the SELECT query returns zero rows (no transfer inputs in the unit), the callback is still invoked - can this cause issues if the callback expects at least one row, or does proper error handling depend on row count checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1fdd330e-135b-4d77-8bff-9637c671c6ae",
+    "timestamp": "2025-12-22 21:21:42.847533",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [MCI Boundary] If from_main_chain_index or to_main_chain_index is at the boundary of the valid MCI range (e.g., 0 or MAX_INT), can integer overflow or underflow in comparisons cause incorrect output selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_790b8f1f-6ad0-4583-91de-c16ceea43986",
+    "timestamp": "2025-12-22 21:22:08.207438",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Large Joint Object] If objJoint contains an extremely large unit (e.g., with thousands of messages or huge data payloads), can JSON.stringify() produce a string that exceeds database column limits, causing the INSERT to fail and leaving the unit in a 'partially archived' state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e5741af-7ef2-40fe-9557-1bae215de3fa",
+    "timestamp": "2025-12-22 21:22:33.322824",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Voided Witness Unit] If a witness's own unit is voided, can this affect witness level calculations since the unit exists but has no messages, potentially breaking main chain determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef1e0a51-b941-49d0-a149-a22803a8fcc3",
+    "timestamp": "2025-12-22 21:23:00.931943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Query Array Size] The function adds 21 DELETE queries to arrQueries - if archiving thousands of units in a batch, can the arrQueries array grow so large that it exceeds memory limits or causes the database driver to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e14b3311-ee28-4fb6-9e3f-e3c3f8296562",
+    "timestamp": "2025-12-22 21:23:28.914792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Row Set Size] If a unit has inputs spending thousands of outputs (e.g., a consolidation transaction), can the rows.forEach() loop add so many UPDATE queries that execution becomes prohibitively slow or causes memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2003c389-1b96-4f5c-a3db-fa46833e8836",
+    "timestamp": "2025-12-22 21:23:57.286161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [CROSS JOIN Explosion] The CROSS JOIN between inputs and headers_commission_outputs - if a unit has many inputs and there are many headers commission outputs in the MCI range, can this produce a result set so large that it crashes the database or consumes all memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13e2ad97-a778-4754-ac78-c6da4c259158",
+    "timestamp": "2025-12-22 21:24:24.601582",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Foreign Key Constraints] The function deletes from multiple tables without checking foreign key relationships - if other tables (not listed in the function) have foreign keys to these tables without ON DELETE CASCADE, can the deletions fail with constraint violations, leaving the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d550f109-d82c-450a-916e-29aa4b712e74",
+    "timestamp": "2025-12-22 21:24:51.070560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Missing Table Deletions] If new tables were added to the schema that reference units but aren't included in the deletion list (e.g., aa_var_values, aa_balances), can orphaned records persist indefinitely, causing database bloat and incorrect query results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a824f93-db65-48f2-8100-d03280c5767f",
+    "timestamp": "2025-12-22 21:25:18.056739",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Partial Foreign Key Cleanup] Since voidJoint deletes fewer tables than removeJoint, can foreign key constraints from those preserved tables to deleted tables cause constraint violations, making it impossible to execute the queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e3e09ed-1876-4d8f-acfa-7a711ee02fac",
+    "timestamp": "2025-12-22 21:25:46.117885",
+    "report_generated": false
   }
 ]
