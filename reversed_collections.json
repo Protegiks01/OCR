@@ -148,5 +148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ccec473-5835-4c60-9e61-a6c4fc593952",
     "timestamp": "2025-12-22 18:55:14.006294",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 13: storage.initCaches()] [Cache Staleness] If the main network process modifies assocUnstableUnits or assocStableUnits AFTER this script calls initCaches() but BEFORE determineIfStableInLaterUnitsAndUpdateStableMcFlag reads from these caches, can the stale cache cause incorrect stability determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db59307e-9d40-4c2b-b4f2-48ca8acd7dd9",
+    "timestamp": "2025-12-22 18:56:38.789374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 13: storage.initCaches()] [Cache Initialization] Does initCaches() load ALL unstable and stable units into memory, or only a subset, and if the latter, can the script's stability determination be based on incomplete cache data causing incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21299664-7bc2-4c2a-853d-d2acd1229f28",
+    "timestamp": "2025-12-22 18:56:51.289655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [MCI Validation] If earlier_unit has main_chain_index=NULL (is not on main chain), will the function correctly return false and prevent stability updates, or can it attempt to mark off-chain units as stable causing database constraint violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ba0924f-a54b-46bd-9d54-711ca4dcac1f",
+    "timestamp": "2025-12-22 18:57:04.736527",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 15-19: Transaction] [Connection Pooling] Does db.executeInTransaction acquire and release a database connection properly, or can running this script multiple times in parallel exhaust the connection pool causing the main network process to be unable to acquire connections for processing new units (network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d77f3bf6-70d6-4a24-9266-b0dc98754ed3",
+    "timestamp": "2025-12-22 18:57:18.270545",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: false parameter] [bStableInDb Flag] The script always passes false for the bStableInDb parameter - if earlier_unit is already marked as stable in the database (is_stable=1), will determineIfStableInLaterUnitsAndUpdateStableMcFlag detect this and skip redundant updates, or can it cause duplicate ball creation or corruption of the stability chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f270492c-f8d6-4edd-b71b-33257804d4d9",
+    "timestamp": "2025-12-22 18:57:32.372373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: arrLaterUnits parameter] [Invalid Later Units] If one or more units in arrLaterUnits do not exist in the database or are not actually 'later' than earlier_unit (lower MCI), will the stability determination return false correctly, or can it incorrectly mark earlier_unit as stable causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78e332c5-d040-45fd-b928-62720fff72a1",
+    "timestamp": "2025-12-22 18:57:47.949964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: earlier_unit parameter] [Non-Existent Unit] If earlier_unit does not exist in the units table, will determineIfStableInLaterUnitsAndUpdateStableMcFlag throw an error causing the transaction to rollback, or can it silently fail leaving the script in an unknown state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b57dd1c-d1a6-4c06-b036-d42f4ed25714",
+    "timestamp": "2025-12-22 18:58:04.207782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 15: db.executeInTransaction] [Transaction Rollback] If determineIfStableInLaterUnitsAndUpdateStableMcFlag throws an error after partially marking some MCIs as stable (e.g., fails during markMcIndexStable iteration), does db.executeInTransaction properly rollback all changes, or can partial stability updates persist causing last_stable_mci to be inconsistent with is_stable flags?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aef52c4a-afbe-429a-a56b-18291d97a1fc",
+    "timestamp": "2025-12-22 18:58:21.871277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Non-Deterministic Execution] If the network receives new units between when this script determines stability and when it updates the database, can the stability determination become stale, causing the script to mark a unit as stable that should no longer be considered stable given newer network state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e64f26a-27af-49e8-a842-1a119caef538",
+    "timestamp": "2025-12-22 18:58:40.736343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 15-19: Transaction Scope] [Atomicity Violation] If determineIfStableInLaterUnitsAndUpdateStableMcFlag acquires its own database connection (line 1166 of main_chain.js) after the callback returns, does this violate the transaction boundary established by db.executeInTransaction, causing the stability updates to occur outside the transaction and potentially fail to commit or rollback correctly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6ac3250-5fc2-4a7d-ac66-e764980f534a",
+    "timestamp": "2025-12-22 18:59:01.316465",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Callback Timing] The callback at line 17 logs 'stable? bStable' but determineIfStableInLaterUnitsAndUpdateStableMcFlag may return early (line 1159) before actually updating the database - can this cause the script to exit with cb() before stability updates are committed, leaving partial updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aaaf3326-2aba-4b73-bc96-3ca4cb81b261",
+    "timestamp": "2025-12-22 18:59:21.919466",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 15-19: Transaction] [Lock Acquisition] The determineIfStableInLaterUnitsAndUpdateStableMcFlag function acquires a write lock (line 1163 of main_chain.js), but does db.executeInTransaction() also hold a database connection lock, potentially causing deadlock if the network process is waiting for either lock?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4ed010e-2ace-4c53-b1cb-c28473279e5f",
+    "timestamp": "2025-12-22 18:59:43.294842",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 15: db.executeInTransaction] [Concurrent Transactions] If the main network process is simultaneously advancing the stability point in its own transaction (via main_chain.updateStableMcFlag), can both transactions attempt to mark overlapping MCIs as stable, causing database deadlock or one transaction overwriting the other's stability updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8515749-dfd4-48da-abf0-9a6eb4e50416",
+    "timestamp": "2025-12-22 19:00:06.486517",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 13: storage.initCaches()] [Race Condition] If the main network process is simultaneously running and also calling storage.initCaches() or modifying assocUnstableUnits/assocStableUnits caches, can the script's cache initialization create inconsistent in-memory state that causes subsequent validation to accept/reject units incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08129c39-0a9f-4e7f-8e46-e64690b8ed3e",
+    "timestamp": "2025-12-22 19:00:29.997859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Database Access] [Permission Model] Does the script require elevated database privileges (e.g., ability to UPDATE units table and acquire write locks), and if so, is there auditing or logging of when and by whom the script is executed to detect malicious stability manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6a03c43-791a-4b41-a2ba-fe8bad4f1afa",
+    "timestamp": "2025-12-22 19:00:54.824824",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Purpose] [Privilege Escalation] Since this tool directly modifies the stability point (a consensus-critical property), can a malicious node operator use it to falsely mark units as stable before the network consensus agrees, creating a permanent chain split when other nodes reject subsequent units referencing different stability points?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6f6d4ed-a146-4bf5-aa0d-aee9cf0111ae",
+    "timestamp": "2025-12-22 19:01:20.104699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Execution] [Authorization] Is there any access control mechanism preventing unauthorized users from running this script, or can any user with command-line access to the node manually advance the stability point, causing consensus divergence from other nodes in the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d693142-09dd-4b4a-9256-86e20c8c646b",
+    "timestamp": "2025-12-22 19:01:46.916946",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 8-9: args parsing] [Injection Attack] Can an attacker inject special characters or SQL/JavaScript payloads in the unit hash arguments that get passed unsanitized to database queries in main_chain.js, causing SQL injection or code execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c8ec003-64ba-4457-9ed3-fadd0b813036",
+    "timestamp": "2025-12-22 19:02:13.933681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 9: arrLaterUnits] [Order Dependency] Does the order of units in the comma-separated arrLaterUnits list affect the stability calculation, and if so, can an attacker manipulate the ordering to cause earlier_unit to be incorrectly marked as stable or unstable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c3e4909-74d4-457c-9ad8-664c1fbb45f9",
+    "timestamp": "2025-12-22 19:02:43.049886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 9: arrLaterUnits] [Duplicate Detection] If arrLaterUnits contains duplicate unit hashes (e.g., 'unit1,unit1,unit2'), will determineIfStableInLaterUnits handle this correctly, or could it cause double-counting of witnessed levels leading to incorrect stability determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d14f7d4-e2d2-444a-938b-4627f401fa1d",
+    "timestamp": "2025-12-22 19:03:12.508943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 8: earlier_unit] [Hash Format Validation] Can an attacker provide a unit hash that exists in the database but points to an already-stable unit, causing the script to attempt re-stabilization and potentially corrupting the last_stable_mci or ball chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e0f607e-172c-4bdb-b316-3da752f05d3c",
+    "timestamp": "2025-12-22 19:03:42.783991",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 7-9: process.argv] [Input Validation] Does the script validate that exactly 2 command-line arguments are provided, or can providing 0, 1, or >2 arguments cause undefined behavior or incorrect stability updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0f9dd63-4bc4-443a-b097-334ead8da18a",
+    "timestamp": "2025-12-22 19:04:12.144735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 9: arrLaterUnits = args[1].split(',')] [Array Manipulation] Can an attacker provide an empty string or whitespace-only values in the comma-separated list, resulting in arrLaterUnits containing empty strings that bypass validation in determineIfStableInLaterUnits and cause incorrect stability determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b84ad61d-3565-4cfa-9dd7-24083991d596",
+    "timestamp": "2025-12-22 19:04:42.639747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 9: arrLaterUnits = args[1].split(',')] [Input Validation] If args[1] is undefined or not a string, will the .split() call crash the script, and if so, does this leave the database in an inconsistent state since storage.initCaches() was already called?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05d6ed65-7323-43cf-9633-faf366b38ffb",
+    "timestamp": "2025-12-22 19:05:12.545449",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 8: earlier_unit = args[0]] [Input Validation] Does the script validate that args[0] is a valid base64-encoded unit hash before passing it to determineIfStableInLaterUnitsAndUpdateStableMcFlag, or can an attacker provide a malformed string causing SQL injection or database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_038709b3-840f-44ec-8c9d-173967c5eff5",
+    "timestamp": "2025-12-22 19:05:41.684123",
+    "report_generated": false
   }
 ]
