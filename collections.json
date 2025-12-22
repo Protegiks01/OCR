@@ -298,5 +298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f6551c8-24c6-4836-a1de-387fdbd3c177",
     "timestamp": "2025-12-22 19:05:16.375212",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Clock Skew Exploitation] At line 62, cache expiration uses Date.now() to compare against stored timestamps - if an attacker can manipulate system time on some nodes (or if nodes have significant clock skew), can they cause some nodes to prematurely expire or indefinitely retain cache entries, leading to non-deterministic readAADefinitions behavior across the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2808339-3ed2-4efd-b6db-1c590a457cab",
+    "timestamp": "2025-12-22 19:06:39.068673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Cache Timing Window Attack] Between caching a",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70c1de04-69db-4cab-93e9-b470131410c8",
+    "timestamp": "2025-12-22 19:06:51.763644",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Zero Amount Payment] If payment.outputs includes an output with amount: 0 to an AA address, does the amount aggregation at line 120 correctly handle it, and does bounce fee validation at line 137 reject it as insufficient, or can zero-amount payments to AAs bypass bounce fee checks entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35a5eaa3-0248-4a7c-93e0-3f7fae621e94",
+    "timestamp": "2025-12-22 19:07:04.924687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Missing Asset in Bounce Fees] If an AA's bounce_fees object at line 130 specifies fees for 'base' and 'asset1', but a payment includes outputs with 'asset2' that's not in bounce_fees, does line 135 iterate over all assets in bounce_fees and miss the unlisted asset, potentially allowing payments in unexpected assets that the AA cannot handle?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a165d9bd-d10a-43c7-bcb8-639b2610a51f",
+    "timestamp": "2025-12-22 19:07:18.364397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [MIN_BYTES_BOUNCE_FEE Override] At lines 132-134, if an AA explicitly sets bounce_fees.base to a value less than constants.MIN_BYTES_BOUNCE_FEE (e.g., bounce_fees: {base: 1}), does the code override it with MIN_BYTES_BOUNCE_FEE or respect the AA's choice, and can malicious AAs set very low bounce fees to enable DoS attacks by triggering expensive operations with minimal cost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_601c5655-bc63-43ce-9bed-3568ae60b442",
+    "timestamp": "2025-12-22 19:07:32.598016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Duplicate Address Handling] If arrAddresses contains duplicate addresses (e.g., ['AA1', 'AA2', 'AA1']), does the query at line 40 return duplicate rows, and does the subsequent processing correctly deduplicate them, or can duplicate entries cause checkAAOutputs to count bounce fees multiple times, rejecting legitimate transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8af0b107-2e1c-442b-a70c-0f3f15b5070a",
+    "timestamp": "2025-12-22 19:07:47.586943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Invalid Address Format] While line 37 filters with isValidAddress, what if isValidAddress has edge cases or vulnerabilities that allow malformed addresses through - can these addresses cause db.escape at line 40 to produce invalid SQL, crash the query, or worse, leak information about database structure through error messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_853eb289-24aa-4fc8-a756-d46d26c25fc7",
+    "timestamp": "2025-12-22 19:08:04.435864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Array Mutation Race] If the arrAddresses array passed to readAADefinitions is mutated by the caller during execution (e.g., between line 37 filtering and line 40 query), can this cause inconsistent behavior where filtered addresses don't match queried addresses, leading to incorrect definition lookups?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70845ff6-2deb-4920-bc68-1f5ccdc62ce0",
+    "timestamp": "2025-12-22 19:08:22.575408",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Escaping Edge Case] At line 40, if an address is exactly at the character limit for valid addresses and contains special characters that require escaping, does db.escape produce a string that exceeds database column limits, causing the query to fail or truncate the address, matching wrong definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16b96810-ebb2-46bd-bdc6-c4f822ddaade",
+    "timestamp": "2025-12-22 19:08:41.092332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [UNION Query Inconsistency] The query at lines 47-51 uses UNION to combine results from definitions, my_addresses, and shared_addresses tables - if these tables have different column types or constraints for the address field, can the UNION produce unexpected results or errors that cause the query to fail, blocking all AA payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5992235-7125-4037-bcd7-8928f4341671",
+    "timestamp": "2025-12-22 19:09:00.722116",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Premature Callback Invocation] At line 103, handleRows(rows) is called after async.each completes - but if async.each calls its completion callback before all network requests have actually finished (due to bugs in async library or error conditions), can handleRows be called with incomplete rows data, causing bounce fee validation to use partial AA definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84edac9b-a68f-4f6b-a3e6-0c515dd9917a",
+    "timestamp": "2025-12-22 19:09:21.614056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Multiple Callback Invocation] If any of the cb() calls in the async.each iterator (lines 76, 81, 86, 90) are accidentally invoked multiple times due to error handling bugs, can async.each invoke its completion callback at line 102 multiple times, causing handleRows to execute repeatedly with potentially different rows data each time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05d33d42-318a-4f0f-bcc8-4102b26d1690",
+    "timestamp": "2025-12-22 19:09:43.501508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Early Return Bypass] At line 126, if rows.length === 0 causes early return with success (handleResult()), but this occurs because readAADefinitions failed to fetch any definitions due to errors, does this allow payments to AA addresses to proceed without bounce fee validation, causing funds to be sent without protection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f2a5465-1963-4012-aae5-f8b5038b5b0d",
+    "timestamp": "2025-12-22 19:10:06.061737",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Mixed AA and Non-AA Handling] At lines 91-99, the code branches based on whether definition is AA or not - if an address transitions from non-AA to AA via definition_chg, can the old non-AA record in definitions table coexist with new AA record in aa_addresses table, causing queries to return both and confusing subsequent validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c4ce258-4769-4c0b-ad66-cc812dab62cb",
+    "timestamp": "2025-12-22 19:10:29.644784",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition String Length] When JSON.stringify(arrDefinition) is stored at line 90, if the resulting string exceeds the database column length limit for definition field in aa_addresses table, does the INSERT silently truncate it (causing invalid JSON on retrieval) or fail with error (preventing the AA from being registered)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed9b8e87-b856-4544-96d2-8bef4e76dffc",
+    "timestamp": "2025-12-22 19:10:53.811658",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Base AA Null Value] If an AA definition at line 93 has base_aa property explicitly set to null or undefined, does this get stored as NULL in database and later cause queries filtering by base_aa to behave incorrectly, or can null base_aa values trigger bugs in AA validation/execution code that expects valid addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0f488f5-5f69-4909-8d2a-6be7d1c944f0",
+    "timestamp": "2025-12-22 19:11:19.162918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Light Vendor Protocol Violation] If network.requestFromLightVendor at line 73 returns a response that doesn't conform to expected protocol (e.g., missing fields, wrong types, extra data), does the code gracefully handle all edge cases, or can protocol violations cause parsing errors, type confusion, or security vulnerabilities in definition processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c81b23b0-dec0-4847-a584-d0372b304c03",
+    "timestamp": "2025-12-22 19:11:45.331883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Request Response Mismatch] When requesting definition for address A but network.requestFromLightVendor returns a response for address B due to vendor error or MITM attack, does the objectHash.getChash160 check at line 84 always catch this mismatch, or can hash collisions or implementation bugs allow mismatched definitions to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22bfd611-670b-4bcf-9b09-ec79b33ad56c",
+    "timestamp": "2025-12-22 19:12:12.405917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: MissingBounceFeesErrorMessage()] [Error Aggregation Logic] At lines 20-23, when aggregating missing bounce fees, if the same asset appears multiple times for the same address (due to multiple payments or outputs), does the aggregation correctly sum all missing amounts, or can duplicate counting cause error messages to overstate required fees and block legitimate transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1bd258b8-b7ac-4efa-bdca-05b8d81f9287",
+    "timestamp": "2025-12-22 19:12:40.182631",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: MissingBounceFeesErrorMessage()] [Asset Display Name] At line 27, when formatting the required amount, if asset ID is very long or contains special characters, does the string concatenation handle it safely, or can maliciously crafted asset names cause the error message to be misformatted, confusing users or hiding important details?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe12c159-430d-4ec4-b8f7-07c75d242e23",
+    "timestamp": "2025-12-22 19:13:07.847634",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateInitialAABalances()] [Race Condition - Balance Double-Counting] In updateInitialAABalances() at lines 440-500, if two concurrent AA triggers to the same address execute simultaneously on different nodes before database commit, can both triggers read the same initial balance from aa_balances table, then both add their received amounts via UPDATE queries (lines 467-472), resulting in balance double-counting and allowing the AA to spend more than it actually received?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_104cbb38-b4cf-457d-9872-6e08f2bfdcdb",
+    "timestamp": "2025-12-22 19:13:37.209275",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateInitialAABalances()] [Integer Overflow] At line 472, when updating objValidationState.assocBalances[address][asset] = row.balance + trigger.outputs[asset], can an attacker send a trigger with trigger.outputs[asset] close to Number.MAX_SAFE_INTEGER to cause integer overflow, corrupting the in-memory balance tracking and allowing the AA to issue incorrect responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0495a5e-26e8-4a8c-b5aa-a0e91d06a0ba",
+    "timestamp": "2025-12-22 19:14:05.209913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateInitialAABalances()] [Missing Balance Validation] At lines 476-482, when inserting new asset balances for assets not previously held by the AA, there's no validation that trigger.outputs[asset] is within safe integer bounds - can an attacker trigger with extremely large amounts to bypass balance checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0218f422-c428-45eb-9670-2f753a2667ec",
+    "timestamp": "2025-12-22 19:14:30.843071",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateInitialAABalances()] [Balance Bug Reintroduction] At lines 461-462, the code conditionally calls reintroduceBalanceBug() for testnet before certain MCI - if this function (lines 1877-1892) modifies row.balance, can an attacker exploit the discrepancy between database and in-memory balances to cause state divergence between mainnet and testnet nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82bd6615-c64d-4ce1-9abc-d07217eebfb2",
+    "timestamp": "2025-12-22 19:14:57.054938",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateFinalAABalances()] [Negative Balance Exploit] In updateFinalAABalances() at lines 502-546, when calculating assocDeltas[asset] (line 510), if arrConsumedOutputs contains more outputs than the AA actually owns (due to race condition or double-spend), can the AA's balance go negative (line 540), and does the code properly reject such states or allow continued execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d836eb4f-755a-41ac-85f4-ad23b2d5e220",
+    "timestamp": "2025-12-22 19:15:23.891143",
+    "report_generated": false
   }
 ]
