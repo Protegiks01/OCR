@@ -3748,5 +3748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7134e92c-1414-4260-b9e8-9e16c82f719b",
     "timestamp": "2025-12-22 22:53:59.965279",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain() - goUp()] [Infinite Recursion] In the goUp() recursive function starting at line 86, if there's a cycle in last_ball_unit references (unit A's last_ball_unit points to unit B, which eventually points back to A), can this cause infinite recursion leading to stack overflow and node crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac57536a-2086-44c5-a7d9-69dd3f150b84",
+    "timestamp": "2025-12-22 22:55:11.415682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain() - goUp()] [Missing Last Ball] If storage.readJointWithBall() at line 87 returns a joint where objJoint.unit.last_ball_unit is null or undefined, but objUnitProps.main_chain_index > last_stable_mci at line 90, does the recursive call goUp(objJoint.unit.last_ball_unit) crash the node or loop indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc072ea1-c639-4ed7-b483-cf8386ac4e48",
+    "timestamp": "2025-12-22 22:55:23.867368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Mutex Unlock Failure] If an error occurs in any of the async.series callbacks at lines 45-94 but the error is not properly caught, can the mutex unlock at line 103 fail to execute, causing all subsequent prepareCatchupChain calls to deadlock indefinitely and halt catchup operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e736452c-27c5-4d1c-beb0-861b4b654c5c",
+    "timestamp": "2025-12-22 22:55:37.001441",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Malicious Empty Array] Can a malicious peer send catchupChain with stable_last_ball_joints as an empty array (bypassing the check at line 117-118 by including exactly one element), causing the processCatchupChain to crash or corrupt the node's database when accessing arrChainBalls[0] at line 211?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f59f0a78-93d3-4516-9653-6e791f36ecd4",
+    "timestamp": "2025-12-22 22:55:50.218504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Witness Proof Bypass] If witnessProof.processWitnessProof() at line 128-133 is compromised and returns success with fake arrLastBallUnits and assocLastBallByLastBallUnit, can an attacker inject arbitrary stable_last_ball_joints that don't actually follow from the unstable MC joints, causing the node to accept an invalid history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_baf2b9c6-a9da-415b-b2fb-89957092a650",
+    "timestamp": "2025-12-22 22:56:04.249505",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Proofchain Ball Hash Collision] At line 145, the ball hash is verified using objectHash.getBallHash(), but if an attacker finds a hash collision (two different (unit, parent_balls, skiplist_balls, is_nonserial) tuples producing the same ball hash), can they substitute a malicious unit in the proofchain to corrupt the catchup data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa326029-df7f-4b61-bb7f-9779ec78e0e5",
+    "timestamp": "2025-12-22 22:56:20.607008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Proofchain Known Ball Manipulation] In the proofchain validation loop at lines 143-156, assocKnownBalls is populated from assocLastBallByLastBallUnit, then parent_balls and skiplist_balls are added to it. Can an attacker craft a proofchain where ball X references parent ball Y, which is not initially in assocKnownBalls but gets added by a previous ball in the same loop, bypassing the validation at line 147?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a58bfd35-abe2-475f-aae2-7b9e8cd20a3c",
+    "timestamp": "2025-12-22 22:56:36.946659",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [First Stable Joint Mismatch] At line 165-166, the code checks if objFirstStableUnit.unit is in arrLastBallUnits, but if the witnessProof.processWitnessProof() returns an arrLastBallUnits that doesn't properly match the stable_last_ball_joints due to a bug or attack, can this cause the node to accept an inconsistent catchup chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5f71c93-2898-4f45-90f8-db3daec061af",
+    "timestamp": "2025-12-22 22:56:54.618583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Last Ball Reference Chain Break] In the stable joints validation loop at lines 175-191, if objUnit.last_ball_unit is set but objUnit.last_ball is null or doesn't match the expected ball from a previous iteration, does the validation at line 184-185 properly detect this inconsistency, or can an attacker create a catchup chain with broken last_ball references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e41dd4d7-f630-4fe9-939d-58c8cdee7f4d",
+    "timestamp": "2025-12-22 22:57:13.288369",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Invalid Hash Validation Bypass] At line 180-181, validation.hasValidHashes(objJoint) is called, but if this function only validates unit hash and not ball hash, can an attacker send a joint with correct unit hash but incorrect ball hash, bypassing validation and corrupting the ball chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76f7d0aa-a93e-4da8-943b-e5064c23ed08",
+    "timestamp": "2025-12-22 22:57:32.625665",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Duplicate Catchup Processing] The mutex lock at line 198 checks if catchup_chain_balls table has any rows at line 200-202. If two peers send identical catchup chains simultaneously and both pass the empty table check before either inserts data, can both insert their chains into catchup_chain_balls, causing duplicate or conflicting catchup data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2d20683-2daa-4ca0-8f45-13aed5cef03e",
+    "timestamp": "2025-12-22 22:57:52.845990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [First Chain Ball Stability Race] At lines 210-217, the code checks if arrChainBalls[0] is stable, but if the main chain is being actively updated and the first chain ball becomes unstable between the query and the subsequent operations, can this cause the catchup process to proceed with invalid assumptions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfeaf179-2f25-4576-8499-0773c36e2274",
+    "timestamp": "2025-12-22 22:58:14.580541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Genesis Ball Bypass] At line 211-212, if storage.isGenesisBall(arrChainBalls[0]) returns true but the genesis ball in the database is actually corrupted or replaced with a malicious unit, does the catchup process accept this without further validation, potentially forking the entire network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10f70dcd-e9c4-4d65-a363-268f8a7d9faa",
+    "timestamp": "2025-12-22 22:58:37.117995",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Main Chain Index Validation Gap] At lines 220-226, the code adjusts arrChainBalls[0] if its MCI is less than last_stable_mci, but if objFirstChainBallProps.main_chain_index is significantly less than last_stable_mci (e.g., by 1000000 MCIs), does replacing it with objLastStableMcUnitProps.ball create a huge gap in the catchup chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9fa58331-2781-4a14-a74b-c92e10ff1fb4",
+    "timestamp": "2025-12-22 22:59:00.716618",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Second Ball Stability Check Missing] At lines 229-236, the code checks if the second chain ball is stable and returns an error if it is, but what if arrChainBalls has only 2 elements and both are stable? Does the check at line 227 properly handle this edge case?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4a69a7e-9a0c-4037-900e-8c32f3247ea5",
+    "timestamp": "2025-12-22 22:59:23.447239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [SQL Injection in Ball Insert] At line 242-243, arrChainBalls is used to construct SQL VALUES with db.escape(ball), but if an attacker can somehow inject SQL metacharacters into the ball string (which should be a hash), can this lead to SQL injection when the INSERT query is executed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b96f2a66-023b-420f-bb7f-b251198b0cdf",
+    "timestamp": "2025-12-22 22:59:48.188446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Mutex Unlock on Error Path] In the error handling at lines 247-250, if an error occurs and unlock() is called at line 248, but then callbacks.ifError(err) at line 249 throws an exception or triggers another async operation, can this cause the mutex to be in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f8a2f7c-9150-4329-bd61-42632a83c09d",
+    "timestamp": "2025-12-22 23:00:12.962604",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Ball Parameter Type Confusion] At lines 261-264, the code checks if from_ball and to_ball are strings, but if an attacker sends hashTreeRequest with from_ball or to_ball as objects with a custom toString() method that returns valid ball hashes, can this bypass validation and cause unexpected behavior in database queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_769de123-6c6e-4c98-87db-4713dc627938",
+    "timestamp": "2025-12-22 23:00:39.651965",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [MCI Ordering Inversion] At line 285-286, the code checks if from_mci >= to_mci and returns an error, but if from_mci == to_mci - 1 (adjacent MCIs), does the hash tree include only a single MCI worth of units, and can this be exploited to create minimal hash trees that lack sufficient data for validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60552ed9-ef96-46b6-9952-f3a63e74ab64",
+    "timestamp": "2025-12-22 23:01:07.265598",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Ball Stability Race Condition] At lines 276-277, the query checks if both balls are stable, but if one of the balls becomes unstable (due to a main chain reorganization) between this check and the subsequent query at lines 289-293, can the hash tree include unstable units that shouldn't be in a stable hash tree?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25eecace-738b-4827-94ee-cc7fe4039684",
+    "timestamp": "2025-12-22 23:01:35.251632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Genesis MCI Special Case Exploit] At line 288, if from_mci === 0, the operator is changed to",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b2041481-a8fd-445e-8f09-556f1d5490aa",
+    "timestamp": "2025-12-22 23:02:04.867086",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Missing Ball Throw] At line 298, if objBall.ball is null, the code throws an Error, but in an async.eachSeries callback, does throwing an error properly propagate to the error handler, or can this cause unhandled promise rejection and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7155bd64-7c0d-4858-98ae-f236db43c9fb",
+    "timestamp": "2025-12-22 23:02:33.433611",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Parent Ball Query Result Mismatch] At lines 303-309, the code queries parent balls and checks if any parent has no ball at line 306, throwing an error if so. But if a parent unit exists but has null ball due to database corruption, can this throw error repeatedly and prevent hash tree generation for legitimate catchup requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4212668-30ee-4291-bcc9-a9f1432fa561",
+    "timestamp": "2025-12-22 23:03:01.739196",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Skiplist Ball Validation Bypass] At lines 310-321, skiplist balls are queried and validated similar to parent balls, but if skiplist_units table contains invalid or circular references, can this cause the hash tree to include incorrect skiplist_balls that break ball hash verification later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40b33cde-91b1-49ed-90d0-b2f7a51636fc",
+    "timestamp": "2025-12-22 23:03:29.629807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Large Hash Tree DoS] If an attacker requests a hash tree with from_mci = 1 and to_mci = MAX_CATCHUP_CHAIN_LENGTH, and each MCI contains 1000 units, can this generate a hash tree with millions of balls, causing memory exhaustion when arrBalls is populated and JSON stringified for network transmission?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_06c36b1f-55fc-442b-89ec-401ad00a3286",
+    "timestamp": "2025-12-22 23:03:57.161396",
+    "report_generated": false
   }
 ]
