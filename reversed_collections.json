@@ -2998,5 +2998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af30cf08-e179-499a-b532-eb1ca2c5c3fd",
     "timestamp": "2025-12-22 22:51:08.204952",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_valid_sig] [Signature Length] At line 1595, signature is checked to be ≤1024 bytes - but very long signatures could contain padding that, when verified, causes the signature library to allocate excessive memory or take long time, causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60a9a91d-4203-4615-883e-c1e2e7eabb30",
+    "timestamp": "2025-12-22 22:52:13.707108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_valid_signed_package] [Last Ball Race] At line 1573, last_ball_mci is checked - if last_ball_mci is null (unit not stable yet), the check 'last_ball_mci > mci' is false, allowing unstable signed packages to be considered valid, which could be front-run or reorged?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc4debbb-3253-43c2-b04b-9df475cf3929",
+    "timestamp": "2025-12-22 22:52:26.123817",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_valid_signed_package] [Version Bypass] At lines 1562-1568, version is checked with maxVersion=4 - but this is a hardcoded constant, so when the protocol upgrades to version 5, will existing AAs break, or will they accept version 5 packages incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8e2f4e7-b766-4e24-8ab9-f62f4ad0157d",
+    "timestamp": "2025-12-22 22:52:39.108379",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: definition case] [Non-AA Definition Timing] At lines 1534-1541, ifFound callback is called for non-AA definitions - but if the address changes its definition via definition_chg message between query and callback, can the callback return a stale definition that no longer matches the address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b99f381b-4065-42ef-ba59-0f62ffb24888",
+    "timestamp": "2025-12-22 22:52:52.311796",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: definition case] [MCI Race] At lines 1527-1530, definition_unit's MCI is checked - if the unit is in the process of being stabilized (MCI transitioning from null to a value), can different nodes see different MCI values, causing one node to return the definition while another returns false?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6244a33a-2318-4219-b82e-655d16d3caf5",
+    "timestamp": "2025-12-22 22:53:06.475203",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: unit case] [Timestamp Injection] At line 1500, units without timestamp get timestamp=0 - can an attacker query such units and use timestamp=0 in time-based logic to bypass timestamp validation, allowing them to execute actions that should only work at genesis?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e755242-8af5-4281-86fb-a6db74ded554",
+    "timestamp": "2025-12-22 22:53:21.780499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: unit case] [Temp Data Deletion] At lines 1505-1507, temp_data is deleted from unit messages - but this modifies the objUnit object that's retrieved from storage - can this mutation affect other concurrent queries to the same unit, causing non-deterministic results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c91b481-2f3e-4aa3-930f-627f50d1c306",
+    "timestamp": "2025-12-22 22:53:39.065597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: unit case] [Previous Response Iteration] At lines 1482-1486, arrPreviousAAResponses is iterated without bounds check - can an attacker cause a very long cascade of AA responses to make this loop expensive, causing DoS during unit query evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8f61744-f19d-4620-b2cc-ba0df6feaba3",
+    "timestamp": "2025-12-22 22:53:56.779532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: unit case] [Response Unit Leakage] At lines 1478-1480, if objResponseUnit matches the queried unit, it's returned immediately - but objResponseUnit contains the full unit object including private data - can an attacker query their own response unit to access sensitive information that shouldn't be visible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0ee6a23-ace6-4136-a7a3-e222c33335ee",
+    "timestamp": "2025-12-22 22:54:14.993997",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readAssetInfoPossiblyDefinedByAA()] [Timing Attack] At lines 2943-2944, if objAsset.main_chain_index > mci, it checks if defined by AA - can an attacker time their AA trigger to arrive exactly when an asset is being defined, causing different nodes to have different views of whether the asset is visible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c171db5-aa22-479b-a2d8-84c83077fddb",
+    "timestamp": "2025-12-22 22:54:35.216719",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: asset case] [Sequence Check] At line 1451, objAsset.sequence must be 'good' - but if asset was defined in an unstable unit that later becomes bad, does this check prevent access to the asset info, potentially breaking AAs that rely on the asset's existence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f1c1d29-bd59-4d28-bbb2-016a3e1620ff",
+    "timestamp": "2025-12-22 22:54:55.741409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: asset case] [Field Injection] At line 1438, field is validated using objBaseAssetInfo.hasOwnProperty(field) - but if objBaseAssetInfo is a prototype-polluted object where attacker has added a field like '__proto__', can they read unintended asset properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e5ffc1e-11e6-4952-8cb5-b146cd37ea46",
+    "timestamp": "2025-12-22 22:55:17.142374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readBalance()] [Balance Cache Race] At lines 1412-1416, balance is first checked in objValidationState.assocBalances cache - if two AA executions in the same trigger cascade both read the same balance, then the first one sends payment reducing the balance, does the second AA see the old cached balance or updated balance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c721ea07-4217-42e0-aa6f-ed6ceaddc8ca",
+    "timestamp": "2025-12-22 22:55:39.358607",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readBalance()] [Asset Validation Timing] At lines 1409-1410, asset is validated as 'base' or valid hash - but if the asset hash is valid but the asset doesn't exist yet, does the query at lines 1417-1424 return balance=0, which might differ from the 'asset not found' error that should be returned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_645c9f44-a230-4c8b-b701-42b2b636577d",
+    "timestamp": "2025-12-22 22:56:02.487029",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readVar()] [Old Value Tracking] At line 2632, old_value and original_old_value are both set to the read value - but if this var is updated multiple times in the same AA, does old_value get overwritten, causing += operator to accumulate incorrectly on subsequent updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5571f4df-5086-4930-8cc4-8a62f0c05e31",
+    "timestamp": "2025-12-22 22:56:26.808740",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readVar()] [Type Ambiguity] At lines 2620-2631, database values are converted - numbers become Decimals, objects become wrappedObjects - but if database contains string '123' vs number 123, does bLimitedPrecision cause one to be parsed as Decimal and other to remain string, causing type confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ae58c6db-a43f-480c-bb9c-878a62ba5b94",
+    "timestamp": "2025-12-22 22:56:51.922957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: readVar()] [Cache Poisoning] At lines 2610-2612, stateVars cache is checked first before database - if an attacker can trigger multiple AA executions in parallel that read the same var before any writes are committed, can they all get false from cache while database contains actual value, causing all AAs to initialize var incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_777ef70e-e598-4b7f-bc82-2694175e0c52",
+    "timestamp": "2025-12-22 22:57:18.036585",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: response_var_assignment] [Infinite Loop] At lines 1326-1330, Decimal values are converted to JS numbers - if the Decimal is extremely close to Number.MAX_VALUE, can toNumber() produce Infinity that passes isFinite() check initially but becomes non-finite during storage, causing inconsistent response vars?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25f71de5-4260-4904-affd-7ae8029fb5eb",
+    "timestamp": "2025-12-22 22:57:45.012842",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: state_var_assignment] [old_value Initialization] At lines 1284-1285, old_value is set to dec0 for += and -= operators if it was undefined - but this happens AFTER the value has been used in arithmetic, so is the old_value stored in stateVars[address][var_name] reflecting the actual value or the defaulted dec0?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3dce404-f516-4e72-b2b9-22b35b30afd4",
+    "timestamp": "2025-12-22 22:58:12.974651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: state_var_assignment] [Operator Race] At lines 1259-1305, different assignment operators (=, +=, -=, *=, /=, %=, ||=) read old value then update - if the same state variable is updated twice in the same formula (via separate statements), does the second update see the first update's value, or the original value from stateVars cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_86e1e5d7-65ce-46fe-bb76-d2ebb12d5cb6",
+    "timestamp": "2025-12-22 22:58:43.080687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: state_var_assignment] [Object Serialization] At lines 1241-1248, wrappedObjects are serialized to JSON and length-checked - but if the object contains circular references (even though they should be impossible), does getJsonSourceString() throw an error that's not properly caught, causing the entire AA execution to abort instead of bounce?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01c4ad88-7521-4149-9e0e-e31dce7c3bbd",
+    "timestamp": "2025-12-22 22:59:13.015573",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: state_var_assignment] [Name Length Bypass] At line 1252, state var name length is checked AFTER evaluation - can an attacker use a formula that dynamically constructs a long var name to bypass validation-time checks and only fail at assignment time, after side effects have occurred?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_937810fe-ff96-4fbe-9077-df4652be17b1",
+    "timestamp": "2025-12-22 22:59:43.641672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: local_var_assignment] [Selector Key Injection] At lines 1193-1203, evaluateSelectorKeys() converts keys to strings/numbers - if an attacker passes a Decimal key like 0.0 vs 0.00, do they both become key '0', or do they create separate keys '0.0' and '0.00', causing inconsistent object mutation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58b383e1-d51b-4f9e-b909-295296f77149",
+    "timestamp": "2025-12-22 23:00:13.419703",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: local_var_assignment] [Shadow Variable] At lines 1172-1173, function args that shadow local vars are rejected - but if a function is declared inside another function, can inner function args shadow outer function args, creating scoping confusion that causes wrong variable values to be used?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b7cc9b0-f27b-4b73-98fd-051df6e2d70b",
+    "timestamp": "2025-12-22 23:00:43.421991",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: local_var_assignment] [Frozen Variable Bypass] At lines 1159-1160, frozen variables cannot be mutated - but if the frozen flag is stored on the wrappedObject instance, can an attacker create a new wrappedObject with same obj content but unfrozen flag, and assign it to bypass the freeze check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51e60081-0cfc-427e-9e94-290ffdfcb06f",
+    "timestamp": "2025-12-22 23:01:14.250619",
+    "report_generated": false
   }
 ]
