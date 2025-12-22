@@ -1498,5 +1498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c925a806-6608-473e-abc0-e60f59a8b635",
     "timestamp": "2025-12-22 20:26:06.911792",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions payment] [Event listener not removed] On line 675, eventBus.removeListener is called only after successful retry - can failed retries cause event listener accumulation, creating memory leaks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b584332c-6dec-40eb-bf64-2fb769a07a3f",
+    "timestamp": "2025-12-22 20:27:10.095500",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions completion] [Input-output address mismatch] On lines 696-700, the query joins outputs to my_address and inputs from shared_address - can an attacker craft a transaction that satisfies this join but doesn't actually transfer funds from shared address to my_address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe68b17e-3d21-4a5d-8eaa-57cb377a269a",
+    "timestamp": "2025-12-22 20:27:22.605088",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions completion] [Status inversion] On line 703, status is set to 'cancelled' if me_is_payer, else 'completed' - but shouldn't completion (funds received) be 'completed' for payee and 'cancelled' for payer only if they initiate cancellation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_915e6e6a-7f21-4328-bd5a-819bb26c6b72",
+    "timestamp": "2025-12-22 20:27:35.536842",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions arbiter] [Author address trust] On line 716, address = objUnit.authors[0].address is used without signature verification - can an attacker forge a unit claiming to be from arbiter address and trigger incorrect dispute resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68b2be97-4d68-43ba-b7bd-ac56516e95e1",
+    "timestamp": "2025-12-22 20:27:48.827547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: new_my_transactions arbiter] [Resolution unit race] Between lines 726-729, resolution_unit and status are updated in separate setField() calls - can race conditions cause resolution_unit to be set without status update or vice versa?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c38fa91c-be8e-4178-b2cc-a35b04ec36fd",
+    "timestamp": "2025-12-22 20:28:02.938620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable arbiter] [Stability check missing] On lines 737-766, arbiter response is processed when stable - but is there verification that the resolution_unit in the contract matches the stable unit being processed? Can stale or incorrect resolution units be processed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0122daac-5911-46b5-9667-f004b93ca486",
+    "timestamp": "2025-12-22 20:28:18.369380",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable arbiter] [Watched address removal race] On line 760, wallet_general.removeWatchedAddress() is called when count === 0 - if new disputes are opened concurrently, can arbiter address be removed prematurely, causing future responses to be missed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc54326c-120d-4749-9b60-204d3ea9e197",
+    "timestamp": "2025-12-22 20:28:34.752301",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable private] [Contract hash extraction] On line 787, contract_hash is extracted via regex from key 'CONTRACT_DONE_xxx' - can an attacker craft malicious key names that match the regex but extract wrong hashes, causing incorrect contract completion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f931480e-1526-46c1-8e35-d51403fa72f2",
+    "timestamp": "2025-12-22 20:28:52.159427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable private] [Peer address validation] On line 791, peer_address must match objUnit.authors[0].address - but is this check sufficient? Can an attacker co-sign a unit with peer as one of multiple authors and bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63421bd8-0065-4a07-8f59-2791e9203bcd",
+    "timestamp": "2025-12-22 20:29:11.256409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable private] [Data feed value validation] On line 796, m.payload[key] must equal my_address - but is capitalization, whitespace, or encoding normalized? Can an attacker use different address representations to bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b171a94d-6353-4c1f-ad86-67589db20a33",
+    "timestamp": "2025-12-22 20:29:30.875611",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable private] [Status check in_dispute] On line 798, status 'paid' is checked, but what if contract is in 'in_dispute' and peer posts CONTRACT_DONE feed? Should disputed contracts be completable by peer unilaterally?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31739a34-bf85-4f83-b186-7d74211509b4",
+    "timestamp": "2025-12-22 20:29:51.741079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Event: my_transactions_became_stable private] [Watched address removal logic] On lines 808-810, watched address is removed when count == 0 - but the count only includes 'paid' status contracts - can contracts in other statuses cause the address to be removed prematurely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90ea9d9e-ac90-4d6d-8113-9c33d5d1ba8a",
+    "timestamp": "2025-12-22 20:30:13.658176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getAllMyCosigners()] [SQL injection in hash] On line 384, hash parameter is directly used in WHERE clause - is it properly escaped? Can SQL injection occur if hash contains malicious characters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_624590c8-a776-488e-80fe-428e74c9aae8",
+    "timestamp": "2025-12-22 20:30:36.390480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getAllMyCosigners()] [Self-device inclusion] On line 387, the function excludes device.getMyDeviceAddress() from cosigners - but if getMyDeviceAddress() returns incorrect value or changes during execution, can the device be incorrectly included or excluded?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42533e5a-a5d9-400f-97ff-d8fcb5585ea3",
+    "timestamp": "2025-12-22 20:30:59.962881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: shareContractToCosigners()] [Contract object exposure] On line 165, the entire objContract is sent to cosigners - does this expose sensitive fields (e.g., peer_pairing_code, my_contact_info) that cosigners shouldn't have access to?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12d6b847-9975-4cf8-b30b-9c8e375d6c48",
+    "timestamp": "2025-12-22 20:31:23.362619",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: shareContractToCosigners()] [Cosigner device address validation] On line 164, device addresses from getAllMyCosigners() are used without validation - can an attacker register as a cosigner with a malicious device address and intercept all contract updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f640dee9-5136-4fb0-9fdb-ce177cbaada0",
+    "timestamp": "2025-12-22 20:31:48.090006",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: shareUpdateToCosigners()] [Field value manipulation] On line 175, objContract[field] value is sent to cosigners - if field was updated with a malicious value before this function is called, can cosigners be tricked into signing invalid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b9e6761-26fd-4e57-b403-01143b50c89b",
+    "timestamp": "2025-12-22 20:32:14.536678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: shareUpdateToPeer()] [Peer device address trust] On line 183, objContract.peer_device_address is used to send updates - if this field was manipulated during contract creation, can updates be sent to wrong peer or attacker?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9605daee-c14e-4d8c-a71c-5d0e4c6e8938",
+    "timestamp": "2025-12-22 20:32:41.936787",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: insertDispute()] [SQL injection in contract_content] On line 366, JSON.stringify(objDispute.contract_content) is inserted - if contract_content contains exploit payloads that survive JSON stringification, can database corruption occur?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cef444c-23dc-4f2a-b8e9-d24c5ccf676c",
+    "timestamp": "2025-12-22 20:33:09.750432",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: insertDispute()] [No duplicate check] The insertDispute() function doesn't check for existing disputes with same contract_hash - can multiple disputes be created for one contract, causing arbstore confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0a2cb75-606e-4170-9ad3-eb1e6877d855",
+    "timestamp": "2025-12-22 20:33:37.106001",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getDisputesByArbstore()] [Arbstore device address trust] On line 374, disputes are filtered by arbstore_device_address - if an attacker can register multiple device addresses for the same arbstore, can they hide disputes from legitimate arbiters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ecaffc4-1d0f-4630-b7cb-af82a710e4c6",
+    "timestamp": "2025-12-22 20:34:04.825088",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Event bus namespace collision] If multiple instances of arbiter_contract module are loaded or if other modules emit 'arbiter_contract_update' or 'new_my_transactions' events, can event handler collisions cause incorrect contract state transitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_575ac791-4fc0-4a76-9747-5c8ce9db09db",
+    "timestamp": "2025-12-22 20:34:32.146396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [CHARGE_AMOUNT constant] The CHARGE_AMOUNT is exported as 4000 bytes - can an attacker exploit this fixed amount by creating many contracts to drain bytes from victim wallets or by front-running contract creation to exhaust available bytes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f7c7c2f-154d-4d30-b35c-c1c42a22a489",
+    "timestamp": "2025-12-22 20:34:59.233224",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Database connection pool exhaustion] Multiple functions perform database queries without connection limits - can an attacker create many contracts simultaneously to exhaust database connection pool, causing DOS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ba4562c-cf26-4b05-bfea-633cb8eb7f19",
+    "timestamp": "2025-12-22 20:35:26.892505",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [No rate limiting] There are no rate limits on contract creation, dispute opening, or appeal submission - can an attacker flood the system with contracts/disputes to cause network congestion or arbstore overload?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f822fee-6b6d-4ab7-966b-5e91d70690b8",
+    "timestamp": "2025-12-22 20:35:54.049533",
+    "report_generated": false
   }
 ]
