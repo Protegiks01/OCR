@@ -1,1 +1,302 @@
-[]
+[
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Input Validation] Can an attacker bypass the isValidAddress filter by providing addresses that pass validation but cause SQL injection or unexpected behavior in the subsequent db.query at line 40, potentially corrupting the aa_addresses table or causing a network-wide database desynchronization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f7e4631-d0d7-486f-b0d7-cd86de45f1c0",
+    "timestamp": "2025-12-22 18:46:32.930931",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Empty Input Handling] If readAADefinitions is called with an empty array after filtering invalid addresses at line 37-39, does the early return with empty array cause wallet.js sendMultiPayment to proceed without bounce fee validation, allowing payments to AA addresses without sufficient bounce fees and leading to permanent fund freezing when AA execution fails?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc47701a-acb3-495a-b83b-3765c7814dfa",
+    "timestamp": "2025-12-22 18:46:45.632504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Array Manipulation] Can an attacker provide a large array of addresses (approaching or exceeding database query limits) at line 40 to cause the SQL query to fail, timeout, or consume excessive resources, resulting in transaction delays of 1+ hours or denial of service for all users attempting to send to AA addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bae04aa9-2a54-4414-ad3b-3d7add2d510b",
+    "timestamp": "2025-12-22 18:46:58.941114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Race Condition] If multiple concurrent calls to readAADefinitions process the same arrRemainingAddresses at lines 44-109, can they all simultaneously request definitions from light vendors and insert duplicate entries via storage.insertAADefinitions, causing database constraint violations or inconsistent AA definition storage that leads to non-deterministic AA execution across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d60ac1c2-bf38-40a3-a078-72ec7e459c52",
+    "timestamp": "2025-12-22 18:47:12.646917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Malicious Light Vendor] In light client mode (conf.bLight), when network.requestFromLightVendor fetches AA definitions at line 73, can a compromised or malicious light vendor return a valid-looking definition with objectHash.getChash160 matching the address but containing malicious formula logic that steals funds during AA execution, causing direct loss of funds for all users triggering that AA?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5840866-7245-4c6d-90e1-d9dd33320aea",
+    "timestamp": "2025-12-22 18:47:27.192672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition Spoofing] At line 84, if objectHash.getChash160(arrDefinition) !== address check passes but the arrDefinition contains a base_aa pointing to a malicious AA address, can an attacker create a proxy AA that delegates execution to their controlled contract, bypassing intended AA logic and causing unintended smart contract behavior or fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c0c62fa-1a34-45ca-91ce-ce9349ee5650",
+    "timestamp": "2025-12-22 18:47:42.463931",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Response Validation] If network.requestFromLightVendor returns response.error at line 74-76 but the error is logged and ignored via cb(), does the function proceed with rows potentially missing critical AA definitions, causing checkAAOutputs to incorrectly validate payments as having sufficient bounce fees when they don't, leading to permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b221ca76-7607-43b2-9797-877877ec3e47",
+    "timestamp": "2025-12-22 18:47:59.242549",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Network Timeout] If network.requestFromLightVendor hangs or times out for multiple addresses without calling the callback, does async.each block indefinitely at line 70-105, preventing handleRows from ever being called and causing all transactions to AA addresses to freeze for 1+ day until the process is restarted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6057c734-a8de-46ee-bc24-a95c5fdad5d6",
+    "timestamp": "2025-12-22 18:48:17.401665",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Light Vendor Denial] Can a malicious light vendor selectively return response.error or no response for specific AA addresses at lines 74-81, causing those addresses to be cached in cacheOfNewAddresses with timestamp at line 79, preventing legitimate users from sending to those AAs for 60 seconds and enabling a repeated DoS attack that freezes transactions to specific AAs for extended periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e80ef7c0-5d01-4593-9c6a-c62cf7cd5ff3",
+    "timestamp": "2025-12-22 18:48:35.950362",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Cache Poisoning] Can an attacker exploit the cacheOfNewAddresses mechanism at lines 57-66 by repeatedly querying non-existent AA addresses to populate the cache with fake entries, then use the 60-second cache window to send payments to these addresses that bypass bounce fee validation, causing funds to be sent to invalid destinations and permanently lost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cba996fa-4be0-4fb4-bfa6-4313121c459d",
+    "timestamp": "2025-12-22 18:48:57.126536",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Cache Timing Attack] At lines 62-63, if Date.now() - ts > 60 * 1000 check is evaluated differently across nodes due to clock skew or timestamp manipulation, can some nodes delete cache entries while others retain them, causing non-deterministic behavior in readAADefinitions results and leading to network divergence where different nodes accept different sets of transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_741860b9-9e69-472a-bcb6-3a36a8a89442",
+    "timestamp": "2025-12-22 18:49:19.188281",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Cache Overflow] If an attacker continuously queries unique non-existent addresses to populate cacheOfNewAddresses at line 79, can the cache grow unbounded without eviction beyond the 60-second timeout, causing memory exhaustion that crashes the node and results in temporary network transaction delays of 1+ hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_077a1cb8-89c6-4971-a892-756e017d5eaa",
+    "timestamp": "2025-12-22 18:49:40.788708",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Cache Race Condition] Between lines 59-66 where cache entries are checked and potentially deleted based on timestamps, if multiple concurrent calls process the same address, can they race to read/write/delete the cache entry simultaneously, causing inconsistent cache state where some calls see cached entries and others don't, leading to duplicate light vendor requests and potential database insertion conflicts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c74d46d-429f-4c07-9f08-174f9eeaefc7",
+    "timestamp": "2025-12-22 18:50:03.076167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [INSERT IGNORE Abuse] At line 95-96, the storage.insertAADefinitions call with INSERT IGNORE behavior (via db.getIgnore()) may silently fail to insert if an AA definition already exists, but the function still adds the definition to rows array at line 94, causing callers like checkAAOutputs to use potentially stale or incorrect definition data that doesn't match the database, leading to incorrect bounce fee validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_603f52d4-8b6c-41bb-bde4-107eb4d75861",
+    "timestamp": "2025-12-22 18:50:27.113562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Database Transaction Atomicity] The function performs multiple database operations (SELECT at line 40, nested SELECT at line 46-51, and INSERT at lines 95-99) without explicit transaction boundaries - can a crash or error between these operations leave the database in an inconsistent state where some AA definitions are partially recorded, causing permanent divergence in AA execution behavior across nodes that requires a hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ecc45f0-f500-4272-945b-e743120598f8",
+    "timestamp": "2025-12-22 18:50:51.342428",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Foreign Key Violation] When storage.insertAADefinitions inserts with constants.GENESIS_UNIT as the unit parameter at line 95, if GENESIS_UNIT is not present in the units table or the mci value 0 is invalid, can this cause foreign key constraint violations that silently fail with INSERT IGNORE, leaving no record of the AA definition in aa_addresses table but causing subsequent AA triggers to fail with unclear errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca2a9fb7-e142-4609-ab1e-42e8436be050",
+    "timestamp": "2025-12-22 18:51:15.228778",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Concurrent Read-After-Write] If one call to readAADefinitions inserts an AA definition via storage.insertAADefinitions at line 95 while another concurrent call is executing the initial SELECT query at line 40, can the second call miss the newly inserted definition due to database isolation levels, causing duplicate insertion attempts and potential race conditions in AA state initialization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98532f07-d725-43cf-9b5f-90fb1a7b0c04",
+    "timestamp": "2025-12-22 18:51:39.840366",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [JSON Parsing Vulnerability] At line 83, when parsing response as arrDefinition without validation, if the light vendor returns malformed JSON or a non-array structure, does the subsequent objectHash.getChash160(arrDefinition) call at line 84 fail gracefully or throw an unhandled exception that crashes the node, causing network-wide outages when multiple nodes query the same malicious light vendor?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0ccd929-b82d-43f4-b3f9-07274bfdbee9",
+    "timestamp": "2025-12-22 18:52:05.620358",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition Structure Validation] At line 91, the check for arrDefinition[0] === 'autonomous agent' may pass for malformed definitions like ['autonomous agent'] without a second element, causing arrDefinition[1].base_aa access at line 93 to throw undefined reference errors that crash the async callback chain and prevent handleRows from being called, freezing all AA transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15ddb85d-e29e-421d-81d5-c5a7d22022a0",
+    "timestamp": "2025-12-22 18:52:32.376280",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Base AA Validation] When extracting base_aa at line 93, if arrDefinition[1].base_aa is undefined, null, or an invalid address format, does this get stored in the aa_addresses table and later cause AA validation or execution to fail with cryptic errors, permanently bricking the AA address and freezing any funds sent to it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da247d8b-a988-459f-a971-e2a89c67d5bb",
+    "timestamp": "2025-12-22 18:53:00.435794",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Hash Collision Attack] At line 84, if an attacker crafts a definition where objectHash.getChash160(arrDefinition) collides with a legitimate AA address through a hash collision (however unlikely), can they substitute a malicious AA definition that passes validation but executes attacker-controlled logic, enabling direct theft of all funds sent to that AA address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92944ef9-ac4a-41f5-8ba8-f0447866bef3",
+    "timestamp": "2025-12-22 18:53:28.087463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition Type Confusion] If the definition returned by light vendor at line 83 is a valid address definition but NOT an AA (e.g., ['sig', {pubkey: '...'}]), does the check at line 91 correctly identify it as non-AA and insert via db.query at line 99, or can type confusion between AA and non-AA definitions cause incorrect routing where regular addresses are treated as AAs or vice versa?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de27c5e0-c9f7-489a-a87f-1b4c1048027a",
+    "timestamp": "2025-12-22 18:53:56.011244",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Bounce Fee Bypass] At lines 131-134, if an AA definition specifies bounce_fees without including the 'base' asset, the default MIN_BYTES_BOUNCE_FEE is added only if !bounce_fees.base, but what if bounce_fees.base is explicitly set to 0? Can an attacker create an AA with zero base bounce fees, then trigger it with minimal payment, causing the AA to fail but refund nothing, effectively stealing the trigger payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17387923-dd0b-420b-99cd-50ba31f9e91b",
+    "timestamp": "2025-12-22 18:54:25.781447",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Asset Amount Calculation] At lines 115-121, when aggregating amounts by address and asset, if payment.outputs contains duplicate output addresses or the same address with multiple outputs, does the addition at line 120 correctly sum all amounts, or can integer overflow occur when assocAmounts[output.address][asset] exceeds Number.MAX_SAFE_INTEGER, causing wrap-around that makes bounce fee checks incorrectly pass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3634224-1fe4-4551-aa76-65b15fd469e2",
+    "timestamp": "2025-12-22 18:54:52.907239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Missing Asset Handling] At line 136, when checking if amount < bounce_fees[asset], if assocAmounts[row.address][asset] is undefined (line 136 defaults to 0), but the AA's bounce_fees requires that asset, the check correctly identifies missing bounce fees - however, if an attacker sends payment in one asset but the AA requires bounce fees in a different asset, does the validation fail gracefully or does it allow the payment through, causing funds to be lost when the AA bounces?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71352599-9ffd-4825-9705-34af9ce0d584",
+    "timestamp": "2025-12-22 18:55:20.292324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Recommended Amount Manipulation] At line 138, the missing_bounce_fees object includes both missing_amount and recommended_amount fields, but only recommended_amount is used in the error aggregation at lines 19-27 - can an attacker create an AA with extremely high bounce_fees values that trigger at line 138, causing wallet.js to display misleading error messages that trick users into sending excessive funds to the AA that are then captured?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d52a5ef6-5412-4190-bc5c-2aa177832b45",
+    "timestamp": "2025-12-22 18:56:31.651070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Multiple AA Payment] If arrPayments contains outputs to multiple different AA addresses with different bounce fee requirements, and one AA check passes while another fails at line 142, does handleResult get called with MissingBounceFeesErrorMessage containing only the failing AAs, potentially allowing the transaction to proceed partially for some AAs and fail for others, causing inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aadc921d-2309-40bb-81ae-18237f0bb7c7",
+    "timestamp": "2025-12-22 18:56:44.182263",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Callback Error Propagation] At lines 76, 81, 86, and 89-90, various error conditions call cb() without arguments, but there's no error parameter passed - if a critical error occurs (like definition mismatch at line 85), does the async.each completion callback at line 102 receive any error indication, or does it silently continue with incomplete data, causing incorrect bounce fee validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5eb3beb3-afc9-44d8-ae99-19d99bc7f6a7",
+    "timestamp": "2025-12-22 18:56:57.469865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Promise Rejection Handling] At lines 35-36, if readAADefinitions is called without a handleRows callback, it returns a Promise that resolves with readAADefinitions result, but there's no explicit error handling - if any database query or async operation throws an exception, does the Promise reject properly, or can unhandled rejections crash the process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b01dbec2-1d86-4b5e-9f7f-3922ed20838c",
+    "timestamp": "2025-12-22 18:57:10.972702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Synchronous Exception] At line 129, JSON.parse(row.definition) is called without try-catch - if the definition field in aa_addresses table contains invalid JSON (due to database corruption or migration issues), does this throw an unhandled exception that crashes the node during transaction validation, causing network-wide inability to confirm new transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9a32415-3b2d-4048-ba79-243a403c3343",
+    "timestamp": "2025-12-22 18:57:25.267556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Callback Inconsistency] The function calls handleResult() with no arguments at lines 126 and 142 to indicate success, but with MissingBounceFeesErrorMessage at line 143 to indicate failure - if calling code in wallet.js doesn't properly check whether the argument is truthy/error-like, can successful validations be incorrectly interpreted as failures, blocking legitimate transactions to AA addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb4e6dc3-9a27-46f3-9e4c-ebba51ad828b",
+    "timestamp": "2025-12-22 18:57:40.550212",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [storage.insertAADefinitions Failure] When calling storage.insertAADefinitions at line 95, if that function fails internally (e.g., due to database errors, validation failures in storage.js, or constraint violations), does the insert_cb callback at line 89 receive an error indication, or does it silently complete, causing the definition to be added to the returned rows array at line 94 even though it wasn't successfully persisted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_970e5714-da51-49a7-8939-24e0b9510267",
+    "timestamp": "2025-12-22 18:57:57.240082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition.hasReferences Exploitation] At line 99, Definition.hasReferences(arrDefinition) is called to determine whether to set has_references flag - if this function incorrectly evaluates complex or malicious definition structures, can an attacker craft a definition that bypasses reference validation, allowing circular references or invalid cross-AA dependencies that cause infinite loops during AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26f77118-a585-4551-b8d3-10be0c263602",
+    "timestamp": "2025-12-22 18:58:15.078340",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Interaction with wallet.js] Since checkAAOutputs is called from wallet.js sendMultiPayment before transaction composition, if the function incorrectly returns success (handleResult with no args at line 126) for payments that should fail bounce fee validation, does wallet.js proceed to compose and send the transaction, causing user funds to be sent to AAs without adequate bounce fees and resulting in permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2bc389e9-498e-456a-98d6-f128c304cded",
+    "timestamp": "2025-12-22 18:58:33.448226",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Light Mode Divergence] At line 41, the condition !conf.bLight || arrAddresses.length === rows.length causes different code paths for full vs light nodes - if full nodes immediately return cached AA definitions while light nodes fetch from vendors, can this create timing windows where a new AA is visible to full nodes but not yet available to light clients, causing transaction rejection inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5cd3309c-b35b-4126-9e32-b77b0ba9687f",
+    "timestamp": "2025-12-22 18:58:53.456971",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Non-Deterministic Ordering] When async.each processes arrRemainingAddresses at line 70-75, the completion order of network requests is non-deterministic - if rows array is built in different orders on different nodes, does this cause non-deterministic AA definition ordering in the returned results, potentially leading to different bounce fee validation outcomes on different nodes and network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfe3258d-21e6-4e25-9bf3-4ec10f20355a",
+    "timestamp": "2025-12-22 18:59:13.899614",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Light Vendor Availability] If some nodes successfully fetch AA definitions from their configured light vendors while others timeout or receive errors at line 74, can this cause network divergence where some nodes have AA definitions in their database and accept AA trigger transactions, while other nodes reject the same transactions due to missing definitions, requiring a hard fork to reconcile?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b20860da-4aaf-43e8-a821-00425b5bbc48",
+    "timestamp": "2025-12-22 18:59:35.797785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Partial Definition Insertion] If storage.insertAADefinitions at line 95 partially completes (e.g., inserts into aa_addresses but fails to insert related state variable records in other tables), does this leave the AA in a partially initialized state where it can be triggered but has corrupt or missing state, causing all subsequent AA executions to fail and permanently freezing funds sent to that AA?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fdc26f97-70ee-477f-8255-7089799a9c0f",
+    "timestamp": "2025-12-22 18:59:58.218200",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Concurrent Definition Updates] If an AA definition is fetched and inserted by multiple nodes simultaneously (or multiple calls on the same node), can the INSERT IGNORE behavior at line 96 mask conflicts where different definitions with the same address are attempted to be inserted, potentially causing the first-inserted definition to win even if it's malicious, while honest definitions are silently rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebe2964a-ed1d-495c-8537-39bcca66aad7",
+    "timestamp": "2025-12-22 19:00:22.042164",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [SQL Injection via db.escape] At line 40, addresses are escaped using db.escape().join(', ') - if db.escape() implementation has any vulnerabilities or if addresses can contain sequences that break out of escaping (e.g., through encoding issues), can an attacker inject SQL commands that modify aa_addresses table, delete definitions, or corrupt the entire database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c37e2fb-e238-432f-9dad-d520cdbd1e64",
+    "timestamp": "2025-12-22 19:00:46.236564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [SQL Injection in Nested Query] At lines 45-51, arrRemainingAddresses.map(db.escape).join(', ') is used in three separate UNION queries - if any of the escaped addresses contains malicious SQL that exploits differences between how the queries are constructed, can this cause unauthorized access to definitions, my_addresses, or shared_addresses tables, leaking sensitive key material or address associations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebb1a0a4-f05e-47e1-926b-ce4a4b90d4bd",
+    "timestamp": "2025-12-22 19:01:11.707399",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Amount Overflow] At line 120, assocAmounts[output.address][asset] += output.amount performs unchecked addition - if an attacker includes multiple outputs to the same AA address with amounts that sum to exceed Number.MAX_SAFE_INTEGER (9007199254740991), does the addition wrap around or produce Infinity, causing bounce fee comparison at line 137 to incorrectly evaluate and allow insufficient payments through?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e39021c-9a1d-4f80-8c04-9f52742e81c8",
+    "timestamp": "2025-12-22 19:01:38.023828",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Bounce Fee Underflow] At line 138, missing_amount is calculated as bounce_fees[asset] - amount - if bounce_fees[asset] is maliciously set to a very large number approaching MAX_SAFE_INTEGER, and amount is also large, can integer overflow in the subtraction produce a negative or wrapped value that causes the MissingBounceFeesErrorMessage to display incorrect required amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b559ef1-01d1-4d5d-b9e3-01d320f0e6f8",
+    "timestamp": "2025-12-22 19:02:04.116478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: MissingBounceFeesErrorMessage()] [Fee Aggregation Overflow] At lines 19-23, when aggregating required bounce fees by asset, if multiple AAs require the same asset and their recommended_amount values are large, can assocRequiredByAsset[fees.asset] += fees.recommended_amount overflow, causing the toString() method at line 28 to display incorrect total requirements that mislead users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9159ef6e-5d05-4224-95af-522b42bedad2",
+    "timestamp": "2025-12-22 19:02:31.695207",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Memory Exhaustion via Large Definitions] When fetching AA definitions from light vendor at line 83, if the vendor returns an extremely large arrDefinition (e.g., multi-megabyte JSON with deeply nested structures), does stringifying it at line 90 and inserting into the database consume excessive memory and disk space, enabling an attacker to exhaust node resources by creating numerous large AA definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e404705-0a28-43b2-9d18-8aa8ffd089fe",
+    "timestamp": "2025-12-22 19:02:59.814216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: checkAAOutputs()] [Quadratic Complexity Attack] At lines 113-122, if arrPayments contains many payments each with many outputs all targeting AA addresses, the nested forEach loops create O(n*m) complexity - can an attacker submit a transaction with maximum outputs (128 per MAX_OUTPUTS_PER_PAYMENT_MESSAGE) all to AAs, causing checkAAOutputs to take excessive time and delay transaction validation by 1+ hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16d27d60-7536-4561-be05-321eac842e0e",
+    "timestamp": "2025-12-22 19:03:29.466713",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Concurrent Request Amplification] If multiple transactions are submitted simultaneously all referencing the same unknown AA address, does each trigger a separate network.requestFromLightVendor call at line 73, causing a request amplification attack against the light vendor that either overloads the vendor or triggers rate limiting that blocks legitimate requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c7dd6a1-870e-4596-b364-c28b0892a361",
+    "timestamp": "2025-12-22 19:03:57.284988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Definition Mismatch Silent Failure] At line 85, if objectHash.getChash160(arrDefinition) !== address, the error is logged but cb() is called without storing any definition - does this cause checkAAOutputs to later not find the AA in rows array and incorrectly skip bounce fee validation, allowing payments to potentially non-existent or invalid addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bfdcef2e-0ec4-427d-a009-60fed9395b22",
+    "timestamp": "2025-12-22 19:04:24.292216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Stale Definition Detection] If an AA definition is updated on-chain (via a definition_chg message that changes an address from regular to AA), does readAADefinitions always fetch the latest definition, or can it return stale cached data from aa_addresses table that doesn't reflect the current on-chain state, causing divergence in AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a115cbe1-7010-4bb5-80a5-ee0f494fd397",
+    "timestamp": "2025-12-22 19:04:50.949682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_addresses.js] [Function: readAADefinitions()] [Base AA Circular Reference] When storing base_aa at line 93-94, if the base_aa points to another AA that itself inherits from a third AA in a chain, or worse, creates a circular dependency (AA1 -> AA2 -> AA1), does any validation detect this before insertion, or can this create infinite recursion during AA formula evaluation that crashes nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f6551c8-24c6-4836-a1de-387fdbd3c177",
+    "timestamp": "2025-12-22 19:05:16.375212",
+    "report_generated": false
+  }
+]
