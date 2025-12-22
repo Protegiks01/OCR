@@ -1648,5 +1648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd725405-0ced-4594-af52-c1c636a11715",
     "timestamp": "2025-12-22 21:00:54.665802",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Formula validation TOCTOU] At lines 91-94, the formula is first validated via parseOscriptGrammar(), then wrapped and returned. If there's any processing between validation and wrapping where the formula variable could be modified (though unlikely in this synchronous code), can an attacker exploit a TOCTOU race to inject an unvalidated formula?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad7db04b-7556-4276-a150-1e24f241b0af",
+    "timestamp": "2025-12-22 21:02:08.176989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOscriptGrammar()] [Formula parser state pollution] At line 51-53, a new Nearley parser is created for each formula. If parseOscriptGrammar() is called concurrently for multiple formulas (e.g., during AA deployment spam), can shared state in the Nearley library cause parser confusion, leading to non-deterministic formula validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8102b03-1e28-46b6-a030-7f607fb81370",
+    "timestamp": "2025-12-22 21:02:20.886776",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Formula comment injection] If the formula at line 90 contains comment syntax (e.g., '// comment' or '/* comment */'), and the wrapping at line 94 doesn't account for this, can an attacker use comments to hide malicious code that only becomes active after wrapping, bypassing formula validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db1eba0b-b203-4621-8440-f4686152ce16",
+    "timestamp": "2025-12-22 21:02:33.758463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Formula escaping bypass] At line 94, the formula is wrapped as '{' + formula + '}'. If the original formula contains the sequence '}{', can this create multiple apparent formulas (e.g., '{a}{b}' becomes '{{a}{b}}'), causing formula evaluation to interpret this differently than intended and potentially executing unintended code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca3cb64a-492a-48e5-a7b9-c19576f1cb73",
+    "timestamp": "2025-12-22 21:02:47.377401",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Context object injection] At lines 31, 36, the code accesses context.line and context.col. If the Nearley parser produces a context object with getter methods that execute malicious code, can accessing context.line trigger arbitrary code execution during error generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b69e1c3-f727-4e9d-bf25-1c2e3b5b92c8",
+    "timestamp": "2025-12-22 21:03:01.607527",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Error message startsWith() bypass] At line 106, the code checks if msg.startsWith('Error parsing formula starting at line'). If an attacker crafts an error message starting with a similar but not identical string (e.g., 'Error parsing formula  starting at line' with double space), can this bypass the check and fall through to line 109, losing context information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba6ebb0e-2370-4172-b6dd-de0bd14c95c3",
+    "timestamp": "2025-12-22 21:03:16.863323",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Exception object manipulation] At line 75, exceptions are caught and e.message is used in callback. If the Nearley parser throws a non-Error object (e.g., throw {toString: () => 'malicious'}), can accessing e.message return undefined, causing the callback to receive undefined error, which downstream code might interpret as success?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1a6e488-1e63-4592-b9ae-e2d5b0b4a838",
+    "timestamp": "2025-12-22 21:03:33.470091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Error propagation chain] At lines 95-110, if formula parsing fails, errors are re-thrown with modified messages. If this error handling is called recursively for deeply nested formulas, can the error message grow unboundedly with each recursion level, causing memory exhaustion or network bandwidth issues when errors are broadcast?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2bc77c2d-c6dd-4052-903c-287e22dc1719",
+    "timestamp": "2025-12-22 21:03:51.122570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Error context arithmetic overflow] At lines 99-104, line and col numbers are extracted and used in arithmetic (line + tree.context.line, col + tree.context.col). If an attacker crafts context values or error line numbers that cause integer overflow (e.g., Number.MAX_SAFE_INTEGER + 1), can the error message report incorrect line/col positions, hindering debugging or causing nodes to reject valid AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebb02375-23d2-4e48-93f8-8a10e1c95c50",
+    "timestamp": "2025-12-22 21:04:09.255198",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Regex DoS in error parsing] At line 97, the error message is matched against regex /invalid syntax at line ([\\\\d]+) col ([\\\\d]+):([\\\\s\\\\S]+)/m. If the error message is crafted to have thousands of digits or repeated patterns, can this regex exhibit catastrophic backtracking (ReDoS), causing validator nodes to hang during error processing and delaying network consensus for ≥1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_826fce15-e3b3-41f3-a2bc-136b6cb1e197",
+    "timestamp": "2025-12-22 21:04:27.984758",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Error message injection] At line 61, if the Nearley parser error message contains user-controlled content from the OJSON input, can an attacker inject newlines or format strings into the error ('ojson parsing failed: ' + e), potentially breaking log parsers or leaking sensitive information if the error is displayed to users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d087b2b4-d1da-4b22-88bb-b6760e20fb05",
+    "timestamp": "2025-12-22 21:04:47.540307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Prototype chain manipulation] At line 131, if value is itself an object with polluted prototypes, and assignField() assigns it without cloning, can the attacker inject a poisoned prototype chain into the AA definition that later gets accessed during AA evaluation, causing malicious code execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22626fa3-5240-40d9-b75c-33b136a99364",
+    "timestamp": "2025-12-22 21:05:08.188160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Prototype pollution persistence] If an attacker successfully pollutes Object.prototype via line 131, does the pollution persist across multiple AA deployments? Can a single malicious AA deployment affect all subsequent AA executions on all nodes, causing a chain reaction of fund theft or incorrect AA behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20893545-f6f5-46a2-8c26-2cc06b8c0367",
+    "timestamp": "2025-12-22 21:05:29.552241",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Constructor.prototype pollution] If key at line 131 is 'constructor' and value is an object with a 'prototype' property, can assignField() inadvertently set obj.constructor.prototype, polluting the constructor's prototype? Can this affect all instances created from that constructor across the node process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c521a887-3d67-4e25-a8a0-8ecba8454119",
+    "timestamp": "2025-12-22 21:05:52.126777",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Prototype pollution - Network halt] At line 131, if assignField() uses Object.defineProperty() without safeguards, and key is '__proto__', can this modify the prototype chain? If multiple AAs attempt prototype pollution with conflicting values, can this cause non-deterministic prototype state across nodes, leading to divergent AA execution and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24ee288d-e8bd-4ee2-b352-f0e1bb74ba75",
+    "timestamp": "2025-12-22 21:06:15.657025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Prototype pollution - Fund theft] At line 131, assignField(obj, key, value) is called. If key is '__proto__', 'constructor', or 'prototype', can this pollute Object.prototype globally across the node process? If so, can an attacker deploy an AA with such keys, polluting the prototype on all validator nodes and causing all subsequent AA evaluations to read attacker-controlled values, potentially stealing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b193e8d-93b4-4c08-9f39-1b33cab67856",
+    "timestamp": "2025-12-22 21:06:39.460287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Mixed type array elements] At line 135-143, processAsArray() allows any mix of types in array elements. If an AA definition has arrays mixing formulas, objects, strings, and booleans, can downstream evaluation code that expects homogeneous arrays fail or behave non-deterministically?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96c0cc6e-8bc3-4aaf-b5d5-86b54ef8d38b",
+    "timestamp": "2025-12-22 21:07:03.921195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Null/undefined handling] If tree.type is null or undefined due to a parser bug, the switch-like structure at lines 79-118 doesn't explicitly handle these. Will the function fall through to line 117's error, or will it silently return undefined, creating an AA definition with undefined fields that crash during evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c71b67d-efd0-4b81-a300-b674ffabdf69",
+    "timestamp": "2025-12-22 21:07:30.292182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.PAIR] [Key type validation missing] At line 115, processTree(tree.key) is used as an object key via computed property [{...}]. If processTree(tree.key) returns a non-string type (object, array, etc.), JavaScript will convert it to '[object Object]' or similar. Can this cause multiple different complex keys to collide as the same string key in the AA definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d5b6f96-9afb-4b84-951e-762e8114bac6",
+    "timestamp": "2025-12-22 21:07:56.798365",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Boolean representation inconsistency] At lines 83-86, TRUE and FALSE types return tree.value directly. If the parser sets tree.value to the strings 'true'/'false' instead of booleans, can downstream AA code misinterpret these, causing unintended smart contract logic (e.g., if ('false') evaluates to true in JavaScript)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3389e780-b9e6-4f8a-9668-bf372b091369",
+    "timestamp": "2025-12-22 21:08:22.516343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [DECIMAL precision loss] At line 87-88, tree.value for TYPES.DECIMAL is returned directly. If the Nearley parser produces DECIMAL values as JavaScript numbers that lose precision (e.g., 0.1 + 0.2 !== 0.3), can this cause non-deterministic AA behavior when different nodes' parsers compute slightly different decimal values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_701a9288-45ec-4575-8494-386c343f59ff",
+    "timestamp": "2025-12-22 21:08:47.761246",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Type enum poisoning] At lines 8-17, if an attacker can inject additional TYPES constants (e.g., by polluting the imported module), can they create OJSON trees with custom types that processTree() mishandles, either by falling through to line 117's error or by triggering unintended code paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b0abe17-155c-48bf-8d79-3b51d3a7891f",
+    "timestamp": "2025-12-22 21:09:12.755627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Unknown type crash] At line 117, if tree.type is an unknown value (not in TYPES enum), the function throws 'Unknown ojson node type'. If an attacker crafts a malicious Nearley grammar or exploits a grammar bug to produce a tree node with type 'MALICIOUS', can this error crash all validator nodes simultaneously during AA parsing (network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f58857e-f899-4452-8b2e-d4401ad37472",
+    "timestamp": "2025-12-22 21:09:38.114363",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Numeric string keys] At line 126, if keys are numeric strings ('0', '1', '2'), does processTree() preserve them as strings or convert to numbers? If conversion happens, can an attacker exploit this to bypass duplicate detection (string '1' vs number 1) or inject array-like properties into the AA definition object?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4fb1232-d28f-48e2-800c-73237b558d23",
+    "timestamp": "2025-12-22 21:10:04.261218",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Empty string keys] If an attacker includes multiple key-value pairs with empty string keys (''), does the duplicate check at line 128-130 catch all but the first one? Or can multiple empty-key entries exist in the final AA definition, causing undefined behavior when downstream code accesses obj['']?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd920298-a456-427a-b022-d93ae0e4a09a",
+    "timestamp": "2025-12-22 21:10:28.688136",
+    "report_generated": false
   }
 ]
