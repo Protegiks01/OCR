@@ -1198,5 +1198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17db3321-1c3c-4d40-9093-c32dc4cac751",
     "timestamp": "2025-12-22 20:06:04.527569",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Fixed denominations bypass] On line 436, the condition checks 'me_is_payer && !isFixedDen && hasArbStoreCut' - if isFixedDen is true but arbstore cut should still apply, can the payer avoid paying arbstore fees by using fixed denomination assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_111471a7-b5b7-48d3-9828-0b4520426c2f",
+    "timestamp": "2025-12-22 20:07:22.364216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Arbstore address validation] On line 455, arbstoreInfo.address is inserted into the definition without validation - if getArbstoreInfo() returns a malicious or invalid address, can funds be sent to attacker-controlled addresses instead of the legitimate arbstore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f73b72e-695d-4a50-abe4-517fee44d41a",
+    "timestamp": "2025-12-22 20:07:34.948444",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [AssocSignersByPath manipulation] The assocSignersByPath object (lines 460-491) maps definition paths to signers - if an attacker registers a contract with manipulated peer_device_address, can they intercept signing requests and gain control over the shared address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83a77392-9493-4f29-8716-b3cea9e1e836",
+    "timestamp": "2025-12-22 20:07:47.872197",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Cosigners array injection] On line 516, contract.cosigners.length is checked, and if non-zero, cosigners are concatenated with peer and self device addresses - can an attacker inject malicious device addresses in the cosigners array to gain unauthorized signing control?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e02ff36c-acb9-4375-9562-c38e07cd59a6",
+    "timestamp": "2025-12-22 20:08:01.452895",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [SendMultiPayment callback delay] Between lines 511-530, sendMultiPayment can take a long time (especially for multisig) - if contract status changes during this period (e.g., revoked), can the unit still be posted, wasting the CHARGE_AMOUNT (4000 bytes)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2bde672b-18b8-4ce0-970c-db7129f9816b",
+    "timestamp": "2025-12-22 20:08:15.596767",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Shared address reuse] If createSharedAddressAndPostUnit() is called multiple times for the same contract (e.g., due to retry logic), can multiple shared addresses be created, causing confusion about which address to pay to and potential fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd146038-4bb6-40c7-a89f-05423a6ebbbe",
+    "timestamp": "2025-12-22 20:08:30.851729",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Contract message hash validation] On line 507, objectHash.getBase64Hash(value, true) creates payload_hash - if an attacker can find a hash collision for the contract_text_hash, can they substitute contract terms after the shared address is created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c59e4b35-3a57-44ff-9b56-c157feb0458b",
+    "timestamp": "2025-12-22 20:08:47.942672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Status check bypass] On line 541, the function checks status === 'signed' and me_is_payer - but what if status changes to 'revoked' or 'cancelled' between the check and the payment execution? Can funds be sent to a cancelled contract's shared address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fca892a-5829-4952-961d-f136cd8c5c48",
+    "timestamp": "2025-12-22 20:09:05.889663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Shared address existence] On line 541, if !objContract.shared_address, the function returns error - but if shared_address is set to an invalid or attacker-controlled address, can the payer lose funds by sending to the wrong address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f6511c5-6116-463e-ac51-9030a743b7aa",
+    "timestamp": "2025-12-22 20:09:24.855568",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Asset mismatch] The payment uses objContract.asset on line 544 - if this field was manipulated after contract signing (e.g., via setField), can the payer send wrong asset type, causing funds to be locked?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a30ea441-2319-44b9-a9c0-9f9315b0f50a",
+    "timestamp": "2025-12-22 20:09:45.468491",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Spend unconfirmed exploitation] On line 547, spend_unconfirmed can be 'all' - can an attacker exploit this by creating contracts that spend unconfirmed outputs in a chain, then double-spending the root transaction to invalidate all payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b592d56f-f42c-4645-8e7d-9f03cfce5452",
+    "timestamp": "2025-12-22 20:10:05.246308",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Watched address race] On lines 558-561, the peer address is added to my_watched_addresses for private assets - if payment happens before this INSERT completes, can the peer's completion data feed be missed, causing permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4039ebbc-3f4d-473f-9691-42705d1f1a53",
+    "timestamp": "2025-12-22 20:10:27.267782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: pay()] [Private asset detection race] On line 558, storage.readAssetInfo() is called after payment - if asset info is not yet available or database is slow, can the watched address not be added, preventing detection of peer's completion signal?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0794a79a-3cbb-448a-a414-066a7e2edd2e",
+    "timestamp": "2025-12-22 20:10:50.239528",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Status check insufficient] On line 568, only 'paid' and 'in_dispute' statuses are allowed - but can an attacker call complete() on a 'cancelled' or 'revoked' contract if they can manipulate the status field between checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92170153-46f1-4499-86b4-9b3862a2cbda",
+    "timestamp": "2025-12-22 20:11:13.479478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Private asset data feed forgery] For private assets (lines 573-588), the function posts a CONTRACT_DONE data feed - can an attacker forge this data feed from a different address and trick the system into completing a contract prematurely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e145780-61ae-4939-a715-721147869ada",
+    "timestamp": "2025-12-22 20:11:37.777037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Paying address reuse] On line 592, paying_addresses is set to shared_address - if this address is used in multiple contracts simultaneously, can outputs get mixed up, causing wrong amounts to be transferred?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7df34362-ce45-48eb-a8ab-0d45824d776d",
+    "timestamp": "2025-12-22 20:12:02.643894",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Arbstore cut retrieval timing] On lines 597-611, getArbstoreInfo() is called during completion - if arbstore info changes between contract creation and completion, can the cut amount be different, causing incorrect payment distribution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48a156c4-b046-44d0-bd38-94d8478ae221",
+    "timestamp": "2025-12-22 20:12:29.184098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Negative amount calculation] On line 604, peer_amount = Math.floor(contract.amount * (1-arbstoreInfo.cut)) - if cut is exactly 1.0, peer_amount becomes 0, and on line 607, arbstore gets contract.amount - 0 = full amount - can arbstore steal all funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d56346c-ebd3-414c-b82a-5e16c1fb4878",
+    "timestamp": "2025-12-22 20:12:56.074544",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Asset outputs array manipulation] On line 605, asset_outputs or base_outputs array is constructed - can an attacker manipulate this array to include duplicate addresses or negative amounts, causing fund theft or loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff37a8d6-b6f8-40d5-ac53-9a67b3df6322",
+    "timestamp": "2025-12-22 20:13:24.740671",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Refund vs complete confusion] On lines 612-615, if !me_is_payer, funds go to peer_address as 'refund' - but the logic seems to treat both payer completing (giving to payee) and payee cancelling (refunding to payer) the same way - can this cause funds to go to the wrong party?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a50d86bf-5db7-41f2-96ef-dce914f36da8",
+    "timestamp": "2025-12-22 20:13:52.783277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [Status assignment error] On line 624, status is set to 'completed' if me_is_payer, else 'cancelled' - but this logic seems inverted for the refund case - should a payer refunding set status to 'cancelled' not 'completed'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5748fc3f-1d5b-4bb3-8d29-14644eb14f33",
+    "timestamp": "2025-12-22 20:14:21.109333",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: complete()] [SendMultiPayment error handling] If sendMultiPayment() fails (line 621-623) but returns a partial error (e.g., unit created but not broadcast), can the contract status be updated without the payment actually completing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85c9b166-3dd9-4f64-8381-154c70c55b06",
+    "timestamp": "2025-12-22 20:14:48.315944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Status check timing] On line 205, only 'paid' contracts can be disputed - but what if a contract is in 'paid' status but payment is not yet stable? Can disputes be opened prematurely before payment confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7933af4e-36d0-47d9-9c29-57ea89ea0a1a",
+    "timestamp": "2025-12-22 20:15:14.529512",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Hub URL manipulation] On line 207, device.requestFromHub() gets arbstore URL - if the hub is compromised or returns a malicious URL, can dispute data be sent to an attacker's server instead of legitimate arbstore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a8b7f04-ad7d-483a-b918-a76c4e578907",
+    "timestamp": "2025-12-22 20:15:41.239384",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: openDispute()] [Arbiter info manipulation] On line 210, arbiters.getInfo() retrieves arbiter info including device_pub_key - if this returns a malicious public key, can encrypted contract data be decrypted by an attacker instead of the legitimate arbiter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3041ed4e-9f45-485d-acb0-d346c3e93799",
+    "timestamp": "2025-12-22 20:16:07.955676",
+    "report_generated": false
   }
 ]
