@@ -748,5 +748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df3cfcab-e92f-4ec8-aa50-9dd85e846995",
     "timestamp": "2025-12-22 19:34:39.603381",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Error Handling] If the UPDATE query at line 25 fails to match any rows (replacement.old not found in my_witnesses), does the script detect this and abort, or does it silently continue and potentially leave the witness list incomplete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf7d2415-390f-4499-8e79-bbfc873cc039",
+    "timestamp": "2025-12-22 19:35:58.695671",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 24-27] [Error Handling] The conditional check at line 24 verifies replacement.old and replacement.new exist but does not validate they are non-empty strings - could empty string values pass this check and cause UPDATE queries to corrupt my_witnesses data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_389ee153-20a6-428c-b2b9-d0bff5214b27",
+    "timestamp": "2025-12-22 19:36:11.246405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 29-32] [Error Handling] The db.close() callback at line 29 does not handle potential errors during connection closure - could failed database closure leave locks or transactions in inconsistent states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12aa93b0-fdff-4b0a-839a-6c02e1156bfe",
+    "timestamp": "2025-12-22 19:36:24.221671",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: asyncForEach()] [Error Handling] The asyncForEach helper at lines 16-20 does not wrap the callback in try/catch - if the callback throws an exception during UPDATE operations, could this cause the script to exit before db.close() is called, leaving database connections open?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd20fa31-8699-4621-b5ac-e3b3b1e6bae0",
+    "timestamp": "2025-12-22 19:36:37.634969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Error Handling] The script does not check the return value or catch errors from db.query() at line 25 - if an UPDATE fails due to database constraint violations or disk full errors, does the script continue silently without alerting operators?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4173ee2e-8db8-49e9-a987-99b8f0ca4914",
+    "timestamp": "2025-12-22 19:36:51.687065",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Consensus Violation] If the replacement witness addresses have lower activity levels than the old witnesses, could this slow down main chain advancement and cause network transaction delays exceeding 1 day (Medium severity per Immunefi)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1814ab42-140f-465e-a3b3-18222739b618",
+    "timestamp": "2025-12-22 19:37:06.752520",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Consensus Violation] Does the script check whether the new witness addresses have address definitions that could change in the future (violating witness stability requirements), potentially causing main chain calculation failures when storage.determineIfWitnessAddressDefinitionsHaveReferences() runs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e000e7d-b082-4867-b498-997f9a419ff1",
+    "timestamp": "2025-12-22 19:37:23.329611",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Consensus Violation] Could malicious replacement addresses in order_providers array cause nodes that run this script to diverge from nodes that don't, creating a permanent network partition where the two subsets have incompatible witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42ec8ce1-b502-4634-a19b-d320e2bc966b",
+    "timestamp": "2025-12-22 19:37:41.565902",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Consensus Violation] After replacing witnesses at line 25, does the script verify that existing stable units on the main chain are still compatible with the new witness list (share ≥1 witness), or could this create a witness compatibility fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1203d082-ed1b-4f5a-ae63-c54da9e2a79b",
+    "timestamp": "2025-12-22 19:38:00.897734",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Consensus Violation] If any of the 7 replacement.new addresses are not actively posting units or have never posted stable units, does this break the witness stability requirements and prevent the main chain from advancing past the replacement MCI?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3f6128d-866f-44a8-a952-459a36e1391a",
+    "timestamp": "2025-12-22 19:38:20.447534",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Race Condition] Can concurrent reads from readMyWitnesses() in my_witnesses.js during the UPDATE operations return an empty array or incomplete witness list, causing the node to crash with 'wrong number of my witnesses' error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dac0d688-ba8f-4561-842c-7d912f6b896b",
+    "timestamp": "2025-12-22 19:38:40.682951",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Race Condition] If witness_proof.js is generating proofs while this script updates my_witnesses at line 25, could the witness proof generator use a mix of old and new witnesses in a single proof, creating invalid proofs that light clients reject?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4c882e7-88f0-4708-be29-4ba6980f0e2b",
+    "timestamp": "2025-12-22 19:39:02.094118",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Race Condition] Since the script does not acquire a mutex or lock before modifying my_witnesses, could concurrent execution of this script (accidentally run twice) result in duplicate UPDATE operations causing database deadlocks or inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37285b35-00be-4314-8484-03700e2b9055",
+    "timestamp": "2025-12-22 19:39:24.073059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Race Condition] If this script runs concurrently with the main node process that's composing new units via composer.js (which reads my_witnesses), could a race condition cause the composer to read a partially-updated witness list and create units with invalid witness compatibility?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1cd138f-d635-4068-b808-4fb4fcab5f46",
+    "timestamp": "2025-12-22 19:39:46.360666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 29-32] [Atomicity] The db.close() call at line 29 closes the database connection before verifying all UPDATEs succeeded - could database connection termination during async UPDATE operations cause some updates to be lost, resulting in incomplete witness replacement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f7f39e8-945e-4f7d-93f6-01d6d3b9e973",
+    "timestamp": "2025-12-22 19:40:09.266668",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Atomicity] Does the lack of transaction atomicity mean that if the node crashes mid-execution, the my_witnesses table could end up with fewer than constants.COUNT_WITNESSES (12) entries, causing readMyWitnesses() to throw 'wrong number of my witnesses' error and halting all unit composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52a58755-7ebc-4690-b409-52fd70b747e7",
+    "timestamp": "2025-12-22 19:40:33.426225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Atomicity] Since asyncForEach processes replacements sequentially without a transaction wrapper, if UPDATE #4 fails but #1-3 succeed, can the resulting partial witness list (e.g., 9 old + 3 new) cause witness compatibility violations with existing units on the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3236abf-83bd-4332-9a48-e942bd671ebd",
+    "timestamp": "2025-12-22 19:40:56.507724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Atomicity] The script executes 7 separate UPDATE queries (lines 23-28) without wrapping them in a database transaction (BEGIN/COMMIT) - if the script crashes after updating only some witnesses, could this leave my_witnesses in an inconsistent state with mixed old/new addresses, violating the 12-witness requirement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8ca44c6-3ae3-4ee2-84a2-9711fdecfee5",
+    "timestamp": "2025-12-22 19:41:20.767562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Address Validation] Could an attacker who modifies the source code insert their own address as replacement.new, effectively replacing trusted order provider witnesses with attacker-controlled addresses and compromising consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38168e7d-a665-4427-a785-a0aad0c6922a",
+    "timestamp": "2025-12-22 19:41:44.913756",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Address Validation] Does the script verify that replacement.new addresses are valid Obyte addresses with proper chash160 format and checksums before updating my_witnesses, or could invalid addresses cause validation.js to reject all new units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ef8be6e-bf32-4142-aab4-74bd04e86a96",
+    "timestamp": "2025-12-22 19:42:10.437284",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Address Validation] The script does not call ValidationUtils.isValidAddress() to verify replacement.new before insertion at line 25 - could this allow insertion of invalid addresses into my_witnesses table, causing node crashes when the main chain logic tries to process witnesses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be142c89-8e93-441e-98d6-ec5ad745690c",
+    "timestamp": "2025-12-22 19:42:36.308590",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Address Validation] The order_providers array hardcodes 7 address pairs without any validation - could typos in these addresses (e.g., invalid checksums, wrong length, invalid characters) cause the script to insert invalid witnesses into my_witnesses table, breaking witness consensus and causing a permanent network split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83cfc7e5-72fe-4e84-8819-eb22207582cc",
+    "timestamp": "2025-12-22 19:43:02.723753",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [SQL Injection] Does the db.query() implementation at line 25 properly handle edge cases where replacement.new or replacement.old contain null bytes, Unicode control characters, or other special sequences that could break out of parameter binding?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98100240-51d2-4630-9ad4-61cd85f5528f",
+    "timestamp": "2025-12-22 19:43:30.251599",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [SQL Injection] Although the UPDATE query uses parameterized queries at line 25, could a malicious actor who gains write access to the order_providers array inject SQL through the replacement.new or replacement.old values if they contain special characters that bypass parameter sanitization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a4edb9f-60db-4476-ba4e-d701dec95821",
+    "timestamp": "2025-12-22 19:43:58.800703",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 3-4] [Module Loading Order] If main_chain.js or db.js have circular dependencies or initialization order requirements, can requiring them in check_stability.js cause module loading errors, undefined references, or incorrect behavior that's hard to diagnose?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c6a5712-6667-4838-b2ba-e18f4432dace",
+    "timestamp": "2025-12-22 19:44:27.403211",
+    "report_generated": false
   }
 ]
