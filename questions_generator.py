@@ -181,17 +181,17 @@ class GetQuestions:
 
             questions = self.get_question_content(clipboard_content)
 
-            with open("all_questions.json", "w") as f:
-                data = json.load(f)
-                data.append({
-                    "url": url,
-                    "questions": questions
-                })
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            # with open("all_questions.json", "w") as f:
+            #     data = json.load(f)
+            #     data.append({
+            #         "url": url,
+            #         "questions": questions
+            #     })
+            #     json.dump(data, f, indent=2, ensure_ascii=False)
 
-            # Clear textarea for next question
-            self.mark_questions_generated(url)
-            time.sleep(1)  # give it a moment to clear
+            # # Clear textarea for next question
+            # self.mark_questions_generated(url)
+            # time.sleep(1)  # give it a moment to clear
         except Exception as e:
             print(f"There was an error in index {url}: {e}")
 
