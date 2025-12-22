@@ -61,7 +61,7 @@ jobs:
           REMAINING=$(python3 -c '
           import json
           import os
-          from questions import questions
+          from questions import questions_generator
 
           processed = set()
           for filename in ["questions.json"]:
@@ -74,7 +74,7 @@ jobs:
               except Exception as e:
                   print(f"Error loading {filename}: {e}")
 
-          remaining = len(questions) - len(processed)
+          remaining = len(questions_generator) - len(processed)
           print(remaining)
           ')
 
