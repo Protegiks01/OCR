@@ -1048,5 +1048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_584a2ca9-101f-4c7f-b9b0-c5b864b6c47f",
     "timestamp": "2025-12-22 19:56:39.190870",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getHash()] [Hash collision] Can an attacker craft two different contracts with identical hashes by manipulating the concatenation order of contract fields (title + text + creation_date + payer_name + arbiter_address + payee_name + amount + asset), potentially causing contract hash collisions that could lead to fund theft or contract confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84ae474c-9156-41f3-aa01-aa542bf04249",
+    "timestamp": "2025-12-22 19:57:46.931411",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getHash()] [Null byte injection] Does the hash calculation handle null bytes or special characters in party names correctly, or can an attacker inject null bytes to create hash collisions by making 'name1\\x00extra' hash identically to 'name1' when concatenated with other fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e2d39f0-20f5-4c8d-b6fb-55d58edf5f40",
+    "timestamp": "2025-12-22 19:57:59.417082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createAndSend()] [Deep clone bypass] Can an attacker manipulate the objContract object with prototype pollution before _.cloneDeep() executes, allowing them to inject malicious properties that persist after cloning and affect contract validation or execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aec25f8c-b66e-4180-854e-191ee37d1acb",
+    "timestamp": "2025-12-22 19:58:12.484751",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createAndSend()] [Race condition on pairing info] If device.getOrGeneratePermanentPairingInfo() is called concurrently for multiple contracts, can race conditions cause pairing codes to be mixed between contracts, allowing an attacker to intercept messages intended for another contract party?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5a6d64b-51b1-4eb0-9bd9-e7d628721d23",
+    "timestamp": "2025-12-22 19:58:25.684694",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createAndSend()] [Database insertion race] Between lines 25-32, if two identical contracts (same hash) are created simultaneously, can both pass the INSERT query and create duplicate entries, causing database inconsistency and potential double-payment scenarios?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40d96ea4-b928-44aa-b646-4c56a1996157",
+    "timestamp": "2025-12-22 19:58:39.716630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createAndSend()] [Cosigners not sent to peer] On line 27, cosigners are deleted from objContractForPeer before sending to peer - can this cause the peer to accept a contract without knowing about required cosigners, leading to signing failures or fund freezing when the shared address requires cosigner approval?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_708cd534-6ca1-4c4c-a90e-cf1626825381",
+    "timestamp": "2025-12-22 19:58:54.866921",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: store()] [SQL injection via INSERT IGNORE] Does the db.getIgnore() call on line 105 properly sanitize the IGNORE keyword across different database backends (SQLite vs MySQL), or can an attacker exploit database-specific syntax differences to bypass IGNORE and cause insertion errors or data corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2ad3a5c-7871-492b-b8bb-de740dd61276",
+    "timestamp": "2025-12-22 19:59:12.610226",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: store()] [Conditional field injection] If objContract.shared_address or objContract.unit are manipulated to contain SQL keywords or special characters, can the conditional field insertion logic (lines 93-102) be exploited to inject additional columns or values into the INSERT statement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9be1b68d-cb43-4cc3-97a1-03194c3281f1",
+    "timestamp": "2025-12-22 19:59:30.953861",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: decodeRow()] [JSON parsing vulnerability] On line 195, if row.cosigners contains maliciously crafted JSON that exploits JSON.parse() vulnerabilities (e.g., prototype pollution, __proto__ injection), can an attacker corrupt the contract object or inject malicious code that executes when the contract is retrieved?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23867a88-074b-4ed8-9823-90985a866b4b",
+    "timestamp": "2025-12-22 19:59:49.365187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: decodeRow()] [Date parsing DOS] On line 197, the date parsing logic replaces ' ' with 'T' and appends '.000Z' - can an attacker craft a creation_date value that causes Date constructor to hang or crash, creating a DOS condition when contracts are retrieved?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0f132fe-ef59-4e43-947f-8dcabafb25f7",
+    "timestamp": "2025-12-22 20:00:09.402567",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: getByHash()] [No existence check callback] If getByHash() is called with a non-existent hash, it returns null via callback - do all calling functions properly handle null responses, or can null contract objects cause null pointer exceptions leading to daemon crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_063ce672-070e-476b-9290-e51a651e226b",
+    "timestamp": "2025-12-22 20:00:29.961037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: setField()] [Whitelist bypass] The whitelist check on lines 77-79 only allows specific fields - however, can an attacker pass a field name with SQL injection characters that bypass the includes() check but still get concatenated into the UPDATE query on line 80, allowing arbitrary column updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d60b1bf3-0904-44df-a20f-7569325eda79",
+    "timestamp": "2025-12-22 20:00:51.265354",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: setField()] [Race condition on status updates] If setField() is called concurrently to update the same contract's status from multiple threads (e.g., payment received and arbiter resolution simultaneously), can the final status be non-deterministic or incorrect, causing fund loss or permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ce9ed66-54d9-468f-8e60-e24239380fea",
+    "timestamp": "2025-12-22 20:01:14.506252",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: setField()] [Skipsharing bypass] On line 81, if skipSharing parameter is true, updates are not shared with cosigners - can an attacker exploit this to silently update critical fields (like status or shared_address) without cosigners' knowledge, enabling theft or fraud?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21f812b4-437f-4441-a9c8-f52176ca269f",
+    "timestamp": "2025-12-22 20:01:37.801320",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: setField()] [Type confusion on value] The value parameter is directly inserted into SQL without type validation - can an attacker pass objects, arrays, or functions as value, causing type confusion errors or SQL injection when the UPDATE query executes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_915cb9d9-e37b-431c-b7b7-bdc48238b51e",
+    "timestamp": "2025-12-22 20:02:02.295057",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: respond()] [Status check TOCTOU] Between checking objContract.status on line 115 and calling setField on line 127, can another thread change the status, creating a TOCTOU race condition that allows double-acceptance or acceptance after revocation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0e3c1e3-da66-40ed-948e-ad56571ce3ef",
+    "timestamp": "2025-12-22 20:02:26.190718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: respond()] [Pairing code exposure] On lines 135-136, the pairing code is generated and sent to peer - if the device.sendMessageToDevice() call fails or the peer is malicious, can the pairing code be intercepted or reused to impersonate the accepter in future contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61566405-b882-4705-81e3-ca0294f78d3a",
+    "timestamp": "2025-12-22 20:02:50.932135",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: respond()] [Authors composition race] On line 137, composer.composeAuthorsAndMciForAddresses() is called without locking - if the same address is used in multiple concurrent contracts, can the authors/MCI composition produce inconsistent or duplicate signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_122941a4-f74e-4c2f-b161-0e81fe8f344e",
+    "timestamp": "2025-12-22 20:03:15.562294",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: respond()] [Missing signature validation] When signedMessageBase64 is received, is it validated against the signer's address before storing, or can an attacker send an invalid/forged signature that gets accepted, bypassing authorization checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d15ec45-d19a-4432-9d8f-2e4a1423b25b",
+    "timestamp": "2025-12-22 20:03:40.729934",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: respond()] [Cosigner notification timing] On line 129, shareContractToCosigners() is called only for accepted status - but if a contract is rejected, cosigners are not notified - can this cause cosigners to incorrectly believe the contract is still pending, leading to confusion or signing invalid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b99e5e78-8439-4bfa-9083-aebba83c99c3",
+    "timestamp": "2025-12-22 20:04:04.245363",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: revoke()] [Revoke after payment] The revoke function only checks status !== 'pending' on line 152, but what if payment is received before revocation is processed? Can funds become permanently frozen if a contract is revoked after the payer sends payment but before it's detected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ab7a35f-240f-4442-8d2a-af2d4c63a46f",
+    "timestamp": "2025-12-22 20:04:28.283399",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: revoke()] [Peer notification failure] On line 155, shareUpdateToPeer() is called to notify peer of revocation - if this message fails to deliver or peer is offline, can the peer proceed with payment thinking the contract is still valid, causing fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb0b3daf-a459-479c-a243-4460918aca3d",
+    "timestamp": "2025-12-22 20:04:51.793389",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Definition array manipulation] The arrDefinition on lines 401-459 constructs a complex multi-sig definition with 5 branches - can an attacker manipulate contract fields to cause invalid definition construction, creating an address that locks funds permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3dbfa4fa-f564-4a21-882d-a7966fe3251b",
+    "timestamp": "2025-12-22 20:05:15.795340",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Private asset branch confusion] For private assets, the definition uses 'in data feed' checks (lines 422-429) instead of 'has output' - if assetInfo.is_private is manipulated or incorrectly set, can funds be locked in an address with impossible-to-satisfy conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f43eb5d-a1fd-40ec-ae62-57a8984392d9",
+    "timestamp": "2025-12-22 20:05:39.756267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Function: createSharedAddressAndPostUnit()] [Arbstore cut calculation overflow] On lines 436 and 445, Math.floor(contract.amount * (1-arbstoreInfo.cut)) is calculated - if arbstoreInfo.cut is maliciously set to a value slightly above 1.0 or to NaN, can this cause negative amounts, integer overflow, or fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17db3321-1c3c-4d40-9093-c32dc4cac751",
+    "timestamp": "2025-12-22 20:06:04.527569",
+    "report_generated": false
   }
 ]
