@@ -598,5 +598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9034b68d-bee4-4b1a-9b36-b46410a20a8a",
     "timestamp": "2025-12-22 19:24:59.521946",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Hardcoded addresses] If the hardcoded not_circulating addresses (MZ4GUQC7WUKZKKLGAS3H3FSDKLHI7HFO, BZUAVP5O4ND6N3PVEUZJOATXFPIKHPDC, TUOMEGAZPYLZQBJKLEM2BGKYR2Q5SEYS, FCXZXQR353XI4FIPQL6U4G2EQJL4CCU2) are compromised and their private keys leaked, can attackers spend funds from these addresses causing incorrect circulating supply calculations and potentially market manipulation through false scarcity metrics?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6cb2ece-fa50-4afd-8caa-843e345fb4a3",
+    "timestamp": "2025-12-22 19:26:11.203232",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 34] [Process Lifecycle] The immediate execution at line 34 (replace_OPs() called at module load) prevents any pre-execution validation or confirmation prompts - could accidental execution (e.g., require() in wrong context) trigger unwanted witness replacement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9a808a4-1084-4d5d-971f-71f11036f1db",
+    "timestamp": "2025-12-22 19:26:24.010282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Process Lifecycle] Does the script handle SIGINT/SIGTERM signals gracefully during UPDATE operations, or could Ctrl+C mid-execution leave database transactions uncommitted or connections leaked?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca1577cd-263d-4358-93f3-35b081f2a442",
+    "timestamp": "2025-12-22 19:26:36.711418",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 29-32] [Process Lifecycle] The process.exit() at line 31 terminates the entire process - if this script is imported as a module by another process (despite being a standalone tool), could it crash the parent process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05351cff-428d-4ed1-b33b-355ca8d0bfce",
+    "timestamp": "2025-12-22 19:26:49.978285",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Hardcoded Secrets] Does the public visibility of exact witness addresses in GitHub allow attackers to precompute attacks or social engineering campaigns against the 7 order provider operators?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc6a2084-ffca-404f-824b-9371063c034f",
+    "timestamp": "2025-12-22 19:27:04.127242",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Hardcoded Secrets] The order_providers array contains hardcoded addresses visible in source code - could attackers targeting these specific witnesses (via DDoS, compromise, etc.) gain leverage knowing they are critical to network consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e90234af-9423-4e15-9b0a-9b7068faf280",
+    "timestamp": "2025-12-22 19:27:19.361269",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Light Client] Does witness_proof.js detect that local my_witnesses has changed and invalidate cached proofs, or could stale proofs referencing old witnesses cause light client sync failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_679b09b4-3cea-446a-b445-0800957ed0ee",
+    "timestamp": "2025-12-22 19:27:36.159102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Light Client] After witness replacement at line 25, do light clients using the old witness list receive witness proofs that are incompatible with their local witness configuration, causing them to reject all new stable units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd2ee744-e7a6-43dd-8c07-951503114c8a",
+    "timestamp": "2025-12-22 19:27:53.655241",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Concurrent Execution] If two instances of this script run simultaneously with different order_providers arrays, could interleaved UPDATE operations create an inconsistent final witness list that doesn't match either intended replacement set?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7cf57ac7-5eed-4631-a6a4-1e8534089e9a",
+    "timestamp": "2025-12-22 19:28:12.335488",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 1-34] [Concurrent Execution] The script lacks any mutex, lock file, or singleton enforcement mechanism - could accidental concurrent execution (e.g., cron job overlap) cause database deadlocks or apply witness replacements multiple times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_916cf901-5c61-4f04-bd8e-4af720b543ed",
+    "timestamp": "2025-12-22 19:28:31.496182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Rollback Capability] Does the lack of transaction wrapping mean that partial execution cannot be rolled back atomically, requiring manual identification and reversal of which UPDATEs succeeded?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a615ac9-8b27-46b1-bf1c-3f1ee73ef6b2",
+    "timestamp": "2025-12-22 19:28:52.240341",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Rollback Capability] Since the script does not create a backup of my_witnesses before modification, if the replacement causes consensus failures, how can operators restore the original witness list without full database restoration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cb6472a-50db-43a8-a85c-9c15403eb75a",
+    "timestamp": "2025-12-22 19:29:13.390984",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Rollback Capability] The script provides no mechanism to rollback witness changes if replacement addresses turn out to be inactive or malicious - does this mean a bad replacement requires manual database surgery or data restoration from backups?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c507ebfa-f174-423c-88ad-165301e43dfb",
+    "timestamp": "2025-12-22 19:29:35.877700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 29-32] [Database Corruption] The immediate process.exit() at line 31 after db.close() does not wait for all pending write operations to flush to disk - could this cause database corruption on systems with delayed write caching?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a10b675b-2c23-4d44-ab0f-08d8123eecfd",
+    "timestamp": "2025-12-22 19:29:58.532645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Database Corruption] Does the script verify that the database is not in read-only mode before attempting UPDATEs at line 25, or could this cause silent failures leaving witness replacements incomplete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b0d6761-9bd8-42fe-8e17-fe0630173e6e",
+    "timestamp": "2025-12-22 19:30:21.850625",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Database Corruption] If the my_witnesses table lacks a PRIMARY KEY constraint on address field, could the UPDATE at line 25 create duplicate entries for the same witness address, breaking witness validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea954a37-5d7c-4598-8813-9ecfd81a5342",
+    "timestamp": "2025-12-22 19:30:46.402566",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Witness Count] Does the script account for the possibility that users may have manually modified my_witnesses to include witnesses not in the order_providers list, and could this cause witness count inconsistencies after replacement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1cb54a9c-229e-49d2-a147-4fb995aa3387",
+    "timestamp": "2025-12-22 19:31:10.829512",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Witness Count] If not all 7 old addresses exist in my_witnesses before replacement (e.g., user has custom witness list), could the UPDATEs that match zero rows cause the final witness count to be less than 12?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99abd15d-4d62-41bc-b3e3-7caeda5cad26",
+    "timestamp": "2025-12-22 19:31:36.810272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Function: replace_OPs()] [Witness Count] After all UPDATE operations complete, does the script verify that my_witnesses still contains exactly constants.COUNT_WITNESSES (12) entries, or could failed/skipped updates leave an invalid count causing node crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5fb4845-9d21-4a41-9d5d-533ae77a3b90",
+    "timestamp": "2025-12-22 19:32:01.635549",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Duplicate Detection] If two different old addresses map to the same new address in order_providers, would both UPDATE queries try to insert the same new address, potentially reducing the witness count below 12?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba0c03e6-4b8b-4926-b793-ebed1fe3bff5",
+    "timestamp": "2025-12-22 19:32:26.784805",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Duplicate Detection] Does the script verify that replacement.new addresses are not already present in my_witnesses before UPDATE (like my_witnesses.js replaceWitness() does), or could this create duplicate witness entries violating the unique constraint?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73286a85-31f1-446a-8239-fa18ae6942c8",
+    "timestamp": "2025-12-22 19:32:52.391168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 7-13] [Duplicate Detection] The order_providers array does not check for duplicate old addresses - if the same old address appears twice with different new addresses, could both UPDATEs execute and cause the final witness list to have duplicates of the second new address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6031cafe-48ea-4502-96d4-66465ea5d661",
+    "timestamp": "2025-12-22 19:33:19.238548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 6-14] [Environment Bypass] If constants.bTestnet and process.env.testnet fall out of sync due to configuration errors, could the script update witnesses for the wrong network, causing witness incompatibility?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bfbb9851-a809-4b3c-b4c6-6a0da2d572f6",
+    "timestamp": "2025-12-22 19:33:45.064885",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 6-14] [Environment Bypass] Does the environment check properly handle edge cases where process.env.testnet is set to string 'false' or '0' (truthy in JavaScript), potentially causing mainnet witness replacements to not execute?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1e4900c-b3c7-431c-ad8f-f5590c8d70e2",
+    "timestamp": "2025-12-22 19:34:12.049459",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/replace_ops.js] [Lines: 6-14] [Environment Bypass] The testnet check at line 6 only examines process.env.testnet - could an attacker manipulate environment variables to make the script run on testnet with mainnet witness addresses, or vice versa, causing incompatible witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df3cfcab-e92f-4ec8-aa50-9dd85e846995",
+    "timestamp": "2025-12-22 19:34:39.603381",
+    "report_generated": false
   }
 ]
