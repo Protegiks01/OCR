@@ -1948,5 +1948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61d5a08b-1128-47dc-a3d6-95651ff08685",
     "timestamp": "2025-12-22 20:55:31.359087",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Amplification attack] Can an attacker repeatedly call getInfo() with different arbiter addresses that don't exist in the database, causing the node to make many HTTP requests to the hub and ArbStores, amplifying load and potentially being rate-limited or banned by external services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_954e4e4e-d0c0-4d53-80cc-9ec37cd6e24f",
+    "timestamp": "2025-12-22 20:56:51.362475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cache pollution DoS] Can an attacker programmatically generate thousands of valid arbiter addresses and call getArbstoreInfo() for each, filling the cache with entries and consuming gigabytes of memory, eventually crashing the node (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4d838e5-b241-4633-a0c8-fd8820aa459d",
+    "timestamp": "2025-12-22 20:57:04.088951",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Slowloris attack] Can a malicious ArbStore implement a slowloris-style attack by sending response data one byte at a time over hours, keeping the connection and callback alive indefinitely and exhausting resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62bf62df-763d-44ce-8161-95c89501485f",
+    "timestamp": "2025-12-22 20:57:17.397184",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Arbiter usage leakage] By monitoring which arbiters a node queries via getInfo(), can an external observer (compromised hub, network sniffer) determine which arbiter contracts the node is participating in, potentially leaking business relationships or contract details?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a655ce21-1e54-4820-bb36-e9f142a87237",
+    "timestamp": "2025-12-22 20:57:30.904236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Error message leakage] If the ArbStore returns an error response with detailed error messages, are these error details propagated through the callback in a way that could leak sensitive information about the node's configuration or internal state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e781c37-5110-47ff-b8b1-14c9b8d78554",
+    "timestamp": "2025-12-22 20:57:44.902249",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Arbiter_contract.js dependency] Since arbiter_contract.js heavily relies on getArbstoreInfo() for fee calculations in createSharedAddressAndPostUnit() and complete(), if getArbstoreInfo() returns incorrect or cached stale data, can this cause arbiter contracts to permanently lock funds in addresses with incorrect definitions (Critical: permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_783f57ee-8287-4f38-8944-433103d76419",
+    "timestamp": "2025-12-22 20:58:00.092691",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Device messaging security] The device_pub_key from getInfo() is used to encrypt sensitive contract data in arbiter_contract.js openDispute() - if this key is wrong or belongs to an attacker, can the attacker decrypt plaintiff/respondent information and manipulate disputes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1b5dd96-8aa9-4b49-8fc2-b29890837a51",
+    "timestamp": "2025-12-22 20:58:16.464719",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Transaction Atomicity] If the arrQueries array is executed partially (e.g., database crash after unspending outputs but before deleting the unit), can the system enter an inconsistent state where outputs are marked unspent but the unit still exists, allowing those outputs to be double-spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_145967a1-9ca4-4d72-b8d2-875c62e8d416",
+    "timestamp": "2025-12-22 20:58:34.204670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Race Condition] If two concurrent calls to generateQueriesToArchiveJoint() target units that spend the same outputs, can both processes incorrectly unspend the same outputs twice, corrupting the is_spent flags in the outputs table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4eced924-8e7d-4b6c-8295-11a57c3f31dd",
+    "timestamp": "2025-12-22 20:58:52.980106",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [JSON Serialization] When storing JSON.stringify(objJoint) in the archived_joints table, can maliciously crafted joint objects with circular references or extremely deep nesting cause JSON.stringify() to throw an exception, preventing proper archiving and leaving the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3408256-1170-4c51-ac84-1651e8c946e5",
+    "timestamp": "2025-12-22 20:59:12.705790",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Reason Validation] Since the 'reason' parameter is inserted directly into archived_joints without validation, can an attacker pass arbitrary strings (including SQL injection payloads or excessively long strings) that could corrupt the archived_joints table or cause database errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21d57904-02e7-4894-9c46-ad18da3b2d7c",
+    "timestamp": "2025-12-22 20:59:33.494033",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Callback Ordering] If the callback cb() is invoked before all queries in arrQueries are fully added, can the caller execute the queries prematurely, missing critical DELETE or UPDATE statements and leaving orphaned database records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aae9124b-6c83-4173-a2d1-cbd764f98436",
+    "timestamp": "2025-12-22 20:59:54.782519",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Logic Branching] Since the function chooses between generateQueriesToRemoveJoint and generateQueriesToVoidJoint based on reason === 'uncovered', can an attacker exploit differences in what data each function preserves to cause non-deterministic behavior across nodes if different nodes receive different reasons for the same unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7400bff-24b0-487e-880b-829c77ca57bc",
+    "timestamp": "2025-12-22 21:00:17.580669",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint() vs generateQueriesToVoidJoint()] [Data Retention Inconsistency] The removeJoint function deletes aa_responses but voidJoint does not - if an AA response unit is voided instead of removed, can this cause AA state divergence where some nodes have AA responses for voided units while others don't, breaking deterministic AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b74de7ed-29e8-4fba-82be-7f02dd21554e",
+    "timestamp": "2025-12-22 21:00:40.636642",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Partial Deletion] Since voidJoint keeps unit_witnesses, unit_authors, and units tables but deletes messages, can this create a 'zombie unit' state where the unit exists without any payload, breaking validation logic that expects units to have messages and causing network sync failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53c7a5dd-27d7-46df-8a2e-46139068a414",
+    "timestamp": "2025-12-22 21:01:04.504029",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Definition Chash Nullification] The UPDATE unit_authors SET definition_chash=NULL statement removes definition information - if a voided unit was the first unit to introduce a definition for an address, can this make the address permanently unusable since no other unit has the definition, causing permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0f25cda-56d1-4c62-aaf8-79a25bbfbfd7",
+    "timestamp": "2025-12-22 21:01:29.691016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Double-Spend Window] The query checks for alternative spenders using 'AND inputs.unit!=alt_inputs.unit' - if another unit spending the same output is in the process of being archived concurrently, can both archiving operations incorrectly conclude they should unspend the output, resulting in is_spent being set to 0 despite a valid spending unit still existing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9be59d14-5e66-4026-9b30-1e9b79033b7f",
+    "timestamp": "2025-12-22 21:01:55.853007",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [NOT EXISTS Subquery Race] The NOT EXISTS subquery validates there are no other spenders, but this check happens at query generation time, not execution time - if a new valid unit spending the same output is added to the database between query generation and execution, can the output be incorrectly unspent, enabling a double-spend attack?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05928c4c-e970-45bd-8209-be9128803e1c",
+    "timestamp": "2025-12-22 21:02:22.265125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Type Filter Bypass] The query filters for inputs.type='transfer' - if a malicious unit spends the same output as both 'transfer' type and another type (e.g., through database corruption), can the unspending logic miss the alternative spender and incorrectly mark the output as unspent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21e631bc-b4c2-4ff7-9b55-992235e95abe",
+    "timestamp": "2025-12-22 21:02:48.884097",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Output Triple Uniqueness] The query identifies outputs by (src_unit, src_message_index, src_output_index) - if database constraints don't enforce uniqueness on this triple in the outputs table, can multiple output records exist for the same logical output, causing some to be unspent while others remain spent, breaking balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22959422-68b2-48fd-8fec-7b60f9162fae",
+    "timestamp": "2025-12-22 21:03:13.801542",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [MCI Range Overlap] The query uses 'from_main_chain_index <= +headers_commission_outputs.main_chain_index AND to_main_chain_index >= +headers_commission_outputs.main_chain_index' - if MCI ranges overlap between archived and non-archived units, can the same headers commission output be unspent while still being validly spent, allowing double-spending of witness rewards?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ef75695-4c1b-431a-880a-4ce6f6960994",
+    "timestamp": "2025-12-22 21:03:39.022807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Unary Plus Coercion] The use of '+headers_commission_outputs.main_chain_index' (unary plus) suggests potential type issues - if main_chain_index is stored as a string or null, can type coercion cause incorrect comparison logic, leading to wrong outputs being unspent or legitimate outputs remaining spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ef0cc71-a75c-4b60-9d55-8d0e612c0379",
+    "timestamp": "2025-12-22 21:04:04.862113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Cross Join Performance] The CROSS JOIN between inputs and headers_commission_outputs with MCI range filtering - for units with many inputs covering large MCI ranges, can this query become extremely slow or timeout, causing the archiving transaction to fail and preventing database cleanup, leading to memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_acdfebd8-f79b-4bfd-88fe-47c1a930e1c9",
+    "timestamp": "2025-12-22 21:04:30.442183",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Address Matching Logic] The query matches by inputs.address = headers_commission_outputs.address - if an address has multiple headers commission outputs at different MCIs and the archived unit's input spans a large MCI range, can the wrong outputs be unspent, corrupting witness reward balances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2cc90ab-5481-4e93-8bba-e752ae8b1b25",
+    "timestamp": "2025-12-22 21:04:57.177056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Alt Inputs Subquery] The NOT EXISTS subquery checks if any alt_inputs spans the same MCI - if multiple units are being archived simultaneously and all reference overlapping MCI ranges, can the race condition cause all of them to incorrectly unspend the same headers commission outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71c13e5d-7740-480c-bcf8-9d382443a81f",
+    "timestamp": "2025-12-22 21:05:24.965464",
+    "report_generated": false
   }
 ]
