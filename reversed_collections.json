@@ -298,5 +298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_038709b3-840f-44ec-8c9d-173967c5eff5",
     "timestamp": "2025-12-22 19:05:41.684123",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database connection pool exhaustion] If this script is scheduled to run frequently (e.g., every minute for monitoring) and previous executions haven't properly closed database connections, could connection pool exhaustion prevent new runs from starting, causing monitoring gaps?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_048b7ee5-1008-4b60-8ef8-8861efa6a9fa",
+    "timestamp": "2025-12-22 19:06:59.076331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Execution timeout] The script has no timeout mechanism - if the database queries hang due to deadlocks or extremely slow queries, will the script run indefinitely consuming resources, or is there external process supervision that would kill it after a reasonable timeout?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b69d927-4fc5-430a-bb8f-6b0b5b9497ca",
+    "timestamp": "2025-12-22 19:07:11.773561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Memory exhaustion from large result sets] If balances.readAllUnspentOutputs loads all unspent outputs into memory before processing (rather than streaming), and there are millions of unspent outputs, could the script exhaust available memory and crash with OOM error, causing supply calculation monitoring to fail silently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3248c024-705b-4915-ad8d-e477bfb6a04f",
+    "timestamp": "2025-12-22 19:07:25.523722",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Commission output accounting] The script includes headers_commission_amount and payload_commission_amount in total supply - does this correctly account for unclaimed witness rewards that haven't been withdrawn yet, or could there be a discrepancy between reported supply and actual spendable supply due to locked commission outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98ba91b7-2db0-440a-96c5-56065effdb32",
+    "timestamp": "2025-12-22 19:07:39.012020",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Missing address ownership verification] The hardcoded not_circulating addresses are assumed to be controlled by trusted entities (Obyte foundation, distribution fund) - is there any mechanism to verify these addresses haven't changed owners via definition_chg messages, potentially causing funds to be incorrectly excluded from circulating supply even though they're now controlled by untrusted parties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c92c1cc8-598d-4dfe-8769-c8591c263a78",
+    "timestamp": "2025-12-22 19:07:53.527906",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Circulating > Total invariant] The script doesn't validate that circulating_amount ≤ total_amount (since circulating excludes non-circulating addresses) - if this invariant is violated due to database corruption or accounting errors, will monitoring detect this impossible state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9086e462-7d34-40d0-9fd3-6a45081c98c8",
+    "timestamp": "2025-12-22 19:08:08.764245",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Negative supply detection] If a bug in balances.readAllUnspentOutputs causes negative amounts to be summed (e.g., due to integer underflow or corrupted database rows with negative amounts), could circulating_amount become negative, which is an impossible state that should trigger immediate alerts but instead might silently propagate to monitoring dashboards?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e20d4bbe-c85d-4b60-b969-061f52ced2f9",
+    "timestamp": "2025-12-22 19:08:25.686803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [No supply bounds validation] The script doesn't validate that total_amount is within expected bounds (e.g., equal to or less than the theoretical maximum supply defined in protocol constants) - if database corruption or a balance calculation bug causes reported supply to exceed the maximum possible supply, will this go unnoticed or trigger alerts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83e6aa9d-492b-4df4-a18a-66cb45d52351",
+    "timestamp": "2025-12-22 19:08:43.618652",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Catchup state interference] If a node is actively catching up (syncing historical units) while this script runs, could the rapidly changing database state cause the three queries to produce incoherent results (e.g., last_stable_mci from before catchup but unspent outputs from after), reporting impossible supply transitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1441ebd-0dbe-4320-9bfa-197a193c8b78",
+    "timestamp": "2025-12-22 19:09:02.951179",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database backup during execution] If a database backup or maintenance operation locks tables while this script is running, could the script timeout waiting for locks, hang indefinitely, or receive partial results that produce incorrect supply calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbddfb35-b9a8-4bc7-b6fa-8ea28562932a",
+    "timestamp": "2025-12-22 19:09:23.365691",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Archiving interference] If the archiving process (archiving.js) is running concurrently and strips old unit content while this script reads unspent outputs, could archived outputs be excluded from the count even though they're still unspent, causing sudden drops in reported supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ebacb3a-07b3-4d4e-8f42-311235b34287",
+    "timestamp": "2025-12-22 19:09:44.395588",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Unit addition during calculation] If new units are being actively added to the DAG while this script runs (normal network operation), the three separate database queries could see different states - for example, a new payment from a not_circulating address could be read by readAllUnspentOutputs but the corresponding input spending hasn't been processed yet, causing temporary double-counting of those funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d85f396c-1e55-4b31-b216-2705dd8b0e7c",
+    "timestamp": "2025-12-22 19:10:06.923721",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Stderr buffer limits] The script logs potentially large JSON objects to stderr using console.error (line 21) - if the supply object is extremely large (millions of addresses with unspent outputs), could this exceed stderr buffer limits and cause truncation or blocking that prevents the process from exiting cleanly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_444389b1-e1a1-4192-815c-5dbae8087d6f",
+    "timestamp": "2025-12-22 19:10:29.449515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Execution time accuracy] The script calculates execution time using Date.now() at the start and end (lines 7, 20) - if the system clock is adjusted (NTP sync, timezone change) during execution, could the reported execution time be negative or impossibly large, triggering false alerts in monitoring systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1eabe8e9-a2ad-4065-b670-32b52bdd4ade",
+    "timestamp": "2025-12-22 19:10:52.922989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Object.assign side effects] The script uses Object.assign to merge {last_mci, last_stable_mci} with the supply object before logging - if the supply object already has properties named last_mci or last_stable_mci, would the merge silently overwrite critical supply data, causing confusion in supply reports?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44681132-7291-4914-a4a8-cf057781b75c",
+    "timestamp": "2025-12-22 19:11:15.980810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Precision loss in large numbers] When logging supply.total_amount and supply.circulating_amount using console.error (line 21), if these values exceed JavaScript's safe integer range, could they lose precision during string conversion, causing monitoring systems to see supply values that differ from actual database values by several decimal places?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfaad332-c3ec-478e-b7fc-ed303899c463",
+    "timestamp": "2025-12-22 19:11:40.612865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Supply object tampering] The supply object returned by balances.readAllUnspentOutputs contains addresses, txouts, total_amount, circulating_txouts, circulating_amount, headers_commission_amount, payload_commission_amount - could any of these fields be NaN, undefined, or negative due to database corruption, causing the logged output to be unparseable by monitoring systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ede3cbf-9dce-45cd-a6e5-01de3d0d6613",
+    "timestamp": "2025-12-22 19:12:04.422852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Testnet-specific units] Does the testnet have different genesis parameters (initial supply, distribution addresses) compared to mainnet, and if so, does using only one not_circulating address for testnet correctly account for all non-circulating testnet funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c3d223f-f7b7-49a3-9b10-49f9e830c36e",
+    "timestamp": "2025-12-22 19:12:28.661833",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Cross-network pollution] If a node switches between testnet and mainnet (e.g., by changing process.env.testnet and restarting without clearing database), could residual testnet data in the database cause supply calculations to mix testnet and mainnet outputs, producing nonsensical results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48e9d8c6-10aa-4b66-8c12-c089390584e7",
+    "timestamp": "2025-12-22 19:12:52.944795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Testnet address validity] Is the single testnet not_circulating address (5ZPGXCOGRGUUXIUU72JIENHXU6XU77BD) actually the testnet equivalent of the mainnet foundation addresses, or was this address arbitrarily chosen without corresponding to real non-circulating testnet funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54a88eaa-e573-455e-9c67-35dea77cb1ed",
+    "timestamp": "2025-12-22 19:13:18.683247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Environment variable spoofing] The testnet check relies on process.env.testnet (line 8) - if an attacker can set environment variables for the node process (e.g., through container orchestration misconfiguration), could they force a mainnet node to use testnet addresses, causing all foundation funds to be incorrectly counted as circulating and reporting inflated supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1aa89c4-791d-4ecd-9907-cabff134cd34",
+    "timestamp": "2025-12-22 19:13:44.694373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Light node compatibility] If this script is run on a light node that only stores stable units and doesn't have full DAG history, will storage.readLastMainChainIndex and readLastStableMcIndex return correct values, or could missing historical data cause the script to report incorrectly low supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f057a571-03e6-45c0-9e53-80d8b479425f",
+    "timestamp": "2025-12-22 19:14:10.723278",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Unstable unit outputs] When calculating circulating supply, does the script include outputs from units that are on the main chain (have MCI assigned) but are not yet stable (MCI > last_stable_mci), potentially counting funds that could theoretically be reorganized out during stability determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d26b555-7614-41fa-bbee-b8b9574aecf9",
+    "timestamp": "2025-12-22 19:14:36.139767",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Genesis unit handling] Does storage.readLastMainChainIndex handle the special case of an empty database (genesis unit not yet added) by returning 0, and does balances.readAllUnspentOutputs correctly handle this case, or could a newly initialized node crash when running this script before syncing any units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75c54d48-9201-4cec-83a7-4cb6f7f2fdd3",
+    "timestamp": "2025-12-22 19:15:01.957956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Stability point regression] If last_stable_mci decreases between two consecutive runs of the script (which should never happen after units become stable), does any monitoring or alerting detect this consensus-breaking event, or would the supply calculation silently accept the impossible state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1b42bd2-9220-4dfa-9351-d3b8618aa372",
+    "timestamp": "2025-12-22 19:15:27.801239",
+    "report_generated": false
   }
 ]
