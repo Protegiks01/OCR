@@ -2398,5 +2398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff1bb6d4-b846-4ff3-85b0-0dabd0969ccf",
     "timestamp": "2025-12-22 22:10:59.928790",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [sha256 format validation] The sha256 function accepts format as 'hex', 'base64', or 'base32', but validation for expression-based formats is incomplete. Can invalid formats cause execution errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f836c1b-cb12-4653-8e0e-a488db8cf1d6",
+    "timestamp": "2025-12-22 22:12:24.715684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_valid_merkle_proof depth attack] Merkle proof verification complexity depends on proof depth, but validation assigns constant complexity. Can deeply nested proofs cause excessive computation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3281272-5ef8-4624-b148-bc5f2625f0d3",
+    "timestamp": "2025-12-22 22:12:37.109513",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [vrf_verify complexity underestimate] VRF verification is cryptographically expensive but complexity is only 1. Can this be exploited for DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2eb8ccc2-a706-453a-ad1a-7309c72c681d",
+    "timestamp": "2025-12-22 22:12:49.912034",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_valid_sig parameter types] The function doesn't validate parameter types during validation. Can passing non-string values cause execution errors that aren't caught?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d5657ab-13e1-487e-8fe0-52a9626dfb9f",
+    "timestamp": "2025-12-22 22:13:04.217310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [is_valid_signed_package complexity] Signature verification is computationally expensive but only increments complexity by 1. Can attackers perform many signature checks to cause validation slowdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ada96f15-0d6b-4551-a8a4-03f8c8c40e16",
+    "timestamp": "2025-12-22 22:13:18.234708",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [definition query recursion] Definition queries may recursively load nested definitions. Is there a depth limit to prevent infinite recursion attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f51e2d7e-b8bc-4b5f-a28e-208d9bcaeb46",
+    "timestamp": "2025-12-22 22:13:33.434886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [unit query complexity] Unit queries increment complexity by 1, but loading and validating a full unit may be expensive. Can attackers query many units to cause DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61ecbe40-1961-4a8f-8863-0497a12d2a44",
+    "timestamp": "2025-12-22 22:13:49.175494",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [asset complexity undercount] Asset queries increment complexity by 1, but accessing asset metadata may require database lookups. Can attackers perform many asset queries to exceed real computational cost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e34f09db-f4e9-4c71-aa5c-5c2e7ff53e97",
+    "timestamp": "2025-12-22 22:14:06.318343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [asset field validation] For asset[x] queries, the field must be in objBaseAssetInfo, but this is only checked for string literals. Can expression-based fields access unauthorized asset properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3646b757-9c15-4773-9828-56056ca1aa31",
+    "timestamp": "2025-12-22 22:14:25.047530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [State variable time inconsistency] The comment notes that var values are taken at 'last_ball_unit' time in non-AAs. Can this temporal mismatch cause validation to pass but execution to see different state values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a88971b6-eee3-48ed-bc61-d01b83dbee51",
+    "timestamp": "2025-12-22 22:14:44.289601",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [balance asset validation incomplete] For balance queries, asset validation uses isValidBase64() but only for string literals. Can expression-based assets resolve to invalid values during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b711922-f712-4b02-802b-c5c136245ea9",
+    "timestamp": "2025-12-22 22:15:04.710726",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [var address validation bypass] For two-parameter var[address][name] access, address validation checks ValidationUtils.isValidAddress(), but can attackers submit expressions that evaluate to non-addresses during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52095307-b79d-468e-a1bc-5ce33d3420dd",
+    "timestamp": "2025-12-22 22:15:25.930764",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [var/balance non-AA context] The var and balance operations are rejected in non-AA contexts, but can attackers craft address definitions that execute AA-like code without being recognized as AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_579ba337-ed11-40c1-bc24-171f58921b49",
+    "timestamp": "2025-12-22 22:15:48.080071",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [storage_size complexity] The storage_size operation checks if bAA is true but doesn't increment complexity. Can attackers use storage_size queries extensively to perform expensive database operations that bypass complexity tracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00466cc7-481a-4da8-b984-6929a0361f9f",
+    "timestamp": "2025-12-22 22:16:11.633392",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [mc_unit in getters] The mc_unit field is rejected in getters, but can remote getter calls bypass this restriction by accessing mc_unit indirectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c391ebb5-fc0a-4be9-bb62-20234a9409f2",
+    "timestamp": "2025-12-22 22:16:34.633554",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [params in non-AA context] The 'params' keyword is only allowed in AAs, but can definition-based addresses that aren't full AAs access params through nested formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a5a1d1b-05c5-4dfe-add2-75c1cfd19255",
+    "timestamp": "2025-12-22 22:16:59.253303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [trigger.output asset validation] For trigger.output, asset can be an expression. Can attackers craft expressions that resolve to invalid assets during execution but pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d85374a2-75d9-4ca8-9b0f-f5194d7ade64",
+    "timestamp": "2025-12-22 22:17:24.432669",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [trigger.initial_unit timing] The trigger.initial_unit field was added in aa3. Can AAs created before aa3 but executed after aa3 access this field in unexpected ways?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_970f5eef-bb57-4c83-9bbf-ee68410ee907",
+    "timestamp": "2025-12-22 22:17:50.679713",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [trigger.outputs pre-aa3] The trigger.outputs field is rejected for mci < aa3UpgradeMci, but can attackers craft AAs that activate at the upgrade boundary and exploit race conditions in the mci check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a2cc6dc-4688-4f86-9f83-e7b4db3f7dc6",
+    "timestamp": "2025-12-22 22:18:18.715373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [in_data_feed complexity tracking] Does in_data_feed properly account for the complexity of querying the database? Can attackers use this to perform expensive queries that bypass complexity limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1cf91783-5850-4621-8106-8433beb1b368",
+    "timestamp": "2025-12-22 22:18:46.458548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [data_feed param evaluation order] When evaluating data_feed parameters, are they processed in a deterministic order? Can different iteration orders of Object.keys() across environments cause non-deterministic validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0127c187-13e0-46cd-876a-3145ac9ec958",
+    "timestamp": "2025-12-22 22:19:15.280300",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Ternary operator complexity] The ternary operator validates all three parts, but during execution only one branch executes. Can attackers craft formulas where the unexecuted branch contains complexity violations that aren't caught?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5510af2a-a77c-45f2-b105-a09207e7f3a2",
+    "timestamp": "2025-12-22 22:19:43.753734",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Short-circuit evaluation bypass] For 'and'/'or' operations, are all branches validated even if short-circuit evaluation would skip them during execution? Can this cause validation/execution mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2db3cb13-4af5-49b8-9c2d-7e8e96e6a52c",
+    "timestamp": "2025-12-22 22:20:13.316460",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Comparison type coercion] When comparing values of different types (number vs string), can implicit type coercion cause non-deterministic results across different JavaScript engine versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7e58163-9591-48e3-894e-894fb0d267ab",
+    "timestamp": "2025-12-22 22:20:40.831838",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Comparison operator = rejection] The code explicitly rejects '=' in comparisons, but can Unicode homoglyphs or other encoding tricks bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fb7fa89-ac36-49a7-8dc1-4f89b107346d",
+    "timestamp": "2025-12-22 22:21:05.475664",
+    "report_generated": false
   }
 ]
