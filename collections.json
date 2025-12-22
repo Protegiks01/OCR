@@ -4498,5 +4498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3ef5569-a72d-4073-843b-667c5508b5cc",
     "timestamp": "2025-12-22 23:42:57.688593",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: purge()] [Lock Contention] Since purge() performs DELETE FROM chat_messages WHERE correspondent_address=? without limiting the number of rows, can deleting a correspondent with millions of messages cause long-running DELETE operations that hold database locks, blocking all other queries on the chat_messages table and causing application-wide denial of service until the DELETE completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32a16144-e616-4bbf-bae1-5f61aaee001e",
+    "timestamp": "2025-12-22 23:44:04.000287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Privacy Isolation] The load() function filters messages by correspondent_address in the WHERE clause, but if there are database index corruption issues or query planner bugs, can messages from different correspondents leak into the result set, causing users to see fragments of other users' private conversations, violating privacy guarantees and potentially exposing sensitive information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0902570-35d4-4790-8416-df51f2aa2124",
+    "timestamp": "2025-12-22 23:44:16.678096",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Privacy - Timing Attack] Since load() query performance varies based on the number of messages for a correspondent_address, can an attacker measure query response times to infer how many messages exist in other users' chat histories, potentially revealing metadata about communication patterns and relationship intensity without directly accessing the message content?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_417025a3-8d61-4608-b4b1-3deb3ffa64b1",
+    "timestamp": "2025-12-22 23:44:29.625439",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Module Exports] [API Misuse] The module exports all three functions (store, load, purge) globally without any access control wrapper - can any code in the application or in third-party dependencies import this module and directly call these functions, bypassing any higher-level permission checks or business logic that should gate access to chat storage, creating a privilege escalation vulnerability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_083613cd-3c77-4236-a8ad-01a22935cda6",
+    "timestamp": "2025-12-22 23:44:43.232533",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: purge()] [Lock Contention] Since purge() performs DELETE FROM chat_messages WHERE correspondent_address=? without limiting the number of rows, can deleting a correspondent with millions of messages cause long-running DELETE operations that hold database locks, blocking all other queries on the chat_messages table and causing application-wide denial of service until the DELETE completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f2ab326-e002-45d5-a2ee-621324d5b26f",
+    "timestamp": "2025-12-22 23:44:58.034376",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Privacy Isolation] The load() function filters messages by correspondent_address in the WHERE clause, but if there are database index corruption issues or query planner bugs, can messages from different correspondents leak into the result set, causing users to see fragments of other users' private conversations, violating privacy guarantees and potentially exposing sensitive information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58afabaf-ba6c-4f66-8cc4-5eb9dd6dc697",
+    "timestamp": "2025-12-22 23:45:14.002686",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Privacy - Timing Attack] Since load() query performance varies based on the number of messages for a correspondent_address, can an attacker measure query response times to infer how many messages exist in other users' chat histories, potentially revealing metadata about communication patterns and relationship intensity without directly accessing the message content?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2da70b5e-1693-493b-851c-522dbf212331",
+    "timestamp": "2025-12-22 23:45:30.314421",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Module Exports] [API Misuse] The module exports all three functions (store, load, purge) globally without any access control wrapper - can any code in the application or in third-party dependencies import this module and directly call these functions, bypassing any higher-level permission checks or business logic that should gate access to chat storage, creating a privilege escalation vulnerability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52c10aca-ec5b-44ea-ae8a-c115036851b7",
+    "timestamp": "2025-12-22 23:45:47.076638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Double-spend via race condition] When inputs.pickDivisibleCoinsForAmount() selects UTXOs at line 495-512, if two concurrent calls to composeJoint() for the same paying_addresses occur before either transaction commits, can both units select and spend the same UTXOs, creating a double-spend that bypasses the mutex lock since the lock is released before validation completes at line 586?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12b6f7f4-7993-4834-854a-6320386436b4",
+    "timestamp": "2025-12-22 23:46:05.758669",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Integer overflow in total_input] At line 503, when _total_input is assigned from pickDivisibleCoinsForAmount(), if an attacker crafts inputs that cause total_input to overflow beyond Number.MAX_SAFE_INTEGER, can the subsequent change calculation at line 530 produce a negative or incorrect change amount, allowing theft of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_625bb5c0-3eb0-4f85-8855-b0320a14d3cf",
+    "timestamp": "2025-12-22 23:46:24.995228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [UTXO selection bypass via params.inputs] At lines 478-487, if params.inputs is provided directly, the code skips UTXO selection and uses the provided inputs without verifying they are unspent or owned by arrPayingAddresses. Can an attacker pass arbitrary inputs to spend outputs they don't own or that are already spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dbdd8585-561e-4d9b-add8-1144d2c0086d",
+    "timestamp": "2025-12-22 23:46:45.380011",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Insufficient input validation on params.input_amount] At line 479-480, when params.inputs is provided, the code requires params.input_amount but doesn't validate it matches the actual sum of params.inputs amounts. Can an attacker provide mismatched values to bypass balance checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed33bcf8-d0ea-4153-a947-02f2e583ba24",
+    "timestamp": "2025-12-22 23:47:06.740876",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Race condition in spend_unconfirmed flag] At line 496, the spend_unconfirmed flag is passed to pickDivisibleCoinsForAmount(). If an attacker sends multiple transactions with spend_unconfirmed='all' simultaneously, can they spend the same unconfirmed outputs multiple times before any transaction is validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9e7ae5e-e320-4c14-9cf1-4032eca70a3b",
+    "timestamp": "2025-12-22 23:47:29.195667",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Genesis issue input manipulation] At lines 469-476, for genesis units, an issueInput with serial_number: 1 and amount: constants.TOTAL_WHITEBYTES is created. If an attacker modifies the issueInput.address field in multi-author genesis (line 471), can they redirect the initial coin issuance to an attacker-controlled address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db15b8a5-9d9f-425f-a988-2bba36c86aea",
+    "timestamp": "2025-12-22 23:47:52.702866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Target amount calculation overflow] At line 494, target_amount is calculated as total_amount + naked_size + oversize_fee + tps_fee + burn_fee + vote_count_fee. If any of these values are manipulated to be very large, can the sum overflow causing pickDivisibleCoinsForAmount() to select insufficient inputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18086377-ec94-4ce6-bb40-dad72d87f8e3",
+    "timestamp": "2025-12-22 23:48:14.870843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Naked size manipulation via paid_temp_data_fee] At line 492, paid_temp_data_fee is calculated and used to adjust oversize fee calculation at line 493. If an attacker crafts temp_data messages to manipulate paid_temp_data_fee, can they reduce the target_amount and underpay fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f81b0cf-83d0-458e-a312-a00f05f1692c",
+    "timestamp": "2025-12-22 23:48:38.697364",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Headers commission manipulation] At line 464, objUnit.headers_commission is calculated before inputs are selected. If an attacker later adds more authors or modifies the unit structure, can the headers_commission become outdated, causing the unit to be under-feeded when validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f9411da-1cb3-4b89-96b0-38345b91b498",
+    "timestamp": "2025-12-22 23:49:02.467964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Payload commission recalculation inconsistency] At lines 465 and 474/483/505, payload_commission is calculated/assigned multiple times. If inputs change the payload size (line 506), but the change isn't reflected in fee calculations, can units be composed with insufficient fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d015796-1ca1-4a17-87d7-0821adc75ee9",
+    "timestamp": "2025-12-22 23:49:27.188651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [TPS fee calculation race condition] At lines 370-386, TPS fee is calculated based on tps_fees_balance queried from the database. If an attacker sends multiple transactions concurrently before their TPS fee balances are updated, can they bypass TPS fee payment by using stale balance data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c30435f-d9df-4f7f-9940-eb9985feca42",
+    "timestamp": "2025-12-22 23:49:52.371827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [TPS fee recipient manipulation] At line 374, getTpsFeeRecipients() determines who pays TPS fees based on earned_headers_commission_recipients. Can an attacker manipulate this field to make other addresses pay their TPS fees, or to select recipients with higher tps_fees_balance to reduce their own payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_143b9c4c-63b1-4464-a025-34219f8814cf",
+    "timestamp": "2025-12-22 23:50:18.673623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [TPS fee share calculation exploit] At lines 376-383, each recipient's TPS fee is calculated as Math.ceil(tps_fee - tps_fees_balance / share). If multiple recipients have sufficient balance, but paid_tps_fee takes the maximum (line 382-383), can an attacker structure recipients to minimize their actual TPS fee payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_609ea95d-5a0f-4fbf-a0b3-640fb65dcbe0",
+    "timestamp": "2025-12-22 23:50:43.652959",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Oversize fee bypass via naked_size manipulation] At line 493, oversize_fee is calculated based on naked_size - paid_temp_data_fee. If an attacker adds temp_data messages after this calculation at line 507-509, can they avoid paying oversize fees for the additional payload?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f0ea13e-0953-4320-a828-81bec4bf307d",
+    "timestamp": "2025-12-22 23:51:08.270140",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Max fee ratio bypass] At lines 515-521, the code checks if additional_fees > max_ratio * size_fees. If an attacker sets params.max_fee_ratio to Infinity or a very large number, can they bypass this protection and compose units with excessive fees that other nodes reject?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d524dc7-9741-415f-87f0-4d525d80631b",
+    "timestamp": "2025-12-22 23:51:33.450013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Vote count fee bypass] At line 466, vote_count_fee is set only if a system_vote_count message exists. If an attacker removes this message after the fee is calculated but before unit finalization, can they avoid paying the SYSTEM_VOTE_COUNT_FEE?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c626106-69bf-4279-a62b-e4e0bc4927ca",
+    "timestamp": "2025-12-22 23:51:59.273449",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Change calculation underflow] At line 530, change is calculated as total_input - total_amount - all fees. If fees are calculated incorrectly or total_input is manipulated, can change become negative, causing the error check at line 531-537 to fail only for non-send_all transactions, allowing negative change in send_all mode?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_001beca1-46d3-436a-bf42-f91b0875f6da",
+    "timestamp": "2025-12-22 23:52:25.956293",
+    "report_generated": false
   }
 ]
