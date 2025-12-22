@@ -1948,5 +1948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e497ccf-6a38-481a-a1f9-7f3bb79fca6d",
     "timestamp": "2025-12-22 21:40:37.464459",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: parseFunctionDeclaration()] [Argument shadowing] The function checks for argument/local var name collisions using intersection, but can case-insensitive name collisions bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d23aaa43-3619-4602-a03b-d7c665177ef3",
+    "timestamp": "2025-12-22 21:41:50.250458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [main top-level flag] The bTopLevel parameter controls validation of statements-only vs expression mode. Can nested main calls manipulate this flag?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88009f8b-cbdf-43eb-8805-d8e58820967b",
+    "timestamp": "2025-12-22 21:42:02.870958",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [main non-array statements] The code checks if statements is an array but then iterates assuming it's valid. Can non-array values that pass the check cause errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20769f3a-f8c0-492e-8bb1-9d4ff06aebcd",
+    "timestamp": "2025-12-22 21:42:15.551750",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [main statements vs expression] The main operation validates both statements array and final expression. Can inconsistencies between them cause validation/execution mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97f0de42-42e4-4ab2-8e3b-646089fbae54",
+    "timestamp": "2025-12-22 21:42:28.744999",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [return flag tracking] The bHadReturn flag tracks whether a return was encountered. Can this flag be manipulated to bypass validation checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a74dcc0-111a-487e-8d48-121c81429581",
+    "timestamp": "2025-12-22 21:42:42.629995",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [return without value] Return without a value (return;) is only allowed in statements-only mode or functions. Can this be exploited to cause early exits in expressions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ee7cc78-d200-4c32-8ba5-4282eb2ac090",
+    "timestamp": "2025-12-22 21:42:57.664634",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [return in statements-only mode] Return with a value is rejected in statements-only mode unless inside a function. Can nested contexts bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd8e6c11-121c-4ec7-96af-bdf7caa60e45",
+    "timestamp": "2025-12-22 21:43:14.088042",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [require vs bounce difference] How do require and bounce differ in behavior? Can attackers use one when they should use the other to cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9169cedf-bba0-4c40-902c-94ef1b2d2b3f",
+    "timestamp": "2025-12-22 21:43:32.231830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [require pre-aa3 timing] The require operation is rejected for mci < aa3UpgradeMci. Can upgrade boundary exploits occur?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6773e47b-ca7c-4abd-8af5-6a0e5dbe2a50",
+    "timestamp": "2025-12-22 21:43:51.111500",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [bounce message validation] The bounce message is evaluated but not validated for type. Can non-string messages cause execution errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b93f0e7f-c124-4402-a047-62d74dcc01ac",
+    "timestamp": "2025-12-22 21:44:10.762067",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [bounce in getters restriction] Bounce is not allowed at top level in getters, but can it be called from within functions in getters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0725b7bf-5e5b-4f9c-bbe4-139a411fac77",
+    "timestamp": "2025-12-22 21:44:31.609210",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [log argument limit] There's no limit on the number of log arguments. Can excessive logging cause storage or performance issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a53f07a2-9573-4d44-a15d-af5337eefc93",
+    "timestamp": "2025-12-22 21:44:53.114028",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [log pre-aa3 timing] The log operation is rejected for mci < aa3UpgradeMci. Can AAs that span this upgrade boundary exploit timing issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a7977e7-efa7-42a6-8607-32a2852ee04c",
+    "timestamp": "2025-12-22 21:45:15.598517",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [remote_func_call base AA inference] When max_remote_complexity is a string (base AA), is the base AA's existence validated? Can non-existent base AAs cause errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_abfb6040-da7a-470d-97e8-da6728bcd271",
+    "timestamp": "2025-12-22 21:45:38.648302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [remote_func_call getter properties validation] The code expects getter objects to have complexity, count_ops, and count_args properties of specific types. Can malformed getter objects cause validation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d8a0421-e0b0-45c8-bc0b-735fea6d8d09",
+    "timestamp": "2025-12-22 21:46:02.422906",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [remote_func_call max_remote_complexity bypass] When max_remote_complexity is not provided, can attackers call expensive getters that bypass complexity limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5299fa7b-13da-4ebd-a425-209f1a31e015",
+    "timestamp": "2025-12-22 21:46:27.084426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [remote_func_call AA address timing] If the remote AA address changes between validation and execution, can this cause execution failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2224e4b3-dde0-4474-8827-1ebb50887f93",
+    "timestamp": "2025-12-22 21:46:53.553550",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [func_call complexity accumulation] Function complexity is added to the total, but can recursive function calls cause the complexity to grow unboundedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d29b444a-f583-46b5-9f31-1ecc3c46a4e3",
+    "timestamp": "2025-12-22 21:47:20.019318",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [func_call argument count] Excessive arguments are rejected, but can missing arguments cause the function to behave unexpectedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf054fdc-702d-4b48-a410-b69ff5d5d478",
+    "timestamp": "2025-12-22 21:47:47.510089",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [func_call undefined function] The code checks hasOwnProperty(locals, func_name), but can prototype-defined functions bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78b4394d-880e-45d4-ac00-4dcf8b201c80",
+    "timestamp": "2025-12-22 21:48:14.674167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [delete selector validation] Delete requires selectors to be an array, but can empty arrays or arrays with invalid keys cause issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72151cf4-fba4-420b-b9b8-075c239942b2",
+    "timestamp": "2025-12-22 21:48:41.671314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [delete function rejection] Functions cannot be deleted, but can function pointers stored in data vars be deleted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b677d604-4129-44d8-9278-1dd220ee4a88",
+    "timestamp": "2025-12-22 21:49:09.022676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [delete frozen var] Delete rejects frozen vars, but can the freeze state be manipulated to allow deletion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e50a444e-3d5b-413f-ae17-fc6a8d5d408e",
+    "timestamp": "2025-12-22 21:49:37.504458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [freeze conditional bypass] When bInIf is true, freeze doesn't actually set state to 'frozen'. Can this be exploited to bypass freeze protection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de53a769-e333-4d93-b646-df6d46a494de",
+    "timestamp": "2025-12-22 21:50:03.103767",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [freeze function rejection] Functions cannot be frozen, but can attackers rename functions to data vars and then freeze them?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd180931-f59d-44d6-8ccf-5847b7bfb0da",
+    "timestamp": "2025-12-22 21:50:29.773854",
+    "report_generated": false
   }
 ]
