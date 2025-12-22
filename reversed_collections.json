@@ -1348,5 +1348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6da8f2ac-66b1-45fa-b477-90a29784b6a1",
     "timestamp": "2025-12-22 20:13:52.160679",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Isolation] [Shared State] If validation.js and evaluation.js share any module-level state (e.g., caches, configuration, or complexity counters), and this index.js imports both into the same scope, can concurrent calls to validate() and evaluate() from different parts of the codebase create race conditions on shared state that cause non-deterministic validation results, leading to nodes accepting different sets of units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4f49d57-f9a0-4b67-8656-6c20440328a9",
+    "timestamp": "2025-12-22 20:42:49.290156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Function References] [Monkey Patching] Since the exports are direct function references, can an attacker who gains code execution in the same process (e.g., through a separate vulnerability) replace exports.validate or exports.evaluate with malicious implementations, allowing them to approve invalid formulas in address definitions or manipulate AA execution results without detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4068b3b4-7e1e-4239-96a2-313191bfa0b9",
+    "timestamp": "2025-12-22 20:43:01.815024",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [API Surface] [Missing Validation] This module exports validate() and evaluate() without any wrapper logic, error handling, or parameter validation - if a caller passes malformed arguments (e.g., null, undefined, or objects with prototype pollution) directly to these functions, can this bypass security checks that should exist at the API boundary, allowing attackers to crash nodes or trigger undefined behavior in formula processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b21f447b-a95e-47d0-9099-d3c7cbcc192c",
+    "timestamp": "2025-12-22 20:43:14.650564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Import Inconsistency] [Non-Determinism] Since some modules use this facade while others bypass it and import directly from validation.js/evaluation.js, if the underlying modules maintain any module-level state or caching, can the two different import paths result in separate instances of state, causing formula validation results to differ depending on which import path was used, leading to permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32dcdf83-8ffc-416f-94b4-f7e680ad4023",
+    "timestamp": "2025-12-22 20:43:27.936158",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Import Inconsistency] [Divergent Behavior] Given that definition.js imports from formula/index.js while aa_composer.js imports directly from formula/evaluation.js, if there are any transformations, wrappers, or state initialization in index.js that evaluation.js depends on, can this inconsistency cause definition.js and aa_composer.js to execute formulas with different behaviors, leading to nodes disagreeing on whether address definitions or AA executions are valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8fb5a1e4-933b-471a-aa5a-85586126e68a",
+    "timestamp": "2025-12-22 20:43:42.013000",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Loading] [Circular Dependency] If validation.js or evaluation.js attempt to require('./index.js') creating a circular dependency, can this cause the exports on lines 4-5 to be undefined at the time they're needed by the underlying modules, potentially causing a network-wide crash when nodes attempt to validate any unit containing formula definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d130332c-6ded-41c5-b358-8c80018622fb",
+    "timestamp": "2025-12-22 20:43:56.889588",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Export Interface] [Function Binding] Since the exports on lines 4-5 directly assign function references without binding context, if validation.js or evaluation.js rely on 'this' context in their validate()/evaluate() implementations, will calls through this facade fail or produce non-deterministic results when the functions are invoked from different calling contexts in definition.js versus aa_composer.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1c15dc6-c889-4c97-ae1c-99e42330666e",
+    "timestamp": "2025-12-22 20:44:13.770247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Caching] [Cache Poisoning] Given Node.js's require() cache mechanism, if an attacker can manipulate the module cache before this file is first loaded, can they inject malicious validate() or evaluate() implementations that would be used throughout the application's lifetime, allowing them to bypass all formula validation and execute arbitrary AA code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0143d44-7e6c-48b3-9afb-7dbb24f7df3b",
+    "timestamp": "2025-12-22 20:44:31.677238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Loading] [Initialization Order] Since this file exports functions from validation.js and evaluation.js without any initialization checks, if either underlying module fails to load or throws an error during require(), will this module export undefined functions that crash the system when definition.js attempts to call formulaParser.validate() during address definition processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9c708cd-0c5d-47fc-b105-23bc960013f2",
+    "timestamp": "2025-12-22 20:44:50.063676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Loading] [Race Condition] If multiple threads/processes attempt to require() this module simultaneously during node startup, can the require() statements on lines 1-2 create race conditions where validation.js is loaded but evaluation.js is not yet available, causing some callers to receive an incomplete formulaParser object with only the validate export but undefined evaluate function?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_935a0527-19ea-4a35-811e-10a1ca12e5f2",
+    "timestamp": "2025-12-22 20:45:09.304110",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Null tree handling] If tree is null at line 78, does the function immediately crash with 'Cannot read property type of null', or does it fall through to line 117? Can an attacker exploit null trees to cause non-deterministic error handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5dcaf275-64b1-4914-a1a4-6c2f609bde66",
+    "timestamp": "2025-12-22 20:45:29.901995",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Empty OJSON handling] If the input text is empty or whitespace-only, does parseOjsonGrammar() return a valid parse tree with an empty object/array? Can an attacker deploy an empty AA definition that passes all validation but fails at evaluation time, wasting network resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d456f5d5-ec33-467d-a991-025d11b47f7c",
+    "timestamp": "2025-12-22 20:45:51.847576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.PAIR] [Single-property object assumption] At line 115, the code assumes the result of processing a PAIR is a single-property object and extracts Object.keys(res)[0] at line 126. If processTree() returns an empty object or multi-property object, can this cause undefined key/value to be assigned to the parent object?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9cc50880-c289-4971-bb40-2b86ec8fb3e1",
+    "timestamp": "2025-12-22 20:46:14.498254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Success without processTree] If parser.results[0] at line 72 is somehow null or a primitive type, processTree() might return it immediately (lines 82-88). Can an attacker craft OJSON that parses to a primitive, bypassing all the object/array processing logic and creating a trivial AA definition that downstream code mishandles?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2119ae98-d74c-4461-a43c-64ebda80fbe0",
+    "timestamp": "2025-12-22 20:46:38.322319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Validation called conditionally] At line 93, validateFormula() is called only for FORMULA types during processTree(). If the outer OJSON parse succeeds but contains formulas that were never processed (e.g., unreachable branches), can these unvalidated formulas be activated later during AA execution, bypassing security checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d7d834b-06a1-4b11-acca-e469d92f3fae",
+    "timestamp": "2025-12-22 20:47:02.063469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [Surrogate pair handling] If the OJSON input contains unpaired UTF-16 surrogates, does the Nearley parser handle them correctly? Can malformed surrogates cause parsing errors that crash nodes or produce different results on nodes with different JavaScript engines?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78c16e1f-b5d8-4fbc-b6b7-4537eed4bfae",
+    "timestamp": "2025-12-22 20:47:26.729243",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Homoglyph attack in keys] At line 126, if object keys contain homoglyphs (e.g., Cyrillic 'а' vs Latin 'a'), does duplicate key detection catch them? Can an attacker create two visually identical keys that are treated as different, confusing auditors and hiding malicious AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a4128ae-f774-4f6a-9ce2-305307131517",
+    "timestamp": "2025-12-22 20:47:53.248283",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Zero-width characters in formulas] At line 30, newline detection checks for '\\\\n', but what about zero-width spaces (U+200B) or other invisible Unicode characters? Can attackers inject hidden characters into formulas that change their meaning without being visible in error messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92ce1994-94fe-44ae-875c-217f7144505e",
+    "timestamp": "2025-12-22 20:48:17.712894",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.STR] [Unicode normalization inconsistency] At line 82, string values are returned as-is. If strings contain Unicode characters in different normalization forms (NFC vs NFD), can this cause the same semantic AA definition to hash differently on nodes with different Unicode handling, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c590625-d963-43ea-8c13-50992bdf5b51",
+    "timestamp": "2025-12-22 20:48:43.163322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [UTF-8 BOM handling] At line 46, if the input text starts with a UTF-8 BOM (\\\\uFEFF), does the Nearley parser handle it correctly? Can a BOM cause parsing to fail for otherwise valid OJSON, or worse, can it cause different parsing results on nodes with different UTF-8 handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fad0538c-acd2-4d9b-af94-01acf64504a5",
+    "timestamp": "2025-12-22 20:49:08.675710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Type conversion inconsistency with validation] If processTree() returns numeric strings for DECIMAL types but aa_validation.js expects numbers, or vice versa, can this cause validation to pass but evaluation to fail (or opposite), allowing broken AAs to be deployed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_732ac493-f291-4aea-b5e1-da4e26ba7cef",
+    "timestamp": "2025-12-22 20:49:32.689166",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Definition array format] At line 73, the result is ['autonomous agent', result]. If aa_validation.js expects index [0] to be exactly 'autonomous agent' (case-sensitive), but the parser produces 'Autonomous Agent' or ' autonomous agent ' (with whitespace), can this cause all AAs to be rejected, freezing network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3502f4d5-db3d-4beb-9898-c6ddaa8daad4",
+    "timestamp": "2025-12-22 20:49:56.670453",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Formula format expectation mismatch] At line 94, formulas are returned as '{formula}'. If formula/evaluation.js expects formulas without braces (using getFormula() to extract), but somewhere the format expectation changes, can this cause formulas to be evaluated as literal strings instead of code, breaking AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e7e1b66-d4e0-4a41-b25c-e8950aed16ec",
+    "timestamp": "2025-12-22 20:50:20.460548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Callback error handling] At line 73, the callback is invoked with ['autonomous agent', result]. If aa_validation.js expects errors to be Error objects but parse() passes strings (line 61, 65, 75), can this cause exception handling to fail, allowing invalid AAs to pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8042c32-83a3-44d7-9fa8-c402fe557f7c",
+    "timestamp": "2025-12-22 20:50:44.549409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [assignField interaction with evaluation.js] At line 131, assignField() from common.js is used. If formula/evaluation.js expects fields to be plain properties but assignField() creates non-writable or non-configurable properties via Object.defineProperty(), can this cause AA evaluation to fail when trying to modify state, permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2374ca7c-b468-4f07-ab67-bf4d4ad711f1",
+    "timestamp": "2025-12-22 20:51:09.689288",
+    "report_generated": false
   }
 ]
