@@ -2098,5 +2098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71c13e5d-7740-480c-bcf8-9d382443a81f",
     "timestamp": "2025-12-22 21:05:24.965464",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendWitnessingOutputsSpentInArchivedUnit()] [Witnessing Reward Integrity] Similar to headers commission, this function unspends witnessing outputs based on MCI ranges - if witnessing outputs are unspent incorrectly, can witnesses double-claim their witnessing rewards, inflating the total supply of bytes and breaking the economic model?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23b14256-bbf2-4359-921d-cf0871d25840",
+    "timestamp": "2025-12-22 21:06:38.625373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendWitnessingOutputsSpentInArchivedUnit()] [Concurrent Archiving] If multiple units spending witnessing outputs from overlapping MCI ranges are archived in parallel, can the lack of synchronization cause all of them to unspend the same witnessing outputs, resulting in is_spent=0 flags that don't match reality?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5e9abc5-dc22-4313-8720-3daca61ac6d5",
+    "timestamp": "2025-12-22 21:06:51.188475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendWitnessingOutputsSpentInArchivedUnit()] [Type Safety] The query filters by inputs.type='witnessing' - if database integrity is compromised and input types are modified, can the wrong outputs be unspent, mixing witnessing and transfer outputs and corrupting user balances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54b9bb14-68e1-45fe-a9a0-1bb17dbf0be8",
+    "timestamp": "2025-12-22 21:07:03.915866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [AA Response Deletion] The function deletes from aa_responses WHERE trigger_unit=? OR response_unit=? - if an archived unit was both an AA trigger and had AA responses, can deleting these records break the AA execution chain for dependent AAs, causing subsequent AA triggers to fail validation because they reference missing response units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_740ba668-7f36-4af4-9696-a68e01d35156",
+    "timestamp": "2025-12-22 21:07:17.256866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [AA State Consistency] When deleting AA responses via trigger_unit or response_unit, is the corresponding AA state variable data (stored in aa_var_values table) also cleaned up, or can orphaned state variables persist, causing memory leaks and eventual database bloat that crashes nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a5f0072-8d49-445e-8478-7ccd9d26b75f",
+    "timestamp": "2025-12-22 21:07:31.639878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Asset Metadata Deletion] The function deletes from asset_metadata WHERE asset=? - if the archived unit is an asset issuance unit and other units still reference this asset in their outputs, can deleting the metadata break balance queries and asset validation for remaining holders?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6de8800d-5e7a-4a69-9715-463e5fa24242",
+    "timestamp": "2025-12-22 21:07:47.109552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Asset Denominations Cleanup] Deleting from asset_denominations for indivisible assets - if outputs with specific denominations from this asset still exist in unarchived units, can the missing denomination definitions cause transfer validation failures, permanently freezing those outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b2c978da-875d-43d6-bb23-6ed551abdb19",
+    "timestamp": "2025-12-22 21:08:04.240372",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Asset Attestors Reference] The DELETE from asset_attestors statement removes attestor requirements - if other nodes haven't synchronized this archiving yet and receive new transfers of this asset, can validation disagreements arise because some nodes enforce attestor requirements while others don't?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_11f22a36-299f-465f-b531-f251e7ea8531",
+    "timestamp": "2025-12-22 21:08:22.450335",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Parenthood Deletion] The DELETE FROM parenthoods WHERE child_unit=? removes parent relationships - if other units still reference the archived unit as a parent (stored in parenthoods.parent_unit), can this create orphaned parent references that break DAG traversal algorithms?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2406c73b-dfd6-48ea-8a25-2b02e21dc7ba",
+    "timestamp": "2025-12-22 21:08:41.340427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Witness List Hashes] Deleting from witness_list_hashes WHERE witness_list_unit=? - if other units reference this witness list through witness_list_unit field, can the missing hash data break witness compatibility validation for new units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d3389c2-fd39-458b-a911-5a96b259b86f",
+    "timestamp": "2025-12-22 21:09:01.693912",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Address Definition Changes] The DELETE FROM address_definition_changes WHERE unit=? removes definition transitions - if an address changed its definition in the archived unit and this was the only record of that change, can the address become stuck in an old definition that doesn't match the actual signing authority, preventing any future spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eff8e66b-9f71-423e-ba03-f7f6b7aeff6b",
+    "timestamp": "2025-12-22 21:09:21.980238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Attestation Data Loss] Deleting from attestations and attested_fields - if these attestations were used by AAs for authentication logic, can removing them break AA formula evaluations that query attestation data, causing unexpected bounce responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6606a45-ea7d-40d7-8f91-e1a775138397",
+    "timestamp": "2025-12-22 21:09:42.556537",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Poll Data Removal] The function deletes poll_choices, polls, and votes - if other units reference this poll or its choices, can the missing data cause vote counting errors or make it impossible to validate vote units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2ee9861-c16a-44e9-b0d5-aacfca334572",
+    "timestamp": "2025-12-22 21:10:05.678321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Spend Proof Deletion] DELETE FROM spend_proofs removes proof data - if light clients cached these proofs for validating spends, can the removal cause light client validation failures even though the unit was legitimately archived?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_470e62c9-5d0d-4308-85ca-7930b74fa1e8",
+    "timestamp": "2025-12-22 21:10:29.248701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Original Addresses Cleanup] The DELETE FROM original_addresses statement - if these addresses are still referenced in payment messages or definition changes, can missing address records break address resolution logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8212af96-6272-41b4-af82-0c84e2d492f4",
+    "timestamp": "2025-12-22 21:10:53.812514",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Sent Mnemonics Privacy] DELETE FROM sent_mnemonics removes mnemonic records - while this is intended cleanup, if these mnemonics were used for account recovery and the user hasn't backed them up elsewhere, can archiving cause permanent loss of wallet access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af1b15f0-48a4-42bb-8e2e-3129cb5901ba",
+    "timestamp": "2025-12-22 21:11:19.129901",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Earned Headers Commission] Deleting from earned_headers_commission_recipients - if commission calculations depend on historical recipient records, can removing this data cause miscalculation of witness rewards in subsequent units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_332daae5-43aa-4922-b4e6-f85fe11093a5",
+    "timestamp": "2025-12-22 21:11:45.689043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Messages Deletion Order] Messages are deleted before the unit itself - if foreign key constraints exist from messages to units with ON DELETE CASCADE, can this cause unintended cascading deletes of related data in other tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac3e58cb-7d29-470e-b2c3-62b843cd7e01",
+    "timestamp": "2025-12-22 21:12:12.476185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Unit Deletion Timing] The unit is deleted from units table near the end - if validation logic checks unit existence before checking messages, can the window between message deletion and unit deletion cause validation to pass for invalid states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fce88c5-94cc-4026-b49f-665c71414e8f",
+    "timestamp": "2025-12-22 21:12:40.952924",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Joint Deletion Final] The DELETE FROM joints is the last operation - if joints table references are used for caching or indexing, can other processes accessing the joint between unit deletion and joint deletion crash or return corrupted data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23db7b24-2733-483e-9d10-2911176b994b",
+    "timestamp": "2025-12-22 21:13:10.312059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Ball Data Preservation] The commented line '// DELETE FROM balls WHERE unit=?' suggests balls should be preserved - but if a unit has a ball (meaning it was stable), can archiving a stable unit break the last_ball chain and cause consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f74fff89-a91a-4869-8fb2-2b67dc314edc",
+    "timestamp": "2025-12-22 21:13:39.961888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Witness Preservation] The function preserves witnesses and author addresses but deletes everything else - can a voided unit still participate in witness level calculations, potentially allowing malicious voided units to affect main chain determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_28900dfc-3ecb-45c0-a047-7caa56846ed5",
+    "timestamp": "2025-12-22 21:14:10.016293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Parent Retention] Unlike removeJoint, voidJoint doesn't delete from parenthoods - can voided units remain in the DAG structure as 'ghost nodes' that break graph traversal algorithms expecting all referenced units to have complete data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9241e75-4b76-47bf-946f-6ad56d65d07d",
+    "timestamp": "2025-12-22 21:14:40.632243",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Definition Chash Nullification Impact] Setting definition_chash=NULL but keeping the author record - if signature validation checks both the author and definition_chash, can this null value cause validation to fail in unexpected ways or bypass security checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23b9c7b1-d5fd-499a-a241-91e5f37ad5cb",
+    "timestamp": "2025-12-22 21:15:10.893955",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Message-less Unit State] After voiding, a unit exists in the units table but has no messages - can queries that JOIN units with messages fail or return incorrect results, breaking balance calculations that expect all units to have at least one message?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2699d664-d4fa-48ba-98d9-356b57e69a15",
+    "timestamp": "2025-12-22 21:15:40.929586",
+    "report_generated": false
   }
 ]
