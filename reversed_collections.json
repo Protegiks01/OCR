@@ -2848,5 +2848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1ecec5a-e77e-4401-b1e6-0e0b59b6d2c2",
     "timestamp": "2025-12-22 22:41:03.417413",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: selectSubobject()] [Search Criteria Injection] At lines 2710-2830, search_param_list allows complex filtering with comparison operators - can an attacker inject malicious comparison expressions that cause the filter function to hang or produce non-deterministic results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16d4ba83-feeb-4fc5-981f-ddabba491856",
+    "timestamp": "2025-12-22 22:42:17.788878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: filter] [Deep Clone Cost] At lines 2276-2278, filtered elements are cloneDeep()-ed - if the array contains very large objects, can repeated cloneDeep() calls exhaust memory before the filter completes, causing OOM crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e0c3da4-bec7-4d87-a529-40b494c1fdca",
+    "timestamp": "2025-12-22 22:42:30.329913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: map] [Return Value Conversion] At line 2266, map result is converted with toJsType() - if the function returns a Decimal, it becomes a JavaScript number - can this precision loss cause the mapped array to contain incorrect values when stored in state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37b75730-4e1d-4759-a3eb-37828205083a",
+    "timestamp": "2025-12-22 22:42:43.171937",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: foreach/map/filter/reduce] [Remote Function DoS] At lines 2252-2260, remote function can be called in loops - if the remote AA's getter has high complexity, and count=1000, can attacker cause the calling AA to execute 1000 expensive remote calls, exceeding gas limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec35fd35-5c2a-42e2-8b7d-23ece0cfbb56",
+    "timestamp": "2025-12-22 22:42:56.565947",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: foreach/map/filter/reduce] [Accumulator Type Change] At lines 2226-2242 (reduce), accumulator starts as initial_value but gets reassigned - if the function returns different types (number, then string, then boolean) across iterations, can this cause type confusion when accumulator is finally returned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59740417-8fcc-4577-8ccd-c5d322272ebf",
+    "timestamp": "2025-12-22 22:43:10.598003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: foreach/map/filter/reduce] [Count Validation Bypass] At lines 2214-2215, count parameter limits iterations - but if attacker provides count=MAX_SAFE_INTEGER and the array has fewer elements, the check 'arrElements.length > count' is false - can they still cause DoS by having a very expensive function called many times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a70ac535-2a60-4d2d-855c-ff06cad47269",
+    "timestamp": "2025-12-22 22:43:25.652642",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: delete] [Array Splice Side Effects] At line 2177, splice() is used to delete array elements - if the array is also referenced by another variable in the same formula, does splice() mutate both references, causing unexpected side effects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82660815-4c8e-49b2-9092-bd96dd146e8a",
+    "timestamp": "2025-12-22 22:43:43.418224",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: freeze] [Shallow Freeze] At line 2138, only the wrappedObject is marked frozen, not its contents - can an attacker access a nested object inside the frozen var and mutate it, bypassing the freeze protection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb3fe240-06b1-4854-877f-cbfcae36c36c",
+    "timestamp": "2025-12-22 22:44:01.139947",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: reverse] [Deep Copy] At line 2123, array is reverse()-ed after cloneDeep() - but if the array contains wrappedObjects with circular references, can cloneDeep() fail to copy properly, causing reverse() to mutate the original array stored elsewhere?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e5d562d-74f0-420d-af14-c210e07b4c52",
+    "timestamp": "2025-12-22 22:44:19.328419",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: keys] [Key Ordering] At line 2118, Object.keys() is sorted - but if keys contain Unicode characters, does sort() produce deterministic ordering across locales, or can different node locale settings cause different key orders, breaking determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_057bbd97-e642-4f14-a693-e7ffab4a9ee9",
+    "timestamp": "2025-12-22 22:44:39.319206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_array vs is_assoc] [Type Confusion] At lines 2088-2091, is_array returns true for arrays, is_assoc for objects - but if attacker creates an object with only numeric keys like {0:'a', 1:'b', 2:'c'}, does Array.isArray() correctly return false, or can this confuse code that expects arrays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4a5914b-37ce-40fe-833b-db7667fbcac1",
+    "timestamp": "2025-12-22 22:44:59.843637",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: dictionary case] [Key Collision] At lines 1101-1113, keys are strings but evaluated values can be Decimals that get converted to numbers - if two keys '1' and '1.0' both exist, do they map to the same field, causing the second assignment to overwrite the first?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60291153-ffc0-4891-82fe-2e93780baaea",
+    "timestamp": "2025-12-22 22:45:19.795888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: array case] [Decimal Conversion] At lines 1080-1082, Decimals in arrays are converted to JavaScript numbers - if the Decimal is a very precise fractional value like 0.1234567890123456789, does toNumber() lose precision, and will this cause state variables to store different values than what the formula computed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83fc43e7-670f-4b0c-bf4c-e61f3da6ac9d",
+    "timestamp": "2025-12-22 22:45:41.631492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: json_stringify] [Empty Object Handling] At line 1820, bAllowEmpty flag depends on MCI - before aa2UpgradeMci, empty objects/arrays might be stringify-ed differently - can this cause AAs to behave differently depending on when they were triggered, breaking determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d314081a-2682-4f1a-a7f0-50b81a8aa353",
+    "timestamp": "2025-12-22 22:46:05.108985",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: json_stringify] [Circular Reference] At line 1821, getJsonSourceString() is called - if the object somehow contains circular references (perhaps through cloneDeep bugs), will this throw an error that's properly caught and bounced, or will it cause a stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96f96257-4134-441c-8033-3eec08da6db0",
+    "timestamp": "2025-12-22 22:46:28.974964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: json_parse] [Number Precision Loss] At lines 1798-1799, parsed numbers are converted to Decimals - but JSON.parse() first parses them as JavaScript numbers, potentially losing precision for large integers - can this cause 123456789012345678 to become 123456789012345680, creating inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_786e0f66-9ea1-4d67-8ae7-af31394683b3",
+    "timestamp": "2025-12-22 22:46:53.459266",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: json_parse] [Prototype Pollution] At line 1790, JSON.parse() is called on user input - if the parsed JSON contains '__proto__' or 'constructor' keys, can this pollute the object prototype and allow attacker to inject properties into all objects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97b4e254-60ef-43c7-acc9-f1922fd75d02",
+    "timestamp": "2025-12-22 22:47:19.127904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: number_from_seed] [Min/Max Validation] At lines 1766-1769, min and max must be integers and max>min - but if min and max are both very large (near Number.MAX_SAFE_INTEGER), does the arithmetic at lines 1770-1771 overflow, causing incorrect random number generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_252f5629-7ec7-4a93-a06e-c21442d211cf",
+    "timestamp": "2025-12-22 22:47:45.949064",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: number_from_seed] [Seed Collision] At lines 1749-1752, seed is hashed with SHA256 and first 16 hex chars are used - can an attacker brute-force seeds to create collisions in the 64-bit space, allowing them to predict random numbers generated by other AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfa4b0a2-1a91-48ad-b516-91afca091aec",
+    "timestamp": "2025-12-22 22:48:13.406307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: chash160] [Object vs String Hash] At lines 1710-1717, objects use objectHash.getChash160() while strings use chash.getChash160() - can an attacker create a string that, when hashed with chash, collides with the chash160 of an object, allowing them to forge object identities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0846873-3d86-4bf3-b957-965418c77efe",
+    "timestamp": "2025-12-22 22:48:42.692840",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: sha256] [Format Confusion] At lines 1691-1701, format parameter can be 'base64', 'hex', or 'base32' - if an attacker requests 'base32' format and then later requests 'hex' format for the same input, can they exploit the different encoding lengths to cause collision attacks or length extension attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c1a7e55-3160-4993-9fb0-6855e944c3ae",
+    "timestamp": "2025-12-22 22:49:12.665770",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: sha256] [Object Serialization Non-Determinism] At lines 1679-1683, wrappedObjects are serialized with getJsonSourceString() before hashing - if the object contains Decimals or special values, does serialization produce identical strings across all nodes, or can JavaScript implementation differences cause different sha256 hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c61bc44-bdb5-4f54-beea-aa967d020939",
+    "timestamp": "2025-12-22 22:49:42.931854",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_valid_merkle_proof] [Proof Deserialization] At lines 1662-1664, if proof is a string, it's deserialized with merkle.deserializeMerkleProof() - can an attacker provide a maliciously crafted proof string that causes deserialization to produce a valid-looking but incorrect proof object that verifyMerkleProof() accepts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1327cfa2-daa7-4ea2-b55a-03a5652fa0eb",
+    "timestamp": "2025-12-22 22:50:13.851978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: vrf_verify] [Algorithm Restriction] At line 1634, vrf_verify only accepts RSA keys - but VRF (Verifiable Random Function) typically uses elliptic curve crypto, not RSA - is this implementation using a non-standard VRF algorithm that might have weaker security properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_121f7540-1caf-453c-accf-a50b0be44358",
+    "timestamp": "2025-12-22 22:50:41.138113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: is_valid_sig] [PEM Key Validation] At lines 1602-1605, PEM key is validated with signature.validateAndFormatPemPubKey() - if this function has a parser vulnerability that accepts malformed keys, can attacker inject a key that causes verifyMessageWithPemPubKey() to crash or hang?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af30cf08-e179-499a-b532-eb1ca2c5c3fd",
+    "timestamp": "2025-12-22 22:51:08.204952",
+    "report_generated": false
   }
 ]
