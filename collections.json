@@ -748,5 +748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_062a64f9-5c77-4ccb-8098-72b0f643d5f5",
     "timestamp": "2025-12-22 19:36:18.122975",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleAATriggers()] [Mutex Scope] In handleAATriggers() at lines 54-84, the 'aa_triggers' mutex is held for the entire batch of triggers (line 57) - if processing arrResponses takes a long time due to many secondary triggers, can this mutex block new trigger inserts, causing transaction timeouts or deadlock?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a083ba35-ba85-499f-b494-2a5d45a5b1f9",
+    "timestamp": "2025-12-22 19:37:29.679714",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleAATriggers()] [Response Ordering] At lines 64-80, triggers are processed with ORDER BY mci, level, unit, address - if two triggers have the same mci and level but are processed in different orders on different nodes due to unit/address comparison differences, can this cause non-deterministic execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27e4fe2f-f7c0-46a2-8d70-bee0b0c8e157",
+    "timestamp": "2025-12-22 19:37:42.151043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleAATriggers()] [Count Update Race] At lines 98-104, count_aa_responses is updated and cached - if multiple handleAATriggers() calls execute concurrently (shouldn't happen due to mutex, but if mutex fails), can count_aa_responses be incorrect, bypassing MAX_RESPONSES_PER_PRIMARY_TRIGGER check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf812330-8b23-48c6-b15e-c4aa60f4d97d",
+    "timestamp": "2025-12-22 19:37:55.689239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleAATriggers()] [Cache Corruption] At line 101, the code throws if unit not found in storage.assocStableUnits cache - can a cache eviction or corruption cause this throw, halting all AA trigger processing and freezing the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_511c1bd7-c630-45cb-a69d-78bca6fd052e",
+    "timestamp": "2025-12-22 19:38:09.977173",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handlePrimaryAATrigger()] [Response Merging] At lines 112-127, if arrResponses.length > 1, updatedStateVars are copied and balances merged - if the same AA is called multiple times with different state updates, can the merging logic lose updates or apply them in wrong order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c50446f-f087-4ce0-8742-fe94b39b6234",
+    "timestamp": "2025-12-22 19:38:24.061181",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handlePrimaryAATrigger()] [Balance Overwrite] At line 120, assocBalances[aa_address] is overwritten with the latest response's balances - if earlier responses in the chain had different balance states due to intermediate transfers, can this overwrite lose critical balance information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9832c887-e8a5-4ec6-bd86-bc456585a91f",
+    "timestamp": "2025-12-22 19:38:39.152093",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: getTrigger()] [Multi-Data Message] At line 345, getTrigger() uses the first data message and ignores subsequent ones - can an attacker include multiple data messages with conflicting data to cause confusion in AA logic or exploit validation bypasses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2e282bf-5af4-46e0-87bc-a2e5c46d884c",
+    "timestamp": "2025-12-22 19:38:55.650244",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: getTrigger()] [Output Aggregation] At lines 351-356, outputs to the same address are aggregated - if an attacker sends multiple small outputs to avoid dust threshold but they aggregate above it, can this bypass intended economic dos protections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b27b1d5c-0989-4fd2-b163-507e944a98e2",
+    "timestamp": "2025-12-22 19:39:13.273106",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: getTrigger()] [Zero Output Check] At line 359, the function throws if no outputs to receiving_address - but can an attacker trigger AA with outputs to other addresses only, causing execution to fail after state changes have begun?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78060310-24f4-4eed-b35f-d419500e2ffc",
+    "timestamp": "2025-12-22 19:39:31.738969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Max Responses Check] At lines 1674-1677, the code checks MAX_RESPONSES_PER_PRIMARY_TRIGGER after updating balances - can an attacker trigger cascading secondary triggers that bypass this limit by having each secondary create more secondaries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a9edccc-d53e-4c4e-a02f-b1fc626a5898",
+    "timestamp": "2025-12-22 19:39:51.551632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Max AA Responses] At lines 1676-1677, if trigger.max_aa_responses is set, execution bounces when exceeded - can an attacker set max_aa_responses to 0 or 1 to deliberately cause legitimate multi-step AA operations to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_007abc23-55b6-4fd9-8bff-68386b368685",
+    "timestamp": "2025-12-22 19:40:12.239407",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Bounce Fee Check Timing] At lines 1680-1687, bounce fees are checked after balance updates - if the balance update itself fails (due to race condition), can the bounce fee check pass incorrectly, allowing bounces without adequate fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea5bbb87-9cc6-4c92-956d-a5bd9a8bffa6",
+    "timestamp": "2025-12-22 19:40:33.280764",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Secondary Trigger Skip] At lines 1679-1688, bounce fee checks are skipped for secondary triggers - can an attacker deliberately trigger secondary AAs with insufficient fees, knowing they won't actually bounce but might cause unexpected state changes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9549dbdf-dae0-4191-9bc7-f86e2b60f161",
+    "timestamp": "2025-12-22 19:40:56.208558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [AA Definition Caching] At lines 1539-1546, secondary triggers query aa_addresses for definition - if an AA definition was just updated (via definition_chg), can stale cached definitions cause secondary triggers to execute with old logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_478c30f4-57c4-4cb9-b49c-01b6f564836e",
+    "timestamp": "2025-12-22 19:41:18.888344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [Testnet Upgrade Bug] At lines 1540-1546, on testnet before testnetAAsDefinedByAAsAreActiveImmediatelyUpgradeMci, secondary triggers to AAs defined by AAs are skipped - can an attacker exploit the MCI boundary to cause divergence between testnet and mainnet behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c25bdfc-df9b-499f-992a-d173675e45e3",
+    "timestamp": "2025-12-22 19:41:43.521397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [Initial Address Propagation] At lines 1558-1559, child_trigger.initial_address and initial_unit are set from parent trigger - if the parent trigger itself is a secondary trigger with modified initial_address, can this cause confusion about the true originator?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e62e1bee-3f6d-4588-af02-8211ff440063",
+    "timestamp": "2025-12-22 19:42:08.434720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [Bouncing Error Propagation] At lines 1569-1580, if a secondary AA bounces, the error propagates up - but at line 1580, primary bounces are converted to revert() calls - can this asymmetry cause different final states between primary and secondary bounces?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8b7b1d5-223a-4a27-ba1f-446b55297e28",
+    "timestamp": "2025-12-22 19:42:34.689017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [Order Dependency] At lines 1539-1587, secondary triggers are processed via async.eachSeries with ORDER BY address - if the order of AAs in arrOutputAddresses doesn't match database query order, can execution order differ between nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c668162-d549-42a8-abef-71dc3e041963",
+    "timestamp": "2025-12-22 19:43:01.746170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleSecondaryTriggers()] [State Inheritance] At line 1562, child_trigger_opts copies trigger_opts via Object.assign({}, trigger_opts) - does this create a shallow copy? Can secondary triggers unintentionally modify shared state like stateVars or assocBalances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_effb3cfc-ae05-4a1e-a11a-198b097377cf",
+    "timestamp": "2025-12-22 19:43:30.154369",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Parameterized AA Recursion] At lines 398-409, if template.base_aa exists, the function recursively calls handleTrigger() with base AA's definition - can an attacker create a circular chain of parameterized AAs (A -> B -> A) to cause infinite recursion and stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08f1f1e1-01db-4727-8535-7fc82a6e1db6",
+    "timestamp": "2025-12-22 19:43:59.193083",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Params Validation] At line 399, the code throws if params is non-empty for parameterized AA - but can an attacker pass params in the initial call that bypasses this check and affects base AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a215197d-018d-4cb5-b3dd-68a3778a26f5",
+    "timestamp": "2025-12-22 19:44:29.046489",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Bounce Fees Default] At lines 411-413, bounce_fees defaults to {base: constants.MIN_BYTES_BOUNCE_FEE} - can an attacker define an AA with bounce_fees.base = 0 to avoid paying bounce fees, then intentionally cause bounces to DOS the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e034e85c-45ed-463d-952e-1984756b53e9",
+    "timestamp": "2025-12-22 19:44:59.148995",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Validation State Initialization] At lines 415-427, objValidationState is initialized with arrPreviousAAResponses - if arrResponses is modified during execution, can objValidationState become stale, causing formula evaluation to see incorrect prior responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89f43425-6fd8-409f-a6e3-b28ebf9d16c8",
+    "timestamp": "2025-12-22 19:45:28.851378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [bAir vs assocBalances] At lines 384-385, the code throws if bAir and assocBalances don't match - but can an attacker call estimatePrimaryAATrigger() with mismatched flags to bypass validation checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_891e1c0c-a2f5-4332-ad17-084d3bd0cdcd",
+    "timestamp": "2025-12-22 19:45:59.499992",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: finish()] [Secondary Bounce State] At lines 1519-1524, if bBouncing && bSecondary, logs are added to arrResponses but no response is actually created - can this cause the parent trigger to think the secondary succeeded when it actually bounced, leading to incorrect final state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_649b27af-a215-470b-b148-adc7fcfb4f8e",
+    "timestamp": "2025-12-22 19:46:31.039430",
+    "report_generated": false
   }
 ]
