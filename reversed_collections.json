@@ -1,1 +1,152 @@
-[]
+[
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 11: console.log] [Information Disclosure] The script logs the earlier_unit and arrLaterUnits to console - if logs are accessible to untrusted parties, does this reveal information about which units are being manually stabilized, potentially indicating database corruption or other issues that could be exploited?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_efebb662-e08b-4bd1-8a86-bb556dca0ec0",
+    "timestamp": "2025-12-22 18:46:26.475149",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Availability] [Attack Surface] Should this script be removed or restricted in production deployments to prevent accidental or malicious misuse, or is it a necessary administrative tool that must remain available despite the risk of consensus manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e01a322a-6385-4cc4-b5e2-04e302f3e17f",
+    "timestamp": "2025-12-22 18:46:39.081630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Documentation] [Misuse Risk] Is there documentation clearly stating when and why this script should be used (e.g., only for recovering from database corruption or for testing), or can administrators misuse it during normal operation causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21064c45-7917-4ac6-959d-51884a248aa7",
+    "timestamp": "2025-12-22 18:46:51.752631",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: stability advancement] [MinRetrievableMci Update] After advancing stability, the system should update min_retrievable_mci to allow archiving of old units - does this script trigger updateMinRetrievableMciAfterStabilizingMci, or can repeated manual stability updates cause min_retrievable_mci to lag behind causing unbounded database growth?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82b5ad26-7ad1-4184-8c1c-667e806c06f8",
+    "timestamp": "2025-12-22 18:47:04.975411",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: markMcIndexStable] [Content Hash Setting] For final-bad units, markMcIndexStable calls setContentHash (line 1286-1299 of main_chain.js) - if this fails due to unit not found or hash collision, does the entire stability update rollback, or can it proceed leaving some final-bad units without content_hash causing validation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3950bab3-603c-4515-b352-b2bb48626f26",
+    "timestamp": "2025-12-22 18:47:18.875729",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Final-Bad Propagation] The stability update process checks for temp-bad units and converts them to final-bad or good - if the script is interrupted during propagateFinalBad (line 1279-1333 of main_chain.js), can some spending units remain marked as temp-bad when they should be final-bad, allowing future double-spends to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d70901b8-d5d1-4b12-8101-a3ad629ac1c8",
+    "timestamp": "2025-12-22 18:47:33.773055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: stability update] [Ball Chain Consistency] After marking multiple MCIs as stable, does the function ensure that the ball chain (last_ball references) is properly constructed for all newly stabilized units, or can interruption during the batch write cause some units to be marked stable without balls leading to broken last_ball chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfb933a4-5574-4077-87ac-0794769379c6",
+    "timestamp": "2025-12-22 18:47:50.054798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: MCI Advancement] [Gap Creation] If the provided earlier_unit has an MCI that is significantly higher than the current last_stable_mci (e.g., jumped ahead by 1000 MCIs), will determineIfStableInLaterUnitsAndUpdateStableMcFlag attempt to mark ALL intermediate MCIs as stable in sequence, and if any of those MCIs have no units, can this cause errors or incomplete stability advancement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ceb45392-7d83-4c79-b257-2719720a85e4",
+    "timestamp": "2025-12-22 18:48:07.180368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Write Lock Duration] The function holds a write lock from line 1163 to line 1189 of main_chain.js while performing multiple database queries and batch writes - during this time, can the main network process be blocked from creating new units or processing incoming units causing temporary network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71378311-71bb-4226-90d0-9d200167fe99",
+    "timestamp": "2025-12-22 18:48:25.808584",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [v4 Upgrade Check] The function throws 'not stable in db but stable in later units in v4' error if last_stable_mci >= constants.v4UpgradeMci (line 1169-1170 of main_chain.js) - is this script intended for use ONLY pre-v4, and if so, does using it post-v4 cause protocol violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afc20271-a807-42d3-b21e-d5225839c18d",
+    "timestamp": "2025-12-22 18:48:46.304785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Free Unit Check] If earlier_unit is a free unit (is_free=1), determineIfStableInLaterUnits returns false (line 774-775 of main_chain.js) - but does the script provide any indication of WHY stability failed, or does it silently report 'stable? false' without explaining that free units cannot be stabilized?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e21e6f21-5c77-4325-961f-99c49b6555ab",
+    "timestamp": "2025-12-22 18:49:06.909066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Genesis Unit Handling] If earlier_unit is the genesis unit, determineIfStableInLaterUnits immediately returns true (line 760 of main_chain.js) - can this cause the script to attempt re-stabilizing the genesis unit causing unnecessary database writes or errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eeeec0a8-c556-4ee7-ba3a-b6c115190e27",
+    "timestamp": "2025-12-22 18:49:28.228903",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Hardcoded Exceptions] The determineIfStableInLaterUnits function in main_chain.js has hardcoded exceptions for specific unit hashes (lines 762-768) - if an administrator unknowingly provides one of these as earlier_unit, will the script always return true regardless of actual stability, potentially marking non-stable units as stable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_399595ca-4ba9-4b8b-b1e4-b07919b2b61d",
+    "timestamp": "2025-12-22 18:49:50.208175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 7-9: args parsing] [Missing Arguments] If the script is run with no arguments (process.argv.length < 4), accessing args[0] and args[1] will return undefined - does this cause a crash with clear error message, or does it pass undefined values to determineIfStableInLaterUnitsAndUpdateStableMcFlag causing obscure database errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed557272-48a0-42a4-a147-17ab6a27cfd9",
+    "timestamp": "2025-12-22 18:50:13.324794",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 13: storage.initCaches()] [Initialization Failure] If initCaches() fails (e.g., database connection error, corrupt data), does it throw an error that prevents the script from continuing to stability updates, or can it silently fail with partial cache initialization causing incorrect stability determination?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a1e80f7-745b-4359-a9a2-cb04d697abb8",
+    "timestamp": "2025-12-22 18:50:38.421186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Exit] [Graceful Shutdown] After the callback at line 18 executes and logs the result, does the script properly wait for the database transaction to commit and all async operations to complete before exiting, or can it terminate prematurely leaving uncommitted changes or orphaned connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9abcf91c-e4d1-428c-b3f7-c7988f290f59",
+    "timestamp": "2025-12-22 18:51:04.236675",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 18: callback] [Incomplete Logging] The callback only logs 'stable? bStable' without indicating whether database updates were actually performed - if an administrator relies on this output to verify success, can silent failures (e.g., thrown errors after callback returns) go undetected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_019abc2c-7e90-4cb9-9b8f-aeef5b5bf56a",
+    "timestamp": "2025-12-22 18:51:30.746209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 15-19: Transaction callback] [Error Propagation] If determineIfStableInLaterUnitsAndUpdateStableMcFlag throws an error (e.g., 'new last stable mci expected to be higher than existing' at main_chain.js line 1174), does db.executeInTransaction catch and rollback properly, or can the error crash the script leaving the database connection open and locked?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_28b78826-5ec3-4767-97e3-7c4d88491c89",
+    "timestamp": "2025-12-22 18:51:57.865645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: bStableInDb=false] [Re-execution Safety] If this script is run multiple times with the same earlier_unit (e.g., administrator retries after error), will subsequent runs correctly detect that earlier_unit is already stable and skip updates, or can repeated execution cause corruption of balls, last_stable_mci, or content hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c32ec4be-7ce4-4d81-8323-0e732731a0fc",
+    "timestamp": "2025-12-22 18:52:25.337483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: determineIfStableInLaterUnitsAndUpdateStableMcFlag] [Witness Counting] The stability determination relies on collecting MAJORITY_OF_WITNESSES (7 of 12) witness signatures - if the provided arrLaterUnits contains units with incompatible witness lists, can the function incorrectly count witnesses across incompatible sets causing false positive stability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13c5f8e0-4c60-4527-942d-c4bddd80a600",
+    "timestamp": "2025-12-22 18:52:54.414657",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Script Purpose] [Consensus Override] Since this tool allows manual stability advancement bypassing the normal updateStableMcFlag automatic process, can a malicious operator use it to 'fast-forward' stability past units that should have been marked as final-bad due to double-spends, allowing invalid transactions to become immutable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d1b66ad-38fb-45cd-b6c3-19f8268edfa7",
+    "timestamp": "2025-12-22 18:53:23.472568",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: stability advancement] [Chain Split] If this script marks earlier_unit and all preceding MCIs as stable, but other nodes in the network have not yet reached consensus on this stability point, will subsequent units from this node reference a last_ball that other nodes consider invalid, causing permanent rejection and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a87f5de-ddf6-42b3-9e0d-b4cf4c804ac3",
+    "timestamp": "2025-12-22 18:53:51.069904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 16: earlier_unit stability] [Premature Stabilization] If an administrator runs this script with an earlier_unit that is NOT yet stable according to normal network consensus rules (min_mc_wl < first_unstable_mc_level), but provides carefully chosen arrLaterUnits that artificially satisfy the stability check, can this cause the node to diverge from the network by prematurely advancing its stability point?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ea83a4e-5b3c-46a6-9d6d-9a8187dd633e",
+    "timestamp": "2025-12-22 18:54:18.846827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Lines 13-16: Cache Usage] [Write-Through Consistency] After determineIfStableInLaterUnitsAndUpdateStableMcFlag updates the database to mark units as stable, does it also update the in-memory caches (assocUnstableUnits → assocStableUnits), or can the caches become inconsistent with the database causing subsequent validations to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d34513d3-ef33-48b3-8a34-fcea16530d8e",
+    "timestamp": "2025-12-22 18:54:46.372663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/update_stability.js] [Line 13: storage.initCaches()] [Memory Exhaustion] If the database contains a very large number of unstable units (e.g., during a spam attack or network partition), will initCaches() attempt to load all of them into memory causing OOM and crashing the script before stability updates can complete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ccec473-5835-4c60-9e61-a6c4fc593952",
+    "timestamp": "2025-12-22 18:55:14.006294",
+    "report_generated": false
+  }
+]
