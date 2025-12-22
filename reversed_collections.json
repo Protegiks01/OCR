@@ -1498,5 +1498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2374ca7c-b468-4f07-ab67-bf4d4ad711f1",
     "timestamp": "2025-12-22 20:51:09.689288",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Parser state accumulation] At line 46, nearleyParser.feed(text) is called. If the parser maintains internal state that grows with input size, and garbage collection doesn't reclaim it, can repeatedly parsing large OJSON strings accumulate memory until nodes crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09b09e38-4365-4f3f-9f08-c18899ad0413",
+    "timestamp": "2025-12-22 20:52:22.653808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: searchNewlineRecursive()] [Memory leak via closures] If searchNewlineRecursive() at line 20 creates closures that capture large objects, and these closures are not garbage collected (due to exception handling at line 31), can repeated AA parsing leak memory, eventually crashing nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a759438c-6f11-4df0-8f93-fb151dc1841e",
+    "timestamp": "2025-12-22 20:52:35.468086",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Quadratic object building] At line 131, assignField() is called for each key. If the object has 100,000 keys, and assignField() uses Object.defineProperty() without optimization, can the cumulative cost cause O(n²) performance, delaying AA deployment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12a243dd-f2ba-4915-bb85-465855950d67",
+    "timestamp": "2025-12-22 20:52:48.374437",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Quadratic array concatenation] At line 140, arr.push() is used. If tree.value has 1,000,000 elements, is the array allocation efficient, or does it cause repeated reallocations with quadratic time complexity, delaying AA validation for ≥1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6688fe3d-3978-4b89-af93-decd98a835dc",
+    "timestamp": "2025-12-22 20:53:02.071258",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Memory exhaustion via large OJSON] If an attacker submits a 100MB OJSON string with deeply nested structures, does the Nearley parser at line 46 consume unbounded memory to build the parse tree? Can this cause validator nodes to run out of memory during AA deployment, crashing them (network delay ≥1 day)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c0b4abb-ba57-446a-a628-69a2a8ac38d6",
+    "timestamp": "2025-12-22 20:53:16.203735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Non-enumerable properties] If tree.value contains objects with non-enumerable properties, Object.keys() at line 126 won't see them. Can an attacker exploit this to hide malicious properties in AA definitions that are later accessed via Object.getOwnPropertyNames() or Reflect?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39f8c589-ef98-4f21-b0e7-0f44edc43146",
+    "timestamp": "2025-12-22 20:53:31.441273",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Symbol keys ignored] At line 126, Object.keys() doesn't return Symbol keys. If the parser somehow produces objects with Symbol keys, are they silently ignored, causing incomplete AA definitions that fail during evaluation with confusing errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83145479-5ca7-4b52-8047-90e4bd72bf84",
+    "timestamp": "2025-12-22 20:53:48.151522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Object with numeric keys] At line 126, Object.keys(res)[0] gets the key. If the key is numeric (e.g., 123), Object.keys() returns it as a string ('123'). If downstream code expects numeric keys, can this type mismatch cause AA execution errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5837918-3587-4ffc-bf2b-b778c2350726",
+    "timestamp": "2025-12-22 20:54:06.776990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Getter/setter in object] At line 127, _.values(res)[0] extracts the value. If res is an object with a getter that executes code, can this trigger arbitrary code execution during AA parsing? Though unlikely from Nearley output, can grammar exploits create such objects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59764281-7048-4c53-8bc9-652d4c023130",
+    "timestamp": "2025-12-22 20:54:25.081998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Object key ordering non-determinism] At line 123-132, object keys are processed in iteration order. If JavaScript engines iterate Object.keys() in different orders for the same object on different nodes (e.g., due to JIT optimization differences), can the final AA definition have different key ordering, causing different object hashes and consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39f74ef9-cce0-4c90-b03a-a99e5b85ff1a",
+    "timestamp": "2025-12-22 20:54:46.106367",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Array vs tuple semantics] If the AA definition expects fixed-length tuples but processAsArray() allows arbitrary-length arrays, can an attacker submit arrays with too many or too few elements, causing downstream validation to fail only after the expensive parsing step (DoS via computational waste)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fbc0a60-4c09-4f66-99c5-eb1aace5e54b",
+    "timestamp": "2025-12-22 20:55:07.721372",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Array mutation during iteration] If processTree() at line 139 somehow mutates tree.value (e.g., via shared references), can the iteration see inconsistent array state, causing elements to be skipped or processed twice, leading to non-deterministic AA definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c234e0ec-5ee6-4bbb-9f1a-c69576fba54b",
+    "timestamp": "2025-12-22 20:55:29.353420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Array prototype pollution] If tree.value has polluted Array.prototype (e.g., Array.prototype[0] = 'malicious'), does the iteration at line 137-141 iterate over prototype properties? Can this inject attacker-controlled values into the AA definition array?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a36c615-52f5-4928-8acb-abbc4e4dfcb3",
+    "timestamp": "2025-12-22 20:55:52.581579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Array hole handling] At line 139, arr.push(res) adds elements sequentially. If tree.value has sparse array holes (e.g., [1, , , 4]), does processTree() handle undefined elements correctly? Can attackers exploit holes to create AA definitions with unexpected undefined values that crash during evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c99020b-dbfb-438c-a98d-f4c45bdae62b",
+    "timestamp": "2025-12-22 20:56:16.179486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Array length manipulation] At line 136-142, the function iterates using tree.value.length. If tree.value is an array-like object with a manipulated length property (e.g., length: 1000000 but only 2 actual elements), can the iteration access undefined elements, causing errors or non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1eda8ab-fb3c-40d2-a7a8-211e4714e03b",
+    "timestamp": "2025-12-22 20:56:41.379597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOscriptGrammar()] [Formula grammar injection via Unicode] If oscriptGrammar doesn't properly handle Unicode categories (e.g., treating Unicode whitespace as syntax), can an attacker inject Unicode characters that are parsed as operators or keywords, bypassing formula validation and injecting malicious logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1ceec1b-030f-441f-9a98-6bfb66fbbab3",
+    "timestamp": "2025-12-22 20:57:07.984401",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [Grammar ambiguity from whitespace] If ojsonGrammar has ambiguous whitespace handling rules (e.g., treating tabs vs spaces differently), can an attacker craft OJSON that parses differently based on whitespace normalization, causing nodes with different whitespace handling to diverge in their AA definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92f379dc-1ea0-473b-b143-c30e99405291",
+    "timestamp": "2025-12-22 20:57:34.404215",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [Nearley parser version incompatibility] At line 45-46, if different nodes run different versions of the Nearley library with incompatible grammar behavior, can the same OJSON input parse differently on different nodes, causing them to compute different AA definition hashes and reject each other's units (permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44b97a2a-a572-49e1-b8b6-77fec925a205",
+    "timestamp": "2025-12-22 20:58:02.207042",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOscriptGrammar()] [Oscript grammar vs validation mismatch] At line 51, oscriptGrammar is used for formula validation. If there's a mismatch between how oscriptGrammar parses formulas and how formula/evaluation.js evaluates them, can an attacker create formulas that pass validation but execute malicious logic during evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_beb48ef9-3b0a-4b2d-bec7-6e2103e7b869",
+    "timestamp": "2025-12-22 20:58:27.204765",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [Grammar definition tampering] At line 45, ojsonGrammar is imported from './grammars/ojson.js'. If an attacker gains write access to the grammar file (e.g., via dependency confusion or supply chain attack), can they inject grammar rules that accept malicious OJSON, causing all nodes to accept backdoored AA definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3f23c90-3076-4e9d-adbb-56545bceabc7",
+    "timestamp": "2025-12-22 20:58:53.128700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Multi-line formula context] At lines 101-104, if line === 0, col is adjusted; otherwise line is adjusted. If a formula spans multiple lines (which should be caught by newline validation), but newline validation is bypassed, can the context adjustment logic produce nonsensical line/col values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_443cd99a-fd78-4945-9da2-508339bed2e2",
+    "timestamp": "2025-12-22 20:59:15.811166",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Context in nested structures] At line 31, context.line and context.col are used in error messages. If the OJSON contains formulas nested within deeply nested objects/arrays, does the context accurately reflect the nesting depth, or can it overflow/wraparound for very deep structures, making errors untraceable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3cf0abc-627b-43c1-a3cc-06505b6330db",
+    "timestamp": "2025-12-22 20:59:41.773297",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Context offset miscalculation] At lines 99-104, context.line and context.col are adjusted based on error line numbers. If the formula contains multi-byte UTF-8 characters, can the column calculation be off (counting bytes vs characters), causing error messages to point to incorrect positions and hindering security analysis?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_28ecfbd8-7089-4141-8699-0fd668311d00",
+    "timestamp": "2025-12-22 21:00:06.746454",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Context tracking error] At line 129, the error message uses st.context.line and st.context.col. If the Nearley parser produces incorrect context information (e.g., all nodes have context.line = 1), can error messages point to the wrong source location, preventing auditors from identifying malicious AA code and allowing attackers to hide backdoors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4f8984e-1d1d-4563-93e0-6f5eeeabf4b9",
+    "timestamp": "2025-12-22 21:00:32.359400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Formula parser vs OJSON parser inconsistency] At line 93, validateFormula() is called with parser.results from parseOscriptGrammar(). If the oscript grammar and ojson grammar have inconsistent rules for formula parsing (e.g., different whitespace handling), can an attacker create formulas that validate successfully but parse differently during evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd725405-0ced-4594-af52-c1c636a11715",
+    "timestamp": "2025-12-22 21:00:54.665802",
+    "report_generated": false
   }
 ]
