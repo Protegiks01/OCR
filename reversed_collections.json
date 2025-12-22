@@ -448,5 +448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1b42bd2-9220-4dfa-9351-d3b8618aa372",
     "timestamp": "2025-12-22 19:15:27.801239",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [MCI consistency check] The script reads both last_mci and last_stable_mci but doesn't validate that last_stable_mci ≤ last_mci - if database corruption or a bug in main chain advancement causes last_stable_mci > last_mci (impossible state), will the script detect this invariant violation or silently report invalid supply data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df9347c2-e4cb-4a20-8d26-5cff347c178f",
+    "timestamp": "2025-12-22 19:16:38.611272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database transaction visibility] Since the script doesn't explicitly start a transaction, it relies on the database's default isolation level - if this is READ COMMITTED rather than REPEATABLE READ, could concurrent transactions cause the three queries to see different committed states, producing inconsistent supply snapshots?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8fafdaa-1d4d-4225-8021-9032a1486a29",
+    "timestamp": "2025-12-22 19:16:51.010782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Index utilization] Does the database query in readAllUnspentOutputs properly utilize indexes on (is_spent, address, asset) columns, or could missing indexes cause full table scans that exponentially slow down as the DAG grows, eventually making supply calculations take hours instead of milliseconds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22d37752-629f-44ce-8d8f-e3667346e66f",
+    "timestamp": "2025-12-22 19:17:03.775973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Query performance under load] If the unspent outputs table contains millions of rows, could the balances.readAllUnspentOutputs query (which groups by address and sums amounts) cause excessive memory usage or CPU load that delays or crashes the script, effectively creating a DoS vector for supply monitoring?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04a93fc3-d080-463c-862d-636e744e6de0",
+    "timestamp": "2025-12-22 19:17:18.352990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database connection state] Does storage.readLastMainChainIndex establish a fresh database connection or reuse an existing one, and if the connection is in a failed state from a previous operation, will the script detect this and fail gracefully rather than returning stale cached data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66f522ad-2f43-4115-935c-9d430f3902d8",
+    "timestamp": "2025-12-22 19:17:32.408578",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [SQL injection via address list] If the not_circulating address array were somehow modified (e.g., via environment variable injection in testnet mode), could malformed addresses cause SQL injection in balances.readAllUnspentOutputs when constructing the WHERE address IN(...) clause?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_795ca0be-8eb3-47c1-ad3f-3bcd4be386ee",
+    "timestamp": "2025-12-22 19:17:47.690036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Double-counting prevention] If the same output appears in multiple categories within balances.readAllUnspentOutputs (e.g., both in regular outputs and commission outputs due to database inconsistency), could it be counted twice in total_amount, artificially inflating the reported supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b5966d9-a1ed-4cde-b7ed-9ea45ee1bae5",
+    "timestamp": "2025-12-22 19:18:04.021214",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Witness and commission outputs] Does balances.readAllUnspentOutputs include witnessing_outputs and headers_commission_outputs in the total supply calculation, and if so, are these outputs correctly attributed to circulating vs non-circulating supply based on who controls the witness addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e62888c7-4022-4a34-8bb0-e055951f17fc",
+    "timestamp": "2025-12-22 19:18:21.929784",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Asset filtering] The script passes not_circulating addresses to readAllUnspentOutputs but doesn't specify asset filtering - does this correctly calculate supply for the base asset (bytes) only, or could it incorrectly include custom assets held by those addresses, inflating the reported supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_07cbb679-c9c3-46fa-9ff9-3e18ce592f5e",
+    "timestamp": "2025-12-22 19:18:40.425816",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Spent output detection] Does balances.readAllUnspentOutputs correctly filter for is_spent=0 in its database query, or could a race condition between marking outputs as spent and reading them cause spent outputs to be incorrectly counted in circulating supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ed5442e-0482-48e8-8af4-d827bf07aa02",
+    "timestamp": "2025-12-22 19:18:59.744193",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Integer overflow in supply calculation] Within balances.readAllUnspentOutputs, when summing amounts across all unspent outputs (total_amount, circulating_amount), could integer overflow occur if total supply exceeds JavaScript's MAX_SAFE_INTEGER (2^53-1), causing reported supply to wrap around and show impossibly low values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fdfc304a-b4f3-4689-9362-aa14c8e74666",
+    "timestamp": "2025-12-22 19:19:20.396592",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Exit code handling] The script always calls process.exit() without specifying an exit code - in case of errors or invalid supply calculations, should it exit with non-zero status to signal failure to orchestration systems, or does silent success with incorrect data pose operational risks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bab0c42b-9cc1-415c-9891-39023bd8adcb",
+    "timestamp": "2025-12-22 19:19:41.877523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database connection cleanup] Before calling process.exit(), does the script properly close database connections and release any held resources (locks, cursors, connection pool entries), or could abrupt termination leave zombie connections that eventually exhaust the connection pool and cause database deadlocks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f83aba7f-af7a-4369-8a45-91ef5219420b",
+    "timestamp": "2025-12-22 19:20:04.387264",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Process exit timing] The script calls process.exit() immediately after logging results (line 22) - does this allow sufficient time for console.error output to be flushed to stderr, or could the process terminate before error messages are fully written, causing monitoring systems to miss critical supply calculation data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5220c8c5-e986-4777-afb1-8853cd92b549",
+    "timestamp": "2025-12-22 19:20:27.371507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Uncaught exceptions] If balances.readAllUnspentOutputs throws an exception (e.g., database query error, memory exhaustion from large result sets), is the exception caught and handled, or will the process crash without cleanup, potentially leaving database connections open or locks held?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffb08c38-019a-4735-bed4-f4458d749c8a",
+    "timestamp": "2025-12-22 19:20:51.844984",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Missing error handling] The script has no error handling for any of the three async operations (storage.readLastMainChainIndex, storage.readLastStableMcIndex, balances.readAllUnspentOutputs) - if any of these operations fail (database unavailable, corrupted data, network timeout), will the script hang indefinitely without reporting the error, potentially causing monitoring systems to miss supply calculation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8974de5-6d49-4534-851b-1a07016e9e2f",
+    "timestamp": "2025-12-22 19:21:15.984678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Callback execution order] Is there any guarantee that the nested callbacks execute in the expected order without interleaving, or could event loop scheduling cause unexpected execution sequences that produce incorrect supply calculations under high load?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af08b49d-62f9-409b-ac8b-d2e7f8e40c2c",
+    "timestamp": "2025-12-22 19:21:40.809586",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Concurrent execution] If multiple instances of this script are run simultaneously on the same database, could they interfere with each other's reads or cause database lock contention that delays or corrupts the supply calculation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d1eaf45-e38f-4f10-9a00-37563ae5ab6f",
+    "timestamp": "2025-12-22 19:22:04.993641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Main chain advancement race] If the main chain advances (new units become stable) between reading last_stable_mci and reading unspent outputs, could this cause the script to include outputs from units that haven't reached stability yet, violating the invariant that circulating supply should only count stable confirmed funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_558f5b35-b625-4ab3-b881-dda4448cee9c",
+    "timestamp": "2025-12-22 19:22:30.696475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Database transaction isolation] Since the script doesn't use database transactions to atomically read last_mci, last_stable_mci, and unspent outputs, can concurrent unit additions during the three separate queries cause the script to report supply values from different database snapshots, leading to inconsistent or impossible supply states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7629945d-ccca-48ff-aec1-7dc7d24d93e7",
+    "timestamp": "2025-12-22 19:22:54.986024",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Race condition - nested callbacks] Between the three nested async callbacks (readLastMainChainIndex → readLastStableMcIndex → readAllUnspentOutputs), if new units are added to the main chain after reading last_mci but before calculating balances, will the supply calculation reflect an inconsistent state where last_mci is stale but unspent outputs are fresh, potentially causing supply discrepancies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3aa99d13-5c30-497e-9c5d-2c89b3782a07",
+    "timestamp": "2025-12-22 19:23:17.869744",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Address completeness] Is there any mechanism to verify that all non-circulating addresses are actually included in the not_circulating array, or could forgotten addresses (e.g., additional foundation wallets, locked contracts, or burned addresses) cause the circulating supply to be overreported?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3114a0e6-d3f2-4379-ad18-93cbe76e8536",
+    "timestamp": "2025-12-22 19:23:41.723565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Missing address validation] Are the hardcoded addresses validated to ensure they are valid Obyte addresses with correct checksums, or could an address typo go undetected until funds are actually moved, causing a sudden unexpected change in circulating supply metrics?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f3a85b2-5d0c-46b7-b5f3-6e01470dadfa",
+    "timestamp": "2025-12-22 19:24:07.035640",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Address list integrity] If one of the hardcoded not_circulating addresses (lines 8-15) is incorrectly copied or contains a typo, would this silently include those funds in the circulating supply calculation, potentially inflating the reported circulating supply and misleading market participants about actual token scarcity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4813350-6226-4956-ace6-d2887df803b9",
+    "timestamp": "2025-12-22 19:24:32.882565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/supply.js] [Configuration vulnerability] Does the testnet check using process.env.testnet have any validation to ensure the environment variable hasn't been tampered with, potentially causing mainnet nodes to use testnet addresses or vice versa, leading to completely incorrect supply calculations that could affect economic decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9034b68d-bee4-4b1a-9b36-b46410a20a8a",
+    "timestamp": "2025-12-22 19:24:59.521946",
+    "report_generated": false
   }
 ]
