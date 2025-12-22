@@ -898,5 +898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_649b27af-a215-470b-b148-adc7fcfb4f8e",
     "timestamp": "2025-12-22 19:46:31.039430",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Stack Overflow via Recursion] In replace() at lines 576-825, the function is deeply recursive (can call itself via lines 609, 652, 698, 718, 777, 807) - can an attacker craft an AA definition with deeply nested formulas or arrays to cause stack overflow and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe539cc9-5ce8-42c0-b3a2-93df45d69d55",
+    "timestamp": "2025-12-22 19:47:41.887951",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Interrupt Loop Count] At lines 577-579, every 100 iterations, replace() interrupts the call stack with setImmediate - can an attacker craft formulas that require exactly 99 iterations repeatedly to bypass the interrupt mechanism and cause synchronous blocking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9e7daf0-bc0b-4440-83b5-3d17481f7217",
+    "timestamp": "2025-12-22 19:47:54.263406",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Local Variable Cloning] At line 580, locals is cloned via _.clone(locals) (shallow copy) - if locals contains object references, can modifications in nested replace() calls leak between different branches of formula evaluation, causing non-determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9556d0d3-ce4c-479c-bea0-969de2668d99",
+    "timestamp": "2025-12-22 19:48:07.607963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Duplicate Key Check] At lines 604-605, the function checks if calculated key already exists in obj - but if hasCases() branch (lines 654-721) or if/init branch (lines 723-779) modifies obj before this check runs, can duplicate keys be created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25d555a2-b367-4158-83dc-4d48a31c2170",
+    "timestamp": "2025-12-22 19:48:21.890737",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Empty Value Removal] At lines 643-650, empty strings or objects signal key removal - but what if an AA legitimately wants to store empty array [] or empty object {}? Can this cause unintended data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff5be2d2-c00c-4dce-ae95-cb3a43687b7d",
+    "timestamp": "2025-12-22 19:48:36.036841",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [State Update Formula Duplication] At lines 621-625, if objStateUpdate already exists, a second state update formula causes an error - but can an attacker exploit formula evaluation order to set objStateUpdate, then clear it, then set it again with different formula?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f87f5636-73ad-4dd7-88d6-50c0a9ac9753",
+    "timestamp": "2025-12-22 19:48:51.365879",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Case Selection Non-Determinism] At lines 656-687, cases are evaluated in array order with async.eachSeries - if formula evaluation has side effects (state reads/writes), can the order matter? Can different nodes select different cases due to concurrent state changes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84879c63-6b98-425c-a7da-37d05709ac14",
+    "timestamp": "2025-12-22 19:49:07.743996",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Case Init Locals] At line 683, locals from the selected case's if evaluation are used for subsequent replacements - if case.init (lines 700-718) modifies locals, can this affect sibling keys in unpredictable ways?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ad43964-fcbd-48cf-83d8-509e0c3448a3",
+    "timestamp": "2025-12-22 19:49:25.116655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [If/Init Interaction] At lines 723-779, objects with 'if' and 'init' properties are evaluated - if 'if' evaluates to false, the object is removed (lines 745-749) - but what if 'init' has side effects (state changes)? Can those side effects occur even when 'if' is false?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c75d25ba-e2a6-403e-a970-9ef48631ea0e",
+    "timestamp": "2025-12-22 19:49:44.101439",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Array Element Removal] At lines 781-801, array elements that evaluate to null are filtered out (line 790) - if this filtering happens after formula evaluation that modifies state based on array length, can array length change cause non-determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cde7354-b51d-44ff-8d97-27c72047f050",
+    "timestamp": "2025-12-22 19:50:04.117641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Object Key Iteration Order] At lines 803-821, Object.keys() is used to iterate object properties - since JavaScript object key order is insertion order, can AAs written on different JS versions or with different key insertion patterns have different execution orders?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8d8ce1f-7796-433a-a086-3f90060dc172",
+    "timestamp": "2025-12-22 19:50:24.820153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: evaluateAA()] [Getter Evaluation] At lines 548-573, if getters exist, they're evaluated first (line 550) and then deleted from arrDefinition[1] (line 554) - can this deletion modify the arrDefinition that might be cached or reused, affecting subsequent triggers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fa533c8-4457-4b60-ae07-b0fd27ab0030",
+    "timestamp": "2025-12-22 19:50:46.286434",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: evaluateAA()] [Locals Passing] At line 549, locals is initialized as {} and passed to replace() - if getters define functions in locals (via function definitions in formulas), can those functions be called in subsequent message definitions with potentially unsafe operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83c19318-de31-4692-9f79-fc777146773f",
+    "timestamp": "2025-12-22 19:51:08.951088",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: executeStateUpdateFormula()] [Response Vars Length] At lines 1296-1299 and 1319-1321, response vars length is checked against MAX_RESPONSE_VARS_LENGTH - if formula execution adds large response vars incrementally, can it bypass the length check until the final check, wasting computation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_630b13f9-7c87-4bcc-801b-7589f06e7f8b",
+    "timestamp": "2025-12-22 19:51:31.931656",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: executeStateUpdateFormula()] [Bounce During State Update] At lines 1292-1299, if bBouncing is true, state update is skipped - but what if bounce() is called during state update formula evaluation? Can partial state updates be applied before the bounce?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc95bd48-b37a-46c3-ab58-4c4cd22c97b9",
+    "timestamp": "2025-12-22 19:51:55.903690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: executeStateUpdateFormula()] [objResponseUnit Availability] At line 1313, objResponseUnit is passed to formula evaluation - if state update formula queries the response unit hash (via response_unit variable), but the unit hasn't been validated yet, can this cause inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_528421ae-bc8f-46e0-bb63-01afbf2de027",
+    "timestamp": "2025-12-22 19:52:21.263696",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Formula Reevaluation] At lines 606-607, the function checks if calculated key 'looks like a formula again' - but can an attacker craft a formula that generates another formula string, causing infinite reevaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73c81d94-05d4-4cea-bb54-26522690e13d",
+    "timestamp": "2025-12-22 19:52:47.742622",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Boolean vs Number] At line 613, the function returns early for boolean values without replacement - but later at line 1343 (fixStateVars), true is converted to 1 - can this inconsistency cause issues if formulas use strict equality checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b262cace-55af-4978-9b07-4b50a3fa749b",
+    "timestamp": "2025-12-22 19:53:15.282957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Messages Filtering] At lines 1697-1698, messages are filtered to exclude those without 'payload' or specific app types - if an AA response includes app='data' without payload, is it silently dropped? Can this hide errors in AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ea1418b-a868-4157-80e6-abcc923e22e3",
+    "timestamp": "2025-12-22 19:53:42.977964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [Empty Response] At lines 1699-1701, if all messages are filtered out, handleSuccessfulEmptyResponseUnit() is called - does this properly execute state updates? Can an attacker craft AAs that do state-only changes without sending anything, avoiding fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b9a3ee7-931c-467b-8403-8880fec20ee4",
+    "timestamp": "2025-12-22 19:54:11.773847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Stack Overflow via Recursion] In replace() at lines 576-825, the function is deeply recursive (can call itself via lines 609, 652, 698, 718, 777, 807) - can an attacker craft an AA definition with deeply nested formulas or arrays to cause stack overflow and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3df35b40-4c42-4de5-b6f2-e2b5457812e3",
+    "timestamp": "2025-12-22 19:54:41.085601",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Interrupt Loop Count] At lines 577-579, every 100 iterations, replace() interrupts the call stack with setImmediate - can an attacker craft formulas that require exactly 99 iterations repeatedly to bypass the interrupt mechanism and cause synchronous blocking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3df45890-e45d-42a1-9e33-a59100a64ed0",
+    "timestamp": "2025-12-22 19:55:10.344862",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Local Variable Cloning] At line 580, locals is cloned via _.clone(locals) (shallow copy) - if locals contains object references, can modifications in nested replace() calls leak between different branches of formula evaluation, causing non-determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a9a91b8-4933-410b-86ae-7e4b98c09357",
+    "timestamp": "2025-12-22 19:55:39.296538",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Duplicate Key Check] At lines 604-605, the function checks if calculated key already exists in obj - but if hasCases() branch (lines 654-721) or if/init branch (lines 723-779) modifies obj before this check runs, can duplicate keys be created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88e6456e-f711-49b4-8aac-e0ed8f2cd1e1",
+    "timestamp": "2025-12-22 19:56:08.779170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: replace()] [Empty Value Removal] At lines 643-650, empty strings or objects signal key removal - but what if an AA legitimately wants to store empty array [] or empty object {}? Can this cause unintended data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_584a2ca9-101f-4c7f-b9b0-c5b864b6c47f",
+    "timestamp": "2025-12-22 19:56:39.190870",
+    "report_generated": false
   }
 ]
