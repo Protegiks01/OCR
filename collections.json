@@ -2998,5 +2998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4dfdb243-48bb-42b7-89f6-776173ce854d",
     "timestamp": "2025-12-22 22:06:04.942713",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [is_private Flag Trust] The functions trust the is_private flag from the assets table (lines 57-59). If an attacker can manipulate this flag through a bug in asset creation code, can they make private assets appear as public or vice versa, breaking privacy guarantees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c55cbde2-7d24-4143-a18a-340faa9b3730",
+    "timestamp": "2025-12-22 22:07:24.050554",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [BLACKBYTES Constant Dependency] The code imports constants.BLACKBYTES_ASSET (line 4) but doesn't validate that this constant is correctly defined. If constants.js is corrupted or the constant is undefined, will all BLACKBYTES balance calculations fail silently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de67bf8e-b117-4e42-afed-ba89d5f77ccf",
+    "timestamp": "2025-12-22 22:07:36.414315",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Lodash Version Vulnerability] The file imports lodash (line 3) but doesn't specify a version. If the node uses an outdated lodash version with known vulnerabilities (e.g., prototype pollution), can an attacker exploit this through the _.difference() call to corrupt balance data structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9d3ccf8-effd-47f0-b968-1bcc69e6d8c6",
+    "timestamp": "2025-12-22 22:07:49.472522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Error Propagation] None of the functions have try-catch blocks or error callbacks. If a JavaScript runtime error occurs (e.g., TypeError, ReferenceError), will the error propagate up to crash the entire node process, causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04b669f5-2fa6-4e3b-9369-d7f7bac8f21c",
+    "timestamp": "2025-12-22 22:08:03.174302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Database Query Timeout] The functions don't set query timeouts. If a balance query hangs indefinitely due to database lock contention or deadlock, can this cause the entire node to become unresponsive for >24 hours until manual intervention?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a272a3db-0199-4c24-8bdd-0f7aacbe3df6",
+    "timestamp": "2025-12-22 22:08:17.753626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Parallel Query Inconsistency] readBalance() executes three queries in sequence (lines 14, 30, 45), but outputs could be added or spent between queries. Can this window of inconsistency cause the same output to be counted in multiple queries or missed entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb764783-fff3-4860-b809-929f65992c60",
+    "timestamp": "2025-12-22 22:08:33.574338",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [GROUP BY Determinism] The queries use GROUP BY asset, is_stable (lines 18, 80) but don't specify an ORDER BY. If the database returns rows in non-deterministic order, could this cause balance calculations to be non-deterministic across nodes, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c39a044-f693-48a9-89e1-feccf5b45c2a",
+    "timestamp": "2025-12-22 22:08:49.880376",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Total Calculation Atomicity] The total balance is calculated in JavaScript (line 43, 91, 155) rather than in the SQL query. If the stable or pending values change between the query and the calculation, can this cause the total to not equal stable + pending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbc83b64-8292-4c0e-a0fd-6b9602c72b88",
+    "timestamp": "2025-12-22 22:09:07.606860",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Database Index Cardinality] If the is_spent column has poor cardinality (most outputs are spent), will the database optimizer choose suboptimal query plans that cause balance queries to perform full table scans, leading to >1 hour delays on large UTXO sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_264b9666-a70e-4d35-aa66-4b86a0436d17",
+    "timestamp": "2025-12-22 22:09:26.346514",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Foreign Key Constraint Missing] If the outputs table doesn't have foreign key constraints to the units table, can orphaned outputs exist (unit deleted but outputs remain), causing balances to include outputs from non-existent units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8021b8d-9f19-43fb-8d58-7d0519112fe8",
+    "timestamp": "2025-12-22 22:09:46.405964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Cascade Delete Risk] If the database uses CASCADE DELETE on foreign keys and a unit is deleted, will all its outputs be automatically deleted even if is_spent=0, causing funds to permanently disappear from balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ad9eca0-c56a-4226-8f6e-05b9429a68f7",
+    "timestamp": "2025-12-22 22:10:07.244037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Address Validation Weakness] The walletIsAddress check (line 9, 72) only validates length, not content. Can an attacker pass a 32-character string of special characters that causes SQL parser errors or injection when used in the WHERE clause?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77270790-d446-4746-ada9-40176f74085e",
+    "timestamp": "2025-12-22 22:10:28.660988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Commission Output Staleness] If witnessing_outputs and headers_commission_outputs are not updated when main chain advances, can these tables contain stale commission outputs that should have been spent or expired, inflating balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_884621b8-b4cc-4687-a739-84c2a8187e04",
+    "timestamp": "2025-12-22 22:10:50.851197",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Callback Ordering Ambiguity] If handleBalance or handleSharedAddresses callbacks modify global state or trigger additional database operations, can callback re-entrancy cause race conditions where balance queries interfere with each other?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8230f9a5-8935-479a-80a2-187336309e89",
+    "timestamp": "2025-12-22 22:11:13.878053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Shared Address Cycle Detection] The recursive readSharedAddressesDependingOnAddresses() doesn't explicitly detect cycles. If shared addresses form a cycle (A→B→A), will the function eventually hit a stack overflow, or does the _.difference() check prevent infinite recursion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7acd7ce5-d7ec-4727-8b32-fd581c98cdae",
+    "timestamp": "2025-12-22 22:11:38.012395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Asset Array Empty Check] When building the IN clause for assets (line 57), if assets.length === 0, does the query still execute correctly, or does it produce invalid SQL like 'WHERE unit IN()', causing a syntax error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39329446-9753-49e9-9a39-219b9a34ae34",
+    "timestamp": "2025-12-22 22:12:03.928364",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [JavaScript Number Precision] All balance amounts are stored as JavaScript numbers. For assets with high decimals (e.g., 18 decimals like Ethereum tokens), can precision loss occur when performing arithmetic operations like total = stable + pending, causing small balance errors to accumulate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5916187-2c39-4db8-affb-15ea0d7f1f98",
+    "timestamp": "2025-12-22 22:12:29.993313",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [General] [Start Time Manipulation] The function records start_time = Date.now() (line 8) and logs elapsed time (line 60). If system time changes during execution (NTP sync, manual adjustment), can this cause negative elapsed times or overflow, potentially breaking monitoring systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f0c78e2-3244-4d87-9233-080053106f66",
+    "timestamp": "2025-12-22 22:12:55.307066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Hub Response Validation] Can a compromised or malicious hub send arbitrary bot data without validation in the 'hub/get_bots' response, potentially injecting malicious pairing codes, overlong names, or malformed data structures that could crash the node or corrupt the bots_cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6e80196-c94a-4fd8-ba38-d74746e28036",
+    "timestamp": "2025-12-22 22:13:21.634671",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Array Injection] If the hub returns a non-array response (e.g., object, null, string) to 'hub/get_bots', will async.eachSeries fail gracefully or throw an uncaught exception that crashes the node, causing a temporary network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d685234a-7a3d-4382-a315-1531027c845a",
+    "timestamp": "2025-12-22 22:13:48.644957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Bot Data Structure] Does the code validate that each bot object contains required fields (id, pairing_code, name) before processing, or can a malformed bot object without pairing_code cause setPairingStatus() to crash when calling substr()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f032ad31-b0c6-439f-88e8-1c1c44b6cc12",
+    "timestamp": "2025-12-22 22:14:16.124196",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Memory Exhaustion] Can a malicious hub send an extremely large array of bots (e.g., millions of entries) in the 'hub/get_bots' response, exhausting node memory and causing a crash that prevents transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12de1bdb-d450-4751-a664-8bc18b6bc76a",
+    "timestamp": "2025-12-22 22:14:43.718417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Duplicate Bot IDs] If the hub sends multiple bot objects with identical IDs, will they all be stored in bots_cache, and can this cause getBotByID() to return the wrong bot or create confusion in pairing status checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62c65ca1-46c2-46ed-b5db-b9f63b209de8",
+    "timestamp": "2025-12-22 22:15:11.106957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Pairing Code Parsing] If bot.pairing_code does not contain an '@' character, indexOf() returns -1, causing substr(0, -1) to extract an incorrect pubkey substring - can this lead to deriving wrong device addresses and incorrect pairing status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7a5492e-066e-4a6d-b43d-cc63db27db16",
+    "timestamp": "2025-12-22 22:15:38.131642",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Empty Pairing Code] If bot.pairing_code is an empty string or contains only '@', will the extracted pubkey be empty, and will objectHash.getDeviceAddress() produce a predictable device address that could match multiple bots?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f4deb52-2840-4bcf-8a61-99affa7ffdc1",
+    "timestamp": "2025-12-22 22:16:06.607491",
+    "report_generated": false
   }
 ]
