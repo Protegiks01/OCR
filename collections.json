@@ -2398,5 +2398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e3e09ed-1876-4d8f-acfa-7a711ee02fac",
     "timestamp": "2025-12-22 21:25:46.117885",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Duplicate Archiving] If two processes attempt to archive the same unit simultaneously, can both pass the INSERT with getIgnore() but then both proceed to delete the unit's data, causing double-deletion errors or leaving the archived_joints entry without corresponding data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9210544c-9d7b-4205-ada5-e78605221715",
+    "timestamp": "2025-12-22 21:27:01.781131",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Read-Write Race] The SELECT query reads current input states, then later UPDATE queries modify output states - if another transaction inserts new inputs spending the same outputs between the SELECT and UPDATE, can this race condition cause incorrect unspending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f88f32bd-83b1-4e92-b604-ab7732a4105d",
+    "timestamp": "2025-12-22 21:27:14.610815",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Reason Mismatch] If the same unit is archived with reason='uncovered' by one process and reason='voided' by another, can the different code paths (removeJoint vs voidJoint) execute concurrently, causing some tables to be fully deleted while others are only partially cleaned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be64fbbe-176d-42de-ada2-82e5821a8a42",
+    "timestamp": "2025-12-22 21:27:27.471469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Stale Query Problem] The SELECT query executes immediately during query generation, but the resulting UPDATE queries are added to arrQueries for later execution - if the database state changes between SELECT completion and UPDATE execution (e.g., new units are added), can the UPDATEs operate on stale data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f43b85dd-4f84-4f16-add7-2d29fe87adba",
+    "timestamp": "2025-12-22 21:27:41.956329",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [MCI Movement] The query checks MCI ranges, but if the main chain advances between query generation and execution, can new headers commission outputs be created in the same MCI range, causing the UPDATE to unspend outputs that were just created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ccb7c7a2-6912-4041-b66d-40e8f212ae0a",
+    "timestamp": "2025-12-22 21:27:56.289386",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [AA Response Chain Break] When deleting aa_responses WHERE trigger_unit=?, if this unit triggered multiple AAs and those AAs triggered secondary AAs, can deleting just the first-level responses leave orphaned secondary responses that reference non-existent trigger units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8453cc64-bcbd-44ff-8234-9c09f0c435fb",
+    "timestamp": "2025-12-22 21:28:12.033317",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [AA State Variable Orphans] The function doesn't explicitly delete from aa_var_values - if the archived unit caused state variable updates in an AA, can these state variables persist without their originating response, causing AA state to become inconsistent with actual transaction history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9197946c-acd2-447c-af13-e058cb4a4120",
+    "timestamp": "2025-12-22 21:28:28.634558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Response Unit vs Trigger Unit] The DELETE deletes WHERE response_unit=? - if an AA response unit is archived, but the trigger unit that caused it is still valid, can this break the trigger→response relationship and cause validation failures when querying AA execution history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_534211f8-d672-4178-a65f-37bc25b00f61",
+    "timestamp": "2025-12-22 21:28:46.315338",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Asset Supply Corruption] If an archived unit issued a divisible asset and that asset is still held by users, can deleting the asset definition from the assets table cause total supply calculations to fail or become incorrect, breaking balance validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9d6a3200-836f-4058-92b9-064aa31a13f8",
+    "timestamp": "2025-12-22 21:29:04.688352",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Indivisible Asset Serials] For indivisible assets, if the archived unit issued specific serials and those serials are still owned by users, can deleting asset metadata break serial tracking and allow duplicate serial issuance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36445303-2939-40f4-9258-3ab6002ccbfe",
+    "timestamp": "2025-12-22 21:29:24.092909",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Balance Calculation Impact] When outputs are unspent, can the corresponding address balances become incorrect if the balance tracking system doesn't receive notification of the unspending, causing balance queries to return inflated amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_189240e9-ca2e-461e-bdba-e5d3a32b4dd6",
+    "timestamp": "2025-12-22 21:29:45.180369",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Witness Reward Double-Claim] If a witness's headers commission output is unspent incorrectly, can the witness spend it again in a new unit, effectively claiming witness rewards twice and inflating the total bytes supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fffde4be-a6b8-428b-8258-5125f34e5134",
+    "timestamp": "2025-12-22 21:30:06.999226",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Light Client Catchup] If a light client is catching up and requests a unit that has been archived, can the missing unit data cause catchup to fail, leaving the light client permanently out of sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fce0497-f2cb-45c7-a1c8-fcabfed2294a",
+    "timestamp": "2025-12-22 21:30:29.201410",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Witness Proof Validity] If a voided unit was used in witness proof construction for light clients, can the missing message data break proof verification, causing light clients to reject valid proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64353fa8-6857-445e-b013-b2563f783e24",
+    "timestamp": "2025-12-22 21:30:52.260861",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Historical Query Failure] If external services (e.g., block explorers, analytics) query archived units, can the missing data cause these services to display errors or incorrect information, affecting user trust?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3a2b589-68ec-4758-95ff-1841260a24a5",
+    "timestamp": "2025-12-22 21:31:16.584102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Definition Change Archiving] If an address changed its definition via definition_chg in the archived unit, and this was the only unit recording that change, can the address become stuck with an old definition that doesn't match current signing keys?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5817570-ecd6-488d-82e2-f7f95f43862f",
+    "timestamp": "2025-12-22 21:31:41.944052",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Definition Chash Null Recovery] After setting definition_chash=NULL in a voided unit, if the address needs to be used again, how is the definition recovered - can this lead to situations where no definition is available, making the address permanently unusable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fac154a2-e1a0-4eef-922a-e16dfe8780bc",
+    "timestamp": "2025-12-22 21:32:08.260987",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Original Address Mapping] Deleting from original_addresses - if this table maps between original (pre-definition-change) addresses and current addresses, can losing this mapping break address resolution for historical queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2118183c-f734-4fd7-8b6f-39da8130139b",
+    "timestamp": "2025-12-22 21:32:35.166378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Unit Validation State] After voiding, the unit exists in units table but has no messages - can validation logic that checks 'does unit exist?' pass even though the unit is effectively empty, causing invalid references to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49d3dad2-6e2f-4a25-9945-4f02c03d14a8",
+    "timestamp": "2025-12-22 21:33:03.509582",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Parent Unit Deletion] If a unit that is still referenced as a parent by non-archived units is archived, can this create invalid parent references that break DAG validation and cause consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b3030f2-d9c4-4e3a-a816-b9db80fc3029",
+    "timestamp": "2025-12-22 21:33:32.137359",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [Non-Deterministic Archiving] If different nodes archive units at different times or with different reasons, can this cause nodes to have different database states, leading to non-deterministic validation results and chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_114a7ccf-b4d5-4a8b-9eef-1a053a4e1289",
+    "timestamp": "2025-12-22 21:34:01.665645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Attestation Dependency] If an AA's formula queries attestations for authentication and those attestations are archived, can the AA formula fail to execute correctly, causing all subsequent triggers to that AA to bounce?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_891fc171-2fc7-423c-8540-2b9f8164b190",
+    "timestamp": "2025-12-22 21:34:32.669511",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Attested Fields Loss] Deleting from attested_fields - if these fields were used to verify user identity or attributes, can archiving break KYC/compliance requirements or allow users to re-attest with different information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32f613e3-8e3d-4f60-9a52-52f6171079a1",
+    "timestamp": "2025-12-22 21:35:04.493709",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Poll Result Integrity] If a poll unit is archived while voting is still ongoing or results are being tallied, can this corrupt poll results or make it impossible to verify vote counts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_81cb4101-6cdc-4333-9276-980b76fe85b5",
+    "timestamp": "2025-12-22 21:35:36.725819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Vote Chain Break] Deleting votes that reference a poll - if vote units reference the poll by unit hash, can archiving the poll unit cause those vote units to become invalid, affecting governance decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68d05697-76cd-42bb-acd8-833994dcaa7e",
+    "timestamp": "2025-12-22 21:36:08.265401",
+    "report_generated": false
   }
 ]
