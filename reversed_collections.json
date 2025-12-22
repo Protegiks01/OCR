@@ -2248,5 +2248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c84f50e2-6edd-48fb-ac26-3840deca4b54",
     "timestamp": "2025-12-22 22:00:50.073320",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [state_var_assignment complexity] State var assignments increment complexity by 1, but database writes may be expensive. Can many state var updates cause DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f76f1c1-4416-4ae2-a64d-30f448c821d8",
+    "timestamp": "2025-12-22 22:02:08.770270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [state_var_assignment operator validation] Assignment operators must be in [=, +=, -=, *=, /=, %=, ||=], but can Unicode variants or other encodings bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5efa9765-895f-44e5-8d03-4c39c29dbd19",
+    "timestamp": "2025-12-22 22:02:21.477748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [state_var_assignment context bypass] State var assignments are only allowed when bStateVarAssignmentAllowed is true and !bGetters. Can nested function calls bypass these checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9483f281-8465-49e9-9a4e-400161f72e9f",
+    "timestamp": "2025-12-22 22:02:34.408199",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var_assignment function collision] Can attackers declare vars with the same name as functions in different scopes to cause shadowing issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57a3198d-93bd-405c-aa32-5ccce81ede38",
+    "timestamp": "2025-12-22 22:02:47.938523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var_assignment selector mutation] Selectors allow mutating nested values, but can attackers mutate non-existent vars by exploiting the validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d50da175-22ef-45a8-8599-f7f0a41c35f1",
+    "timestamp": "2025-12-22 22:03:02.119261",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var_assignment conditional tracking] Conditional assignments set state to 'maybe assigned', but can attackers exploit the bInIf flag to cause inconsistent state tracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40f68e3c-ae5d-4d15-af4a-c343231f82e9",
+    "timestamp": "2025-12-22 22:03:17.675289",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var_assignment frozen var] Frozen vars cannot be reassigned, but can attackers unfreeze them through indirect means or prototype manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9353790d-1e5f-4624-bd83-6d48344e7bb7",
+    "timestamp": "2025-12-22 22:03:34.694475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var_assignment empty name] Empty literal local var names are rejected for mci >= aa2UpgradeMci, but can zero-width characters bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7b61fbb-a805-43a2-913b-82e99c7a46fb",
+    "timestamp": "2025-12-22 22:03:52.649241",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var array key evaluation] When accessing vars with array keys (var[key1][key2]), are keys evaluated in deterministic order? Can evaluation order differences cause non-determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bb80b9a-da1c-40a8-ae9e-b04494453c42",
+    "timestamp": "2025-12-22 22:04:11.138264",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var leading underscore] Leading underscores in var names are rejected pre-aa2, but can attackers use Unicode underscore lookalikes to bypass this?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_220b8a46-28e4-4317-9dfc-1c129cbd583e",
+    "timestamp": "2025-12-22 22:04:30.934970",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var function access without call] The code rejects accessing functions without calling them, but can attackers use indirect references to bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7350897-41c4-4e16-90f5-4148a5823e8c",
+    "timestamp": "2025-12-22 22:04:50.551602",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [local_var uninitialized access] For mci >= aa2UpgradeMci, accessing uninitialized vars is rejected, but can attackers exploit the conditional check (!locals['']) to access uninitialized vars in certain contexts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3848a65-8f4f-4608-ac80-33f1216625d7",
+    "timestamp": "2025-12-22 22:05:12.569202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [dictionary key type enforcement] Dictionary keys must be strings, but can attackers craft expressions that evaluate to non-strings during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98704af1-bf58-41bc-8f8a-b57812b56e1f",
+    "timestamp": "2025-12-22 22:05:35.658952",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [dictionary key collision] The dictionary validation checks for duplicate keys using hasOwnProperty, but can prototype properties or Symbol keys bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71207ddf-0395-4c8a-b489-13f51ea473f3",
+    "timestamp": "2025-12-22 22:05:59.216789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [array size limit] Is there a limit on array size during validation? Can extremely large arrays cause memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3cf4af9f-3c1d-4394-9f30-0951dfab29c2",
+    "timestamp": "2025-12-22 22:06:23.729478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [array pre-aa2 timing] Arrays are rejected for mci < aa2UpgradeMci. Can AAs that span the upgrade boundary exploit timing issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1196026b-da15-4b62-8c17-d9d11a0d43ef",
+    "timestamp": "2025-12-22 22:06:49.172549",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [timestamp_to_string format validation] Format validation for timestamp_to_string only checks string literals. Can expression-based formats cause execution errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffe1bcb2-c9f6-448d-a99d-1e217ace8eb4",
+    "timestamp": "2025-12-22 22:07:15.477970",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [join separator injection] Can attackers inject separators in join operations that cause the output to be misparsed by consuming code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4efb3d4-fc25-4a67-b753-c2d552148f54",
+    "timestamp": "2025-12-22 22:07:42.884238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [split limit bypass] The split function accepts an optional limit parameter. Can attackers bypass this by using expressions that evaluate to different values during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9831ceb9-d091-4816-ad4e-5d2ffb5b359a",
+    "timestamp": "2025-12-22 22:08:11.653663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [replace regex injection] The replace function accepts search_str and replacement. Can attackers inject regex patterns or replacement specials to cause DoS or unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24377e7e-b284-47fc-a28e-610d3dfeeea2",
+    "timestamp": "2025-12-22 22:08:40.212926",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [substring length overflow] Can extremely large length values in substring cause memory allocation issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e334f31-7c82-4280-ab3e-bfddbc27376d",
+    "timestamp": "2025-12-22 22:09:09.437333",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [substring negative indices] The substring function accepts start and length parameters but doesn't validate they're non-negative. Can negative values cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0120b3c2-fe71-4c8f-8a3b-8c059957d7cd",
+    "timestamp": "2025-12-22 22:09:38.803655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [chash160 pre-aa2 timing] The chash160 function is rejected for mci < aa2UpgradeMci. Can AAs created before aa2 but executed after access chash160 unexpectedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d777387d-3cbb-46e9-9135-26b9aeb8a3d4",
+    "timestamp": "2025-12-22 22:10:07.174565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [number_from_seed randomness] The number_from_seed function generates pseudorandom numbers. Can attackers predict or manipulate these values if the seed is predictable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afc67159-c3f8-4fb8-9ce5-09ec7f5f9b5b",
+    "timestamp": "2025-12-22 22:10:34.999196",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [sha256 input size] There's no limit on sha256 input size. Can attackers hash extremely large strings to cause memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff1bb6d4-b846-4ff3-85b0-0dabd0969ccf",
+    "timestamp": "2025-12-22 22:10:59.928790",
+    "report_generated": false
   }
 ]
