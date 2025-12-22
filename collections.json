@@ -1798,5 +1798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f8b559d-169e-40fb-8531-a7ae351b4e11",
     "timestamp": "2025-12-22 20:45:36.370823",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [REPLACE INTO race condition] The REPLACE INTO query on line 24 is not atomic with the preceding SELECT - if another process modifies wallet_arbiters between the SELECT and REPLACE, can this cause data inconsistency or lost updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8599bd41-e178-4c0f-8afe-70dcceaa4dc3",
+    "timestamp": "2025-12-22 20:46:46.681855",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Missing transaction isolation] The SELECT on line 12 and REPLACE INTO on line 24 are not wrapped in a database transaction - can concurrent calls to getInfo() for the same address cause race conditions where multiple HTTP requests are made and inconsistent data is written?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_47f4379b-bd6a-4831-aacb-db3f66aef0cf",
+    "timestamp": "2025-12-22 20:46:59.460908",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Hub response manipulation] The function trusts device.requestFromHub('hub/get_arbstore_url') to return a legitimate URL - if the hub is compromised or malicious, can it return a URL pointing to an attacker-controlled server that provides fake arbiter information, leading to fund theft when arbiter contracts are created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3759a79-169a-4074-abd8-9d2c8305ee04",
+    "timestamp": "2025-12-22 20:47:12.494286",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Hub response validation] There is no validation that the URL returned by device.requestFromHub() matches expected patterns or is from a trusted domain - can the hub return arbitrary URLs to cause SSRF, data exfiltration, or cache poisoning attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4f34e5f-6e26-4cb3-98d0-d3beb55b346d",
+    "timestamp": "2025-12-22 20:47:25.896473",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [URL construction SSRF] On line 20, the URL is constructed as url+'/api/arbiter/'+address - if the url contains special characters or the address parameter is not properly encoded, can this lead to URL injection allowing requests to different endpoints on the ArbStore server?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_699e8f45-6198-4bba-a31b-15a2fb411244",
+    "timestamp": "2025-12-22 20:47:40.408184",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [API endpoint assumption] The code assumes the ArbStore has an '/api/get_info' endpoint on line 55 - if different ArbStores use different API paths, can this cause errors or make the node fetch info from wrong endpoints, potentially getting attacker-controlled data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb0b322c-78ca-4653-a620-718232150c68",
+    "timestamp": "2025-12-22 20:47:55.961045",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Callback not called] If device.requestFromHub() on line 16 never calls its callback (due to network issues or hub malfunction), the original callback passed to getInfo() will never be called - can this cause the caller in arbiter_contract.js to hang indefinitely, potentially freezing contract operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd0b35ae-d704-4b20-a0d1-bbe2fffa467f",
+    "timestamp": "2025-12-22 20:48:12.595179",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Error callback with partial data] If the HTTP response ends normally but contains invalid JSON, the callback on line 41 is called with the parsing error - but if the 'data' variable already contains partial valid JSON before the error, is there any risk of this partial data being used?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d11f4efe-97be-4fb5-bef3-651225ff97dc",
+    "timestamp": "2025-12-22 20:48:30.709389",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Multiple callback invocations] If requestInfoFromArbStore() on line 20 somehow calls its callback multiple times (once with error, once with success due to a bug in HTTP library), can this cause the same arbiter info to be written to database multiple times or cause undefined behavior in the caller?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7631598d-a370-4ed7-8d82-ee9dbbbaefde",
+    "timestamp": "2025-12-22 20:48:50.207001",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Promise rejection handling] The Promise-based version on lines 48-49 returns a Promise when no callback is provided, but if the callback is eventually called with an error, is the Promise properly rejected or could it remain pending forever causing memory leaks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09bbecdf-0074-436d-af52-f67541e0c55c",
+    "timestamp": "2025-12-22 20:49:11.035899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Error propagation] If validationUtils.isValidAddress() throws an exception instead of returning false, will this exception be caught and passed to the callback, or will it crash the node (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d2ff2c5-6233-4976-85a3-2f63e5b9c06d",
+    "timestamp": "2025-12-22 20:49:32.509202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Critical usage in fee calculations] Since arbiter_contract.js uses getArbstoreInfo() to calculate arbiter fees on lines 397-456, if the cached cut value is manipulated (via cache poisoning), can this cause incorrect fee distributions where funds intended for arbiters are sent elsewhere or the wrong amounts are sent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d55ad22-5959-4716-a368-4b80962971e4",
+    "timestamp": "2025-12-22 20:49:55.615363",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Device pubkey validation] The device_pub_key retrieved on line 12 or 24 is used in arbiter_contract.js for encrypted communication - if this key is manipulated by a compromised hub/ArbStore, can an attacker intercept or forge arbiter messages, potentially controlling dispute resolutions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5124baca-8ace-4a09-857b-8663ecda79a6",
+    "timestamp": "2025-12-22 20:50:17.867562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Real name trust] The real_name field stored on line 24 is displayed to users - if a malicious ArbStore provides a misleading real_name (like 'Official Obyte Arbiter'), can this facilitate social engineering attacks where users trust fake arbiters with their funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7357ce04-9611-4a55-8c2f-d437223d8703",
+    "timestamp": "2025-12-22 20:50:42.036970",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Concurrent database writes] If multiple calls to getInfo() for the same arbiter happen concurrently and all find no real_name in database (line 13), they will all trigger HTTP requests and REPLACE INTO operations - can this cause the last write to win arbitrarily, potentially storing stale or incorrect arbiter info?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8480eb27-a863-461c-953b-15bdc1071507",
+    "timestamp": "2025-12-22 20:51:06.443428",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [HTTP connection exhaustion] If many calls to getInfo() or getArbstoreInfo() happen simultaneously for different arbiters, will each create a new HTTPS connection - can this exhaust the connection pool or file descriptors, causing new connections to fail (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77c0fe0c-c6db-44c3-b704-f771cbbba515",
+    "timestamp": "2025-12-22 20:51:32.109968",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cache check race condition] The cache check on line 50 and cache write on line 62 are not atomic - if two threads check the cache simultaneously, find it empty, and both proceed to fetch from hub, can the second response overwrite the first in the cache in a non-deterministic way?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eab0f0b3-df75-4bb6-acc0-afbd95522cf3",
+    "timestamp": "2025-12-22 20:51:57.900925",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Type coercion attack] If info.cut is provided as a non-numeric string that parseFloat() converts to 0 (like 'abc'), will the validation on line 58 (< 0 check) pass, allowing cut=0 which might cause division by zero in fee calculations elsewhere?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a6c9c5a-8224-4897-8f43-bfbed6ea9a15",
+    "timestamp": "2025-12-22 20:52:23.823522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [URL injection in cache] On line 61, info.url is set to the url variable - if the url contains control characters or special characters, can this cause issues when the URL is later used for HTTP requests in other functions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c8372d8-2d05-43c0-b7c7-1cf8405496c7",
+    "timestamp": "2025-12-22 20:52:50.212972",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Missing field handling] If the ArbStore API response is missing expected fields like device_pub_key or real_name, will JSON.parse() succeed but the subsequent database insert on line 24 fail or insert NULL values, causing issues in arbiter_contract.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a549ca1e-34f4-454b-910b-4ef4612c2a99",
+    "timestamp": "2025-12-22 20:53:17.587479",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Encoding issues] The HTTP response is concatenated as strings on line 34 without specifying encoding - if the ArbStore returns non-UTF8 data, can this cause garbled data or throw exceptions during JSON parsing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d10df2fe-2b19-41ba-90f4-22aece1982b2",
+    "timestamp": "2025-12-22 20:53:44.483018",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Address normalization] If the 'address' parameter is not normalized (e.g., contains extra whitespace, different case for checksums), will the database query on line 12 find the correct record, or can this cause cache misses and redundant HTTP requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ac877b2-fec3-4046-a831-4f7c5c10d2d9",
+    "timestamp": "2025-12-22 20:54:11.258661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Dependency availability] The module requires './db.js', './device.js', and 'ocore/validation_utils.js' - if any of these modules fail to initialize or have circular dependency issues, can this cause arbiters.js to load incorrectly or crash on first use?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_536f77f2-7776-478a-a55f-feb8b55d7c15",
+    "timestamp": "2025-12-22 20:54:39.616077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Global state corruption] The arbStoreInfos cache is module-level global state - if this object is accidentally modified by external code or garbage collected, can this cause unpredictable behavior or crashes when getArbstoreInfo() is called?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_95ddb8b5-e89b-4576-92ab-cf08ed58a4d2",
+    "timestamp": "2025-12-22 20:55:05.563705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [HTTPS module mocking] In testing environments, if the 'https' module is mocked or replaced with a different implementation, could this introduce vulnerabilities that wouldn't exist in production?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61d5a08b-1128-47dc-a3d6-95651ff08685",
+    "timestamp": "2025-12-22 20:55:31.359087",
+    "report_generated": false
   }
 ]
