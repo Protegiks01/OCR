@@ -1648,5 +1648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f822fee-6b6d-4ab7-966b-5e91d70690b8",
     "timestamp": "2025-12-22 20:35:54.049533",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [TTL field unused] Contracts have a ttl field stored in database but it's never checked or enforced - can expired contracts remain active indefinitely, causing fund freezing if arbiters refuse to resolve old disputes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be5eade4-2baf-4a3d-a14b-a58402aeb871",
+    "timestamp": "2025-12-22 20:37:07.077338",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Asset type validation missing] Throughout the file, objContract.asset is used without validating it's a valid asset ID - can an attacker use non-existent or malformed asset IDs to cause errors or bypass validation checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bc75d08-9b4b-42dd-b52f-7137f87ea057",
+    "timestamp": "2025-12-22 20:37:19.567573",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Amount overflow/underflow] Contract amounts are stored and used without overflow checks - can extremely large amounts cause integer overflow in calculations (e.g., arbstore cut calculation), leading to incorrect payment distribution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76de460e-d721-4f87-a663-d210c543ac14",
+    "timestamp": "2025-12-22 20:37:32.754101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Reentrancy via event emitters] Multiple functions emit events via eventBus that trigger listeners in the same file - can reentrancy occur where a listener modifies contract state while the original function is still executing, causing state corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d2b0604-3173-4c45-8111-933db222097d",
+    "timestamp": "2025-12-22 20:37:45.914070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiter_contract.js] [Module Level] [Cross-contract interaction] If the same address is used as peer/payer/payee in multiple contracts simultaneously, can race conditions or state interference between contracts cause fund loss or double-spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14d6a594-0ba2-4e1a-9938-a4660b9c01e3",
+    "timestamp": "2025-12-22 20:37:59.983416",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Protocol downgrade attack] The code uses require('https') but does the function validate that the provided URL actually uses HTTPS protocol, or can an attacker-controlled hub response provide an HTTP URL leading to man-in-the-middle attacks on arbiter information retrieval?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c90ef4c4-4f86-43aa-89fe-8302cd711996",
+    "timestamp": "2025-12-22 20:38:14.578576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [SSRF vulnerability] Can a malicious hub provide arbitrary URLs in the ArbStore URL response, allowing an attacker to make the node send HTTP requests to internal network resources (localhost, 127.0.0.1, 192.168.x.x, metadata services) and potentially exfiltrate sensitive information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e29febe-cee0-4c21-a733-8c619e825f89",
+    "timestamp": "2025-12-22 20:38:31.402634",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [DNS rebinding attack] If the ArbStore URL hostname resolves to a legitimate IP initially but changes to an internal IP after DNS TTL expires during the HTTP request, can this bypass SSRF protections and allow access to internal services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2323b63-fbd6-4ed4-b5ac-1efed60a83aa",
+    "timestamp": "2025-12-22 20:38:48.828572",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Response size DoS] Since data accumulation on line 34 has no size limit, can a malicious ArbStore send gigabytes of data in response, causing memory exhaustion and node crash (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87bb5946-d1fc-4840-88c5-1e27e11b3dab",
+    "timestamp": "2025-12-22 20:39:07.666561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Request timeout DoS] Since no timeout is set on the HTTP request, can a malicious ArbStore never respond or send data extremely slowly, causing the callback to never be called and potentially exhausting connection pools or causing resource leaks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3b7484d-9ef1-4112-a0c2-73781a136fa9",
+    "timestamp": "2025-12-22 20:39:26.886545",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [JSON bomb DoS] Can a malicious ArbStore return deeply nested JSON objects (e.g., 10000+ levels deep) that cause JSON.parse() on line 39 to trigger stack overflow or excessive CPU usage, leading to node crash (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bebc74d3-1629-494f-82c9-4e1bd3953b77",
+    "timestamp": "2025-12-22 20:39:47.278066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: requestInfoFromArbStore()] [Prototype pollution] If the parsed JSON from ArbStore contains __proto__ or constructor.prototype keys, can this pollute the JavaScript prototype chain and cause unexpected behavior or security vulnerabilities in other parts of the codebase?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7db93060-1408-44f0-a42c-d3e29a4ea8ce",
+    "timestamp": "2025-12-22 20:40:08.898658",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [NaN validation bug] On line 58, the check 'parseFloat(info.cut) === NaN' will always evaluate to false since NaN !== NaN in JavaScript - can an attacker provide NaN as the cut value, bypassing validation and causing incorrect arbiter fee calculations in arbiter_contract.js, potentially leading to fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e850491-8993-4519-93af-0ca21d18d2f3",
+    "timestamp": "2025-12-22 20:40:31.183987",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Malformed typo] The error message on line 59 contains a typo 'mailformed' instead of 'malformed' - while not a security issue itself, does this indicate insufficient testing of this validation path, suggesting other validation bugs may exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dab0af3b-f67b-413e-9cd7-4139818d8825",
+    "timestamp": "2025-12-22 20:40:54.320474",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Invalid address validation] If validationUtils.isValidAddress() on line 58 has any bugs or can be bypassed, can an attacker provide an invalid arbiter address that gets stored and later causes errors or exploits in arbiter_contract.js when creating shared addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8fe561a6-5f08-4ee6-8acc-767624c80d71",
+    "timestamp": "2025-12-22 20:41:17.859940",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cut value boundary] The validation checks 'parseFloat(info.cut) >= 1' but what happens if cut is exactly 0 or negative? Can this cause division by zero or negative amounts in arbiter fee calculations in arbiter_contract.js functions like createSharedAddressAndPostUnit()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e09e682d-dbde-4d06-9c24-bf7a3a93860c",
+    "timestamp": "2025-12-22 20:41:41.946304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cut precision attack] If info.cut contains a string like '0.12345678901234567890', does parseFloat() handle precision correctly, or can rounding errors in JavaScript floating-point arithmetic cause incorrect fee calculations leading to fund loss over many transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69016f58-6e8f-4815-945a-ad67c55e2380",
+    "timestamp": "2025-12-22 20:42:07.819834",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Missing field validation] The validation only checks info.address and info.cut, but are there other fields expected from the ArbStore API (like device_pub_key from getInfo) that should be validated before storage in the cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be7d3e15-c050-47de-a19e-b9315b6a21ea",
+    "timestamp": "2025-12-22 20:42:33.912156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cache poisoning] The arbStoreInfos cache on line 62 stores whatever the ArbStore API returns without cryptographic verification - can a compromised ArbStore or man-in-the-middle attacker provide a malicious 'address' that belongs to the attacker, causing all arbiter fees to be sent to the attacker's address instead of the legitimate ArbStore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a85cc04-4cd1-4366-b8eb-52c7353c2864",
+    "timestamp": "2025-12-22 20:43:00.202243",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cache indefinite retention] The arbStoreInfos cache on line 8 is never cleared or has expiration - if an arbiter changes their ArbStore address or cut percentage, will the old cached values persist indefinitely, causing incorrect fee routing and potential fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4efedcc-f805-4b39-b3d0-3bed20f82e81",
+    "timestamp": "2025-12-22 20:43:26.953768",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Race condition in cache] If two calls to getArbstoreInfo() for the same arbiter_address occur simultaneously before the cache is populated, both will make HTTP requests to the hub - can this cause race conditions where different responses overwrite each other in the cache, or cause unnecessary load on the hub/ArbStore?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e7312cb-0d14-455f-8b82-f749d0c16b92",
+    "timestamp": "2025-12-22 20:43:53.124114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Cache key collision] The cache uses arbiter_address as the key - if there are any hash collisions or if arbiter addresses can be manipulated to match existing cache keys, can an attacker cause wrong ArbStore info to be returned for a different arbiter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_580799fd-f550-4566-bbc2-abebd372441a",
+    "timestamp": "2025-12-22 20:44:19.410023",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getArbstoreInfo()] [Memory leak via cache] Since the arbStoreInfos object grows without bounds and is never pruned, can an attacker create many arbiter addresses and trigger getArbstoreInfo() calls to gradually fill memory, eventually causing out-of-memory crashes (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41416199-8d11-4ec2-bac8-9688bdc6b2cf",
+    "timestamp": "2025-12-22 20:44:45.309292",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [SQL injection] Although using parameterized query on line 12, if the 'address' parameter contains special characters or the db.query implementation has bugs, could SQL injection occur allowing an attacker to read or modify arbitrary database records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90d3ac9b-d4e0-410a-aa94-ad58f4c45603",
+    "timestamp": "2025-12-22 20:45:11.477710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/arbiters.js] [Function: getInfo()] [Database timing attack] By measuring the time it takes for getInfo() to return, can an attacker determine whether an arbiter exists in the wallet_arbiters table (fast return from line 14) versus needs to be fetched from hub (slow return), potentially leaking information about which arbiters the node has interacted with?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f8b559d-169e-40fb-8531-a7ae351b4e11",
+    "timestamp": "2025-12-22 20:45:36.370823",
+    "report_generated": false
   }
 ]
