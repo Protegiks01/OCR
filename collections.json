@@ -3298,5 +3298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_274e5d9c-fe5c-4ae6-b8f5-a787ac45e78c",
     "timestamp": "2025-12-22 22:25:46.040840",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [ID Type Validation] If the id parameter is not a string/number but an object or array, will the equality check (bot.id == id) use type coercion incorrectly, matching unintended bots?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f297416-110a-40a0-8ee0-30591e7e5387",
+    "timestamp": "2025-12-22 22:26:58.725368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Null/Undefined ID] If getBotByID() is called with null or undefined as id parameter, will the for-loop iterate through all bots without match, silently returning undefined, or could this cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7202aad-9b26-4e33-a0dd-67b7112f0cd0",
+    "timestamp": "2025-12-22 22:27:11.195125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Callback Type] If load() is called without a callback or with a non-function callback parameter, will the code throw 'cb is not a function' exception when trying to invoke cb(err, null) or cb(err, bots)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a088c39-329c-4160-877a-2298d088b6fc",
+    "timestamp": "2025-12-22 22:27:24.068626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Bot Object Validation] If the bot parameter passed to setPairingStatus() is null or not an object, will bot.pairing_code.substr() throw immediately, and is this exception properly caught?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2da38430-b33b-4834-8f09-497f1ece98aa",
+    "timestamp": "2025-12-22 22:27:37.343335",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Sequential Processing] Using async.eachSeries processes bots sequentially - if hub returns thousands of bots, will this cause load() to take minutes to complete, blocking operations that depend on bot data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be621d94-c769-425b-b1c7-6f02fc307729",
+    "timestamp": "2025-12-22 22:27:52.130912",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Database Query per Bot] Each bot requires a separate db.query() call - with thousands of bots, could this create a database query storm, overwhelming the database and slowing down critical transaction validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3b24104-4d6c-436b-97f7-5ccd3b7f8f1a",
+    "timestamp": "2025-12-22 22:28:07.557267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Linear Search] The for-in loop searches bots_cache linearly - with a large cache, will repeated getBotByID() calls create O(n) performance issues, and could an attacker deliberately trigger this to slow down the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_145d9a19-c6c0-4c6d-aed8-09d541581770",
+    "timestamp": "2025-12-22 22:28:23.777092",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Variable: bots_cache] [Memory Growth] If load() is called repeatedly (e.g., on timer or user action) and bots_cache grows each time due to bugs, could unbounded cache growth eventually exhaust node memory and crash the process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7448ad40-6c22-4c89-a5d4-b8a7bc5a65fe",
+    "timestamp": "2025-12-22 22:28:41.612940",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Hub Dependency] If device.requestFromHub() has a vulnerability (e.g., request forgery, MITM), could an attacker inject malicious bot data that appears legitimate, causing users to pair with attacker-controlled bots?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d218eba-d62d-46c3-97ed-d1559bade4f3",
+    "timestamp": "2025-12-22 22:29:00.538906",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Device Address Derivation] If objectHash.getDeviceAddress() has a bug that produces predictable or colliding device addresses, could this cause isPaired to be incorrectly true/false, affecting user pairing decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c51d2566-a130-45d5-ab88-50d1dd8f6fb5",
+    "timestamp": "2025-12-22 22:29:20.449026",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Database Table Schema] If the correspondent_devices table schema changes (e.g., device_address column renamed), will the hardcoded SQL query fail silently or throw, and is there any schema version check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1594f677-f9cc-4f54-a9f4-8ea4b90f6a5e",
+    "timestamp": "2025-12-22 22:29:40.997354",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Hub Command Injection] If the 'hub/get_bots' command string is ever constructed dynamically (though it's not currently), could command injection in device.requestFromHub() allow an attacker to request arbitrary hub endpoints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6cb2a380-5507-4874-9dc6-afb8e0c34650",
+    "timestamp": "2025-12-22 22:30:02.793593",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Pairing Status Persistence] The isPaired flag is computed from database query but stored only in-memory - if a bot is paired/unpaired in correspondent_devices after load(), will stale cache cause incorrect decisions until next load()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ef169a3-45c1-4656-b306-55e7474bc324",
+    "timestamp": "2025-12-22 22:30:25.548650",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Reference vs Copy] Does getBotByID() return a reference to the cached bot object or a copy - if reference, can calling code mutate bot.isPaired and corrupt cache state for other consumers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f4ce172-a2bf-4c5e-9505-9e89f504c30c",
+    "timestamp": "2025-12-22 22:30:48.483253",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Bot Object Mutation] The code mutates bot.isPaired = handled_bot.isPaired in the async iterator - if the bots array from hub contains shared objects or prototypes, could mutation affect unexpected objects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1360c8b8-bf94-46c9-bd1a-4d8cbdca2103",
+    "timestamp": "2025-12-22 22:31:10.321982",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Device Address Mutation] The code adds bot.device_address property to the bot object - if this bot object is shared or cached elsewhere, could this mutation cause side effects in other modules that expect a different bot structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afc0cece-d805-4ead-9f1c-f4960454e0f4",
+    "timestamp": "2025-12-22 22:31:32.405496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: load()] [Hub Response Delay] If device.requestFromHub() takes a long time to respond (slow network), and load() is called again during the wait, can multiple concurrent hub requests create race conditions when all complete and update bots_cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1718f913-94e8-4a4a-841a-5eba4dcd89f0",
+    "timestamp": "2025-12-22 22:31:53.717460",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: setPairingStatus()] [Database Read Timing] If a correspondent_devices row is inserted/deleted between the time load() starts and the specific bot's db.query() executes, could isPaired reflect an intermediate state that becomes invalid by the time load() completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c40d73e2-2d07-4f82-b8c3-7ceb9ef5de2f",
+    "timestamp": "2025-12-22 22:32:16.531935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/bots.js] [Function: getBotByID()] [Cache Update Timing] If load() is updating bots_cache while getBotByID() is iterating the for-in loop, could the iterator see a partially-updated cache with some bots missing isPaired fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b113a41-21e8-4f8d-9502-642402da82bd",
+    "timestamp": "2025-12-22 22:32:39.516367",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [Memory exhaustion] Can an attacker trigger rapid breadcrumb additions from critical paths (e.g., during validation.js double-spend detection or network.js peer message processing) to exceed the MAX_LENGTH limit of 200 entries repeatedly, causing memory thrashing and potential node crashes during critical consensus operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87f5bad6-4096-4f68-831e-364bbba5dfff",
+    "timestamp": "2025-12-22 22:33:03.467280",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: arrBreadcrumbs] [Memory leak] Since arrBreadcrumbs is a module-level global array that persists for the lifetime of the Node.js process, can an attacker cause unbounded memory growth by triggering breadcrumb additions faster than the shift() operation can remove old entries, especially during network catchup or validation storms?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9434be32-7650-45b3-9a53-506b3d883357",
+    "timestamp": "2025-12-22 22:33:28.195280",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [DoS via shift() operation] When arrBreadcrumbs.length exceeds MAX_LENGTH (200), the shift() operation at line 14 has O(n) time complexity for array reindexing - can an attacker trigger continuous breadcrumb additions during main chain selection or unit validation to cause performance degradation leading to temporary network freezing (≥1 hour delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc9c6a0c-3744-4927-b5ff-5d023eca8bed",
+    "timestamp": "2025-12-22 22:33:53.867303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Global State: MAX_LENGTH] [Resource exhaustion] The MAX_LENGTH constant of 200 breadcrumbs with timestamps and messages could consume significant memory if each breadcrumb contains large string payloads (e.g., unit hashes, conflicting unit lists from validation.js) - can this cause memory exhaustion during high-load scenarios like massive unit validation or network sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c721910c-c902-4b31-aadc-1957cb1cf222",
+    "timestamp": "2025-12-22 22:34:16.868521",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: add()] [Information disclosure] Breadcrumbs logged via console.log() at line 16 expose sensitive protocol state including unit hashes, addresses, witness operations, and network peer URLs (as seen in network.js usage) - can this leak private transaction patterns or network topology to unauthorized observers with access to logs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_106e2923-3404-4070-83fa-990944746cfa",
+    "timestamp": "2025-12-22 22:34:40.163233",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/breadcrumbs.js] [Function: get()] [Privacy leak] The get() function returns the raw arrBreadcrumbs array without sanitization - if this is exposed via an API or debugging interface, can attackers extract sensitive information about recent validation failures, double-spend attempts, conflicting units, or network peer connections that should remain internal?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10724100-997d-4a9d-bbe3-0d75aa4daec5",
+    "timestamp": "2025-12-22 22:35:04.100914",
+    "report_generated": false
   }
 ]
