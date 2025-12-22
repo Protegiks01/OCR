@@ -598,5 +598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d29a8e0b-8eac-4ca7-b510-0f1d9bb268dc",
     "timestamp": "2025-12-22 19:25:41.536132",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: saveStateVars()] [State Persistence Failure] In saveStateVars() at lines 1348-1364, state variables are written to KV batch but the batch.write() happens later (line 106) - if the batch write fails after database commit, can state variables become permanently out of sync with database balances, breaking AA determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca292ec0-af74-49e6-9c3b-a5e66d481c60",
+    "timestamp": "2025-12-22 19:26:58.430239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: saveStateVars()] [False Value Deletion] At line 1358, state.value === false signals deletion of the variable - can an attacker exploit AA logic that legitimately wants to store boolean false, causing unintended variable deletion and state corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6cd6da2-3c33-4acd-ae55-756d34f59f94",
+    "timestamp": "2025-12-22 19:27:11.132051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: fixStateVars()] [Boolean Coercion] At line 1343, state.value === true is coerced to 1 'affects secondary triggers that execute after ours' - can this type coercion cause non-determinism if secondary triggers compare using === instead of ==, leading to divergent execution paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72dca6ea-75c3-4b7d-9b28-26bca8da007e",
+    "timestamp": "2025-12-22 19:27:24.194196",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateStorageSize()] [Storage Size Race] In updateStorageSize() at lines 1388-1419, storage_size is read from cache (line 493) but updated via UPDATE query (line 1416) - if multiple concurrent AA responses update storage_size, can lost updates cause storage_size to diverge from actual KV store usage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99a6b038-86e2-493c-ab92-e7f248b4b615",
+    "timestamp": "2025-12-22 19:27:38.120273",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateStorageSize()] [Negative Storage Size] At lines 1410-1411, the code throws if new_storage_size < 0 - but can an attacker craft state deletions in a way that the calculation underflows before reaching this check, bypassing it and corrupting storage_size tracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe09a5c3-a82b-4907-9ac6-c498c3e8d57c",
+    "timestamp": "2025-12-22 19:27:52.674702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateStorageSize()] [Storage Size Enforcement] At lines 1412-1413, the function rejects if byte_balance < new_storage_size (with MCI condition) - can an attacker exploit the timing between balance updates and storage size checks to temporarily violate this invariant, then restore it before checks run?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e41bcc66-2a6c-4e11-9883-9fea2ae485f6",
+    "timestamp": "2025-12-22 19:28:08.791819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: getValueSize()] [Size Calculation Inconsistency] In getValueSize() at lines 1377-1386, Decimal values are converted to string and measured - if Decimal.toString() uses different precision than the KV store's string serialization (line 1361), can size calculations be inaccurate, causing storage_size drift?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8525b2d-1124-47d2-9235-0f4c757b160c",
+    "timestamp": "2025-12-22 19:28:25.710728",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateOriginalOldValues()] [State Snapshot] At lines 1421-1430, updateOriginalOldValues() sets original_old_value for secondary triggers - if a primary trigger modifies state, then a secondary trigger reads and modifies the same state, can the original_old_value be overwritten, breaking delta calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8406cc6-76dc-424e-b5a5-624572c0a597",
+    "timestamp": "2025-12-22 19:28:43.897751",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: addUpdatedStateVarsIntoPrimaryResponse()] [State Variable Delta] At lines 1487-1516, state variable deltas are calculated as varInfo.value - varInfo.old_value (line 1506) - if both values are large Decimals close to Number.MAX_SAFE_INTEGER, can subtraction lose precision, reporting incorrect deltas to callers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4e2304d-aba8-4fa8-92ab-549223f1a66d",
+    "timestamp": "2025-12-22 19:29:03.067285",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: addUpdatedStateVarsIntoPrimaryResponse()] [Deleted Variable Handling] At lines 1511-1512, deleted variables (value === false) are removed from addressVars - but varInfo is still added to updatedStateVars (line 1510) - can this cause inconsistency where a deleted variable appears in updatedStateVars but not in actual state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bc23857-1567-4a57-9a5c-2c30fb5b2a52",
+    "timestamp": "2025-12-22 19:29:25.188792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [State Cloning Depth] At line 434, originalStateVars is cloned via _.cloneDeep(stateVars) - if state variables contain deeply nested objects or circular references, can cloneDeep() fail or produce incorrect clones, breaking state restoration on bounce?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96e520fa-8f81-46fa-a1a6-ca1547a50fcd",
+    "timestamp": "2025-12-22 19:29:46.564708",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: checkStorageSizes()] [KV Stream Race] In checkStorageSizes() at lines 1743-1777, the function iterates over KV store with a read stream while holding a database connection - if state variables are being written concurrently, can the stream read inconsistent state, reporting false positive mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eba48fcf-d8ed-41bf-969d-a3ea78b28e64",
+    "timestamp": "2025-12-22 19:30:08.899960",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: checkStorageSizes()] [Address Filtering] At lines 1762-1767, the function compares storage_size between database and KV store - but does it account for state variables of AAs that were just defined but haven't executed yet? Can this cause false positive mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96cd4146-4f66-4e25-b684-85c3296e86b4",
+    "timestamp": "2025-12-22 19:30:31.872768",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: getTypeAndValue()] [Type Discrimination] In getTypeAndValue() at lines 1366-1375, values are prefixed with 's\\n', 'n\\n', or 'j\\n' - can an attacker craft a string state variable starting with 'n\\n' or 'j\\n' to cause type confusion when reading from KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9f96f96-8070-48f6-856b-5092a710ccdb",
+    "timestamp": "2025-12-22 19:30:55.860929",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: saveStateVars()] [Key Collision] At line 1357, KV keys are formatted as 'st\\n' + address + '\\n' + var_name - if var_name contains '\\n', can it cause key collision or parsing errors when reading back state variables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2663cc30-2762-4a2a-b9ad-fbf3738dfabe",
+    "timestamp": "2025-12-22 19:31:20.968272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [State Variable Namespace] The stateVars object is indexed by address (line 1336) - if multiple AAs are triggered in a chain and they share state variable names, can there be namespace collisions or cross-AA state leakage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d32d456-91b4-49d7-a162-1abc180611f1",
+    "timestamp": "2025-12-22 19:31:47.035720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: bounce()] [State Restoration] At lines 867-868, bounce() restores state via assignObject(stateVars, originalStateVars) - if assignObject() doesn't handle deletions properly (e.g., keys in stateVars but not in originalStateVars), can state from the failed execution persist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89b849dd-ba28-467a-84cc-f04c6743c567",
+    "timestamp": "2025-12-22 19:32:13.964070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: revert()] [State Clearing] At line 1609, revert() clears all state variables with Object.keys(stateVars).forEach - but does this properly handle nested references? Can partially-executed state updates leave behind orphaned objects in memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1845705-7b20-484a-b186-581ce9a14012",
+    "timestamp": "2025-12-22 19:32:42.333153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateStorageSize()] [Delta Calculation Order] At lines 1391-1407, delta_storage_size is calculated by iterating addressVars - if state updates happen in a different order than variable enumeration, can the delta calculation be incorrect?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da046de0-25a2-4f69-8034-167afa82f52b",
+    "timestamp": "2025-12-22 19:33:11.373114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: fixStateVars()] [Secondary Trigger State View] At line 1343, boolean true is converted to 1 'affects secondary triggers that execute after ours' - does this create non-determinism if secondary triggers on different nodes observe the state at slightly different timings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc4366ed-3609-46f8-bb39-9a48166c5628",
+    "timestamp": "2025-12-22 19:33:41.611788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: estimatePrimaryAATrigger()] [Old Value Restoration] At lines 186-191, the 'updated' flag is deleted and old_value is restored after estimation - if estimation modifies state multiple times, can intermediate values be lost, making subsequent real executions see incorrect state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22b5e7fc-37b6-499f-8cef-ad235413f23c",
+    "timestamp": "2025-12-22 19:34:12.232456",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handleTrigger()] [State Variable Initialization] At lines 434-437, if bSecondary is true, updateOriginalOldValues() is called - but if a secondary trigger is itself triggered by another secondary trigger (nested secondaries), can original_old_value tracking get confused?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb939366-d087-4b4a-ae12-5d7923c435d6",
+    "timestamp": "2025-12-22 19:34:43.032554",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateStorageSize()] [Variable Name Length] At lines 1399 and 1405, delta_storage_size includes var_name.length - if var_name contains multi-byte UTF-8 characters, does .length return byte count or character count? Can this cause storage_size to be incorrectly calculated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4bbfbb8c-3b3c-45ab-a5a5-fda9f39acde3",
+    "timestamp": "2025-12-22 19:35:13.846065",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: addUpdatedStateVarsIntoPrimaryResponse()] [Type Conversion] At line 1500, state values are converted via toJsType(state.value) - if toJsType() changes representation (e.g., Decimal to number), can this cause precision loss in updatedStateVars while actual state retains full precision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e5efef7-fd24-4a6a-92a4-cb300042aa29",
+    "timestamp": "2025-12-22 19:35:45.199802",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: saveStateVars()] [Batch Clear Timing] At line 1610, batch.clear() is called during revert - but if batch operations were partially applied to KV store before clear(), can this leave the KV store in an inconsistent state with partial writes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_062a64f9-5c77-4ccb-8098-72b0f643d5f5",
+    "timestamp": "2025-12-22 19:36:18.122975",
+    "report_generated": false
   }
 ]
