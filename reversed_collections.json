@@ -1048,5 +1048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8ff1e49-8b86-47fb-b2b0-9dcaf0be3da8",
     "timestamp": "2025-12-22 19:54:25.733434",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Main Chain Index Null] If earlier_unit has main_chain_index=null (main_chain.js line 774), stability returns false - but if database corruption causes valid units to have null MCI, can this cause widespread incorrect stability determinations leading to chain split when different nodes have different corruption states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33c13240-36e9-47c7-8e67-f6b0c3b4ebee",
+    "timestamp": "2025-12-22 19:55:37.691353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Free Unit Handling] According to main_chain.js line 774, units with is_free=1 return false - if an attacker can manipulate the is_free flag in the database (via direct DB access or corruption), can they force legitimate units to appear unstable indefinitely, causing permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d62d3a09-10cb-4342-bc89-c9506c65c74a",
+    "timestamp": "2025-12-22 19:55:50.192478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Genesis Unit Edge Case] If earlier_unit is the genesis unit, determineIfStableInLaterUnits() returns true immediately (main_chain.js line 759-760) - but if the genesis unit constant is misconfigured or database is corrupted, can this early return bypass critical stability checks and cause all units to be incorrectly marked stable, leading to permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe69c1cc-eadf-47d9-8cfb-4f60ef396b66",
+    "timestamp": "2025-12-22 19:56:03.110467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Hardcoded Exception Bypass] The main_chain.determineIfStableInLaterUnits() function contains hardcoded unit hash exceptions (lines 762-768 in main_chain.js) that bypass normal stability logic - if an attacker discovers the specific hash combinations in these hardcoded checks, can they craft inputs to check_stability.js that return incorrect stability results, potentially enabling double-spend attacks or chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05fa7f18-30dd-43bf-bd26-e3ecd995d59c",
+    "timestamp": "2025-12-22 19:56:17.291182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Malformed Unit Hashes] If earlier_unit or arrLaterUnits contain syntactically invalid base64 strings (wrong length, invalid characters), will determineIfStableInLaterUnits() reject them before database queries, or can malformed hashes cause SQL injection, database corruption, or crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9d5e255-3288-4dd8-b7e6-e9bd4b6003e8",
+    "timestamp": "2025-12-22 19:56:31.717447",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Non-existent Units] If earlier_unit or any element in arrLaterUnits does not exist in the database, will determineIfStableInLaterUnits() handle this gracefully, or can it cause SQL errors, null pointer dereferences, or incorrect stability results that might lead to incorrect consensus decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9115972f-4865-4b96-89ee-5e1b716b8eb6",
+    "timestamp": "2025-12-22 19:56:47.058070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Stability Determination Logic] If earlier_unit and arrLaterUnits form a circular dependency (where earlier_unit is actually a descendant of units in arrLaterUnits), will determineIfStableInLaterUnits() detect this impossibility and return false/error, or can it enter infinite recursion causing stack overflow and process crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d940f76-9612-4a5d-954b-c170c0fca180",
+    "timestamp": "2025-12-22 19:57:03.291003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 3] [Connection Pool Exhaustion] If the db.js module uses connection pooling and this script is called repeatedly without proper cleanup, can it exhaust the connection pool, preventing other critical operations (unit validation, storage) from accessing the database and causing network-wide transaction delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bc5ae8c-3e4c-4b58-8441-6a475638f70a",
+    "timestamp": "2025-12-22 19:57:21.063966",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 3] [Database Locking] If multiple instances of check_stability.js are executed concurrently on the same database (SQLite), can database locking conflicts cause determineIfStableInLaterUnits() to timeout, return incorrect results, or corrupt the database file leading to permanent data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40a4cd06-7a87-496b-94ef-dedb05ae3f46",
+    "timestamp": "2025-12-22 19:57:39.519613",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 12-14] [Resource Cleanup] After the callback executes and logs the result, the script does not explicitly call process.exit() or close database connections - if the script hangs waiting for pending database operations or event loop tasks, can this cause resource exhaustion when run repeatedly in automated scripts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf18dd43-d7d4-49e7-a17f-97aaa21ab48b",
+    "timestamp": "2025-12-22 19:57:58.575053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 3] [Database Connection] The script passes the global `db` object to determineIfStableInLaterUnits() without explicitly opening or closing database connections - if the database is not properly initialized or is in an inconsistent state, can this lead to corrupt stability determinations that might be cached or propagated to other nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f74efa0-a6f3-4ce3-b79d-79ca0e3f5e65",
+    "timestamp": "2025-12-22 19:58:18.262799",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Async Error Propagation] If determineIfStableInLaterUnits() encounters an error deep in its execution (e.g., during graph traversal in main_chain.js lines 803-1000), but doesn't properly propagate it to the callback, can the script return incorrect stability results (bStable = undefined or false when it should error), leading to incorrect consensus decisions if this tool is used in automation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5e968e3-cc23-4804-b530-eb584a37c4ed",
+    "timestamp": "2025-12-22 19:58:39.101994",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 1-14] [Uncaught Exceptions] If the db.js module fails to initialize (database file locked, corrupted, or inaccessible), will the script crash on line 3 with an uncaught exception before any validation occurs, potentially masking critical database integrity issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ba34c9e-5312-45dc-8a04-df0937b51377",
+    "timestamp": "2025-12-22 19:59:01.009113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Callback Error Handling] The callback function (line 12-14) receives only `bStable` parameter with no error parameter - if determineIfStableInLaterUnits() encounters errors (database failures, invalid units, timeout), how are these errors communicated, and can silent failures lead to incorrect stability assumptions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e9ff4c8-a80e-4020-b2f0-e198b6944cb6",
+    "timestamp": "2025-12-22 19:59:22.340583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 1-14] [Error Handling] The script contains no try-catch blocks or error handling for exceptions from main_chain.determineIfStableInLaterUnits() - if the function throws due to database errors, invalid units, or internal bugs, will the process crash without logging useful diagnostics, hindering incident response?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51bc387a-05b1-4053-ad2f-f364807aee01",
+    "timestamp": "2025-12-22 19:59:46.112072",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 6-8] [Argument Count] If the script is executed with zero arguments, does it handle the case where args[0] and args[1] are both undefined, or will it pass undefined values to main_chain.determineIfStableInLaterUnits() causing incorrect stability results or database errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40956a22-bc0c-481d-9006-4e7eee2ca910",
+    "timestamp": "2025-12-22 20:00:10.038196",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Special Characters] Can an attacker inject special characters in the comma-separated list (e.g., unit hashes containing commas, quotes, or SQL metacharacters) that bypass split() parsing and cause SQL injection in the downstream main_chain.determineIfStableInLaterUnits() function?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5c615b6-009a-4eb1-adb6-a5f85691dd9d",
+    "timestamp": "2025-12-22 20:00:35.320897",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 7-8] [Type Confusion] Does the script validate that args[0] and args[1] are strings before calling .split(), or can non-string types (if somehow injected) cause unexpected behavior, crashes, or incorrect results when passed to main_chain functions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8ce2b2f-6838-4ccd-9c3f-260361136ff8",
+    "timestamp": "2025-12-22 20:01:01.764012",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [DOS Attack] If an attacker provides an extremely long comma-separated list in `args[1]` (e.g., millions of unit hashes), will the split() operation consume excessive memory, causing the Node.js process to crash with OOM error and resulting in temporary network disruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ccb09a1-6739-4b43-925e-872e531b7307",
+    "timestamp": "2025-12-22 20:01:28.782073",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Input Validation] Can an attacker provide malformed comma-separated values in `args[1]` (e.g., empty strings after split like 'unit1,,unit3') resulting in arrLaterUnits containing invalid empty string elements that cause determineIfStableInLaterUnits() to return incorrect stability results or crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6dbac463-d1b5-4b61-853f-32cf552aa79e",
+    "timestamp": "2025-12-22 20:01:56.861426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 8] [Array Parsing] If `args[1]` is undefined or null (when running with fewer than 2 arguments), will the `.split(',')` operation throw an uncaught exception that crashes the process, potentially causing temporary network disruption if this script is used in production automation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca181c33-6bce-4529-9e38-1b8d2efac46b",
+    "timestamp": "2025-12-22 20:02:25.730013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 7] [Input Validation] Does the script validate that `args[0]` (earlier_unit) matches the expected base64 unit hash format before passing it to main_chain.determineIfStableInLaterUnits(), or can arbitrary strings cause SQL injection, database corruption, or incorrect stability determinations leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4aa543d2-50a7-49a3-bae8-87ebaaf747f5",
+    "timestamp": "2025-12-22 20:02:54.323018",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Lines 6-8] [Command Injection] Can an attacker execute arbitrary system commands by injecting shell metacharacters into process.argv arguments (e.g., `earlier_unit` containing '; rm -rf /' or backtick commands), potentially compromising the node host system and causing total network shutdown for that operator?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8a96186-ab09-422b-a15c-87ea63492a20",
+    "timestamp": "2025-12-22 20:03:24.391156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Main Chain Index Null] If earlier_unit has main_chain_index=null (main_chain.js line 774), stability returns false - but if database corruption causes valid units to have null MCI, can this cause widespread incorrect stability determinations leading to chain split when different nodes have different corruption states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a68af8e6-602d-4e68-8c48-e83d4e08b417",
+    "timestamp": "2025-12-22 20:03:53.320019",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/tools/check_stability.js] [Line 12] [Free Unit Handling] According to main_chain.js line 774, units with is_free=1 return false - if an attacker can manipulate the is_free flag in the database (via direct DB access or corruption), can they force legitimate units to appear unstable indefinitely, causing permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1eaca36-e77e-477a-8044-8c71d24b1716",
+    "timestamp": "2025-12-22 20:04:19.689197",
+    "report_generated": false
   }
 ]
