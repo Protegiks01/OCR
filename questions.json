@@ -248,5 +248,130 @@
     "question": "byteball/ocore/proof_chain.js",
     "url": "https://deepwiki.com/search/-generate-150-targeted-securit_769a59d9-caf9-4e08-964e-6d5a06eaf574",
     "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/prosaic_contract.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_613e3d80-a8a3-407b-84c3-dffe0b43a565",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/signature.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_ca299791-cc6d-4005-8d5e-cab4dffe5c4b",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/signed_message.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_56e28fe7-6149-4d08-ad27-78f17049d2eb",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/sqlite_migrations. js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_e7d0a323-dee5-4fc0-9b45-e828229e1fff",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/sqlite_pool.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_f7083690-0329-4994-ac88-94dcb241500d",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/storage.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_51a7e72a-5d61-4996-9b6b-ac5ef4d66ac4",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/string_utils.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_8e68d3b2-dcb9-4082-8672-168c8de52937",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/uri. js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_d23a3fc3-78b8-4922-94d7-b86df09664db",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/validation.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_d99ec97e-b467-4592-9724-ceed0df73ea2",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/validation_utils.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_93cef9fe-9ea3-4b6e-ad66-6b4263951de2",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/wallet.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_c4465ac5-c238-4725-8f97-82e8b81c8446",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/wallet_defined_by_addresses.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_7cc92384-b99c-4b32-aab6-f0a34412d57a",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/wallet_defined_by_keys.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_c97329b4-bba9-4828-8a99-d2b5e6b27a55",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/wallet_general.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_e0ef7a6a-f652-4e75-9d64-7fbde493fcaf",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/witness_proof.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_5b953d8f-3e01-4f12-be4d-cc26a2c24876",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/writer.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_788542c0-b40f-45a5-bff1-7647f2e0fc05",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/formula/common.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_a21acbff-a8a9-415e-b8c2-94c05d4b493a",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/formula/evaluation. js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_8c54073d-e5a5-452a-b7f6-f988d211b675",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/formula/validation.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_acb66f2c-d798-4d1c-a0af-47c9ed989350",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/formula/parse_ojson.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_4d8f3deb-3bb2-4e9e-84db-8dc45e38f16a",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/formula/index. js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_ef837df3-5363-4548-9495-af25b2c3afbb",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/tools/check_stability.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_5bf2efd5-2918-4125-9ba2-9b923a9cdcc1",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/tools/replace_ops.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_3433090f-89ae-4ed2-8bd7-378ecc4e5b6d",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/tools/supply.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_2005de10-86f3-41ea-9f02-b08b0f30dcf2",
+    "questions_generated": false
+  },
+  {
+    "question": "byteball/ocore/tools/update_stability.js",
+    "url": "https://deepwiki.com/search/-generate-150-targeted-securit_1dabfde1-f23a-464d-b6e9-784848d98d9b",
+    "questions_generated": false
   }
 ]
