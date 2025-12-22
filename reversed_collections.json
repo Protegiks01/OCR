@@ -2548,5 +2548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fb7fa89-ac36-49a7-8dc1-4f89b107346d",
     "timestamp": "2025-12-22 22:21:05.475664",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [hypot complexity underestimate] The hypot function increments complexity by 1, but for large arrays it performs O(n) operations. Can attackers bypass complexity limits by using hypot with many arguments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e0274e7-cd3f-4446-9031-4542cda2b4a6",
+    "timestamp": "2025-12-22 22:22:27.343756",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [min/max with empty arrays] The min/max functions reject empty arrays, but can an attacker submit arrays that become empty only after expression evaluation, bypassing this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60ae9738-0021-4b35-b4fb-d9939532ba97",
+    "timestamp": "2025-12-22 22:22:39.804577",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Rounding with excessive precision] For ceil/floor/round, the second parameter can be an expression. Can attackers submit extremely large precision values that cause computation slowdown despite passing complexity checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_281356d1-d567-4706-8247-7a368f7d436e",
+    "timestamp": "2025-12-22 22:22:53.193296",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [ln of zero or negative] The ln (natural log) function doesn't validate the domain. Can ln(0) or ln(negative) produce -Infinity or NaN, causing validation to pass but execution to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0fade28-b37b-4361-89d9-b17dd10910e3",
+    "timestamp": "2025-12-22 22:23:06.427786",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [sqrt of negative] The sqrt operation doesn't validate that the argument is non-negative. Can passing negative values cause NaN results that propagate through calculations, causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4ccda5d-01b6-45ce-9d88-d6218f785af5",
+    "timestamp": "2025-12-22 22:23:20.557754",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Decimal precision loss] When Decimal operations are performed during validation, can precision loss cause results to differ from execution-time calculations, leading to validation/execution mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d59c5c2-ea04-496c-bf04-0d10305d681e",
+    "timestamp": "2025-12-22 22:23:35.695919",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Exponentiation overflow] The exponentiation operator (^) increments complexity by only 1, but can extremely large exponents (e.g., 2^1000000) cause computation that far exceeds the complexity estimate, leading to DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88b02e3c-332d-49eb-bd6a-872b3ef38a83",
+    "timestamp": "2025-12-22 22:23:53.329953",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Modulo negative numbers] The modulo operator (%) behavior with negative numbers varies across implementations. Can this cause non-deterministic results across nodes with different JavaScript engines?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c3538ef-32f1-4368-a87f-862e4ca950ad",
+    "timestamp": "2025-12-22 22:24:10.915579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Division by zero] The division operator (/) has no explicit check for division by zero. Can an attacker craft expressions where the divisor becomes zero during execution, causing errors that aren't caught during validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15f2ae54-ca15-4c55-b269-e92c2b92b03f",
+    "timestamp": "2025-12-22 22:24:29.837625",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: evaluate()] [Arithmetic string injection] For arithmetic operations (+, -, *, /, %), string parameters are rejected, but can an attacker submit expressions that evaluate to strings only after passing validation, causing type coercion errors during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4776419-a3cb-428e-bfaf-a997fa330fa9",
+    "timestamp": "2025-12-22 22:24:49.493400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [bStateVarAssignmentAllowed bypass] Can an attacker craft formulas where state variable assignments are hidden in nested contexts that bypass the bStateVarAssignmentAllowed check during initial validation but execute during runtime?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e343a52c-4565-4f6b-8cb9-04d6eb56432f",
+    "timestamp": "2025-12-22 22:25:10.188757",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [readGetterProps callback injection] If the readGetterProps callback is maliciously implemented by an attacker who compromises the calling code, can it return false getter data that passes validation but causes execution failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f3aec32-4345-42b9-8251-479d4375d24a",
+    "timestamp": "2025-12-22 22:25:31.261878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [Locals initialization check] The function throws if !locals, but can an attacker pass an empty object {} that passes this check but causes errors when accessing expected properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40a28953-ca89-425c-9fda-fd19de70b8e6",
+    "timestamp": "2025-12-22 22:25:53.940515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [setImmediate vs setTimeout] The evaluate() function uses setImmediate when available, else setTimeout. Can differences in these implementations across Node.js versions cause non-deterministic evaluation order, leading to chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4422ece0-3f97-41c0-a67b-685b0325f65b",
+    "timestamp": "2025-12-22 22:26:16.887661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [Ambiguous grammar exploitation] When parser.results.length > 1, the code reports 'ambiguous grammar'. Can an attacker craft formulas that deliberately produce ambiguous parses to cause denial of service or non-deterministic validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_788be640-f5e9-47c5-abe1-37118274ac07",
+    "timestamp": "2025-12-22 22:26:41.088595",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [Cache limit bypass] The cache has a limit (cacheLimit) controlled by common.js. Can an attacker flood the system with unique formulas that thrash the cache, causing excessive memory usage and validation slowdown leading to network-wide delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_221ddbb2-e913-48a5-b675-fcee8c4852b6",
+    "timestamp": "2025-12-22 22:27:06.259692",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: validate()] [Parser cache poisoning] The parser caches results in the global 'cache' object. Can an attacker submit malicious formulas that pollute the cache with invalid parse trees, causing subsequent valid formulas to fail validation and bricking all AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e5448ae-43a1-447d-b208-5a3b15869705",
+    "timestamp": "2025-12-22 22:27:32.565800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: finalizeLocals()] [Prototype pollution] Can an attacker inject properties into locals through prototype pollution that bypass the hasOwnProperty checks and cause unexpected behavior in variable state tracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ec8f839-6a01-4128-92db-709627894b8b",
+    "timestamp": "2025-12-22 22:28:00.518546",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: finalizeLocals()] [Race condition in state transition] When locals are finalized and 'maybe assigned' becomes 'assigned', can concurrent validation of multiple formulas sharing locals cause race conditions leading to non-deterministic validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3393027d-acc7-41a7-b1d9-889809d10e2e",
+    "timestamp": "2025-12-22 22:28:29.057908",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getInputOrOutputError()] [Nested expression depth] When params contain nested expressions (typeof value !== 'string'), is there a depth limit? Can an attacker create deeply nested expressions that pass validation but cause stack overflow during evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d53c400-3e88-49da-80a6-7ff887ce104c",
+    "timestamp": "2025-12-22 22:28:57.406162",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getInputOrOutputError()] [Amount integer overflow] The amount validation checks for positive integers using regex and isPositiveInteger(), but can extremely large values that fit in strings cause overflow when converted to numbers during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_137c675c-3e6f-4bbc-99b1-d391bbce79e9",
+    "timestamp": "2025-12-22 22:29:26.266500",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getInputOrOutputError()] [Asset base64 validation] When validating asset IDs using ValidationUtils.isValidBase64(), can an attacker submit assets with valid base64 encoding but incorrect length that pass validation but cause database lookup failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_455cde2e-175f-42b9-b464-09f1670b5a46",
+    "timestamp": "2025-12-22 22:29:54.227018",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getInputOrOutputError()] [Operator confusion] While '==' is rejected, operators like '=' and '!=' are allowed for address/asset. Can an attacker exploit operator precedence or associativity issues in complex nested expressions to bypass intended validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eca2664f-1f2e-4929-a333-428f4530c421",
+    "timestamp": "2025-12-22 22:30:20.862795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getInputOrOutputError()] [Empty params bypass] The function rejects empty params objects, but can an attacker submit params with only prototype-inherited properties that appear non-empty but cause evaluation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_885b7725-7d7c-4186-ade7-49ce97a645ea",
+    "timestamp": "2025-12-22 22:30:46.832075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: getAttestationError()] [Field expression evaluation] For attestation queries, the field can be an expression. Can an attacker craft a field expression that is valid during validation but throws errors or accesses unauthorized data during execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_591087df-9c71-4221-ac3e-56246fd5b04b",
+    "timestamp": "2025-12-22 22:31:12.506074",
+    "report_generated": false
   }
 ]
