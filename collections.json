@@ -2698,5 +2698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db339880-bfdc-4f35-97e8-dd467bb9c2a6",
     "timestamp": "2025-12-22 21:46:24.559958",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Asset List SQL Injection] The query at line 57 builds an IN clause using assets.map(db.escape).join(', '), but if db.escape() has a bug or if the assets array contains objects instead of strings, could this allow SQL injection that modifies the is_private flag incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3e40486-d8e6-466d-94d1-1e3a1fc2bd38",
+    "timestamp": "2025-12-22 21:47:40.386303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [MY_ADDRESSES Join Safety] When walletOrAddress is a wallet (not an address), the query joins with my_addresses table (line 10). If the my_addresses table contains stale or incorrect entries due to database corruption or race conditions, can this cause balances to be reported for addresses the wallet doesn't actually control?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1209cf32-d02a-42f0-898d-b30b05521389",
+    "timestamp": "2025-12-22 21:47:53.013091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Cross-Database Consistency] If the node is using database replication (master-slave) and there's replication lag between the outputs table write and the witnessing_outputs table write, can readBalance() return inconsistent balances where some commission outputs are counted but their corresponding unit outputs are not yet visible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f07278e1-80b8-4e45-932e-ac4f017730b3",
+    "timestamp": "2025-12-22 21:48:05.845629",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Performance DoS] If an address has millions of small unspent outputs (dust outputs), will the SUM(amount) aggregation and GROUP BY operation (lines 15-18) cause the query to take excessive time (>1 hour), allowing an attacker to create dust-attack addresses and freeze balance queries for those addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e07f05e-835f-422b-a0a6-a8b06a078e25",
+    "timestamp": "2025-12-22 21:48:19.121689",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readOutputsBalance()] [Missing Commission Outputs] Unlike readBalance(), this function does NOT query witnessing_outputs or headers_commission_outputs (compare lines 14-18 vs 76-80), so can an attacker exploit this discrepancy by using readOutputsBalance() to check if they have sufficient balance, then compose a transaction that fails because it doesn't account for commission outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af6a0149-8e17-4127-8ff1-674e5d235387",
+    "timestamp": "2025-12-22 21:48:33.238200",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readOutputsBalance()] [API Confusion] Since readOutputsBalance() and readBalance() have nearly identical signatures but different behavior, can calling code mistakenly use the wrong function and get incomplete balance information, leading to transactions that appear valid but are actually under-funded?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23694eed-665a-4a34-93f9-5bbd4d9e3937",
+    "timestamp": "2025-12-22 21:48:48.238722",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readOutputsBalance()] [Integer Overflow] Same SUM(amount) overflow concern as readBalance() - if total outputs exceed MAX_SAFE_INTEGER, will the balance wrap around to an incorrect value (line 78)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e023b81a-9d0b-42a5-bf7b-7f48bd438a17",
+    "timestamp": "2025-12-22 21:49:05.020192",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readOutputsBalance()] [Input Validation Bypass] The walletIsAddress check (line 72) uses the same length === 32 heuristic. Can an attacker pass a 32-character string that isn't a valid address hash but still passes this check, causing the query to search for a non-existent address column value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4cd2999c-e302-4895-8492-18e352cb26b7",
+    "timestamp": "2025-12-22 21:49:23.010969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readOutputsBalance()] [Race Condition on is_spent] If a unit spending outputs is committed between the WHERE is_spent=0 check and the SUM aggregation, can outputs that are being spent in parallel transactions be counted in the balance, leading to potential double-spend attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bda4312d-1751-4602-bef0-e9158a5bbaca",
+    "timestamp": "2025-12-22 21:49:41.482551",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesOnWallet()] [Prosaic Contract Filter] The query excludes addresses that are prosaic contracts via LEFT JOIN (lines 98-101), but if the prosaic_contracts table is missing entries due to database corruption, can this function incorrectly include prosaic contract addresses in the shared address list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92fcdbfc-3c86-490f-8992-35f75743ba75",
+    "timestamp": "2025-12-22 21:50:01.113496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesOnWallet()] [Recursive Explosion] The function calls readSharedAddressesDependingOnAddresses() which is recursive (line 105). If there's a cycle in the shared_address_signing_paths table where address A is a member of shared address B, which is a member of shared address A, can this cause infinite recursion and stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0022fb8f-78a1-458a-be0e-b4d5b3a11992",
+    "timestamp": "2025-12-22 21:50:22.131053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesOnWallet()] [Empty Result Fast Path] If the wallet has no shared addresses (line 103), the function returns an empty array. But should it also verify that the wallet exists and is valid, or could this leak information about which wallets exist on the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_238d4341-77ad-4360-ac87-8b9e50d53a9f",
+    "timestamp": "2025-12-22 21:50:44.134194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesOnWallet()] [SQL Injection via Wallet Param] The wallet parameter is passed directly into the SQL query (line 101). If the calling code doesn't sanitize this parameter and it contains SQL injection characters, can this extract sensitive information about all shared addresses in the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bb7241f-2897-4815-9355-fbd0d9b71a75",
+    "timestamp": "2025-12-22 21:51:06.961805",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [IN Clause SQL Injection] The function builds an IN clause using arrMemberAddresses.map(db.escape).join(', ') (line 112). If arrMemberAddresses contains non-string values or objects, could db.escape() fail and allow SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bddfc3b5-1308-449e-b355-e19f39ab375b",
+    "timestamp": "2025-12-22 21:51:31.212907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [Infinite Recursion] The function recursively calls itself (line 120). If the shared_address_signing_paths table contains cyclic relationships (A → B → C → A), will this cause a stack overflow that crashes the node, resulting in network halt for that node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe001198-4d1d-425e-abe9-de239f174fbe",
+    "timestamp": "2025-12-22 21:51:55.976705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [Memory Exhaustion] If an attacker creates a deeply nested hierarchy of shared addresses (100+ levels deep), can the recursive calls accumulate enough stack frames and intermediate arrays to exhaust memory, causing the node to crash and halt transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_684f0e96-eff6-402a-914b-0767a2bc311f",
+    "timestamp": "2025-12-22 21:52:22.672395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [Lodash Difference Bug] The function uses _.difference() to find new addresses (line 117). If lodash's implementation has a bug or if the arrays contain objects instead of strings, could this return incorrect results that cause some shared addresses to be missed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9176f71-7e0e-4e6d-97c8-5c994d27bb1f",
+    "timestamp": "2025-12-22 21:52:49.221331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [Callback Hell] The recursive structure with nested callbacks (lines 113, 120) makes it difficult to reason about error handling. If a database error occurs mid-recursion, will the handleSharedAddresses callback be invoked with partial data, potentially missing some shared addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e0cbb4b-918f-4284-9225-8a9c2afbfd10",
+    "timestamp": "2025-12-22 21:53:16.038186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedAddressesDependingOnAddresses()] [Duplicate Address Detection] If the shared_address_signing_paths table has duplicate entries (same shared_address, same address), could this cause the same address to appear multiple times in the final array, leading to incorrect balance calculations in readSharedBalance()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c818d2b-850d-4b8f-8a38-7fdea8225ff6",
+    "timestamp": "2025-12-22 21:53:44.311634",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [UNION ALL Join Inconsistency] The query uses three SELECT statements combined with UNION ALL (lines 133-142). If the outputs, witnessing_outputs, and headers_commission_outputs tables have inconsistent is_spent states due to race conditions, can this cause outputs to be counted multiple times or missed entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f015c21c-ead6-411a-a0d0-b871cbe690f5",
+    "timestamp": "2025-12-22 21:54:14.056244",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [IN Clause Size Limit] The function builds an IN clause from arrSharedAddresses (line 131). If a wallet has thousands of shared addresses, can this exceed the database's maximum query size or IN clause limit, causing the query to fail and preventing balance retrieval?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5de6cb89-7b67-40bc-81c4-7e016c690010",
+    "timestamp": "2025-12-22 21:54:44.116944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Asset NULL Handling] Similar to readBalance(), the query converts NULL assets to 'base' (line 146). Can an attacker create a custom asset with unit hash 'base' to confuse the balance aggregation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_123d351f-9772-4c36-8520-819526313a8c",
+    "timestamp": "2025-12-22 21:55:13.893407",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Address-Level Balance Tracking] The function returns balances grouped by both asset AND address (lines 147-151), creating a nested structure assocBalances[asset][address]. If two addresses have balances in the same asset, is this structure correctly aggregated, or could calling code accidentally only read the first address's balance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7ff4e3d-fbcb-4532-ba6e-77134aa1aea9",
+    "timestamp": "2025-12-22 21:55:43.339233",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Witnessing Output Hardcoded Stable] The query marks all witnessing_outputs and headers_commission_outputs as is_stable=1 (lines 138, 141). If these outputs should actually be pending (not yet stable), could this cause the wallet to incorrectly allow spending of unstable outputs, leading to transaction failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b827c006-3a35-455e-93e4-75378c5b55b5",
+    "timestamp": "2025-12-22 21:56:13.166531",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readSharedBalance()] [Empty Shared Addresses] If readSharedAddressesOnWallet() returns an empty array, the function returns an empty assocBalances object (line 130). Should this instead return balances with all assets showing zero, to maintain consistency with readBalance()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a068a09-698b-4bc1-802d-00fc4cf34b4e",
+    "timestamp": "2025-12-22 21:56:43.394876",
+    "report_generated": false
   }
 ]
