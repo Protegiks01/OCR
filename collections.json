@@ -3898,5 +3898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_06c36b1f-55fc-442b-89ec-401ad00a3286",
     "timestamp": "2025-12-22 23:03:57.161396",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree()] [Content Hash Nonserial Flag] At lines 299-301, if objBall.content_hash exists, objBall.is_nonserial is set to true, but what if content_hash is set to an empty string or null? Does this incorrectly mark the ball as nonserial, causing ball hash mismatches in processHashTree()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad72b37a-64e3-420c-909f-405c11bee1a2",
+    "timestamp": "2025-12-22 23:05:08.303554",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Array Type Confusion] At line 337-338, the code checks if arrBalls is an array, but if an attacker sends a fake array-like object (e.g., {0: ball1, 1: ball2, length: 2}) that passes Array.isArray(), can subsequent array operations fail or produce unexpected results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59e949af-4de4-4edf-8df1-39616370e7b2",
+    "timestamp": "2025-12-22 23:05:21.010760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Hash Tree Mutex Lock Timing] The mutex lock at line 339 acquires \\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6b9b55e-85c3-43f8-b67f-897acf2491f6",
+    "timestamp": "2025-12-22 23:05:33.782976",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Database Transaction Isolation] At line 347, conn.query(\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70dd15dd-2c1a-4d02-9d4b-8f4e3a0442ed",
+    "timestamp": "2025-12-22 23:05:47.255320",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Ball Hash String Type Validation] At line 353-354, the code checks if objBall.ball is a string, but if it's a string containing null bytes, control characters, or extremely long strings (>1MB), can this cause database insertion failures or buffer overflows in later operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c47bda2e-4c74-4eee-ad36-21f1b4d8f28b",
+    "timestamp": "2025-12-22 23:06:01.420185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Genesis Parent Ball Check Bypass] At lines 357-362, genesis units are checked to have no parent_balls, and non-genesis units must have parent_balls array. But if storage.isGenesisUnit() is compromised to return true for a non-genesis unit, can an attacker inject units without parents into the hash tree?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb2a4cad-5380-4ee9-8265-10dec8df69a2",
+    "timestamp": "2025-12-22 23:06:17.024302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Ball Hash Verification Weakness] At line 363-364, ball hash is verified using objectHash.getBallHash(), but if the is_nonserial parameter is attacker-controlled and incorrectly set, can this cause the hash verification to pass for an invalid ball, allowing malicious units to be inserted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0696f614-2ac0-4f1e-bd17-9f51f905ac99",
+    "timestamp": "2025-12-22 23:06:33.979524",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Storage Global State Pollution] At line 367, storage.assocHashTreeUnitsByBall[objBall.ball] is directly modified as a global in-memory map. If multiple hash trees are processed concurrently (before mutex release), can this cause race conditions where balls from different hash trees get mixed up?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_81767dbe-c8b5-452b-af37-75415a17f15d",
+    "timestamp": "2025-12-22 23:06:51.936740",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [INSERT IGNORE Race Condition] At line 369, INSERT with getIgnore() is used to insert balls that may already exist. If two processHashTree operations insert the same ball simultaneously in different transactions, can this cause duplicate key errors or inconsistent hash_tree_balls table state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bbba4013-3072-4345-a754-6fa6035d2f3e",
+    "timestamp": "2025-12-22 23:07:10.201728",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Skiplist Ball Existence Check] At lines 376-386, skiplist balls are checked to exist in either hash_tree_balls or balls tables. But if a skiplist ball exists in hash_tree_balls but was inserted by a corrupted previous hash tree, can this allow invalid skiplist references to propagate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59dfe9a3-739c-426d-9803-bbf5dc018281",
+    "timestamp": "2025-12-22 23:07:30.465539",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Parent Ball Missing in Hash Tree] At lines 391-411, parent balls are checked to exist in hash_tree_balls first, and if not found, queried from balls table. But if a parent ball is missing from both tables due to database corruption, the error at line 401-402 is returned. Can this permanently brick the catchup process if the corruption is not fixed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a709399-4915-4642-88e3-fa2a96540c48",
+    "timestamp": "2025-12-22 23:07:50.837090",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Max MCI Calculation Logic] At lines 403-407, max_mci is calculated from parent balls that are on main chain and have MCI > current max_mci. But if all parent balls are off the main chain (is_on_main_chain !== 1), max_mci stays null. Does this properly handle hash trees that branch off the main chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2ad81e9-64c4-466f-9d39-5339e8962891",
+    "timestamp": "2025-12-22 23:08:12.481724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Transaction Rollback Incomplete] At lines 415-421, if an error occurs, ROLLBACK is called, but if the ROLLBACK itself fails (e.g., due to database connection loss), does conn.release() at line 417 still execute, or can this leak database connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33acc970-202e-4086-bd83-b72adc1b9d66",
+    "timestamp": "2025-12-22 23:08:35.134078",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Catchup Chain Element Count] At lines 431-438, the code expects exactly 2 elements in catchup_chain_balls when a hash tree is processed. But if processCatchupChain was called with a very short chain (only 1 stable ball), can rows.length === 1, causing the error at line 437 to incorrectly reject valid hash trees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ac58933-ad60-46ca-a122-4fec671251f2",
+    "timestamp": "2025-12-22 23:08:59.983515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Tree Root Verification] At line 442-443, the code verifies that arrBalls[arrBalls.length-1].ball matches rows[1].ball (second chain element). But if arrBalls is processed in reverse order (oldest first) and the attacker reorders the balls, can this verification pass with an incorrect tree root?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0566918-481d-4430-91f7-2e3eef3a5245",
+    "timestamp": "2025-12-22 23:09:23.774246",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Chain Element Deletion Race] At line 445, the oldest chain element (rows[0].ball) is deleted from catchup_chain_balls. If another thread is concurrently reading from catchup_chain_balls to prepare the next hash tree request, can this cause a race condition where the next hash tree references a deleted ball?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6bc70f3-54b5-4407-bf11-9afa7d533dd2",
+    "timestamp": "2025-12-22 23:09:47.969847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [Handled Balls Purge Failure] At line 447, purgeHandledBallsFromHashTree() is called within the transaction. If this function encounters an error (e.g., database lock timeout), does the error propagate properly to trigger ROLLBACK, or can partial purge leave the hash_tree_balls table in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a424358-9f0e-4521-adc7-bdb3fe9dbc9b",
+    "timestamp": "2025-12-22 23:10:13.799226",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: purgeHandledBallsFromHashTree()] [Handled Balls Query Result] At line 460, the query finds balls that exist in both hash_tree_balls and balls tables (meaning they've been processed and stored). But if the query uses CROSS JOIN without proper indexing, can this be extremely slow for large hash trees, causing the transaction to timeout?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1163f882-3c5f-4feb-b239-c51c1fa45c59",
+    "timestamp": "2025-12-22 23:10:39.600783",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: purgeHandledBallsFromHashTree()] [Empty Handled Balls Array] At lines 461-462, if rows.length === 0, the function returns immediately without purging anything. But if hash_tree_balls has 10000 balls and none have been stored to balls yet, does this mean the hash_tree_balls table will keep growing indefinitely until memory is exhausted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba0a9f31-8b9f-43f8-b335-bcd66ec17a2e",
+    "timestamp": "2025-12-22 23:11:06.420177",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: purgeHandledBallsFromHashTree()] [Storage Memory Leak] At lines 464-466, handled balls are deleted from storage.assocHashTreeUnitsByBall in-memory map. But if the delete operation fails silently (e.g., due to prototype pollution), can this cause the map to grow indefinitely and leak memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72298157-9323-473c-af7b-8051a76639bf",
+    "timestamp": "2025-12-22 23:11:33.374517",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: purgeHandledBallsFromHashTree()] [DELETE Query SQL Injection] At line 467, arrHandledBalls is used in a DELETE query with WHERE ball IN(?). If the database driver doesn't properly sanitize array parameters and an attacker controls the ball strings, can this lead to SQL injection deleting unintended rows?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fcca2b6b-3013-494f-8289-1026e8d84aad",
+    "timestamp": "2025-12-22 23:12:01.729304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain() & processCatchupChain()] [Catchup Chain Asymmetry] If prepareCatchupChain() includes witness_change_and_definition_joints in the catchup chain but processCatchupChain() processes them through witnessProof.processWitnessProof() which may reject them, can this cause the catchup chain to be partially accepted, leaving the node in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_892a8811-9f7a-477e-b7de-69697b2247f3",
+    "timestamp": "2025-12-22 23:12:29.785760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain() & readHashTree()] [Chain Ball to Hash Tree Mapping] When processCatchupChain() inserts balls into catchup_chain_balls at line 243, and readHashTree() later retrieves them to determine which hash tree to send, if the member_index ordering doesn't match the last_ball chain ordering, can this cause hash trees to be requested in the wrong sequence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9cecd280-d7a0-4a24-9b0e-acd401be5cd3",
+    "timestamp": "2025-12-22 23:12:58.325718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree() & processHashTree()] [Hash Tree Ball Parent Inconsistency] If readHashTree() includes a ball with parent_balls that reference units outside the [from_mci, to_mci] range, and processHashTree() expects all parent balls to be in hash_tree_balls or balls tables, can this cause processHashTree() to fail with \\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44532c55-b86e-42a9-9c6e-798319992fe4",
+    "timestamp": "2025-12-22 23:13:26.768857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree() & purgeHandledBallsFromHashTree()] [Purge Timing DoS] If processHashTree() is called repeatedly with small hash trees (e.g., 10 balls each), and each call triggers purgeHandledBallsFromHashTree(), can the frequent DELETE queries cause database lock contention and slow down other critical operations like unit validation and storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d06e0caf-abb6-4714-8889-9c483e454128",
+    "timestamp": "2025-12-22 23:13:54.458721",
+    "report_generated": false
   }
 ]
