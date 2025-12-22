@@ -448,5 +448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d836eb4f-755a-41ac-85f4-ad23b2d5e220",
     "timestamp": "2025-12-22 19:15:23.891143",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateFinalAABalances()] [Asset Creation Race] At lines 523-526, if an AA issues a new asset within its response, the code adds it to arrNewAssets and initializes its balance - can an attacker exploit race conditions where multiple concurrent responses from the same AA issue the same asset, causing duplicate INSERT attempts and database constraint violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e0e1ca4-4087-4874-8709-bbc6b549bbfe",
+    "timestamp": "2025-12-22 19:16:35.291446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateFinalAABalances()] [Balance Divergence] At lines 531-542, balances are updated in both the database (UPDATE query) and objValidationState.assocBalances - if the database UPDATE fails silently or partially, can in-memory balances diverge from database state, causing subsequent triggers to operate on incorrect balances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b42977f-6a21-45fb-a54e-ff75c2b7b4b9",
+    "timestamp": "2025-12-22 19:16:47.802000",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateFinalAABalances()] [Uninitialized Asset Balance] At line 512, the comment notes 'this might happen if there is another pending invocation of our AA that created the outputs we are spending now' - can an attacker deliberately create this race condition by triggering the same AA multiple times rapidly, causing objValidationState.assocBalances[address][output.asset] to be undefined and breaking balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c434cedb-9b76-481a-8be4-f03f1031c141",
+    "timestamp": "2025-12-22 19:17:01.103455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handlePrimaryAATrigger()] [Transaction Isolation] At lines 88-144, the function begins a database transaction with BEGIN but the transaction spans multiple async operations including formula evaluation and secondary triggers - can a long-running AA execution hold database locks, causing deadlock with other concurrent AA triggers or main chain updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a5e8299-d3ca-4963-b1e7-c9cc73987525",
+    "timestamp": "2025-12-22 19:17:14.622115",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: handlePrimaryAATrigger()] [KV Batch Write Failure] At lines 105-109, if batch.write() fails after database COMMIT (line 110), the database changes are persisted but state variable updates in KV store are lost - does this cause permanent state divergence where the AA's database balances don't match its state variables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7c1cc1f-4517-4a4b-aa23-bda7db3906cf",
+    "timestamp": "2025-12-22 19:17:28.598945",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: checkBalances()] [Balance Verification Gap] In checkBalances() at lines 1779-1875, the function skips verification if there are unhandled triggers (lines 1782-1787) - can an attacker keep the aa_triggers table perpetually non-empty by sending a continuous stream of triggers, preventing balance integrity checks from ever running and allowing accumulated balance corruption to go undetected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54ae016c-7be7-4155-aa6f-d356b054fc93",
+    "timestamp": "2025-12-22 19:17:44.114657",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: checkBalances()] [Floating Point Precision Exploit] At lines 1853-1861, balance discrepancies are ignored if they're within 1e-5 relative difference for values exceeding Number.MAX_SAFE_INTEGER - can an attacker exploit this tolerance by crafting transactions that deliberately create small rounding errors that accumulate over many operations to siphon funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_458cb987-4e3e-4877-8cac-66b149cca837",
+    "timestamp": "2025-12-22 19:18:00.631062",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: checkBalances()] [Temporary Table Race] At lines 1788-1814, checkBalances() creates a temporary table, fills it, and drops it - if multiple checkBalances() calls execute concurrently (despite mutex), can table name collisions or race conditions cause incorrect balance verification results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c9fcd48-36b7-4f57-8c30-b52844ab59bc",
+    "timestamp": "2025-12-22 19:18:18.649891",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: insertFakeOutputsIntoMcUnit()] [Fake Output Persistence] In insertFakeOutputsIntoMcUnit() at lines 288-300, fake outputs are inserted into the outputs table for dryRun - if the subsequent ROLLBACK (line 262) fails, can these fake outputs persist in the database, allowing the AA to spend non-existent funds in future real executions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1006efc-1f7b-413d-918f-370e4ba313b6",
+    "timestamp": "2025-12-22 19:18:37.328207",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: estimatePrimaryAATrigger()] [State Pollution] In estimatePrimaryAATrigger() at lines 147-208, state variables and balances are modified in-place during estimation (lines 186-191) - if the 'updated' flag deletion (line 187) fails or is incomplete, can subsequent real triggers operate on polluted state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35e5be80-c8d6-40ec-9207-254cb1dbec33",
+    "timestamp": "2025-12-22 19:18:57.294789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: estimatePrimaryAATrigger()] [Balance Mutation] At lines 444-446 (within trigger_opts.assocBalances path), originalBalances is cloned but trigger.outputs are added directly to trigger_opts.assocBalances - if the caller reuses trigger_opts.assocBalances across multiple estimations, can accumulated balance additions cause incorrect estimates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82d4e089-9135-4688-8ef8-c499edaa1d5c",
+    "timestamp": "2025-12-22 19:19:17.770579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateInitialAABalances()] [Undefined Byte Balance] At lines 484-486, if trigger.outputs.base is undefined and mci < constants.aa3UpgradeMci, byte_balance is set to undefined to maintain 'bug-compatibility' - can an attacker exploit this undefined byte_balance in subsequent fee calculations to bypass storage size checks or create malformed response units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6cc866bc-997d-4134-b37a-01834c8108d2",
+    "timestamp": "2025-12-22 19:19:39.390136",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: completePaymentPayload()] [Input Selection Race] In completePaymentPayload() at lines 969-1139, inputs are selected from outputs table with is_spent=0 condition (line 1045) - if another transaction spends these outputs between the SELECT and the response unit being saved, can the AA response reference already-spent outputs, creating an invalid unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9481a9ae-7084-4ecf-8088-8ffcc360d739",
+    "timestamp": "2025-12-22 19:20:02.175453",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: completePaymentPayload()] [Change Output Manipulation] At lines 1023-1033, change outputs are calculated and added to payload.outputs - if the change_amount calculation (line 1023) results in a negative value due to fee miscalculation, can negative or zero change outputs be added, violating balance conservation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d25b8d34-5529-4f45-af93-61c6bab3717f",
+    "timestamp": "2025-12-22 19:20:25.444114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: completePaymentPayload()] [Send-All Bypass] At lines 977-989, send-all outputs (where amount === undefined) receive special handling - if multiple send-all outputs exist (checked at line 978), the function returns an error, but can an attacker craft a response formula that adds send-all outputs after this check, bypassing the validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f39ce50-5711-460a-b888-dce5977023b6",
+    "timestamp": "2025-12-22 19:20:49.735003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: iterateUnspentOutputs()] [Insufficient Funds Loop] In iterateUnspentOutputs() at lines 1000-1036, the loop continues until total_amount >= target_amount (line 1013) - if available outputs are exhausted before reaching target_amount and asset is non-base, execution falls through to issueAsset() - can an attacker trigger an AA with carefully chosen amounts to force repeated failed issuance attempts, causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3615acd2-a847-4dc7-b70e-b4635fd0389b",
+    "timestamp": "2025-12-22 19:21:15.182153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: readStableOutputs()] [Dust Output Exclusion] At line 1045, byte outputs less than FULL_TRANSFER_INPUT_SIZE are excluded 'to prevent dust attack' - can an attacker exploit this by sending many outputs of exactly FULL_TRANSFER_INPUT_SIZE bytes, forcing the AA to consume maximum inputs and pay excessive fees when responding?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76b810e4-1a75-4376-83ef-3707f09a8925",
+    "timestamp": "2025-12-22 19:21:41.627732",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: readUnstableOutputsSentByAAs()] [Unstable Output Spending] At lines 1054-1067, the function selects unstable outputs sent by other AAs (main_chain_index>mci OR NULL) - can an attacker exploit the non-deterministic ordering of unstable units to cause different nodes to select different inputs, leading to divergent response units and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ca0fccc-5a0b-4d9b-bf95-099e158f0f9f",
+    "timestamp": "2025-12-22 19:22:09.033115",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: completePaymentPayload()] [Oversize Fee Calculation Loop] At lines 991-1013, the code recalculates target_amount and oversize fees each iteration - if getOversizeFee() calculation is expensive and the loop requires many iterations, can an attacker trigger this with specific amounts to cause CPU exhaustion DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_573a61b0-395e-43e9-a00d-7d82cc4d3560",
+    "timestamp": "2025-12-22 19:22:37.814724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: completePaymentPayload()] [Storage Size Bypass] At lines 986-989, if storage_size > FULL_TRANSFER_INPUT_SIZE and mci >= aaStorageSizeUpgradeMci, a change output to the AA is added to maintain balance above storage_size - can an attacker manipulate storage_size (via state variable updates) immediately before this check to bypass the reserve requirement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16688f21-bbc2-4e0a-bb2c-69c65d30aff0",
+    "timestamp": "2025-12-22 19:23:06.783840",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: issueAsset()] [Capped Asset Reissuance] In issueAsset() at lines 1069-1106, for capped assets, the code checks if already issued (line 1091) - if two concurrent responses from the same AA both try to issue the same capped asset, can both pass the check before either commits, resulting in duplicate issuance exceeding the cap?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6bc976da-e3ec-4702-a232-ce77d4bcd872",
+    "timestamp": "2025-12-22 19:23:36.718089",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: issueAsset()] [Serial Number Race] At lines 1097-1103, for uncapped assets, serial_number is determined by MAX(serial_number)+1 - if concurrent responses execute this query simultaneously, can they receive the same max_serial_number, causing duplicate serial number issuance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66c105aa-5695-4ea6-a6bf-e130810b8856",
+    "timestamp": "2025-12-22 19:24:07.500405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: issueAsset()] [Issue Amount Overflow] At line 1073, issue_amount is set to either objAsset.cap or (target_amount - total_amount) - can an attacker craft a scenario where target_amount is manipulated to cause issue_amount to be negative or exceed safe integer bounds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4acd5049-0ef7-4964-bf07-72496090b7d2",
+    "timestamp": "2025-12-22 19:24:38.870311",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: sortOutputs()] [Non-Deterministic Sorting] At lines 1716-1719, sortOutputs() uses localeCompare() which may have locale-dependent behavior - can differences in locale settings across nodes cause different output orderings, leading to different unit hashes and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01219acb-a912-41dd-8d7d-2cce2d646153",
+    "timestamp": "2025-12-22 19:25:09.906374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/aa_composer.js] [Function: updateFinalAABalances()] [Asset Balance Initialization Race] At lines 531-533, new assets are inserted with INSERT IGNORE (getIgnore()) - if multiple concurrent operations try to initialize the same asset balance, can race conditions cause only partial balance updates to be applied?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d29a8e0b-8eac-4ca7-b510-0f1d9bb268dc",
+    "timestamp": "2025-12-22 19:25:41.536132",
+    "report_generated": false
   }
 ]
