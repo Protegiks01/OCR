@@ -1198,5 +1198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1eaca36-e77e-477a-8044-8c71d24b1716",
     "timestamp": "2025-12-22 20:04:19.689197",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Loading] [Dependency Injection] Since this module hard-codes the dependencies on ./validation.js and ./evaluation.js without any dependency injection mechanism, if a critical security vulnerability is discovered in either module requiring an emergency patch, can nodes apply the patch without restarting or clearing caches, or will the module cache prevent the fix from taking effect until all nodes restart, creating a window for widespread exploitation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_845d8d90-918c-4ebd-bcfd-f365a0e01f12",
+    "timestamp": "2025-12-22 20:05:28.362643",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Callback Semantics] [Double Callback] If validation.js or evaluation.js contain bugs that cause their callbacks to be invoked multiple times for a single formula validation/evaluation, and this facade doesn't prevent double-callbacks, can definition.js process the same formula validation result multiple times, potentially storing duplicate or conflicting results in the database and causing state corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c9ac4d0-3cea-455b-a792-a201487632d0",
+    "timestamp": "2025-12-22 20:05:41.336483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Async Behavior] [Event Loop Starvation] If the exported validate() and evaluate() functions perform synchronous operations that block the event loop (e.g., complex validation without yielding), and callers like definition.js invoke them during unit validation, can an attacker submit units with maximally complex formulas that cause event loop starvation, preventing the node from processing other units and effectively DoSing the network for extended periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ed4105c-ea01-4b6c-95e5-0acf47e0f532",
+    "timestamp": "2025-12-22 20:05:54.352625",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Scope] [Global Pollution] If validation.js or evaluation.js pollute the global scope during their initialization (e.g., by setting global variables, modifying built-in prototypes, or registering global event handlers), and this index.js loads them without isolation, can this global pollution affect other parts of the codebase, potentially causing non-deterministic behavior in unrelated validation logic that leads to consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b220be76-2875-4cbf-a7d3-97f2aec12455",
+    "timestamp": "2025-12-22 20:06:08.099235",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Function Identity] [Type Confusion] Since this module exports bare function references without type validation, if validation.js or evaluation.js accidentally export non-function values (e.g., due to refactoring errors), will definition.js and aa_composer.js attempt to invoke these non-functions as functions, causing type errors that crash nodes when processing units with formula definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_826bf641-4920-4f74-8004-caeb9297b909",
+    "timestamp": "2025-12-22 20:06:23.024960",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Import Resolution] [Path Traversal] If an attacker can manipulate the module resolution path or create malicious validation.js/evaluation.js files in the formula directory before this index.js is first loaded, can the require() statements on lines 1-2 load attacker-controlled code instead of the legitimate modules, allowing complete compromise of formula validation and enabling theft of all funds secured by formula-based address definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f7cb6ab-c3bc-4b42-83ee-bf8a4ea72e56",
+    "timestamp": "2025-12-22 20:06:39.128468",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Pattern] [Export Mutation] Since JavaScript allows mutation of exported objects, if any code in the system (including third-party dependencies or malicious code) modifies exports.validate or exports.evaluate after this module loads, can subsequent callers receive the modified implementations, allowing attackers to compromise all formula validation/evaluation throughout the node's lifetime without triggering any security alerts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_661bbf10-2520-4d5a-acce-b3c27c0e2def",
+    "timestamp": "2025-12-22 20:06:55.802197",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Upgrade Safety] [Hard Fork Risk] If the formula system requires a hard fork to fix a critical vulnerability in validation or evaluation logic, but this facade provides no mechanism to switch between old and new implementations based on MCI, can the upgrade fail to be atomic across the network, leaving some nodes using old formula validation while others use new logic, causing permanent network partition?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-22 20:07:14.137322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Upgrade Safety] [Backward Compatibility] If a protocol upgrade modifies the behavior of validate() or evaluate() in validation.js/evaluation.js (e.g., to add new formula opcodes or change complexity calculations), but this index.js continues to export them without version gating based on MCI, can nodes at different upgrade states produce different validation results for the same formulas, causing permanent chain splits during the upgrade transition period?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8978fd5c-b718-49e2-a7a1-93e292759fae",
+    "timestamp": "2025-12-22 20:07:32.287901",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Mock Injection] [Test Isolation] If tests mock the exports of this module to test definition.js behavior, but production code uses multiple import paths (both index.js and direct imports from validation.js/evaluation.js), can the mocks fail to override all code paths, causing tests to provide false confidence while production code still uses the real, potentially vulnerable implementations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_148f5a4f-7989-46d9-bfe9-1c4eb84902a9",
+    "timestamp": "2025-12-22 20:07:51.521386",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Test Coverage] [Interface Mismatch] If test files import formulaParser from this index.js but production code like aa_composer.js imports directly from evaluation.js, can tests pass while production code fails because the test coverage doesn't exercise the actual import paths used in production, potentially missing bugs that only manifest when evaluation.js is used directly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4ff16cf-9bf5-4ed6-a8c6-46097a4c1a4f",
+    "timestamp": "2025-12-22 20:08:11.080270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Resource Management] [Missing Cleanup] Since this module exports functions without any cleanup or disposal mechanism, if validation.js or evaluation.js allocate resources (e.g., worker threads, timers, or file handles) during formula processing, can these resources leak when formulas are validated/evaluated through this interface, eventually causing resource exhaustion and preventing nodes from processing new units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0508d824-3010-41f9-95dc-e93c38e5bf59",
+    "timestamp": "2025-12-22 20:08:31.943102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Memory Management] [Closure Leaks] If the exported validate() and evaluate() functions create closures over large objects in validation.js or evaluation.js, and these closures are long-lived due to module caching, can repeated calls to formula validation/evaluation from definition.js and aa_composer.js cause memory leaks by accumulating unreleased formula contexts, eventually exhausting node memory and causing network-wide outages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96979b0c-5a4c-4d46-b8f3-a46a18ea6c6f",
+    "timestamp": "2025-12-22 20:08:54.601092",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [API Versioning] [Breaking Changes] If the validate() or evaluate() function signatures in validation.js or evaluation.js change (e.g., adding new required parameters, changing callback conventions, or modifying return values), but this index.js continues to export them without version checks or adapter logic, can existing callers like definition.js invoke these functions with incorrect arguments, causing crashes or security vulnerabilities when processing formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_766d2f32-b40d-4941-8dd9-11d006cf2e94",
+    "timestamp": "2025-12-22 20:09:16.904434",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Access Control] [Privilege Escalation] If validation.js and evaluation.js are designed to be called only from trusted contexts with specific preconditions, but this index.js exports them as a public API without enforcing those preconditions, can untrusted code or malicious callers invoke these functions directly to bypass security checks, potentially validating and executing malicious formulas that would normally be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1ba914d-fadc-434b-893e-14773859c994",
+    "timestamp": "2025-12-22 20:09:39.803514",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [API Boundary] [Missing Sanitization] Since this facade directly exports validate() and evaluate() without any input sanitization layer, if callers like definition.js pass user-controlled data (formula strings, complexity limits, or context objects) directly through, can attackers craft inputs that exploit vulnerabilities in the underlying validation.js or evaluation.js implementations, such as regex DoS, prototype pollution, or code injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e248789e-3f48-4376-9ba5-c9126282c1c4",
+    "timestamp": "2025-12-22 20:10:04.001025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Concurrency] [Callback Race] If multiple callers invoke exports.validate or exports.evaluate concurrently with different complexity limits or validation contexts, and the underlying implementations don't properly isolate per-call state, can callbacks from one validation be delivered to a different caller, causing definition.js to incorrectly accept or reject formula definitions based on another formula's validation result?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71f0dde4-0004-44fb-a4e7-02c0c23000a7",
+    "timestamp": "2025-12-22 20:10:27.950087",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [State Management] [Module Singleton] Since Node.js caches required modules as singletons, any state in validation.js or evaluation.js is shared across all callers of exports.validate and exports.evaluate - if this shared state includes complexity counters, caches, or execution contexts, can one caller's formula validation affect another concurrent validation, causing non-deterministic results that break consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a79baa0a-efe9-442f-9bb8-e5e54a6d2c7d",
+    "timestamp": "2025-12-22 20:10:52.946320",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Concurrency] [Reentrant Calls] If validation.js or evaluation.js maintain any module-level mutable state, and concurrent calls to the exported validate()/evaluate() functions can occur from multiple async contexts in definition.js and aa_composer.js, can reentrant calls corrupt shared state, causing formula validation to produce incorrect results and potentially approving formulas that should fail, leading to unauthorized fund transfers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0fdc0c65-525b-4e0b-8201-46117b90948d",
+    "timestamp": "2025-12-22 20:11:18.848013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Module Loading] [Load Order Non-Determinism] Since Node.js module loading can be affected by filesystem ordering, if validation.js and evaluation.js have initialization side effects that depend on load order, can the order in which they're required on lines 1-2 affect their behavior, potentially causing some nodes to initialize the formula system differently and reject units that other nodes accept?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5037d5c-ed2c-4be2-ae31-54cc19ca62b7",
+    "timestamp": "2025-12-22 20:11:44.117536",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Determinism] [Platform Dependencies] If validation.js or evaluation.js contain any platform-specific code (e.g., using platform-specific regex features, number precision, or timing functions), and this index.js exports them without platform normalization, can nodes running on different operating systems or Node.js versions produce different validation/evaluation results, causing consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e014162b-ca0f-41de-b051-67b2441147a8",
+    "timestamp": "2025-12-22 20:12:08.963172",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Determinism] [Version Skew] If different nodes have different versions of validation.js or evaluation.js installed, but all use the same version of this index.js facade, can the exported validate() and evaluate() functions behave differently across nodes (e.g., due to bug fixes or changes in formula complexity calculations), causing permanent chain splits when nodes disagree on whether specific formulas are valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e094806-0485-40dd-868f-d120bca3a3a9",
+    "timestamp": "2025-12-22 20:12:36.295345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Error Handling] [Silent Failures] If the require() statements on lines 1-2 fail to load the underlying modules (e.g., due to file system errors or syntax errors in validation.js/evaluation.js), but Node.js's require() doesn't throw immediately, can this result in exports.validate and exports.evaluate being undefined, causing silent failures when definition.js attempts to validate formula definitions, potentially allowing units with invalid formulas to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7ed6130-b92b-4baf-98cd-0747a89d0e0d",
+    "timestamp": "2025-12-22 20:13:02.527261",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Error Propagation] [Callback Inconsistency] If validation.js and evaluation.js use different error callback conventions (e.g., one uses (err, result) while the other uses (result) with result.error), and this facade doesn't normalize the interface, can callers like definition.js misinterpret error conditions, potentially accepting invalid formulas as valid or vice versa, causing consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ace9466-b6ac-47a1-8b97-bd349a18152c",
+    "timestamp": "2025-12-22 20:13:26.797066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/index.js] [Error Handling] [Unhandled Exceptions] Since this module performs no try-catch wrapping around the exports from validation.js and evaluation.js, if either validate() or evaluate() throws an exception instead of returning an error through the callback, will this cause the calling code in definition.js to crash the entire node when processing a maliciously crafted formula, enabling a DoS attack that prevents transaction confirmation network-wide?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6da8f2ac-66b1-45fa-b477-90a29784b6a1",
+    "timestamp": "2025-12-22 20:13:52.160679",
+    "report_generated": false
   }
 ]
