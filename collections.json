@@ -2548,5 +2548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68d05697-76cd-42bb-acd8-833994dcaa7e",
     "timestamp": "2025-12-22 21:36:08.265401",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [All Functions] [Callback Error Propagation] None of the functions include explicit error handling in callbacks - if a database query fails, can the error be silently swallowed, leaving the archiving process incomplete with no indication to the caller?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c872a2fc-582a-4530-a503-4970712cd20a",
+    "timestamp": "2025-12-22 21:37:17.163461",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()] [Query Failure Handling] If the conn.query() call fails due to database error, is the callback still invoked with empty rows, or does execution halt, potentially leaving arrQueries in an incomplete state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40be104e-839b-44d2-ad1a-426e8493b123",
+    "timestamp": "2025-12-22 21:37:29.815555",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToArchiveJoint()] [INSERT Failure] If the INSERT INTO archived_joints fails (e.g., due to constraint violations or disk full), but the deletion queries have already been added to arrQueries, can the unit be deleted without being archived, causing permanent data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_234d5066-2cbe-40e1-bfcf-2f08dd449e43",
+    "timestamp": "2025-12-22 21:37:43.300870",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Spend Proof Dependencies] If light clients rely on spend_proofs for validating transfers, can deleting these proofs cause light clients to reject legitimate historical transfers when syncing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7913394-32a6-480a-ab84-09c9ae5e7c97",
+    "timestamp": "2025-12-22 21:37:56.859942",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToVoidJoint()] [Proof Availability] The voidJoint function deletes spend_proofs but keeps the unit - can this inconsistency where a unit exists but its spend proofs don't cause validation mismatches between full and light nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89849482-6b5f-4de3-b6ba-91a537230afd",
+    "timestamp": "2025-12-22 21:38:11.315790",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Headers Commission Recipients] Deleting earned_headers_commission_recipients - if commission distribution logic queries this table for historical data, can the missing records cause incorrect future commission calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_476e395e-64b1-446d-867d-267039b308e5",
+    "timestamp": "2025-12-22 21:38:26.535446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()] [Partial MCI Coverage] If an input's MCI range (from_main_chain_index to to_main_chain_index) partially overlaps with a headers commission output's MCI, but the comparison logic uses >= and <=, can outputs at range boundaries be incorrectly included or excluded from unspending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aed0fc6f-29e8-496b-9004-0fcf0ecfdb46",
+    "timestamp": "2025-12-22 21:38:44.140685",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Sent Mnemonic Removal] Deleting from sent_mnemonics - if this table stores recovery mnemonics sent to users and the unit recording the sending is archived, can users who haven't backed up their mnemonics lose wallet access permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_adcafc95-b606-4fbd-9b05-c5529c908ecd",
+    "timestamp": "2025-12-22 21:39:02.538566",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/archiving.js] [Function: generateQueriesToRemoveJoint()] [Mnemonic-Address Linkage] If sent_mnemonics links mnemonics to addresses and both are deleted, can this break wallet recovery flows that depend on querying which addresses were associated with a mnemonic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60b2990f-43fd-4b81-93a7-df7e48aacbdc",
+    "timestamp": "2025-12-22 21:39:21.836292",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Input Validation] Can an attacker pass a maliciously crafted walletOrAddress parameter that bypasses the length check (line 9) by using unicode characters, special encodings, or null bytes to inject SQL code into the WHERE clause, potentially reading balances from arbitrary addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a308c18c-4d9b-4aa6-a9b1-d8b954dc4f25",
+    "timestamp": "2025-12-22 21:39:42.153476",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Race Condition] If two concurrent calls to readBalance() for the same address execute while a unit spending outputs from that address is being committed to the database, can the balance calculation include outputs that are simultaneously marked as spent, resulting in incorrect balance reporting that could be exploited for double-spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2673f31-55d2-4868-8e70-156164c6cf0a",
+    "timestamp": "2025-12-22 21:40:03.226888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Integer Overflow] In the SUM(amount) aggregation (lines 15-18), if an address has accumulated an extremely large number of small outputs whose total exceeds JavaScript's MAX_SAFE_INTEGER (2^53-1), can the balance overflow and wrap around to a negative or incorrect value, causing the wallet to display incorrect balances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_379f3961-19dc-411b-8d83-fbb8c8af75f1",
+    "timestamp": "2025-12-22 21:40:26.242092",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [SQL Injection via db.escape()] Does the db.escape() function properly sanitize all possible SQL injection vectors including encoded characters, comment sequences, and nested escape sequences when building the asset list query (line 57), or can an attacker craft an asset ID that breaks out of the IN clause?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97925670-85f2-4c02-bcd2-bbb793851c2b",
+    "timestamp": "2025-12-22 21:40:50.476182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Asset Confusion] If an attacker creates a custom asset with unit hash that equals the string 'base' or matches constants.BLACKBYTES_ASSET, can this cause the balance aggregation logic (lines 23-26) to incorrectly merge balances between the native asset and the malicious asset, potentially allowing theft or balance manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4554d8c-85cb-4aaf-9c96-b3b3b49c2aa8",
+    "timestamp": "2025-12-22 21:41:15.171153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Sequence Bypass] The query filters for sequence='good' (line 17), but if a malicious node or database corruption causes units with sequence='temp-bad' or other invalid sequences to have is_spent=0, will these outputs still be excluded from balance calculation, or could they inflate the reported balance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73a03e7a-15df-4631-a997-288482f8602f",
+    "timestamp": "2025-12-22 21:41:40.453073",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Stability Confusion] When aggregating balances by is_stable flag (lines 21-26), if a unit's stability status changes between the first query (line 14) and subsequent queries (lines 30-34, 45-46), can this cause double-counting of outputs as both stable and pending, inflating the total balance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_856dfca6-2df2-4ce5-9b71-1bdc8f8f79a1",
+    "timestamp": "2025-12-22 21:42:06.724062",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [BLACKBYTES Deletion Logic] The logic deletes BLACKBYTES_ASSET from assocBalances if both stable and pending are 0 (lines 40-41), but what if there exists a 0-balance asset entry from the third query (lines 45-63) that gets deleted prematurely, causing private asset information to be hidden from the wallet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7060d4a-6106-4f3d-b7a8-f169246255d7",
+    "timestamp": "2025-12-22 21:42:33.838513",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Witnessing Outputs Double-Count] The second query adds witnessing_outputs and headers_commission_outputs to base.stable (line 38), but if these same outputs are also present in the outputs table with is_spent=0, could they be counted twice, artificially inflating the base asset balance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59658465-1d97-43b4-bd17-f855c2bf8591",
+    "timestamp": "2025-12-22 21:42:59.695454",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [NULL Asset Handling] In line 23, row.asset || 'base' converts NULL/undefined assets to 'base', but what if the database contains a custom asset with the literal string 'base' as its unit hash? Could this cause all outputs with asset=NULL to be aggregated with outputs of the malicious 'base' asset?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a719fe2-8187-426b-a31e-02202b4d80fa",
+    "timestamp": "2025-12-22 21:43:27.435550",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Callback Hell Race] The function uses three nested callbacks (lines 20, 36, 48, 57), and if the handleBalance callback is invoked multiple times due to error handling or timing issues, can this cause the consuming code to process incorrect or stale balance data, potentially leading to double-spend attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b52f2ff9-24d4-4883-8323-21f1e8688405",
+    "timestamp": "2025-12-22 21:43:55.120805",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [UNION ALL Injection] The second query uses UNION ALL to combine witnessing_outputs and headers_commission_outputs (lines 31-34). If the walletOrAddress parameter appears twice in the parameter array (line 35), but the query construction logic changes, could this cause parameter misalignment and return balances from the wrong address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af024d8b-d005-4390-a3df-125c4f3aae5c",
+    "timestamp": "2025-12-22 21:44:22.917069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Asset Privacy Leak] The third query marks assets as is_private=1 if they exist in the assets table with is_private=1 (lines 57-59), but if an attacker queries balances for addresses they don't control, can they enumerate which private assets those addresses hold by observing the is_private flag in the returned data structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_512a4ab2-740c-4c9a-aa15-d9600df3cd05",
+    "timestamp": "2025-12-22 21:44:52.094899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Empty Result Handling] If all three database queries return empty result sets (no outputs, no witnessing outputs, no assets), the function still calls handleBalance with an assocBalances object containing base:{stable:0, pending:0} (line 12), but should it also handle the case where the address has never existed on the DAG, preventing phantom balance queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb0dc3f0-8e38-4529-9819-0dbb4a7058eb",
+    "timestamp": "2025-12-22 21:45:22.992229",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Total Calculation Precision] The total balance is calculated as stable + pending (line 43), but in JavaScript, if stable and pending are very large floating-point numbers with different magnitudes, can floating-point precision errors cause the total to be incorrect, potentially leading to insufficient balance errors during transaction composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e53fc58b-9fea-42fa-a79e-d0611d75dc5c",
+    "timestamp": "2025-12-22 21:45:54.204580",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/balances.js] [Function: readBalance()] [Database Index Missing] If the database lacks proper indexes on (address, is_spent, sequence) for the outputs table, can an attacker force full table scans by querying balances for many addresses simultaneously, causing a DoS condition that freezes balance queries network-wide for more than 1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db339880-bfdc-4f35-97e8-dd467bb9c2a6",
+    "timestamp": "2025-12-22 21:46:24.559958",
+    "report_generated": false
   }
 ]
