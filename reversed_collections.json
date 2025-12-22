@@ -1798,5 +1798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd920298-a456-427a-b022-d93ae0e4a09a",
     "timestamp": "2025-12-22 21:10:28.688136",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Whitespace-only key variations] At line 126, if keys are '  field  ' and 'field' (with/without spaces), does processTree(st.key) trim whitespace? If not, can an attacker bypass duplicate detection using whitespace variations, creating multiple entries for semantically identical fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76f47061-d86a-4d55-8a06-a244e600af40",
+    "timestamp": "2025-12-22 21:31:58.365225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Symbol keys bypass] If the Nearley parser allows Symbol-type keys in the tree (though unlikely), would the duplicate check at line 128 work correctly? Can an attacker inject duplicate Symbol('sameDescription') keys that are technically different Symbols but represent the same semantic field?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fb0bdef-dcfc-4f89-9947-2df6da53bcf5",
+    "timestamp": "2025-12-22 21:32:10.762480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Unicode normalization bypass] At line 126-130, if an attacker uses Unicode equivalent representations of the same key (e.g., 'café' in NFC vs NFD normalization), does the duplicate key check at line 128 detect them as different strings? Can this allow duplicate semantic keys that later cause AA execution to read conflicting values non-deterministically?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_258a4780-bb68-438c-9401-3ef9004f57d4",
+    "timestamp": "2025-12-22 21:32:23.536809",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Case sensitivity in duplicate detection] At line 128-130, if the OJSON input contains keys that differ only in case (e.g., 'messages' and 'Messages'), does the duplicate detection catch this? Can an attacker exploit case-insensitive downstream processing to inject multiple conflicting values for what downstream code treats as the same field?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3882a3a8-26fe-429e-a9c8-1f43567e5358",
+    "timestamp": "2025-12-22 21:32:38.428469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Duplicate key bypass - Prototype] At line 128, duplicate keys are detected using ValidationUtils.hasOwnProperty(obj, key). If an attacker uses '__proto__', 'constructor', or 'prototype' as keys, can they bypass the duplicate check since these are inherited properties, allowing them to inject multiple values for the same key and potentially override critical AA definition fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_690d2739-0912-4bc5-807c-842ddb30eba0",
+    "timestamp": "2025-12-22 21:32:52.480058",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Mixed recursion depth attack] At lines 79-118, if an attacker alternates between ARRAY and OBJECT types in nested structures (e.g., array of objects of arrays of objects...) with each level containing FORMULA types that trigger parseOscriptGrammar(), can the combined recursion depth (tree processing + formula parsing) exceed limits not caught by individual depth checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dab2d2a4-e271-4ea7-a1ad-12222b04f8b5",
+    "timestamp": "2025-12-22 21:33:07.730480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Circular reference in tree] If the Nearley parser produces a tree structure with circular references (e.g., tree.value[0] === tree), and processTree() at line 78 doesn't detect cycles, can the recursive processing enter an infinite loop, hanging validator nodes and preventing them from validating any new units (network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2495d9d3-40bb-45bc-98e4-f856130dd2c2",
+    "timestamp": "2025-12-22 21:33:24.183016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsObject()] [Stack exhaustion via objects] At line 121-134, processAsObject() iterates over object key-value pairs and recursively processes each. If an attacker crafts an object with 10,000 keys, each with deeply nested values, can the cumulative recursion (object size * value depth) cause stack overflow on nodes with smaller stack limits, creating network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5cd138a-ed65-42c2-b9ed-b46976dedb0c",
+    "timestamp": "2025-12-22 21:33:42.098812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processAsArray()] [Stack exhaustion via arrays] At line 135-143, processAsArray() calls processTree() for each array element. If an attacker creates a 10,000-element array where each element is itself a deeply nested structure, can the combined recursive depth (array iteration * element depth) exceed stack limits and crash nodes during AA deployment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e08e317-2f76-4619-a307-863b44e8de2d",
+    "timestamp": "2025-12-22 21:34:00.516867",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree()] [Recursive depth - Network halt] At lines 78-119, processTree() recursively processes nested OJSON structures. If an attacker submits an AA definition with 100,000 nested arrays/objects (e.g., [[[[...]]...]]), can the unbounded recursion exhaust the JavaScript call stack on all validator nodes simultaneously, causing them to crash and preventing network consensus for >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd62ecae-6f73-4014-b4b5-32a00e44b518",
+    "timestamp": "2025-12-22 21:34:20.519744",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Array vs Object type confusion] At line 21-24, searchNewlineRecursive() checks _.isArray(st) before checking _.isPlainObject(st). If an attacker creates an array-like object (e.g., {0: 'a', 1: 'b', length: 2}) that passes _.isArray() but has string properties containing newlines, can it bypass the newline check on line 30?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a787e28e-5531-4266-ae44-bba3f08200cc",
+    "timestamp": "2025-12-22 21:34:41.297406",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: processTree() -> TYPES.FORMULA] [Formula boundary confusion] At line 94, the formula is wrapped as '{' + formula + '}' and returned. If the original formula was extracted from quotes and already contains balanced braces, can this create formulas like '{{nested}}' that evaluate differently than intended, potentially allowing attackers to escape formula sandboxing or inject malicious code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aca702cc-778f-4292-905a-5625ffb9f5af",
+    "timestamp": "2025-12-22 21:35:02.278978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOscriptGrammar()] [Formula grammar injection] At line 51-53, when parsing the extracted formula with oscriptGrammar, if the formula contains unescaped grammar meta-characters or specially crafted tokens, can it trigger parser vulnerabilities in the Nearley oscript grammar, causing validator nodes to hang or crash during AA validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04c3a2af-118e-45e4-8e35-6414a7332d38",
+    "timestamp": "2025-12-22 21:35:24.339876",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Newline in object keys] The searchNewlineRecursive() at line 30 checks string values, but does it validate object keys? Can an attacker create OJSON with keys containing newlines (e.g., {'key\\\\nwith\\\\nnewline': 'value'}), bypassing validation since only values are checked, and potentially breaking formula evaluation that assumes single-line keys?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_722440a9-a2f4-4fd7-82ed-3c4ad333d2b7",
+    "timestamp": "2025-12-22 21:35:47.147865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: searchNewlineRecursive()] [Object prototype pollution detection] At line 25-29, if st is an object with malicious prototype properties (e.g., Object.prototype.maliciousKey = '\\\\n'), will Object.keys(st) iterate over inherited properties, triggering false newline errors for legitimate OJSON, or worse, will checking st[keys[i]] access the prototype pollution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00a256f9-7929-47e9-b18a-28a117c20a74",
+    "timestamp": "2025-12-22 21:36:13.434451",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Error context manipulation] At line 31, if an attacker crafts an OJSON input where context.line or context.col are negative, Infinity, or NaN, can the error message 'Error parsing formula starting at line ${context.line} col ${context.col}' leak internal state or cause string concatenation issues that crash the parser?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10cbd553-c124-4fa6-849d-71f5a572da70",
+    "timestamp": "2025-12-22 21:36:39.610129",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: searchNewlineRecursive()] [Recursive depth - DoS] At lines 20-33, if an attacker crafts a deeply nested OJSON structure with 10,000+ levels of nested arrays/objects, can the recursive searchNewlineRecursive() exhaust the call stack, causing validator nodes to crash during AA definition parsing and preventing new AAs from being deployed (network delay ≥1 day)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_689fb1f8-e93a-45b0-9e39-30abcb11acb8",
+    "timestamp": "2025-12-22 21:37:04.710328",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula() -> searchNewlineRecursive()] [Newline bypass - AA behavior] At line 30-32, the newline check uses st.includes('\\\\n'), but can an attacker inject formulas containing Unicode line separators (U+2028, U+2029) or carriage returns (\\\\r) without \\\\n, bypassing the validation and causing formulas to span multiple lines, potentially breaking formula evaluation or allowing code injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40cd4398-302d-4a8e-a2e7-a7d7a7c587bf",
+    "timestamp": "2025-12-22 21:37:30.177935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: validateFormula()] [Ambiguity validation gap] At line 37-38, if parserResults.length !== 1 for a formula but the outer OJSON parse at line 67 succeeds with length === 1, can an attacker embed an ambiguously-parsed formula within a valid OJSON structure, causing the formula validation to pass but later formula evaluation to fail non-deterministically?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af6fc4f0-e266-4aac-bbeb-1dec8534c561",
+    "timestamp": "2025-12-22 21:37:56.591876",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Type check bypass] At line 64, if parser.results is a non-array object with a numeric 'length' property (e.g., {length: 1, 0: validResult}), does _.isArray() fail to detect this, allowing a malformed parser result to proceed and potentially crash processTree() at line 72?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3cf026c7-2103-4ee9-bdb3-cd2d095947ec",
+    "timestamp": "2025-12-22 21:38:23.623886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parseOjsonGrammar()] [Grammar ambiguity] If the ojsonGrammar at line 45 has ambiguous production rules allowing multiple parse trees for the same input, and different nodes' Nearley parsers resolve ambiguity differently due to JavaScript engine variations, can this cause nodes to parse identical OJSON text into different AA definitions, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d15b4a1b-2190-444a-8078-8666ed1280fb",
+    "timestamp": "2025-12-22 21:38:50.454163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Parser ambiguity - Determinism] At line 37-38, if parserResults.length !== 1 triggers an error in validateFormula(), but the same input passes in parse() at line 67-68, can an attacker craft an OJSON string that validates differently across calls, breaking deterministic AA execution and causing state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a944c89e-5f2e-45b2-8404-6ce480ed534f",
+    "timestamp": "2025-12-22 21:39:17.312109",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/parse_ojson.js] [Function: parse()] [Parser ambiguity - Network halt] If the Nearley parser produces multiple valid parse trees (parserResults.length > 1) for a crafted OJSON input at line 67, can different nodes select different parse results due to non-deterministic array ordering, causing them to compute different AA definition hashes and reject each other's units, leading to a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad95b57a-3063-4dbb-83ad-32a646a6df52",
+    "timestamp": "2025-12-22 21:39:44.513212",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: parseFunctionDeclaration()] [Complexity reset] Complexity is reset to 0 when parsing function body, then restored. Can this reset be exploited to bypass global complexity limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67461b07-46b0-462a-af0b-fc64693f1837",
+    "timestamp": "2025-12-22 21:40:12.243208",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/validation.js] [Function: parseFunctionDeclaration()] [Duplicate arguments] Duplicate arguments are rejected, but can Unicode variants or zero-width characters create duplicates that pass uniq() checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e497ccf-6a38-481a-a1f9-7f3bb79fca6d",
+    "timestamp": "2025-12-22 21:40:37.464459",
+    "report_generated": false
   }
 ]
