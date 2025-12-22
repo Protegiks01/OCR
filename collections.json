@@ -4198,5 +4198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_520660fb-1867-4318-96c2-44bbcfe252b1",
     "timestamp": "2025-12-22 23:24:00.495386",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: All functions] [Error Message Information Leak] Throughout the file, error messages include detailed information like unit hashes, ball hashes, MCIs, and internal state (e.g., line 148: \\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e7032ac-7126-47f4-a6bc-fbda3c679b69",
+    "timestamp": "2025-12-22 23:25:20.003409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: prepareCatchupChain()] [Storage Module Dependency] At lines 87, 89, storage.readJointWithBall() and storage.readUnitProps() are called. If the storage module has bugs that return inconsistent data (e.g., a joint with unit.last_ball_unit that doesn't exist), can this cause infinite loops or crashes in the goUp() recursion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05cdefbd-7230-4227-8ded-bd206c52eb62",
+    "timestamp": "2025-12-22 23:25:32.650189",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [WitnessProof Module Trust] At line 128-130, witnessProof.processWitnessProof() is called with the catchup chain data and witnesses. If this module doesn't properly validate the witness proofs and returns success for invalid proofs, can an attacker craft a catchup chain with fake witness signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f50fa3c-a629-4deb-bd98-a193622ddf84",
+    "timestamp": "2025-12-22 23:25:45.415323",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: readHashTree() & processHashTree()] [ObjectHash Module Dependency] Ball hash verification relies on objectHash.getBallHash() at lines 145, 363. If objectHash module has a bug where it produces different hashes for the same input on different nodes (non-deterministic), can this cause some nodes to reject valid hash trees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b4261eb-3a15-42a8-8595-9fda26b1bb6d",
+    "timestamp": "2025-12-22 23:25:59.377328",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processHashTree()] [ProofChain Module Coordination] At line 76 in prepareCatchupChain(), proofChain.buildProofChainOnMc() builds the proofchain_balls. If this module doesn't coordinate properly with processHashTree()'s expectations (e.g., ball ordering, skiplist inclusion), can this cause verification failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a861a39-ed4d-460d-8bdc-b425ac9333ed",
+    "timestamp": "2025-12-22 23:26:13.442978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain()] [Ball Hash Collision Resistance] At lines 145, 169, 184, ball hashes are compared for equality. If SHA256 (used in objectHash) has collision vulnerabilities in the future, can an attacker create two different balls with the same hash, causing the catchup process to accept the wrong ball?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80cc4499-f05c-4e9e-af26-33ea4c3ab228",
+    "timestamp": "2025-12-22 23:26:29.647460",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/catchup.js] [Function: processCatchupChain() & processHashTree()] [Hash Truncation Risk] If ball hashes are truncated or shortened in storage (e.g., stored as VARCHAR(40) instead of VARCHAR(44) for base64 encoding), can this increase collision probability and allow hash-based validation bypasses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ad51063-bf23-4f21-8b08-8b3ca57682db",
+    "timestamp": "2025-12-22 23:26:46.135883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [SQL Injection - CRITICAL] In the load() function at line 14, the up_to_id parameter is concatenated directly into the SQL query string using string concatenation ('id < '+up_to_id+' ORDER BY') rather than parameterized query placeholders - can an attacker pass a crafted numeric value or exploit JavaScript's type coercion to inject malicious SQL (e.g., up_to_id='999999 OR 1=1 --'), potentially reading all chat messages across all correspondents or executing arbitrary SQL commands, leading to complete database compromise and data exfiltration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_078a7ab3-5da9-4171-bc0a-03e02405c19c",
+    "timestamp": "2025-12-22 23:27:03.842587",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [SQL Injection - CRITICAL] Since the load() function only validates that up_to_id is of type 'number' (line 11-12) but still concatenates it directly into the SQL string (line 14), can an attacker exploit JavaScript's loose typing to pass NaN, Infinity, or -Infinity values that bypass the typeof check but result in malformed SQL queries that cause database errors, potentially leading to denial of service by crashing the database connection or corrupting query results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_651492e1-14f2-4971-be82-dc07b2c873b9",
+    "timestamp": "2025-12-22 23:27:22.529397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [SQL Injection - Type Coercion] Given that JavaScript's typeof operator returns 'number' for NaN, can an attacker pass up_to_id=NaN which would create the SQL string 'id < NaN ORDER BY', potentially causing SQLite to perform unexpected comparisons or return incorrect result sets that leak messages from other correspondents, violating message privacy and cross-correspondent data isolation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13772d68-0c19-4e97-9d84-d15104ad57d2",
+    "timestamp": "2025-12-22 23:27:42.786111",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [SQL Injection - Boundary Attack] Can an attacker pass extremely large numeric values for up_to_id (e.g., Number.MAX_SAFE_INTEGER or larger) that, when concatenated into the SQL string, cause integer overflow in SQLite's comparison logic, potentially bypassing the 'id < up_to_id' filter and returning messages that should be excluded, or causing database corruption if the value exceeds SQLite's INTEGER storage limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ce16bd8-6583-4912-803c-32dcd7fab879",
+    "timestamp": "2025-12-22 23:28:03.778720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [SQL Syntax Error] The store() function at line 7 uses single quotes around column names in the INSERT statement ('correspondent_address', 'message', 'is_incoming', 'type') - does SQLite interpret these as string literals rather than column identifiers, potentially causing the query to fail or insert data into incorrect columns, leading to data corruption or denial of service if all store() operations fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bebfd127-5a86-4572-acc2-a4da40eddd0a",
+    "timestamp": "2025-12-22 23:28:25.851417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Input Validation] The store() function accepts correspondent_address, message, is_incoming, and type parameters without any validation - can an attacker pass NULL, undefined, or malicious values that violate database constraints (e.g., NULL for NOT NULL columns), causing database errors that crash the application or leave the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30ce7456-2f97-44da-bb1f-756944b7e5bc",
+    "timestamp": "2025-12-22 23:28:47.979272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Buffer Overflow/DoS] Since the message parameter is stored in a LONGTEXT column (max ~4GB in SQLite) without any length validation, can an attacker pass extremely large message payloads (e.g., gigabytes of data) that exhaust available disk space, memory, or database connection resources, causing denial of service by preventing legitimate messages from being stored or causing the database file to grow unbounded?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_687c23cc-9e44-4f82-980d-d18200929be0",
+    "timestamp": "2025-12-22 23:29:10.801644",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Type Validation] The store() function accepts correspondent_address as a CHAR(33) field but performs no validation that the input is actually 33 characters or matches the expected device address format - can an attacker pass addresses of incorrect length or format that either get truncated/padded by the database, causing message association with wrong correspondents, or violate foreign key constraints causing transaction failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a4ca605-9a30-4535-b98f-7e625e835998",
+    "timestamp": "2025-12-22 23:29:34.762187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Type Validation] The is_incoming parameter is stored as INTEGER(1) (boolean) but the function performs no validation that the value is 0 or 1 - can an attacker pass arbitrary integers (e.g., 999, -1, or non-numeric values) that get stored in the database, potentially breaking application logic that assumes is_incoming is a boolean flag, causing incorrect message display or chat history corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c403b3a5-1769-4691-92b5-24031b2e4e3e",
+    "timestamp": "2025-12-22 23:29:58.843385",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Type Validation] The type parameter defaults to 'text' (line 6) but the database schema defines it as CHAR(15) - can an attacker pass type strings longer than 15 characters that either get silently truncated by SQLite (potentially creating ambiguous or duplicate types), or pass special message types that bypass application-level filtering, leading to execution of unintended message handlers or XSS attacks in message rendering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90d5f1bd-d9d9-44f6-b15a-9daabc663eec",
+    "timestamp": "2025-12-22 23:30:25.058641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Input Validation] The load() function validates up_to_id is a number but performs no bounds checking - can an attacker pass negative values (e.g., -999999) that would make the WHERE clause 'id < -999999' return zero results, or pass 0 to prevent loading any chat history, causing denial of service by making chat history unavailable to legitimate users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ca58f10-48ea-4c03-bb55-e464314052ec",
+    "timestamp": "2025-12-22 23:30:51.676745",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Input Validation] The load() function accepts a limit parameter without any validation or bounds checking - can an attacker pass extremely large limit values (e.g., Number.MAX_SAFE_INTEGER) that cause SQLite to attempt loading millions or billions of rows into memory, causing memory exhaustion, application crash, or severe performance degradation (DoS) for all users sharing the database connection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56d6ac8a-9fe9-4db2-8970-3d3261e056b5",
+    "timestamp": "2025-12-22 23:31:17.649173",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Input Validation] Since correspondent_address is not validated in load(), can an attacker pass NULL, undefined, empty string, or SQL wildcards (%, _) that, when used in the WHERE clause, either return no results (DoS) or potentially match multiple correspondent addresses if the database performs pattern matching, causing privacy violation by leaking messages from other users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13c47bed-c162-4f53-a7e0-a2766e2d03d1",
+    "timestamp": "2025-12-22 23:31:42.725780",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: purge()] [Input Validation] The purge() function accepts correspondent_address without any validation - can an attacker pass NULL or undefined values that cause the WHERE clause to become 'correspondent_address IS NULL', potentially deleting all messages that have NULL correspondent_address (if any exist due to data corruption), or causing the query to fail and preventing legitimate purge operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bac4a5bc-bb6e-4613-aa45-915b07661afd",
+    "timestamp": "2025-12-22 23:32:06.229036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: load()] [Authorization Bypass] The load() function performs no authorization checks to verify the caller has permission to access messages for the specified correspondent_address - can any code within the application (including compromised dependencies or malicious plugins) call load() with arbitrary correspondent addresses to read private chat messages between other users, causing complete breakdown of message privacy and confidentiality?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_674c77ba-5cce-4156-9a3f-fbb8bf0a0b59",
+    "timestamp": "2025-12-22 23:32:30.229637",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: store()] [Authorization Bypass] The store() function performs no authorization checks - can malicious code forge chat messages by calling store() with arbitrary correspondent_address and is_incoming values, potentially impersonating other users in chat histories, injecting fake messages to manipulate users, or creating false evidence of conversations that never occurred?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3149cc17-d543-4cd4-becb-68dc9860e054",
+    "timestamp": "2025-12-22 23:32:54.374781",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: purge()] [Authorization Bypass - CRITICAL] The purge() function allows deletion of all messages for a correspondent_address without any authorization check or confirmation - can malicious code or a compromised component call purge() to permanently delete another user's entire chat history, causing irreversible data loss and potential legal/compliance issues if chat records are required for audit or dispute resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4cd56d34-e6b0-4763-b3fa-2447b9d74f63",
+    "timestamp": "2025-12-22 23:33:18.529904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/chat_storage.js] [Function: purge()] [Data Loss] Since purge() deletes messages without any backup, soft-delete mechanism, or recovery option, and provides no callback to confirm deletion success or failure, can accidental calls to purge() (e.g., from buggy code or race conditions) cause permanent, unrecoverable loss of important chat data, violating data retention requirements or user expectations of message persistence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82e2463d-3b2c-4a37-a5c0-4894bd71a0a1",
+    "timestamp": "2025-12-22 23:33:43.031194",
+    "report_generated": false
   }
 ]
