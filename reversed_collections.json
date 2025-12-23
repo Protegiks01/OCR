@@ -8998,5 +8998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d337f053-f747-4ed3-b5fb-dd5820ca21d3",
     "timestamp": "2025-12-23 14:16:07.999965",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 35] [IFNULL in aggregate] Line 378 uses IFNULL(asset, 'base') in balance aggregation - could this cause assets with ID 'base' to be incorrectly grouped with bytes balances, leading to AA balance corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b2008c3-23cb-4a94-b1e7-7dd549f43b34",
+    "timestamp": "2025-12-23 14:17:17.477210",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Stream data handling] Lines 650-656 handle each stream data event synchronously - if batch.put() is slow or blocking, could this cause stream events to queue up in memory, leading to OOM crashes during migration of large state variable sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bec4fb90-e7fa-4cf7-8896-f131298a354a",
+    "timestamp": "2025-12-23 14:17:30.218883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [Stream pause/resume] The kvstore.createReadStream() doesn't explicitly handle backpressure - if assocSizes grows very large, could memory pressure cause the stream to behave unpredictably, losing data or causing incomplete storage_size calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9268458c-23e7-4cac-a7d7-3f701d9f7b9e",
+    "timestamp": "2025-12-23 14:17:43.175272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Console.error and console.log] Lines 29-30, 575, 586, 601-602, 661, 668 use console logging - if console is not available (e.g., in some embedded environments), could these throw errors that abort migration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9667114b-7a40-4869-acc0-a1ddfb2284e8",
+    "timestamp": "2025-12-23 14:17:56.723124",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [SQL string includes check] Line 574 checks if units_sql.includes('oversize_fee') - could SQL formatting variations (extra spaces, newlines, comments) cause this check to fail incorrectly, leading to attempted duplicate column additions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99cea2da-806f-4054-848a-0761fda46c39",
+    "timestamp": "2025-12-23 14:18:10.857036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [units_sql variable scope] Lines 33, 36-38 define units_sql in outer scope and populate in async callback - could this variable be undefined if the callback isn't executed, causing errors in line 574 where it's used in includes() check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f328ae62-c348-4c08-8f10-4aabc47c12ca",
+    "timestamp": "2025-12-23 14:18:26.282075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 31] [arrQueries clear and reassignment] Line 349 sets arrQueries = [] after async.series(arrQueries) - could this cause memory issues if arrQueries contained closures or references that are not properly garbage collected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_529c737f-bd55-428e-915b-277f71fecc1b",
+    "timestamp": "2025-12-23 14:18:42.493716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Nested async.series] Lines 34-607 use multiple nested async.series calls - if inner series completes but doesn't call its callback, could the outer series hang, blocking migration forever?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a865dbf-4a9a-40ec-ba57-421ce0c2bf6d",
+    "timestamp": "2025-12-23 14:19:00.798055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Callback within query] Lines 194-213 execute connection.query() with a callback that adds more queries to arrQueries - could this cause arrQueries to be modified while async.series() is iterating over it, leading to skipped or duplicate migrations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_903c700e-7e29-4226-9deb-7b0fa5382e9b",
+    "timestamp": "2025-12-23 14:19:19.149838",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Connection.query vs connection.db.query] Line 36 uses connection.query(), line 13 uses connection.db.query() - could inconsistent query methods cause some queries to bypass connection pooling or transaction management, leading to race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6bcb88f5-804d-42c6-b035-9852106736e6",
+    "timestamp": "2025-12-23 14:19:40.032016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 43] [Arbiter disputes contract_content TEXT] Line 473 stores full contract content as TEXT - could this unbounded field cause storage exhaustion, and during migration, could creating indexes on tables with huge TEXT fields cause out-of-memory errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5207ba96-3a97-49c8-b971-3a7b4fedb58b",
+    "timestamp": "2025-12-23 14:20:00.833864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA responses response TEXT] Line 331 stores AA response as TEXT (json) without length limit - could unbounded response sizes cause similar issues as definitions, and could this be exploited to DoS nodes during migration by forcing them to process huge JSON blobs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_755e1fb6-080f-4578-bd0f-06a085a4c739",
+    "timestamp": "2025-12-23 14:20:22.967755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA addresses definition TEXT] Line 303 stores AA definition as TEXT without length limit - could extremely large AA definitions cause storage issues or query timeouts, and during migration, could this cause nodes to hang when creating indexes on this column?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2124194e-b6f1-4637-b888-f6afaf59e01b",
+    "timestamp": "2025-12-23 14:20:46.001030",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Multiple requires in helper] Lines 642-643 require string_utils and kvstore - could either of these modules be replaced with malicious versions to corrupt state variable types during migration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a8b2543-971b-441f-982d-7a309000056b",
+    "timestamp": "2025-12-23 14:21:08.930812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [Require statement in helper] Line 626 requires './kvstore.js' - similar to above, could a compromised kvstore module execute malicious code during storage size initialization with full database access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a9e8817-27f5-48f4-830c-ecd225112503",
+    "timestamp": "2025-12-23 14:21:33.102710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Require statement in migration] Line 348 requires './migrate_to_kv.js' during migration execution - if this file is missing or has been modified maliciously, could this execute arbitrary code during migration with database access privileges?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e10d5cdd-6f70-48fe-8781-84b1c7160ffd",
+    "timestamp": "2025-12-23 14:21:57.642867",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [Index creation IF NOT EXISTS] Lines 528-530, 540, 551 use CREATE INDEX IF NOT EXISTS - similar to earlier question, if indexes exist with slightly different definitions, does IF NOT EXISTS prevent updating them to correct definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e86b5a6b-d8cb-4f46-b890-923643502ce7",
+    "timestamp": "2025-12-23 14:22:23.204635",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA responses bounced flag] Line 329 stores bounced as TINYINT NOT NULL - if bounce status is determined asynchronously after response storage, could there be a timing window where bounced is incorrect, causing nodes to have different views of AA execution results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebafcdbe-78c8-4a18-9aee-854d63db5ea8",
+    "timestamp": "2025-12-23 14:22:49.218105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Type prefix format] Line 655 adds type prefix as 'n' or 's' followed by newline - if any code elsewhere expects state variables to be stored without this prefix, could migrated state become inaccessible, freezing AA funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee125703-3835-4128-b6d5-2a553313af70",
+    "timestamp": "2025-12-23 14:23:16.757366",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [Key format assumption] Lines 615-616 assume kvstore keys start with 'st\\\\n' prefix - if this prefix format changes or kvstore contains keys with different formats, could the stream return unexpected data, causing incorrect storage_size calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9cdb7c84-27da-4a06-9ea9-38fe4a501b55",
+    "timestamp": "2025-12-23 14:23:43.506091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Loop variable closure] Lines 197-213 iterate over rows and for each field in attestation.profile - if JavaScript closure captures variables incorrectly in the nested loops, could this cause race conditions where the wrong field/value combinations are inserted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5aa0f285-ae28-4f4a-a143-49155af8d3cd",
+    "timestamp": "2025-12-23 14:24:09.798322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Version increment at end] Line 597 sets PRAGMA user_version to VERSION only at the very end - if the node crashes between completing migrations and setting this PRAGMA, will all migrations re-run on next start, potentially causing duplicate data or constraint violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59ee84b6-87c9-4305-8688-e25a170eee26",
+    "timestamp": "2025-12-23 14:24:35.156445",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [Conditional table creation] Lines 517-573 create governance tables only if !conf.bLight - if conf.bLight is a runtime configuration that can change, could nodes end up missing these tables after upgrading from light to full mode?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4301055f-5670-4e24-ab63-1c8c5c70c722",
+    "timestamp": "2025-12-23 14:25:00.167706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 24] [Temporary table rename] Lines 256-268 use CREATE/INSERT/DROP/RENAME pattern without explicit transaction control - could another process access asset_attestors_new before the rename, seeing inconsistent data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_596d00ff-7601-4d66-8461-69edb9d440d1",
+    "timestamp": "2025-12-23 14:25:26.225798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 10] [Chat messages autoincrement] Line 83 changes chat_messages.id from INTEGER PRIMARY KEY to INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT - could this change affect existing message IDs, potentially creating gaps or duplicates that break message threading?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9996ba75-0370-4745-9951-996c1182e3ae",
+    "timestamp": "2025-12-23 14:25:51.553363",
+    "report_generated": false
   }
 ]
