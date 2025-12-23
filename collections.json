@@ -14848,5 +14848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec357741-4789-447b-8621-6183e8dd669e",
     "timestamp": "2025-12-23 18:02:00.808844",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHash()] [Content Hash Bypass] Lines 58-59 use different code paths if objUnit.content_hash exists vs not - can an attacker inject a fake content_hash field into a full unit to force the getNakedUnit() path instead of getStrippedUnit(), creating hash collisions or bypassing validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69ab4f87-7cb1-44b1-8ad4-63e417a7c5e6",
+    "timestamp": "2025-12-23 18:03:14.129616",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHash()] [Version Check Duplication] Both content_hash path (line 59) and stripped unit path (line 60) calculate bVersion2 separately - if an attacker mutates objUnit.version between line 57 and line 60, can they cause inconsistent version handling and hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25f1e5cc-259a-4ceb-8b1d-ba311939e644",
+    "timestamp": "2025-12-23 18:03:26.666848",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHash()] [Stripped Unit Validation Gap] When content_hash exists (line 58), the function assumes the unit is already stripped and uses getNakedUnit() - but does validation.js verify that units with content_hash don't also have message payloads, or can an attacker include both to bypass payload size limits while maintaining valid hash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44cb1a6c-dc2f-41cb-908d-b0a8414305a0",
+    "timestamp": "2025-12-23 18:03:39.581579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Author Address Mapping] Line 69 maps authors to only their addresses - if the original authors array contains duplicate addresses or addresses in non-deterministic order, can the mapping produce different stripped units on different nodes, causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75f757b2-98a4-400f-8e41-51cc5f6292a1",
+    "timestamp": "2025-12-23 18:03:53.131654",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Witness List Conditional] Lines 71-74 conditionally include witness_list_unit OR witnesses - if an attacker provides both fields in objUnit, which takes precedence, and can this be exploited to create units that validate differently on nodes with different validation logic versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55dfd038-4616-4e8e-8d81-278a21c2090e",
+    "timestamp": "2025-12-23 18:04:07.257465",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Parent Units Conditional] Lines 75-79 only include parent_units, last_ball, and last_ball_unit if parent_units exists - can an attacker craft a genesis-like unit with last_ball but no parent_units to bypass last ball validation while maintaining a valid stripped unit hash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b31129d-c9ad-47b2-b44d-95e7451af60c",
+    "timestamp": "2025-12-23 18:04:22.581721",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Timestamp Inclusion] Line 80-81 includes timestamp only if bVersion2 is true - if an attacker submits a version 2+ unit but manually sets version to versionWithoutTimestamp after initial validation, can they manipulate the stripped unit structure and create hash collisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d0b442e-889f-4695-915b-b5aef40ef22c",
+    "timestamp": "2025-12-23 18:04:39.542694",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Content Hash Replacement] Line 66 replaces the entire unit content with content_hash - if getUnitContentHash() has any non-determinism (floating point, date objects, etc.), can different nodes generate different content_hashes for the same unit, causing permanent divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_06a3f0c0-aa05-47d6-89f1-7dd3f22d2e6f",
+    "timestamp": "2025-12-23 18:04:57.188408",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Alt Field Inclusion] Line 68 includes objUnit.alt in stripped unit - if alt is undefined in some units, does the stripped unit include 'alt: undefined' or omit the field entirely, and can this difference cause hash mismatches across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30a307d2-d120-465a-a4a9-3a0237f3906d",
+    "timestamp": "2025-12-23 18:05:16.855420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getStrippedUnit()] [Author Order Preservation] Line 69 maps authors and comments 'already sorted' - but what guarantees authors are sorted before this function is called, and can an attacker exploit unsorted author arrays to create units with valid hashes but non-deterministic author ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_426ca9df-097c-4fb5-93bb-7b10ca5fc365",
+    "timestamp": "2025-12-23 18:05:37.225313",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Authentifier Deletion] Lines 87-88 delete authentifiers from all authors - if an author object has authentifiers nested deeply or stored with alternate property names, can incomplete deletion leave signature data in the hash-to-sign, breaking signature verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_361a845f-29a6-4878-b979-9ff2dcde5ce4",
+    "timestamp": "2025-12-23 18:05:58.103967",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Version String Coercion] Line 89 checks 'typeof objUnit.version === undefined' using string comparison - does this correctly handle objUnit.version = 'undefined' (string) vs undefined (type), and can an attacker exploit type coercion to bypass version checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b676c2a2-b949-404d-86e7-e132dd1b12d8",
+    "timestamp": "2025-12-23 18:06:20.311544",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Hash-to-Sign Format] Line 90 returns raw Buffer digest() without encoding - if consuming code expects base64 or hex and performs conversion inconsistently, can signature verification fail for valid signatures or accept invalid ones?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_046ba5db-d618-480a-a8ae-2a89575c1fdf",
+    "timestamp": "2025-12-23 18:06:43.771693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Naked Unit Mutation] getUnitHashToSign() modifies objNakedUnit in place (lines 87-88) after getNakedUnit() returns a cloned object - if getNakedUnit() has shallow clone bugs, can this modification affect the original objUnit and cause hash mismatches in subsequent operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c2eaf87-8c51-4c5d-bed0-de313f224396",
+    "timestamp": "2025-12-23 18:07:08.125873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Version Undefined Handling] Line 89 checks if version is undefined OR equals versionWithoutTimestamp - can an attacker submit a unit with version = null or version = 0 to bypass this check and cause non-deterministic JSON/source string selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48f086c2-cd7f-4d5f-9eb0-54c2a52e612e",
+    "timestamp": "2025-12-23 18:07:32.600904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitHashToSign()] [Source String Selection] The function chooses between getSourceString() and getJsonSourceString() based on version (line 89) - if different nodes have different constants.versionWithoutTimestamp values due to configuration drift, can they generate different hash-to-sign values and reject valid signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ed7c4ee-b00e-4031-8650-f4062784a0e5",
+    "timestamp": "2025-12-23 18:07:58.772777",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getSignedPackageHashToSign()] [Deep Clone Reuse] Lines 94-98 duplicate the logic from getUnitHashToSign() almost exactly - if there's a bug in authentifier deletion or version handling, it affects both functions, but can inconsistencies between these two functions be exploited to bypass signature verification in one context but not another?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61e98619-685e-40de-8adf-b2a87db75eca",
+    "timestamp": "2025-12-23 18:08:25.994881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getSignedPackageHashToSign()] [Package vs Unit Semantics] This function is used for signed_message.js but uses identical logic to getUnitHashToSign() - can an attacker craft a signed package that validates as a unit or vice versa, bypassing type-specific validation and causing authorization bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f44973d-ed9b-4e23-849a-020dd91388b2",
+    "timestamp": "2025-12-23 18:08:53.655688",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBallHash()] [Empty Array Handling] Lines 105-110 only include parent_balls and skiplist_balls if arrays exist AND length > 0 - if an attacker provides empty arrays, are they omitted from the hash completely, and can this be exploited to create ball hash collisions for balls with empty vs undefined parent/skiplist arrays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f56d9da-18a0-4ce1-88cf-ce29f0c01a4d",
+    "timestamp": "2025-12-23 18:09:21.563545",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBallHash()] [Nonserial Flag] Line 109-110 conditionally includes is_nonserial=true only if bNonserial is truthy - if bNonserial is false/undefined, the field is omitted - can an attacker exploit the asymmetry (true included, false omitted) to create ball hash collisions by flipping the nonserial flag?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6f0826c-66cc-4bc6-aa38-996ac420bef5",
+    "timestamp": "2025-12-23 18:09:49.246359",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBallHash()] [Ball Object Construction] Lines 102-111 build objBall incrementally - if JavaScript property insertion order is non-deterministic in some VMs, can the ball hash vary across nodes, causing last_ball chain divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_125d740a-cd7c-4132-bad9-ad76b0d87b71",
+    "timestamp": "2025-12-23 18:10:17.631667",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBallHash()] [Array Content Validation] The function accepts arrParentBalls and arrSkiplistBalls without validating their contents - if these arrays contain objects instead of strings or have inconsistent ordering, can different nodes hash them differently, breaking ball chain consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef2da808-1ffc-4547-86c2-0809e8879f63",
+    "timestamp": "2025-12-23 18:10:47.358508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBallHash()] [Unit Parameter Type] The 'unit' parameter (line 103) is included as-is in the ball object - if 'unit' is not a string but an object or number, can type coercion during hashing cause non-deterministic ball hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ecb37b8-b07c-4382-b20e-29a08fa5c91c",
+    "timestamp": "2025-12-23 18:11:17.131835",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getJointHash()] [JSON.stringify Non-determinism] Line 116 uses JSON.stringify() directly instead of getSourceString() or getJsonSourceString() - this bypasses key ordering and canonicalization, so can an attacker craft joints with identical logical content but different JSON serialization that hash differently, causing network sync failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecbe4d73-b212-4020-b86c-29a224a00235",
+    "timestamp": "2025-12-23 18:11:47.186900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getJointHash()] [Error Swallowing Comment] Line 115 comments 'we use JSON.stringify, we can't use objectHash here because it might throw errors' - does this mean joints can contain data structures that would fail objectHash validation (null, empty arrays, undefined), and can an attacker exploit this to create invalid joints that still hash correctly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2b78945-6c77-4b3c-b2fd-2057485442de",
+    "timestamp": "2025-12-23 18:12:16.125737",
+    "report_generated": false
   }
 ]
