@@ -4048,5 +4048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_385388c5-428e-47f6-a5fe-a9febfb6668e",
     "timestamp": "2025-12-23 07:28:40.462984",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Already current bypass] At line 102, if last_stable_mci >= last_ball_mci, the function returns 'already_current' error, but what if last_stable_mci == last_ball_mci exactly? This edge case means the last ball unit is at the stable point - should proof still be generated to confirm stability, or does 'already_current' incorrectly reject valid proof requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61a22cb2-57d6-4088-8d8b-8eed734a8abe",
+    "timestamp": "2025-12-23 07:29:54.054079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Last ball unit selection race] At lines 99-102, the newest last_ball_unit is selected from arrLastBallUnits by MAX main_chain_index, but if two units have same MCI (shouldn't happen but DB corruption could cause it), LIMIT 1 returns arbitrary unit - can this non-determinism cause different nodes to generate different proofs for same parameters, splitting light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_623126d2-f3a9-4486-97d5-ae982fb5bc99",
+    "timestamp": "2025-12-23 07:30:06.712322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Missing definition for non-witness] At lines 232-234, non-witness authors are skipped if definition_chash not in assocDefinitionChashes, but line 235-236 throws Error if witness has no definition_chash - can attacker exploit this by crafting units where witness authors have no definition_chash, causing unexpected Error to crash validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd08b8c0-daad-4690-bd9b-0c3d72dbe6a8",
+    "timestamp": "2025-12-23 07:30:19.584576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Definition change message validation] At lines 256-260, definition_chg messages are processed if payload.address matches author.address OR unit has single author - the OR condition allows single-author units to change ANY address's definition. Can attacker create single-author unit that changes victim witness's definition without authorization, bricking the witness or stealing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5e39ab4-7558-4d46-a232-5a3c0461c5ef",
+    "timestamp": "2025-12-23 07:30:33.053947",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Definition chash initialization] At lines 291-295, if !bFromCurrent, all witnesses get address as definition_chash (assocDefinitionChashes[address] = address), but this assumes witness addresses haven't changed definitions - can attacker replay old proof with original address as definition when witness has since changed, allowing old signatures to validate against new witness state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_228535d5-9e62-49c1-afa0-44131c5c11c2",
+    "timestamp": "2025-12-23 07:30:47.253910",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Signature validation bypass] At line 251, validateAuthorSignaturesWithoutReferences() is called but the function name suggests it skips reference validation - can attacker craft signatures that embed references to definitions not in assocDefinitions, bypassing the definition tracking and allowing unauthorized signatures to pass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49f3bf82-4097-4646-b3ca-8c1aba339b87",
+    "timestamp": "2025-12-23 07:31:03.627673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Definition not found exception] At lines 273-275, if storage.readDefinition() fails to find definition, it throws Error instead of calling callback with error - this breaks async error handling flow. Does the thrown Error crash the entire proof validation, causing denial of service where any missing definition prevents all light clients from syncing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27d11bda-4e90-4e9f-b75b-27bc3424823c",
+    "timestamp": "2025-12-23 07:31:20.699077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Definition cache poisoning] At line 245, assocDefinitions[definition_chash] = author.definition updates global cache with author-provided definition - if the definition hasn't been validated yet (only hash checked at line 239), can attacker poison cache with malicious definition that's used to validate subsequent signatures, bypassing actual stored definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b75bf28-5f4d-425a-b361-ac7617d8a00c",
+    "timestamp": "2025-12-23 07:31:38.140365",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Definition chash mismatch] At lines 239-240, if author.definition exists, it's hashed and compared to definition_chash, returning error if mismatch - but if objectHash.getChash160() throws exception (line 242-243), the try-catch returns generic error message. Can attacker craft malformed definition that causes hash function to crash node or leak stack traces with sensitive info?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df792a3f-daa2-4df1-906f-2edaff4feab0",
+    "timestamp": "2025-12-23 07:31:57.023648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Stable unit inclusion] At lines 107-136, the query selects units with is_stable=1 for witness definition changes, but the main unstable joints query at line 27 doesn't explicitly filter for is_stable=0 - can stable units leak into arrUnstableMcJoints, causing processWitnessProof to reject proof due to unexpected balls at line 171?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9adf217-2543-423a-af62-8ced8d6b9c04",
+    "timestamp": "2025-12-23 07:32:16.395573",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Ball deletion timing] At line 32, balls are deleted from joints with comment about stabilization race, but at lines 189-192 processWitnessProof expects last_ball to exist in unstable units - does prepareWitnessProof delete last_ball field too, or only ball field? Can this cause processWitnessProof to fail on proofs generated by prepareWitnessProof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45cadf4d-bd54-4f68-88a6-863c83171316",
+    "timestamp": "2025-12-23 07:32:37.969134",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Ball requirement for definition changes] At lines 206-207, witness definition change joints MUST have ball ('joint without ball' error), but this conflicts with the unstable joint check at line 171-172 - if a witness changes definition in an unstable unit, which rule wins? Can this create inconsistency where proofs are impossible to construct during certain DAG states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cebf545a-c763-4504-b122-477419c64a0d",
+    "timestamp": "2025-12-23 07:32:59.898272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Ball existence for unstable units] At lines 171-172, the code returns error if objJoint.ball exists for unstable MC units, with comment 'unstable mc but has ball' - but what if a unit was just stabilized and now has ball? Does this cause legitimate proofs to be rejected during stabilization window, potentially freezing light client sync for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_719ca9b4-c8ad-41f0-a269-782e9977e29b",
+    "timestamp": "2025-12-23 07:33:22.739354",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Ball hash not validated] At lines 189-192, objUnit.last_ball is stored in assocLastBallByLastBallUnit keyed by last_ball_unit, but there's no verification that last_ball hash actually corresponds to the last_ball_unit - can attacker provide mismatched last ball hash/unit pair, breaking last ball chain integrity for light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e39f2da4-4bad-49ef-bc81-200b41043294",
+    "timestamp": "2025-12-23 07:33:47.108265",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Hash validation before content check] Hash validation at line 173 occurs before parent chain check at line 175 and witness authorship check at line 180 - if hasValidHashes() is expensive, can attacker DoS the node by flooding with proofs that have invalid parents/witnesses but valid hashes, forcing CPU-intensive hash verification before cheap structural checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dde036e7-440d-4991-a254-276e82bbb834",
+    "timestamp": "2025-12-23 07:34:11.203868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Insufficient hash validation] At lines 173-174 and 208-209, validation.hasValidHashes(objJoint) is called but the return value true/false is checked - does this function also verify unit hash matches content, or just that hash fields exist? Can attacker send proof with valid-looking hashes that don't actually match unit content, bypassing cryptographic integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23bf2225-e915-4359-8362-436ebd33c311",
+    "timestamp": "2025-12-23 07:34:36.643799",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Main chain order assumption] At line 27, units are selected with ORDER BY main_chain_index DESC and iterated in reverse chronological order, but at line 188 parent_units are used directly without verifying they have lower MCI - can database reorg or malicious hub send units out of order, breaking parent→child MCI monotonicity assumption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d17b542-84a4-44aa-8444-cceb59628cd4",
+    "timestamp": "2025-12-23 07:35:03.242655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Missing parent transitivity check] At line 188, arrParentUnits is updated to objUnit.parent_units for each iteration, but there's no verification that these parents are actually in the arrUnstableMcJoints set or known to the node - can attacker send proof with gaps where intermediate parent units are missing, causing light client to accept incomplete DAG fragment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b540766-acdd-4c2f-af59-ced12beca272",
+    "timestamp": "2025-12-23 07:35:30.456908",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Parent verification incomplete] The parent chain validation at lines 175-176 only checks if current unit is in previous unit's parent_units, but doesn't verify that ALL parents exist or that the chain forms valid DAG without cycles - can attacker craft proof where units reference non-existent or future units as parents, breaking DAG invariants?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c985adc-7633-4227-8b7b-5fef06e667a6",
+    "timestamp": "2025-12-23 07:35:58.614068",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Parent chain break] At lines 175-176, the code checks if arrParentUnits && arrParentUnits.indexOf(objUnit.unit) === -1, returning 'not in parents' error - but arrParentUnits is initialized to null at line 163 and only set at line 188, so the first unit in arrUnstableMcJoints is never validated against parents. Can attacker inject arbitrary first unit that doesn't connect to DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b152e023-64c4-412e-870a-b5d503c88960",
+    "timestamp": "2025-12-23 07:36:27.670050",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Last ball unit deduplication bug] At line 41-42, last_ball_unit is added to arrLastBallUnits only if not already present via indexOf() check, but if the same last_ball_unit appears in multiple unstable MC units with different last_ball hashes, does this silently drop valid last balls, causing proof to reference incomplete ball chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1346164d-9009-4c91-9354-db6decf7db9a",
+    "timestamp": "2025-12-23 07:36:57.141176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Insufficient witness validation] At line 194-195, the code returns error if arrFoundWitnesses.length < MAJORITY_OF_WITNESSES, but does it verify that the witnesses found actually match the arrWitnesses parameter passed in? Can attacker send proof with correct number of witnesses but from a completely different witness list, bypassing the ≥1 shared witness requirement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_acb9ca7e-e952-4ad7-91c8-1411259c99a0",
+    "timestamp": "2025-12-23 07:37:28.178452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Witness counting inconsistency] At lines 180-186, witnesses are counted in arrFoundWitnesses and joints added to arrWitnessJoints - if a unit has multiple authors that are witnesses, does bAddedJoint flag prevent adding the joint multiple times but arrFoundWitnesses still counts all witness authors, creating mismatch between witness count and actual witness-authored joints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9f49e0a-e56e-4538-b802-44e08119b2c4",
+    "timestamp": "2025-12-23 07:38:00.322301",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Off-by-one in majority check] At line 41, the condition is arrFoundWitnesses.length >= constants.MAJORITY_OF_WITNESSES - if MAJORITY_OF_WITNESSES is defined as 7 (for 12 witnesses) but the actual threshold should be >7 (strictly greater), does this off-by-one allow proofs to be constructed with exactly 7 witnesses when 8 are needed, breaking light client consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08c7e1b3-70cd-46dd-a517-cf29dc3481d3",
+    "timestamp": "2025-12-23 07:38:30.530774",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Duplicate witness counting] At lines 36-37, witnesses are added to arrFoundWitnesses only if not already present, but at line 34-38 the check iterates through ALL authors in objJoint.unit.authors - if a single unit has the same witness address listed multiple times as authors (malicious unit), does this bypass the deduplication and incorrectly inflate witness count toward MAJORITY_OF_WITNESSES?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed4acf44-7aae-4c26-93f7-409d467626b7",
+    "timestamp": "2025-12-23 07:38:58.576648",
+    "report_generated": false
   }
 ]
