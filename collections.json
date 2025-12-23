@@ -12598,5 +12598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c65f7445-83ff-4c25-ae8b-f8a240d881e1",
     "timestamp": "2025-12-23 15:29:49.210909",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineMaxAltLevel()] [SQL Query Complexity] The query for MCI >= constants.altBranchByBestParentUpgradeMci uses 'CROSS JOIN units AS bpunits ON units.best_parent_unit=bpunits.unit' - if arrAltBestChildren contains thousands of units, can this query become O(n²) complexity, taking minutes to execute and blocking all database operations, causing 1+ hour transaction delay?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d57b5c74-e9a9-428e-a00f-2b60ff8abde7",
+    "timestamp": "2025-12-23 15:31:05.318335",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineMaxAltLevel()] [max_alt_level NULL Handling] The query result can be NULL if no units match the condition, and the code returns 'max_alt_level || first_unstable_mc_level' - can an attacker exploit this by creating an alt branch where all units have witnessed_level >= best_parent witnessed_level (no WL increase), causing NULL result that defaults to first_unstable_mc_level, making the stability check use wrong max_alt_level and advance stability incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0abdb356-5a15-4919-a42b-b808ffb54c7c",
+    "timestamp": "2025-12-23 15:31:17.832925",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineMaxAltLevel()] [Old Algorithm Bug] The comment says 'this sql query is totally wrong but we still leave it for compatibility' - can the intentionally buggy old algorithm (used for MCI < upgrade MCI) produce different max_alt_level values than expected, causing historical units near the upgrade boundary to have inconsistent stability determinations across nodes and creating a potential chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_007f2aeb-ad55-413a-96b2-75008094b549",
+    "timestamp": "2025-12-23 15:31:31.467036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineMaxAltLevel()] [Witness Count Check] The old algorithm includes a subquery counting matching witnesses with threshold COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS - can an attacker exploit the migration period where some nodes use old algorithm and some use new, causing different max_alt_level calculations and consensus failure on which units should stabilize?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7b4046b-2355-43a1-838f-24857d99e956",
+    "timestamp": "2025-12-23 15:31:45.040844",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [Hardcoded Exception Units] The function contains 10+ hardcoded unit hash exceptions that return true unconditionally - can an attacker who discovers the pattern for being added to this list (e.g., causing validation errors during testnet) exploit this to have their mainnet units hardcoded as stable, allowing them to double-spend by making two incompatible units both appear stable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf243eb5-0b47-4391-9e9b-a99c3716417e",
+    "timestamp": "2025-12-23 15:31:59.299791",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [is_free = 1 False Negative] The function returns false if objEarlierUnitProps.is_free === 1 - can an attacker exploit timing where a unit transitions from free to non-free during this check, causing the function to return false when it should check stability properly, preventing legitimate units from stabilizing and causing 1+ day transaction delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eaff56c4-4c92-4b1c-8629-018302fd1518",
+    "timestamp": "2025-12-23 15:32:14.679864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [max_later_limci Calculation] The function calculates max_later_limci using Math.max.apply on arrLaterUnitProps - if arrLaterUnitProps is empty due to a bug, can Math.max.apply return -Infinity, causing the comparison 'max_later_limci < objEarlierUnitProps.main_chain_index' to always be true and making no units ever appear stable in later units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b433f29e-72f2-49d2-b932-7199a5df6735",
+    "timestamp": "2025-12-23 15:32:30.788506",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [best_parent_unit Reading] The function calls readBestParentAndItsWitnesses to get witnesses from earlier unit's best parent - if the best parent has different witnesses than the unit being checked, can this cause the stability calculation to use wrong witness list, making units appear stable/unstable incorrectly and advancing stability at wrong times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_863c609e-561f-427e-bb21-d466e8e0f3de",
+    "timestamp": "2025-12-23 15:32:48.453496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [findMinMcWitnessedLevel Callback Hell] The deeply nested callbacks (findMinMcWitnessedLevel → determineIfHasAltBranches → createListOfBestChildrenIncludedByLaterUnits → determineMaxAltLevel) span hundreds of lines - can an exception in any intermediate callback escape error handling, preventing handleResult from being called and leaving the stability check hanging forever, blocking all future MC updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a99a9758-c34f-46a9-aaac-ea2385fcf7a7",
+    "timestamp": "2025-12-23 15:33:07.176493",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [goDownAndCollectBestChildrenFast Performance] The fast path uses setImmediate every 100 iterations 'if (count % 100 === 0)' - can an attacker create a best-child chain with exactly 99, 199, 299 units to avoid setImmediate checks, causing the function to block the event loop for seconds and making the node unresponsive to network messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e267869c-c0b1-48db-99a6-e0ee1072baaf",
+    "timestamp": "2025-12-23 15:33:27.520105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [arrNotIncludedTips Heuristic] The code adds units to arrNotIncludedTips if they meet various heuristics like 'level >= max_later_level' - can an attacker craft units that falsely match these heuristics (e.g., artificially high level values) to be excluded from best children list, causing createListOfBestChildrenIncludedByLaterUnits to return incomplete results and make stability checks pass when they shouldn't?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbd3e67b-5635-47f1-a1d7-9d009640790a",
+    "timestamp": "2025-12-23 15:33:47.966913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [findBestChildrenNotIncludedInLaterUnits Recursion] The function recursively calls findBestChildrenNotIncludedInLaterUnits → goUp → findBestChildrenNotIncludedInLaterUnits - can an attacker create a DAG structure where this recursion never converges (e.g., circular parent relationships in the non-included subgraph), causing infinite recursion and stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cc33784-2d58-4b1a-9c28-c1b0b72d4842",
+    "timestamp": "2025-12-23 15:34:09.046374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnits()] [arrRemovedBestChildren Accumulation] The arrRemovedBestChildren array accumulates removed units across multiple goUp iterations but is never cleared - if the DAG has complex structure with many back-and-forth parent relationships, can this array grow to millions of entries, causing _.difference(arrBestChildren, arrRemovedBestChildren) to take minutes and DoS the stability check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93d49e7a-d339-46c1-aeb8-29f559e43cc0",
+    "timestamp": "2025-12-23 15:34:31.860272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevelOld()] [Witness Count Bug] The comment explicitly says 'this is a bug, should count only unique witnesses' where count += row.count adds witness counts without checking uniqueness - can an attacker who controls multiple witness addresses deliberately author the same unit with multiple witness identities, causing count to reach MAJORITY_OF_WITNESSES threshold faster than intended and advancing stability prematurely with fewer than 7 distinct witnesses actually voting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_993529f7-7930-4235-8b17-1f37df2e172b",
+    "timestamp": "2025-12-23 15:34:55.883558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsWithMaxLastBallMciFastPath()] [Fast Path Bypass] The function falls back to determineIfStableInLaterUnits if 'objEarlierUnitProps.main_chain_index > max_last_ball_mci' - can an attacker deliberately manipulate max_last_ball_mci values to force all stability checks to use the slower path, causing each check to take seconds instead of milliseconds and creating 1+ hour transaction delays under normal network load?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4736a56c-f82b-4ede-bfef-fba0fe567047",
+    "timestamp": "2025-12-23 15:35:21.025570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsWithMaxLastBallMciFastPath()] [readMaxLastBallMci Error] If storage.readMaxLastBallMci fails or returns incorrect data due to database corruption, can this function incorrectly return true for unstable units, causing them to be marked stable prematurely and breaking the protocol's safety guarantees about finality?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2bb216fb-1e21-45b7-8dac-7ac3166cca53",
+    "timestamp": "2025-12-23 15:35:46.776635",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [Double Callback Invocation] The function calls handleResult(bStable) early, then continues to acquire write lock and update stability - if the callback assumes synchronous completion and immediately starts another MC update, can two parallel stability updates occur (one from callback, one from continued execution), causing race conditions in markMcIndexStable and database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e83b8b5-33af-4ce5-9708-f05a6e4711b0",
+    "timestamp": "2025-12-23 15:36:13.099352",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [Write Lock Deadlock] The function calls mutex.lock(['write'], ...) after returning from handleResult - if another operation already holds a write lock and is waiting for this function to complete, can a deadlock occur where neither operation can proceed, permanently freezing the node and requiring manual restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d8a685e-45a9-4f98-a879-d747ed69c16d",
+    "timestamp": "2025-12-23 15:36:39.482466",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [last_stable_mci >= v4UpgradeMci Check] The function throws error if 'last_stable_mci >= constants.v4UpgradeMci' and unit is not stable in DB - can this check be bypassed by timing the attack exactly at MCI = v4UpgradeMci - 1, allowing the attacker to exploit both pre-v4 and post-v4 stability logic simultaneously and cause chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b974e1f-391f-493c-a42b-630786683e62",
+    "timestamp": "2025-12-23 15:37:07.294670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [new_last_stable_mci <= last_stable_mci] The code throws error if new MCI is not higher than existing - can integer overflow cause new_last_stable_mci to wrap around to negative value or zero, making it appear less than last_stable_mci and throwing this error even though stability should advance legitimately?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cd503bb-1f2e-43d3-b455-c9613ea6dbf5",
+    "timestamp": "2025-12-23 15:37:36.252905",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [advanceLastStableMcUnitAndStepForward Loop] The function calls markMcIndexStable in a loop incrementing mci++ until reaching new_last_stable_mci - can an attacker manipulate the DAG so that new_last_stable_mci is billions larger than current, causing this loop to run for hours and blocking all other database operations with the write lock, creating total network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa3d4402-83a4-4682-88c0-cb36c87674f8",
+    "timestamp": "2025-12-23 15:38:06.327366",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: determineIfStableInLaterUnitsAndUpdateStableMcFlag()] [Batch Write Failure] After all markMcIndexStable calls, it does 'batch.write({ sync: true })' - if this fails (e.g., disk full), can the database COMMIT succeed but KV store write fail, causing permanent inconsistency between relational DB and KV store where units are marked stable in DB but not in KV, breaking AA state reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4d5acde-306e-4ab2-a8a2-6bbc54bed688",
+    "timestamp": "2025-12-23 15:38:36.814940",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: markMcIndexStable()] [storage.assocStableUnitsByMci Memory Leak] The function creates storage.assocStableUnitsByMci[mci] array for each stabilized MCI - are these arrays ever cleaned up, or do they accumulate indefinitely, causing memory to grow unbounded as the blockchain grows and eventually crashing the node with OOM after millions of MCIs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ba1cedb-3eba-4850-bfce-690b411b57fe",
+    "timestamp": "2025-12-23 15:39:08.313400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: markMcIndexStable()] [Partial Stabilization] The function updates storage.assocUnstableUnits by setting is_stable=1 and moving to assocStableUnits, but if the subsequent database UPDATE fails, can the in-memory cache show units as stable while the database shows them as unstable, causing all future validation checks to disagree between nodes and creating consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3854e42c-414b-49c3-a3aa-c85dda58ff77",
+    "timestamp": "2025-12-23 15:39:38.861499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: markMcIndexStable()] [arrStabilizedUnits Delete] The code deletes from storage.assocUnstableUnits after stabilization - if a parallel operation is iterating over assocUnstableUnits at the same time, can the iterator skip entries or crash due to concurrent modification, causing that operation to miss processing some units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe55569f-7939-4e32-b9bc-8cd043e450a2",
+    "timestamp": "2025-12-23 15:40:10.041973",
+    "report_generated": false
   }
 ]
