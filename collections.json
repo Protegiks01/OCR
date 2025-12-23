@@ -15298,5 +15298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f5dd381-4146-4010-8158-a28b02f36c4f",
     "timestamp": "2025-12-23 18:33:06.912704",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Consensus: Deterministic hashing] If JavaScript object property enumeration order is non-deterministic in some edge cases (e.g., numeric string keys '1' vs integer keys 1), can getSourceString() produce different hashes for the same logical object on different nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50400d2b-a6a6-4fb0-ab79-46940171151b",
+    "timestamp": "2025-12-23 18:34:21.509122",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Consensus: Ball hash chain] getBallHash() creates a hash chain through parent_balls (line 106) - if an attacker creates a ball with corrupted parent_balls references, can they fork the ball chain without forking the unit DAG, breaking last_ball consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d43e7d00-bd01-44d1-a8aa-4a0afb674e92",
+    "timestamp": "2025-12-23 18:34:34.054161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: validation.js usage] validation.js calls getUnitHash() to verify unit hash matches - if validation.js passes a partially validated unit to getUnitHash(), can field injection or mutation between validation and hashing allow invalid units to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72ef5ab6-4ffe-4704-92a6-2dbd881fda85",
+    "timestamp": "2025-12-23 18:34:48.377370",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: composer.js usage] composer.js calls getUnitHashToSign() to generate hash for signing - if composer doesn't properly sanitize unit structure before calling this function, can malformed units produce valid-looking hashes that fail validation later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c5101c4-a248-4650-a78c-567e7fe3066c",
+    "timestamp": "2025-12-23 18:35:01.672662",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: storage.js stripping] main_chain.js strips old units using setContentHash() - if the content_hash calculated during stripping differs from the content_hash calculated during original validation, can stripped units fail re-validation, causing database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ea5c2b0-fc3e-4c27-850d-77e291899c9c",
+    "timestamp": "2025-12-23 18:35:15.840153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: signature.js verification] signature.js verifies signatures against hash-to-sign from getUnitHashToSign() - if signature.js and definition.js use different authentifier deletion logic, can signatures validate incorrectly, enabling unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6bb69b98-c299-4782-a965-d42b1f7542fd",
+    "timestamp": "2025-12-23 18:35:31.116040",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: aa_addresses.js] aa_addresses.js uses getChash160() for AA address derivation - if AA definition contains floating point parameters that round differently across platforms, can the same AA definition map to different addresses\n\n### Citations\n\n**File:** object_hash.js (L1-171)\n```javascript\n/*jslint node: true */",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ee115cb-0c25-4c43-8349-d0a5fec15412",
+    "timestamp": "2025-12-23 18:35:47.279874",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Consensus: Deterministic hashing] If JavaScript object property enumeration order is non-deterministic in some edge cases (e.g., numeric string keys '1' vs integer keys 1), can getSourceString() produce different hashes for the same logical object on different nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf80e347-8f67-49af-81ef-bf1084244cfe",
+    "timestamp": "2025-12-23 18:36:06.005648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Consensus: Ball hash chain] getBallHash() creates a hash chain through parent_balls (line 106) - if an attacker creates a ball with corrupted parent_balls references, can they fork the ball chain without forking the unit DAG, breaking last_ball consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3b67707-fbeb-4247-8e04-275d08833b14",
+    "timestamp": "2025-12-23 18:36:25.114090",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: validation.js usage] validation.js calls getUnitHash() to verify unit hash matches - if validation.js passes a partially validated unit to getUnitHash(), can field injection or mutation between validation and hashing allow invalid units to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c57bc757-8ad9-4551-95cf-e07cc183e771",
+    "timestamp": "2025-12-23 18:36:45.532864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: composer.js usage] composer.js calls getUnitHashToSign() to generate hash for signing - if composer doesn't properly sanitize unit structure before calling this function, can malformed units produce valid-looking hashes that fail validation later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6912bbd3-eb31-4ccd-a014-dba3437f1b5c",
+    "timestamp": "2025-12-23 18:37:06.335878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: storage.js stripping] main_chain.js strips old units using setContentHash() - if the content_hash calculated during stripping differs from the content_hash calculated during original validation, can stripped units fail re-validation, causing database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d36102a3-8a80-4b66-9493-466d63895cf7",
+    "timestamp": "2025-12-23 18:37:28.336538",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: signature.js verification] signature.js verifies signatures against hash-to-sign from getUnitHashToSign() - if signature.js and definition.js use different authentifier deletion logic, can signatures validate incorrectly, enabling unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78612a64-0980-4e50-9b44-c2d57ff65cb3",
+    "timestamp": "2025-12-23 18:37:50.973306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Integration: aa_addresses.js] aa_addresses.js uses getChash160() for AA address derivation - if AA definition contains floating point parameters that round differently across platforms, can the same AA definition map to different addresses\n\n### Citations\n\n**File:** object_hash.js (L1-171)\n```javascript\n/*jslint node: true */",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67a3b108-0c55-4413-acf2-69fb6eccd4a4",
+    "timestamp": "2025-12-23 18:38:15.077027",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Stability validation bypass] If the stability check at lines 17-21 is satisfied (exactly COUNT_MC_BALLS_FOR_PAID_WITNESSING+2 units), but units become unstable between the count query and the actual mc_outputs.calcEarnings() call, can an attacker claim witness earnings for unstable MCI ranges, violating the stability invariant and potentially causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1949ce9f-748d-4738-91d8-6c86ef371708",
+    "timestamp": "2025-12-23 18:38:39.954847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Integer boundary attack] Can an attacker pass to_main_chain_index = MAX_SAFE_INTEGER causing the addition 'to_main_chain_index+constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING+1' at line 18 to overflow beyond Number.MAX_SAFE_INTEGER, resulting in incorrect stability checks and allowing premature spending of witness earnings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b48d69b-00f3-49b6-ac8f-065f4e4f4031",
+    "timestamp": "2025-12-23 18:39:06.243070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [MCI range manipulation] If from_main_chain_index > to_main_chain_index is passed to calcWitnessEarnings(), does the function validate this condition before querying, or can negative ranges cause SQL errors or return incorrect earnings amounts that could lead to fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cef1370f-dd21-43d2-8591-ef1d13cd1485",
+    "timestamp": "2025-12-23 18:39:32.453426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Race condition in stability] Between the COUNT query at lines 17-21 verifying stability and the mc_outputs.calcEarnings() call at line 22, if new units arrive making the range no longer have exactly COUNT_MC_BALLS_FOR_PAID_WITNESSING+2 units, can this cause inconsistent earnings calculations across nodes leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a0f632d-2597-4270-8f33-ae3947cb5115",
+    "timestamp": "2025-12-23 18:40:00.029732",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Type validation missing] The 'type' parameter is passed directly to mc_outputs.calcEarnings() without validation - can an attacker pass unexpected type values (e.g., SQL injection strings, null, undefined) to bypass earnings calculations or corrupt database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7569de60-da0c-415c-a423-d244a4a4c838",
+    "timestamp": "2025-12-23 18:40:28.770171",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Address validation missing] The 'address' parameter at line 15 is not validated before being passed to mc_outputs.calcEarnings() - can passing malformed addresses, excessively long strings, or SQL injection payloads cause database errors or security vulnerabilities?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 18:40:57.882895",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: calcWitnessEarnings()] [Error handling abuse] If the count check at line 20 fails with 'not enough stable MC units', does callbacks.ifError() properly prevent further processing, or can the caller ignore this error and proceed to claim unearned witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a96c5c3-5a98-4c59-8b0d-0f9da1807935",
+    "timestamp": "2025-12-23 18:41:26.598114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readUnitOnMcIndex()] [Multiple units on MCI] The throw at line 57 occurs when rows.length !== 1, but what if a database corruption or race condition causes multiple units to have is_on_main_chain=1 for the same main_chain_index? Does this throw halt all witness payment processing permanently, causing network-wide freeze of witnessing_outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68afae07-7c72-4e46-a103-4b12630a9f60",
+    "timestamp": "2025-12-23 18:41:56.194968",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readUnitOnMcIndex()] [Missing unit handling] If rows.length === 0 (no unit on MC index), the throw at line 57 occurs - but during network catchup or reorganization edge cases, can this throw interrupt updatePaidWitnesses() causing witness payment calculations to permanently halt until manual intervention?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_401f70f4-fcb1-48bc-8b75-0b3392c07ce2",
+    "timestamp": "2025-12-23 18:42:24.107441",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readUnitOnMcIndex()] [Synchronous throw in async context] The throw Error() at line 57 is synchronous while the function uses asynchronous callbacks - can this cause unhandled promise rejections or break the async.eachSeries() flow in buildPaidWitnessesForMainChainIndex(), leading to incomplete witness payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f758214-ca84-4f66-b49f-664132f2f042",
+    "timestamp": "2025-12-23 18:42:53.220538",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readUnitOnMcIndex()] [SQL injection potential] Although using parameterized query at line 55, can the main_chain_index parameter be manipulated to return unexpected results if it's not properly validated as an integer before reaching this function?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fab0ec3f-5277-4c1d-b1cd-ee6a1b1f6f93",
+    "timestamp": "2025-12-23 18:43:21.725932",
+    "report_generated": false
   }
 ]
