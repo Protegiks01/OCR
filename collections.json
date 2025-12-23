@@ -5098,5 +5098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ccde0269-7a03-40e6-91a1-2b3e0f703277",
     "timestamp": "2025-12-23 06:58:35.540742",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Division by zero in max_fee_ratio] At line 519, if size_fees (headers_commission + payload_commission) is zero for some edge case unit, can the comparison additional_fees > max_ratio * size_fees cause division by zero or infinity issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fcb9f18b-a863-4b20-95ae-39b04d0fefe3",
+    "timestamp": "2025-12-23 06:59:48.804023",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Oversize fee recalculation] Oversize fee is calculated at lines 484-486, 493, and 507-509. If these calculations produce different results due to unit structure changes, which value is used for the final check at line 517? Can inconsistency cause under-feeing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2fe1556e-2ea0-44cd-8948-f7bf5706aadc",
+    "timestamp": "2025-12-23 07:00:01.387498",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [TPS fee balance query race] At line 378, tps_fees_balance is queried for a specific mci. If the balance is updated by another transaction at the same mci between the query and commit, can the TPS fee calculation be based on stale data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_595584ce-731b-43ed-86f6-335495c00d2b",
+    "timestamp": "2025-12-23 07:00:14.870917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Negative TPS fee exploit] At line 381, addr_tps_fee is calculated as Math.ceil(tps_fee - tps_fees_balance / share). If tps_fees_balance is very large, can addr_tps_fee become negative, and then be set to paid_tps_fee at line 382-383, causing negative fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5cd08e5-591d-4914-869d-58bb06d47466",
+    "timestamp": "2025-12-23 07:00:28.162852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Paid temp data fee calculation] At line 492, paid_temp_data_fee is calculated but not validated. Can an attacker craft temp_data messages that cause getPaidTempDataFee() to return incorrect values, manipulating oversize fee calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a23fe0fe-f07f-458b-a786-f7c58c4cba4b",
+    "timestamp": "2025-12-23 07:00:42.479221",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Minimal mode recursion depth] At lines 167-190, when params.minimal is true, trySubset() recursively tries adding more paying addresses. Can an attacker provide a very long arrCandidatePayingAddresses list to cause stack overflow or excessive recursion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_07155061-8d45-4925-83f3-2a51fe85a484",
+    "timestamp": "2025-12-23 07:00:58.100359",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [MAX_AUTHORS_PER_UNIT check placement] At lines 172-173, the check for MAX_AUTHORS_PER_UNIT happens in trySubset(). Can an attacker bypass this by not using minimal mode, or by manipulating the count to exactly equal MAX_AUTHORS_PER_UNIT?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b08ef0d3-1f1f-4694-8963-2a2d62e67399",
+    "timestamp": "2025-12-23 07:01:15.169917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Minimal mode params modification] At lines 174-176, try_params is created with _.clone(params), then minimal is deleted. Is this a shallow clone? Can nested objects in params be shared between iterations, causing unintended state mutations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b6ba808-8a8d-492f-bf7a-cab7fb167324",
+    "timestamp": "2025-12-23 07:01:32.442394",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Function: mergeExports()] [Configuration Injection] Can an attacker place a malicious conf.js in the app root directory to override critical security parameters like MAX_TOLERATED_INVALID_RATIO or WS_PROTOCOL, causing the node to accept invalid units or downgrade to insecure ws:// protocol on mainnet, leading to network split or man-in-the-middle attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e8b654d-b2f7-4ad6-a55e-b5a8baed7098",
+    "timestamp": "2025-12-23 07:01:51.083932",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Function: mergeExports()] [Prototype Pollution] Does the mergeExports() function at lines 6-9 validate that properties being merged do not include __proto__, constructor, or prototype keys, which could pollute the Object prototype and affect all modules loading this conf, potentially causing consensus failure or code execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3922699-ac67-42c2-90bd-742950b05346",
+    "timestamp": "2025-12-23 07:02:11.483457",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 98-104] [Path Traversal] When loading custom conf.js from appRootDir + '/conf.js', can an attacker manipulate the appRootDir path (e.g., via symlinks or directory traversal in desktopApp.getAppRootDir()) to load arbitrary JavaScript files, achieving remote code execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25ea01a8-eb3d-46c3-bb27-c26124cc1f41",
+    "timestamp": "2025-12-23 07:02:32.435388",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 112-118] [Arbitrary File Read] When loading conf.json from appDataDir + '/conf.json', does the code validate that appDataDir points to the intended user directory, or can path traversal allow reading sensitive files (e.g., /etc/passwd, private keys) which are then merged into exports, leaking secrets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ece71fe7-952a-4655-8eb6-7532ee5473da",
+    "timestamp": "2025-12-23 07:02:53.694919",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 98-104] [Code Injection via require()] The code uses require(appRootDir + '/conf.js') without validating that the file is safe JavaScript. Can an attacker who gains write access to the app root directory inject malicious code that executes during node startup, potentially stealing wallet keys or corrupting the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5908024a-7f6b-465c-97d8-c1c775b96385",
+    "timestamp": "2025-12-23 07:03:16.784289",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 112-118] [JSON Parsing Vulnerabilities] While conf.json is loaded via require() (which parses JSON), can an attacker craft a malicious JSON file with deeply nested objects or circular references that cause memory exhaustion or crashes during parsing, leading to node unavailability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dad16b08-4aba-45f0-9226-6f1f62631b2a",
+    "timestamp": "2025-12-23 07:03:40.898422",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Function: mergeExports()] [Configuration Override Race Condition] If multiple modules simultaneously call require('ocore/conf.js') and attempt to override properties via direct assignment (line 82-85 pattern), can race conditions cause non-deterministic configuration across different nodes, leading to network split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6cb510b1-5ed0-482a-a804-35ce1a4f69d1",
+    "timestamp": "2025-12-23 07:04:05.640803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 93-96] [Package.json Tampering] The code loads appPackageJson = require(appRootDir + '/package.json') and uses its name/version as exports.program and exports.program_version. Can an attacker tamper with package.json to inject malicious program names that break compatibility checks in network.js or cause logging/telemetry corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0f842f8-f8bd-494b-aa05-976f88856aa4",
+    "timestamp": "2025-12-23 07:04:29.435708",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 122-131] [Database Configuration Override] After merging custom configs, default database settings are applied if still unset. Can an attacker provide a partial conf.json that sets exports.storage = 'mysql' but omits database.user, causing the node to connect to MySQL as default user 'byteball', potentially accessing wrong database or triggering permission errors that halt the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2882adae-9967-4445-a87b-d1f951e427ed",
+    "timestamp": "2025-12-23 07:04:54.521161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 68-71] [Forced Configuration for Cordova] When bCordova is detected, the code forces exports.storage = 'sqlite' and exports.bLight = true. Can an attacker spoof the Cordova environment (by setting window.cordova in a desktop app) to force light mode on a full node, causing it to not validate units fully and accept invalid DAG history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9fe6d8a5-07c0-4a54-a287-6cdad0e32f1c",
+    "timestamp": "2025-12-23 07:05:19.931702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 52] [Protocol Downgrade Attack] The WS_PROTOCOL is set to 'ws://' if process.env.devnet is truthy, otherwise 'wss://'. Can an attacker manipulate the environment variable (e.g., via .env file injection or process spawn) to force ws:// on mainnet, exposing all peer communications to man-in-the-middle attacks and allowing unit injection or censorship?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f6e1c3f-87fe-4f71-bb6b-92d6d486112f",
+    "timestamp": "2025-12-23 07:05:45.650017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 54-55] [Connection Limit DoS] MAX_INBOUND_CONNECTIONS and MAX_OUTBOUND_CONNECTIONS are both set to 100. Can an attacker override these via custom conf to set MAX_INBOUND_CONNECTIONS = Infinity or Number.MAX_SAFE_INTEGER, causing the node to accept unlimited connections and run out of file descriptors or memory, leading to crash and network unavailability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa57ffbd-db17-46ad-a0a3-138f2fbbde95",
+    "timestamp": "2025-12-23 07:06:12.824309",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 56] [Invalid Joint Ratio Manipulation] MAX_TOLERATED_INVALID_RATIO = 0.1 means peers sending >10% invalid joints are banned. Can an attacker set this to 1.0 (100%) via conf override, causing the node to never ban malicious peers who flood it with invalid units, leading to resource exhaustion and failure to sync with honest peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ebbefc2-09e8-429a-b60a-976a72680116",
+    "timestamp": "2025-12-23 07:06:37.759431",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 57] [Peer Discovery Attack] MIN_COUNT_GOOD_PEERS = 10 determines when the node requests peer lists from other peers. Can an attacker set this to 0 via conf override, causing the node to never discover new peers and remain isolated if its hardcoded peers go offline, leading to network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b31f1a4-3a15-4135-9f45-6bdcd2b7ffdb",
+    "timestamp": "2025-12-23 07:07:03.456507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 17] [Port Binding DoS] exports.port is set to null by default (no incoming connections). If an attacker overrides this to a privileged port (e.g., 80, 443) or a port already in use, does the node crash on startup or gracefully handle the error? Crash-on-startup attacks can prevent node recovery after restarts.",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d8be1d4-34e0-4069-8058-31ae82497995",
+    "timestamp": "2025-12-23 07:07:29.553235",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 41-46] [SOCKS Proxy Hijacking] If socksHost, socksPort, socksUsername, socksPassword are set via conf override, can an attacker specify a malicious SOCKS proxy that logs all peer communications, modifies units in transit, or selectively drops critical units (e.g., witness heartbeats), causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e60daed-5138-4123-b2e3-65aad8ac5bbf",
+    "timestamp": "2025-12-23 07:07:55.869469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 49] [HTTP Proxy Injection] If httpsProxy is set to an attacker-controlled proxy (e.g., 'http://malicious-proxy:3128'), can the attacker intercept TLS connections to peers, inject fake units, or strip witness proofs from light client requests, causing the node to accept invalid history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c2a23d9-587c-4f66-a474-e6aefd0b030a",
+    "timestamp": "2025-12-23 07:08:21.562513",
+    "report_generated": false
   }
 ]
