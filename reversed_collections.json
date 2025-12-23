@@ -6448,5 +6448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0063355d-948a-4b0a-a5c9-b6e1c43c696a",
     "timestamp": "2025-12-23 10:08:31.149461",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isArrayOfLength()] [Length overflow] If len parameter is extremely large (near MAX_SAFE_INTEGER), does isArrayOfLength() comparison work correctly, or can integer overflow cause it to accept arrays of wrong length, allowing aa_composer.js to create AA responses with excessive outputs that exceed database limits and crash nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_297d137d-4017-49eb-90e5-054b4e50d60a",
+    "timestamp": "2025-12-23 10:09:37.116707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isArrayOfLength()] [Witness array validation] When validation.js uses isArrayOfLength(witnesses, 12) to validate witness lists, can an attacker exploit prototype pollution to override Array.prototype.length, causing witness lists of wrong size to pass validation and breaking main chain consensus, triggering permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_737117a0-54a0-412a-9503-79841dac5330",
+    "timestamp": "2025-12-23 10:09:49.557748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyArray()] [Array subclass bypass] If an attacker extends Array class and overrides length getter to return fake values, can isNonemptyArray() be fooled into validating empty arrays as non-empty, causing validation.js to accept units with zero parent_units that violate DAG structure and cause network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_adcde572-cce5-4211-afab-0ff3e717088c",
+    "timestamp": "2025-12-23 10:10:02.354936",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyArray()] [Sparse array validation] Does isNonemptyArray() accept sparse arrays with undefined holes [1, , 3], and if aa_validation.js processes these as AA response outputs, can an attacker create outputs with undefined amounts that bypass balance checks but are stored in database, enabling asset inflation through duplicate output processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6210b378-fca8-43ce-b3ac-84872ae70700",
+    "timestamp": "2025-12-23 10:10:15.804544",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyArray()] [Array-like object bypass] Can isNonemptyArray() be bypassed with array-like objects (e.g., {0: 'a', 1: 'b', length: 2}) that pass Array.isArray() check in some JavaScript engines, causing validation.js to process non-array structures as parent_units or witnesses and corrupting DAG topology, leading to consensus failure and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56ab041a-105c-4046-981b-7c2fc0935470",
+    "timestamp": "2025-12-23 10:10:30.055543",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidDeviceAddress()] [33-character requirement bypass] If an attacker passes a 34-character string starting with '0' that truncates to valid address, does isValidDeviceAddress() incorrectly validate it, allowing network.js to route messages to wrong devices and enabling payment interception or theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_971c87d0-a7e3-4aaf-be32-419982c8bf42",
+    "timestamp": "2025-12-23 10:10:45.672873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidDeviceAddress()] [substr() vs substring() inconsistency] Since isValidDeviceAddress() uses address.substr(1) which is deprecated, can inconsistent behavior across Node.js versions cause device address validation to fail or pass unexpectedly in wallet.js, breaking device pairing and preventing users from receiving payments (temporary fund freezing >1 day)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_484fdd32-975a-4427-8bca-896c66de87a8",
+    "timestamp": "2025-12-23 10:11:01.749427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidDeviceAddress()] [Leading zero requirement] Does isValidDeviceAddress() strictly require address[0] === '0', and if device.js accidentally allows device addresses without leading '0' through alternative validation paths, can an attacker impersonate devices using regular addresses, enabling man-in-the-middle attacks on encrypted pairing sessions that leak private keys and cause fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b2d4c151-4639-43e5-9fc7-8d8b4e1d36e3",
+    "timestamp": "2025-12-23 10:11:19.255998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddress()] [Length validation order] Since isValidAddress() checks case before delegating to isValidChash() which checks length, can an attacker send addresses that are uppercase but wrong length (e.g., 31 or 33 chars) that pass the case check but fail later, causing validation.js to accept units that are partially valid but ultimately rejected, wasting validation resources in DoS attack delaying processing >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e4c42e7-ed5f-4280-86aa-b7bc5418e579",
+    "timestamp": "2025-12-23 10:11:36.877115",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddress()] [Type check before case check] If the address parameter is not a string (e.g., object with toString()), does isValidAddress() correctly reject it before calling toUpperCase() which might throw an exception, or can this crash validation.js when processing malformed units received from malicious peers, causing node crash and network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e804835c-a230-477f-ba70-fd2a32244adf",
+    "timestamp": "2025-12-23 10:11:55.715811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddress()] [Checksum enforcement gap] Since isValidAddress() requires uppercase but delegates checksum validation to isValidChash(), if an attacker finds a collision where a lowercase address has the same checksum as an uppercase one, can they bypass the uppercase requirement to create addresses that pass validation but are unspendable, permanently freezing deposited funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f2084ea-c1c6-48e8-ac35-429967037b31",
+    "timestamp": "2025-12-23 10:12:15.277788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddress()] [toUpperCase() non-determinism] Does isValidAddress() use address === address.toUpperCase() check deterministically across all locales and Node.js versions, or can locale-dependent uppercasing (e.g., Turkish i/İ conversion) cause validation.js to accept/reject addresses differently on different nodes, triggering permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9698600-1b89-4f6e-b219-c16381e5b888",
+    "timestamp": "2025-12-23 10:12:35.796568",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddressAnyCase()] [Mixed-case collision] Can an attacker exploit isValidAddressAnyCase() to create two units with the same address in different cases (e.g., 'ABC...' and 'abc...') that both pass validation but are treated as different addresses in some contexts and same in others, causing balance inconsistencies and enabling fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df6fcdf2-2da6-4790-9dac-9709028b1648",
+    "timestamp": "2025-12-23 10:12:58.240752",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidAddressAnyCase()] [Case normalization inconsistency] If isValidAddressAnyCase() accepts addresses in any case but validation.js later compares them with case-sensitive string comparison in database queries, can an attacker send payments to lowercased addresses that appear valid but don't match database records, causing double-spend or balance miscalculation leading to fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f219a620-2c59-49b8-a78b-c441ce832094",
+    "timestamp": "2025-12-23 10:13:20.485267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidChash()] [Padding validation] If the base32 or base64 encoded chash contains invalid padding characters (= or ==), does isValidChash() reject it, or can padding manipulation cause wallet.js to generate change outputs to malformed addresses that are unspendable, permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a1686ca-3b3e-456a-be75-3a15f0a5d063",
+    "timestamp": "2025-12-23 10:13:42.822209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidChash()] [Base32 case sensitivity] Since base32 encoding can be case-insensitive, does chash.isChashValid() normalize case before validation, or can an attacker submit mixed-case addresses that produce different hashes in object_hash.js vs chash validation, causing signature verification failures and permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aef2ad35-9ab2-413b-8b8d-35f6b166e558",
+    "timestamp": "2025-12-23 10:14:05.756475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidChash()] [Length parameter bypass] Does isValidChash() enforce that the decoded chash binary length matches the expected length parameter, or can an attacker pass a 32-character base32 string with len=48 (or vice versa) to bypass address type validation in validation.js, mixing address formats and causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3c0ea36-79ea-49e7-9baf-4780f0c744a3",
+    "timestamp": "2025-12-23 10:14:29.068636",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidChash()] [Chash checksum bypass] Since isValidChash() delegates to chash.isChashValid() which validates checksums, if the checksum validation in chash.js has a collision weakness, can an attacker generate an address with incorrect clean_data but valid checksum, causing validation.js to accept payments to uncontrolled addresses and enabling fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2074dea5-f464-41c3-99f7-320dab03f3e2",
+    "timestamp": "2025-12-23 10:14:53.904701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isStringOfLength()] [Negative length] If isStringOfLength() receives a negative len parameter, does it always return false, or can edge cases cause it to incorrectly validate, allowing aa_validation.js to accept AA formulas with malformed string parameters that crash formula evaluation and freeze AA funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0d98160-4627-4ed9-8230-2c1ba6c1ccbb",
+    "timestamp": "2025-12-23 10:15:19.274459",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isStringOfLength()] [False parameter handling] When isStringOfLength() is called without a len parameter or len=0, it returns false for all strings - can this cause validation.js to reject valid units if len is accidentally undefined, creating a network halt where no new transactions can be confirmed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f1f768b-db79-4c5d-8b78-2462ad58e0cb",
+    "timestamp": "2025-12-23 10:15:44.946480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isStringOfLength()] [Multi-byte character length] Since JavaScript's string.length counts UTF-16 code units not Unicode codepoints, does isStringOfLength() incorrectly measure strings with emoji or surrogate pairs, causing validation.js to accept oversized unit fields that exceed database column limits and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ae191fea-51b4-4fe6-a2dd-97d5ff7ee2be",
+    "timestamp": "2025-12-23 10:16:10.324334",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyString()] [Null byte injection] If isNonemptyString() accepts strings containing null bytes (\\x00) and validation.js uses these in SQL queries without proper escaping, can an attacker inject null bytes in unit fields to truncate queries or bypass filters, corrupting the database and causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ef05ada-9fd4-4158-b63a-1b86fc8f8ecd",
+    "timestamp": "2025-12-23 10:16:36.474510",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyString()] [Whitespace-only bypass] Does isNonemptyString() allow strings containing only whitespace characters (spaces, tabs, newlines), and if so, can wallet.js accept device pairing codes or payment messages that are effectively empty, enabling device impersonation or payment fraud?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3ff77bd-eb53-4d4e-9a94-1583f7d5b75f",
+    "timestamp": "2025-12-23 10:17:02.033018",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyString()] [Zero-width character bypass] Can isNonemptyString() be bypassed with strings containing only zero-width Unicode characters (U+200B, U+FEFF) that have str.length > 0 but display as empty, allowing aa_validation.js to accept AA definitions with invisible state variable names that clash with legitimate ones and corrupt state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36a93b55-0f05-4b7e-9fbc-dcd2e26beb3b",
+    "timestamp": "2025-12-23 10:17:26.149020",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyString()] [Unicode normalization bypass] Does isNonemptyString() accept Unicode strings with different normalization forms (NFC vs NFD), allowing an attacker to create visually identical addresses or asset names that hash differently in object_hash.js, causing validation.js to treat them as distinct and enabling address spoofing for fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a8d623b-1856-4b84-974b-efcee25d00b1",
+    "timestamp": "2025-12-23 10:17:51.318448",
+    "report_generated": false
   }
 ]
