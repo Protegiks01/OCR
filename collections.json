@@ -14398,5 +14398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac7ac2b6-c28a-421e-9591-cf987571bcef",
     "timestamp": "2025-12-23 17:31:22.650374",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: addPeer()] [Peer Database Poisoning] At lines 554-563, addPeer() inserts into peers table with learnt_from_peer_host. If an attacker repeatedly advertises the same malicious peer URLs from different sources, can they cause the peers table to grow unboundedly since INSERT IGNORE only prevents duplicate (peer_host, peer) combinations, but the same peer can be inserted multiple times with different learnt_from_peer_host values, eventually causing database bloat?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1f0483f-590d-429a-bd40-f86031e1651d",
+    "timestamp": "2025-12-23 17:32:32.169490",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: purgeDeadPeers()] [Selective Peer Retention] At lines 637-671, purgeDeadPeers() only deletes peers if count_other_events < 20000 AND days_since_last_event < 7. Can an attacker who knows this threshold keep a malicious peer 'alive' in the database by ensuring it generates exactly 1 event every 6.9 days, allowing the peer to remain in the connection pool indefinitely even if it consistently serves invalid data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e486c089-9ec2-4250-86a1-2545c821b933",
+    "timestamp": "2025-12-23 17:32:44.691226",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: checkIfHaveEnoughOutboundPeersAndAdd()] [Insufficient Peer Threshold] At lines 398-420, the function only requests new peers if count_good_peers < MIN_COUNT_GOOD_PEERS. If all current 'good' peers become malicious after this check passes, but remain under the invalid joints ratio threshold, can the node operate with an entirely compromised peer set without triggering any peer discovery, allowing attackers to feed the node a fabricated version of the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80dd495b-984d-4471-bb5a-1f87b0ed0fd0",
+    "timestamp": "2025-12-23 17:32:58.186605",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [assocUnitsInWork Race] In handleJoint() at lines 1017-1132, the function checks assocUnitsInWork[unit] at line 1021 and sets it to true at line 1023, but this check is not atomic. If two peers send the same joint simultaneously on different WebSocket connections, can both pass the check before either sets the flag, causing the same joint to be validated twice in parallel and potentially stored twice in the database, corrupting the units table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aaef833b-5fda-4870-b6f6-f0c2c89a7049",
+    "timestamp": "2025-12-23 17:33:11.632548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [Mutex Lock Ordering] At line 1026, handleJoint() acquires mutex.lock(['handleJoint']) before calling validation.validate(). If validation.validate() internally tries to acquire other mutexes that are already held by other operations waiting for 'handleJoint', can this create a deadlock that freezes all joint processing, causing the network to stop confirming transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0eaba876-e0ec-4072-8b9d-f53620c6fcd2",
+    "timestamp": "2025-12-23 17:33:25.737320",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [Validation Callback Confusion] The validate() callback at lines 1027-1112 has multiple exit paths (ifUnitError, ifJointError, ifTransientError, ifNeedHashTree, ifNeedParentUnits, ifOk). If an attacker can craft a joint that triggers multiple callbacks (e.g., ifTransientError followed by ifOk due to async races), can they cause the same unit to be both purged from unhandled_joints AND saved to storage, creating inconsistent database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73a49d38-bd0e-4250-94aa-3b9807496c63",
+    "timestamp": "2025-12-23 17:33:40.955821",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [ifNeedParentUnits Storage] At lines 1076-1079, when parents are missing, the joint is passed to joint_storage.saveUnhandledJointAndDependencies(). If an attacker floods the network with joints that reference non-existent parent units, can they fill the unhandled_joints table to database limits, preventing legitimate joints with temporarily missing parents from being stored and causing transaction confirmation delays exceeding 24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad4e7969-38ed-4b09-82d6-d02ecbe2ade8",
+    "timestamp": "2025-12-23 17:33:57.695483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleOnlineJoint()] [Error Forwarding Loop] In handleOnlineJoint() at lines 1190-1268, errors are sent back via sendErrorResult() at lines 1200, 1204, 1210. If an attacker crafts a joint that causes transient validation errors across all peers, can they trigger a situation where peers keep forwarding the same invalid joint to each other, each sending error responses, creating an error message storm that saturates WebSocket bandwidth?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9a8d69d-2e31-4fe2-babd-0bd0a24d7973",
+    "timestamp": "2025-12-23 17:34:15.648646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handlePostedJoint()] [Light Client Post Validation] In handlePostedJoint() at lines 1135-1188, light clients can post joints (line 1144) with bPosted=true flag. At lines 1083-1090, posted joints with sequence !== 'good' are rejected. Can a malicious light client post a joint that passes initial validation but becomes non-serial after other units arrive, and since it was posted, it gets propagated to all peers before being rejected, wasting network bandwidth and processing time across the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05c01578-202e-4191-bc02-769b027690f6",
+    "timestamp": "2025-12-23 17:34:34.821716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: forwardJoint()] [Forwarding Amplification] In forwardJoint() at lines 1010-1015, the joint is forwarded to ALL subscribed clients except the sender. If an attacker controls multiple nodes and carefully times joint submission to arrive at slightly different times at different hubs, can they cause exponential amplification where each forwarding triggers more forwardings, eventually broadcasting the same joint hundreds of times across the network within seconds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d66f03de-fe74-4633-b414-f7f4a4e786a6",
+    "timestamp": "2025-12-23 17:34:54.258786",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [ifKnownBad Infinite Loop] At lines 1124-1126 in handleJoint(), if a joint is known bad, it just deletes assocUnitsInWork[unit] and returns. If an attacker keeps sending the same known-bad joint repeatedly from different peers, does each attempt trigger a full database query to check if it's known bad, causing cumulative database load that could slow down legitimate joint processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2672fcc0-94b4-4690-9f73-35ef8ec2dca9",
+    "timestamp": "2025-12-23 17:35:15.486975",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: purgeJointAndDependenciesAndNotifyPeers()] [Error Notification Chain] At lines 971-994, when purging a joint and its dependencies, sendErrorResult() is called for each dependent unit (lines 987-990). If an attacker creates a joint with thousands of dependent units in unhandled_joints and then triggers its purge, can the function attempt to send thousands of error notifications simultaneously, exhausting WebSocket write buffers and causing connection drops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b342814-0119-4ccd-af32-ae2871bcaa05",
+    "timestamp": "2025-12-23 17:35:37.655835",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJoint()] [Transient Error Retry Loop] At lines 1054-1066, transient errors trigger setTimeout(rerequestLostJoints, 10 * 1000, true). If an attacker can trigger transient errors repeatedly for different joints, can they cause dozens of overlapping rerequestLostJoints timers to fire simultaneously after 10 seconds, creating a thundering herd that requests hundreds of joints at once and overwhelms network resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1e8d9e7-f1c8-4677-9dc3-b83b6c868638",
+    "timestamp": "2025-12-23 17:36:00.913390",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: requestCatchup()] [Catchup State Race] At lines 1945-1987, requestCatchup() sets bWaitingForCatchupChain=true at line 1972 before sending the catchup request at line 1979. If multiple peers trigger requestCatchup() simultaneously through different code paths (e.g., from findLostJoints and from handleOnlineJoint), can they race to set this flag, causing multiple concurrent catchup requests that conflict with each other and corrupt the catchup state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65ecf46d-8ca9-4330-8142-5cbe1cd04879",
+    "timestamp": "2025-12-23 17:36:25.207723",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleCatchupChain()] [Catchup Chain Validation] In handleCatchupChain() at lines 1989-2012, the catchup chain response is processed via catchup.processCatchupChain() at line 1998. If the peer returns a malicious catchup chain that passes validation but references units that don't exist on the network, can the node enter a permanent state where bCatchingUp=true (line 2005) but it can never complete catchup because the required units are unfindable, causing all new incoming joints to be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bbe7dfdf-a901-4019-bcc0-33cb572073ca",
+    "timestamp": "2025-12-23 17:36:49.302735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: requestNextHashTree()] [Hash Tree Duplicate Request] At lines 2033-2037, requestNextHashTree() checks if ws.assocPendingRequests already contains a get_hash_tree command to avoid duplicates. However, this only checks the current peer's pending requests. If an attacker forces reconnection mid-catchup, causing the node to switch to a different peer for hash tree requests, can the old request still be pending on the disconnected peer, and when it eventually times out and reroutes, cause duplicate hash tree processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67835439-1acb-48dd-88c9-fd363b03880b",
+    "timestamp": "2025-12-23 17:37:14.791944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleHashTree()] [Hash Tree Memory Exhaustion] In handleHashTree() at lines 2042-2060, the hash tree balls are stored via catchup.processHashTree() at line 2050. If an attacker peer sends a valid but enormous hash tree (e.g., thousands of balls), and since there's no size limit checked here, can they cause the node to allocate excessive memory for storage.assocHashTreeUnitsByBall, eventually triggering OOM crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39d79eca-20e7-4b7b-b678-277a345f3350",
+    "timestamp": "2025-12-23 17:37:39.946323",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: waitTillHashTreeFullyProcessedAndRequestNext()] [Unhandled Ball Threshold] At lines 2075-2088, the function only requests the next hash tree if !haveManyUnhandledHashTreeBalls() (line 2079), where 'many' is defined as >30 at lines 2062-2073. Can an attacker who controls the peer serving hash trees send exactly 30 unhandled balls repeatedly, keeping the node stuck in this wait loop indefinitely while never triggering the 'too many' threshold, preventing catchup completion and causing transaction confirmation delays exceeding 24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf40664a-0566-43e5-818b-348fa35ef950",
+    "timestamp": "2025-12-23 17:38:06.294984",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: requestCatchup()] [Last Stable MCI Manipulation] At lines 1975-1979, requestCatchup() reads last_stable_mci and last_known_mci and sends them in the catchup request. If these values are stale due to caching or delayed updates, can an attacker peer exploit the outdated values to send a catchup chain that conflicts with the actual current state, causing the node to reject all subsequent incoming joints as 'out of order' and permanently preventing sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f15e307-1d53-4399-84fd-69de04c006ed",
+    "timestamp": "2025-12-23 17:38:33.527999",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleHashTree()] [Hash Tree Error Recovery] At lines 2044-2046 and 2052-2053, if hash tree processing fails, waitTillHashTreeFullyProcessedAndRequestNext() is called after 1 second. If the same error occurs repeatedly (e.g., due to database corruption), does this create an infinite retry loop that never escalates to a higher-level error handler, leaving the node in a zombie state where it appears to be catching up but never makes progress?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_445fcb22-ee50-4a19-a01e-0de3c4629c42",
+    "timestamp": "2025-12-23 17:39:01.461392",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: checkCatchupLeftovers()] [Leftover State Conflict] At lines 1926-1943, checkCatchupLeftovers() queries hash_tree_balls and catchup_chain_balls to check for incomplete catchup from a previous run. If these tables contain conflicting data (e.g., hash tree balls from a different chain fork), can resuming catchup from this state cause the node to build an inconsistent DAG that diverges from the rest of the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e67ccbc-4f21-4d70-b59c-1d553c85129f",
+    "timestamp": "2025-12-23 17:39:30.016253",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleOnlinePrivatePayment()] [Private Payment Injection] In handleOnlinePrivatePayment() at lines 2114-2179, the function validates arrPrivateElements at lines 2115-2126 with basic checks, then either saves or validates the payment. If an attacker sends a well-formed but malicious private payment chain where the payload hash doesn't match the public unit's payload_hash, can this bypass validation here and only be caught later in privatePayment.validateAndSavePrivatePaymentChain(), causing the unhandled_private_payments table to fill with invalid entries that are never cleaned up?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97bfd6c2-e7f7-45dc-a507-24015b2af483",
+    "timestamp": "2025-12-23 17:39:58.667356",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleOnlinePrivatePayment()] [Private Payment Race] At lines 2129-2139, private payments are saved to unhandled_private_payments with INSERT IGNORE. If two identical private payment chains arrive simultaneously from different peers (or same peer twice), can they both be saved (since IGNORE only prevents PK violations) but with different timestamps, causing handleSavedPrivatePayments() to process the same payment twice and potentially credit funds twice to the recipient?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e8c6fe8-f253-4872-b77f-9b65f4ee732f",
+    "timestamp": "2025-12-23 17:40:27.814860",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleSavedPrivatePayments()] [Mutex Deadlock] At line 2189, handleSavedPrivatePayments() acquires mutex lock ['saved_private']. If this function is called recursively or from multiple threads, and it internally calls code that tries to acquire other mutexes (e.g., validation mutexes), can this create a deadlock especially during high private payment volume?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_770f78f4-85f0-4b67-b138-d117c984187c",
+    "timestamp": "2025-12-23 17:40:57.783267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: updateLinkProofsOfPrivateChain()] [Link Proof Bypass] At lines 2432-2448, updateLinkProofsOfPrivateChain() checks if arrPrivateElements form a valid chain via checkThatEachChainElementIncludesThePrevious(). If this check returns null (undefined result) at line 2440, the function calls onFailure() which just returns. Does this leave the private payment in unhandled_private_payments table permanently, causing the table to grow unboundedly with payments that can never be validated or rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65e5637b-d896-4154-99b2-a5a9a55fe4c0",
+    "timestamp": "2025-12-23 17:41:27.348784",
+    "report_generated": false
   }
 ]
