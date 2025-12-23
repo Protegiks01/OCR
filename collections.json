@@ -7348,5 +7348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b2f0e85-7804-4a4c-a900-e109f543a436",
     "timestamp": "2025-12-23 09:39:31.730242",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [Non-deterministic Path Resolution] If the application is executed from different working directories or through different symlinks pointing to the same code, will getAppRootDir() return consistent results across all nodes in the network? Non-deterministic app root detection could cause different nodes to load different conf.js configurations, leading to consensus divergence and unintended permanent chain split requiring hard fork.",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9cedf99-92cc-4745-87ad-03741a7df40a",
+    "timestamp": "2025-12-23 09:40:49.291062",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [Cross-Platform Path Separator Issues] The node_modules detection at line 40 uses path.sep which should be platform-aware, but are there edge cases where mixed path separators (/ and \\\\ on Windows) could cause the split to fail, resulting in incorrect app root detection that prevents proper database initialization and causes the node to fail at startup?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fd74e5a-77c7-4726-a8e2-da08c6576272",
+    "timestamp": "2025-12-23 09:41:01.783132",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [Electron/Packaged App Context] In packaged Electron applications or Node.js executables created with pkg or nexe, process.mainModule and __dirname may point to unexpected locations (e.g., inside .asar archives or temporary directories). Does the function handle these edge cases correctly, or could this cause the app to fail to locate its data directory, preventing wallet.js from accessing user funds and causing permanent freezing of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3b89d69-8293-4127-a01c-e519c64444ec",
+    "timestamp": "2025-12-23 09:41:14.622745",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [require() Injection] At line 52, the function uses require(appDir + '/package.json'). If an attacker can control appDir through manipulation of getAppRootDir() logic, could they cause require() to load a malicious JavaScript file disguised as package.json (e.g., package.json.js), leading to arbitrary code execution when the module is required?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a177d523-43df-4e76-b6e1-9fd0d6254a6d",
+    "timestamp": "2025-12-23 09:41:28.179683",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [Package.json Parsing Vulnerability] The function accesses .name property directly without validating package.json structure. If an attacker can replace package.json with a malformed file (e.g., name is an object, array, or contains path traversal sequences like '../../../malicious'), does this cause crashes or allow path traversal in getAppDataDir(), potentially corrupting database files or wallet data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1f9be73-e0bf-428f-8e13-d2e050759d18",
+    "timestamp": "2025-12-23 09:41:42.076746",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [Console.log Information Disclosure] Line 51 logs the app directory to console, which may expose sensitive path information in production environments. If logs are captured by monitoring systems or accessible to attackers through log injection vulnerabilities, could this leak information about system architecture that aids in crafting more sophisticated attacks against the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e98023de-e6b1-4518-9994-cae6113ba1e9",
+    "timestamp": "2025-12-23 09:41:57.399864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [Missing Name Field Handling] If package.json exists but doesn't contain a 'name' field, accessing .name at line 52 will return undefined. When this undefined value is concatenated with '/' in getAppDataDir() at line 57, does it create a path like '/path/to/appdata/undefined', potentially causing collisions between different Obyte applications sharing the same data directory and corrupting each other's databases?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a16cb7a-93e3-4bb9-aaea-e02f1ebdf702",
+    "timestamp": "2025-12-23 09:42:14.113079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [Special Characters in App Name] If package.json contains a name with special filesystem characters (e.g., '..', '/', '\\\\', ':', '*', '?', '<', '>', '|'), will these be sanitized before being used in path construction at getAppDataDir(), or could this allow path traversal or invalid directory names that cause filesystem operations to fail and prevent the node from storing wallet data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62ef3be5-9b84-4bd8-a227-4310fd95965e",
+    "timestamp": "2025-12-23 09:42:33.182705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppName()] [require() Cache Poisoning] Node.js caches required modules in require.cache. If an attacker can cause a malicious package.json to be loaded first, will subsequent calls to getAppName() return the cached malicious name, potentially persisting the attack across multiple module loads and causing persistent corruption of data directory paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7248fc62-bedb-4394-a081-139fcbbcdb69",
+    "timestamp": "2025-12-23 09:42:52.135955",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppDataDir()] [Path Traversal via App Name] At line 57, the function concatenates getAppsDataDir() + '/' + getAppName() without sanitization. If getAppName() returns a value like '../../malicious' (through manipulated package.json), can this cause path traversal out of the intended app data directory, potentially overwriting system configuration files or accessing other users' data in multi-user systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_999d75a7-d937-4b91-b657-ec55b7f3bcd1",
+    "timestamp": "2025-12-23 09:43:12.081886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppDataDir()] [Directory Existence Validation] The function constructs a path but doesn't verify if the directory exists or is writable. If the directory doesn't exist and subsequent code in storage.js or sqlite_pool.js attempts to write files without checking, could this cause silent failures where wallet data or database updates are lost, leading to permanent freezing of funds when users can't access their updated wallet states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_496fabd7-da42-42c3-9446-46a368b65bfc",
+    "timestamp": "2025-12-23 09:43:32.447695",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppDataDir()] [Race Condition in Directory Creation] If multiple Obyte processes or threads call getAppDataDir() simultaneously and attempt to create the directory, is there proper locking to prevent race conditions? Could concurrent directory creation attempts cause filesystem corruption or permission issues that prevent one of the processes from accessing the database, leading to consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce4f904b-4904-492a-aab8-895d041608b2",
+    "timestamp": "2025-12-23 09:43:54.190988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppDataDir()] [Permission Issues] If the returned directory path points to a location where the current user doesn't have write permissions (e.g., due to system policy or previous ownership by another user), will the application detect this early and fail gracefully, or will it attempt to write wallet/database files and fail silently, causing permanent data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed05880a-eeef-4d7a-a145-1fd3f5b6caa8",
+    "timestamp": "2025-12-23 09:44:16.706353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Integration: conf.js] When conf.js uses getAppDataDir() to determine the data directory at startup, if desktop_app.js returns an inconsistent path due to race conditions or environment changes between application restarts, could this cause the node to use different database files on subsequent runs, leading to loss of wallet state and permanent freezing of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_336485a2-a39f-406a-b5d7-71fba37ed76f",
+    "timestamp": "2025-12-23 09:44:39.222883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Integration: db.js/sqlite_pool.js] If the path returned by getAppDataDir() contains non-ASCII characters or special Unicode sequences that SQLite cannot handle, will the database initialization fail silently, causing the node to operate without persistent storage and lose all wallet data on restart, resulting in permanent freezing of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6242fb38-c448-497a-8b4e-62aeddadbfee",
+    "timestamp": "2025-12-23 09:45:03.100370",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Integration: wallet.js] When wallet.js stores private keys in files within the directory returned by getAppDataDir(), if an attacker can manipulate this path to point to a world-readable directory or network share, could private keys be exposed to other users or network attackers, allowing direct theft of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fad839a-8c53-48c6-bba7-be82a0dd13be",
+    "timestamp": "2025-12-23 09:45:27.775310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Integration: storage.js] If storage.js caches the result of getAppDataDir() at module load time but the underlying environment variables change during runtime (e.g., in long-running processes), could this cause newly created files to go to different locations than expected, fragmenting the database across multiple directories and corrupting the DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3350155-c7c2-4dee-8cba-420d68606b59",
+    "timestamp": "2025-12-23 09:45:54.118292",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Integration: Multiple App Instances] If a user runs multiple Obyte applications (e.g., light wallet + full node) with different package.json names but the names differ only in case (e.g., 'obyte' vs 'Obyte'), and the filesystem is case-insensitive (e.g., Windows, macOS default), will both apps use the same data directory, causing database corruption and potential double-spending or fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f25823c2-f96d-40dc-bcf0-7b2c895847bd",
+    "timestamp": "2025-12-23 09:46:20.087420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Uncaught Exception Handling] If process.platform returns an unexpected value due to a Node.js bug or modification, the throw Error at line 11 will create an uncaught exception. Is this exception properly caught by higher-level error handlers, or will it crash the entire Node.js process, causing a denial of service that prevents the node from confirming new transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d153b68-e33f-4319-bcd8-94d75e5ea4c5",
+    "timestamp": "2025-12-23 09:46:44.605567",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Deep Recursion Memory Exhaustion] Even if stack overflow doesn't occur, can an attacker trigger recursion through hundreds of directories, causing excessive memory allocation for stack frames and path strings, eventually leading to memory exhaustion (V8 heap limit) that crashes the node and causes temporary freezing of network transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_edbb2a02-f237-46d1-a044-91998a70444f",
+    "timestamp": "2025-12-23 09:47:08.420812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Circular Symlink Handling] If the filesystem contains circular symbolic links (e.g., dir1 -> dir2 -> dir1), will the recursive traversal detect this and terminate, or will it loop indefinitely, causing 100% CPU usage and denial of service that delays transaction processing for at least 1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83fd158f-bd19-4e22-9955-e9de5e54c566",
+    "timestamp": "2025-12-23 09:47:32.334167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [Empty paths Array] If process.mainModule.paths is an empty array, accessing paths[0] at line 36 will return undefined, which is then passed to path.dirname(). Does path.dirname(undefined) throw an exception or return an unexpected value that could cause incorrect app root detection and subsequent configuration loading failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cb5216e-f4a1-486c-8fe4-2b0e78eb13ca",
+    "timestamp": "2025-12-23 09:47:57.597678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Global State Consistency] The module exports functions that depend on process.env and process.mainModule, which are global state. If other modules modify these globals (e.g., through monkey-patching or environment manipulation), could this cause non-deterministic behavior where different calls to getAppDataDir() return different values, leading to database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc2940fb-b03d-449c-9b96-53df06e6cd10",
+    "timestamp": "2025-12-23 09:48:22.136242",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Trust Model: File System Integrity] The module assumes the filesystem is trustworthy and that paths resolved will remain stable. In containerized or virtualized environments where filesystem mounts can change, could runtime changes to the filesystem layout cause the application to lose access to its data directory mid-execution, corrupting partially-written database transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60a8fafa-43c6-4432-8893-22eaab2bca88",
+    "timestamp": "2025-12-23 09:48:47.755857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Trust Model: Process Environment] The module trusts process.env variables to be benign. In shared hosting or multi-tenant environments, if other processes can modify environment variables of running Node.js processes (e.g., through /proc filesystem manipulation on Linux), could an attacker redirect the data directory to capture wallet files or inject malicious configuration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d316832-b370-437b-b6d6-9c93d19ca992",
+    "timestamp": "2025-12-23 09:49:11.827565",
+    "report_generated": false
   }
 ]
