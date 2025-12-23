@@ -8848,5 +8848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2760c5a-5fb2-497a-bb5c-61c73ade3aa9",
     "timestamp": "2025-12-23 14:05:53.289766",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database Path Traversal] The database path is constructed as path + db_name where path comes from desktop_app.getAppDataDir(). Can an attacker manipulate the environment or configuration to make db_name contain '../' sequences, causing the database to be opened/created outside the intended directory and potentially overwriting system files?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7fde038-d3c9-46a8-93be-f2143ddcbff3",
+    "timestamp": "2025-12-23 14:07:06.814278",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [File Permission Exploitation] On desktop platforms, directories are created with mode 0700 (owner-only access). If the user's umask is misconfigured or the parent directory has insecure permissions, can other users on the system read the database file and extract private keys, witness lists, or other sensitive data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e3b1a18-8d7d-45e3-8ad4-ec86cdc2e13b",
+    "timestamp": "2025-12-23 14:07:19.767084",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [Cordova Device Ready Race] The function waits for the 'deviceready' event before accessing the file system. If an attacker can trigger device pairing or unit validation before deviceready fires, do these operations fail silently or throw unhandled exceptions that crash the node, preventing transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e33cefb1-d380-4de9-8b7e-c409d36df0e0",
+    "timestamp": "2025-12-23 14:07:33.471907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Readonly Flag Bypass] When bReadOnly is true, the database is opened with sqlite3.OPEN_READONLY, but if the database file permissions allow writing or if WAL mode is already enabled, can write operations still succeed, violating the readonly contract and causing unexpected state mutations in supposedly readonly nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_496f2ec7-3125-428e-b1c8-9f98f23f185e",
+    "timestamp": "2025-12-23 14:07:46.876282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [Initial Database File Substitution] On Cordova platforms, the function copies from 'www/' + initial_db_filename without verifying the file's integrity. Can an attacker replace the initial database file in the app bundle with a malicious version containing pre-confirmed fraudulent transactions, causing all new installations to start with corrupted state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7035d5ed-9e88-4d1b-ac90-5a1334106857",
+    "timestamp": "2025-12-23 14:08:00.961942",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [Directory Creation Race] When creating parent_dir and path directories with fs.mkdir(), if multiple processes race to create the same directory structure, can EEXIST errors be ignored incorrectly, causing one process to write the database file while another is mid-creation, resulting in a corrupted database that breaks consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f2f5fc0-a78e-44bb-844b-b4184d09a3cc",
+    "timestamp": "2025-12-23 14:08:16.596256",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [TOCTOU Race on Database File] On desktop platforms, the function checks if the database file exists with fs.stat() then creates it. Can two node instances simultaneously pass the stat check and both attempt to copy the initial database, causing file corruption that prevents any node from starting and halting the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09f7ea83-0b1f-4920-98ff-cbc529c7f195",
+    "timestamp": "2025-12-23 14:08:33.122803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Regex Injection in SQL Split] The function splits SQL on '?' characters without considering escaped question marks or question marks in string literals. Can an attacker craft SQL with strategically placed ? inside string literals to cause incorrect placeholder expansion that results in parameter misalignment and SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de7143bf-a1ba-4a3d-a191-ddeb6141c12a",
+    "timestamp": "2025-12-23 14:08:50.953011",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [SQL Injection via Object Parameters] If parameters include JavaScript objects that are implicitly converted to strings (e.g., {toString: () =>",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36a534b9-a80a-4ef6-8b49-e81f24ad46f1",
+    "timestamp": "2025-12-23 14:09:10.288312",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: escape()] [Buffer Hex Encoding] When strings contain null bytes and are converted to hex with Buffer.from(str, 'utf8').toString('hex'), can an attacker exploit encoding edge cases where invalid UTF-8 sequences are normalized, causing the hex representation to differ from the original string and bypass validation checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_039c7c4e-a4d6-49e8-83fd-d9bea67b4c39",
+    "timestamp": "2025-12-23 14:09:30.559415",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Array Flattening Attack] If an attacker passes nested arrays as parameters (e.g., [[value1, value2]]), does _.flatten() recursively flatten them, causing parameter count mismatches that could lead to SQL injection if the flattened array length doesn't match the expanded placeholder count?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e6f0f6a-663b-4a39-8929-31be7da89eff",
+    "timestamp": "2025-12-23 14:09:51.115839",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Empty Array to NULL Conversion] When an array parameter is empty (length 0), the function replaces ? with NULL. Can an attacker use this to bypass NOT NULL constraints or inject NULL into security-critical fields like unit signatures, allowing unsigned transactions to be stored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b252d1fb-c715-4328-896a-5756cb60319b",
+    "timestamp": "2025-12-23 14:10:12.896632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Parameter Count Mismatch] If expandArrayPlaceholders() is called with a SQL string containing question marks in SQL comments (e.g., /* ? */), does the placeholder expansion incorrectly count these as parameters, causing params.length mismatch and either throwing an error that reveals database structure or silently corrupting the query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfab6bb9-8d41-4b09-be52-33a0c1750a24",
+    "timestamp": "2025-12-23 14:10:35.311844",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: escape()] [Single Quote Doubling Logic] The escape function replaces ' with '', but if the resulting escaped string is concatenated into a LIKE pattern or other context where '' has special meaning, can an attacker craft inputs that break out of the string literal and inject arbitrary SQL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_570f2f12-904b-4d11-94fe-f06a1b869121",
+    "timestamp": "2025-12-23 14:10:59.278421",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: escape()] [Null Byte Injection Bypass] The escape function checks for \\\\0 characters and converts to hex, but can an attacker inject UTF-8 sequences that decode to null bytes after SQLite's internal processing, bypassing the check and terminating SQL strings prematurely to inject malicious SQL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93615459-5a0e-4c04-9fc3-d0814ac9ca41",
+    "timestamp": "2025-12-23 14:11:24.533184",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: query()] [Promise Memory Leak] When queries are called without callbacks, new Promise objects are created but if the connection is never released due to an error in the callback chain, do these promises accumulate in memory, eventually causing OOM crashes and network-wide unavailability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42956ec8-5c80-4483-8e12-5efb54be027a",
+    "timestamp": "2025-12-23 14:11:49.199661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database Lock at Startup] If multiple node instances attempt to open the same SQLite database file simultaneously with PRAGMA journal_mode=WAL, can conflicting WAL file locks cause some nodes to permanently fail initialization, creating a partial network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6590913-3385-4360-963c-19cbcc2b348e",
+    "timestamp": "2025-12-23 14:12:14.967984",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Connection State Race] When checking !arrConnections[i].bInUse in the loop, if another thread sets bInUse=true between the check and the assignment, can two handlers receive the same connection, leading to interleaved query execution and database inconsistency that breaks double-spend prevention?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_462f36b7-5f9d-446f-ac39-e36859160c0a",
+    "timestamp": "2025-12-23 14:12:40.905102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.release()] [Race Condition in Release] If two threads simultaneously call connection.release() on the same connection object, can both threads mark bInUse=false and process different handlers from arrQueue, causing one connection to serve two concurrent queries and creating database corruption via non-serialized writes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_079ba77b-73ae-4c71-a0e9-e84bf64e2394",
+    "timestamp": "2025-12-23 14:13:09.017423",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Connection Leak] If sqlite_migrations.migrateDb() fails or hangs during database initialization, does the connection remain marked as bInUse=true permanently, leaking connections until MAX_CONNECTIONS is reached and causing eventual network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a363702-a653-4949-81db-41d738df557d",
+    "timestamp": "2025-12-23 14:13:38.419926",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Long Query DoS] Can an attacker craft SQL queries with extremely expensive operations (e.g., cross joins on large tables, complex subqueries) that consume connection resources beyond the busy_timeout of 30 seconds, causing database locks and preventing other nodes from confirming transactions for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78a37b0a-7ccf-4ab6-9125-9bf5d13d3166",
+    "timestamp": "2025-12-23 14:14:08.259144",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Queue Overflow DoS] Is the arrQueue array unbounded, allowing an attacker to flood the system with millions of pending connection requests that consume all available memory, crashing the node and preventing network transaction confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ece77017-4650-4bba-bdff-fa0acb16b7c8",
+    "timestamp": "2025-12-23 14:14:37.954282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Connection Pool Exhaustion DoS] Can an attacker submit queries that hold connections indefinitely without calling connection.release(), exhausting all MAX_CONNECTIONS and preventing legitimate transactions from being processed, causing a network halt lasting >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2fd2adda-7f24-470e-b9cf-781fcbffc37c",
+    "timestamp": "2025-12-23 14:15:08.909798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database Path Traversal] The database path is constructed as path + db_name where path comes from desktop_app.getAppDataDir(). Can an attacker manipulate the environment or configuration to make db_name contain '../' sequences, causing the database to be opened/created outside the intended directory and potentially overwriting system files?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf19a576-7d85-4b88-bbbe-c4c08857a90d",
+    "timestamp": "2025-12-23 14:15:38.901800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [File Permission Exploitation] On desktop platforms, directories are created with mode 0700 (owner-only access). If the user's umask is misconfigured or the parent directory has insecure permissions, can other users on the system read the database file and extract private keys, witness lists, or other sensitive data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d337f053-f747-4ed3-b5fb-dd5820ca21d3",
+    "timestamp": "2025-12-23 14:16:07.999965",
+    "report_generated": false
   }
 ]
