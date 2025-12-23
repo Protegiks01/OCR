@@ -11998,5 +11998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cf40855-cbd7-4189-bf44-5bfcf5f83576",
     "timestamp": "2025-12-23 17:35:13.942808",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Duplicate unit handling across chains] If arrChains contains multiple chains that reference the same intermediate units (overlapping chains), lines 13-17 will add the same unit to assocUnits multiple times (last write wins) - can this cause storage.filterNewOrUnstableUnits() to behave incorrectly, or does the use of object keys handle this safely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d01629e7-f74a-44d0-a5c2-9b7086bb81c7",
+    "timestamp": "2025-12-23 17:36:35.712022",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Empty chain handling] If arrChains is an empty array, or all elements have empty arrPrivateElements, lines 13-17 will produce an empty assocUnits object - will storage.filterNewOrUnstableUnits([]) at line 19 handle an empty array correctly, or could it trigger database errors, undefined behavior, or bypass filtering and call handleUnits with unexpected results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0da43e45-7c43-403b-9e3e-d7373d756908",
+    "timestamp": "2025-12-23 17:36:48.499965",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Asset definition unit ambiguity] At line 14, assocUnits[arrPrivateElements[0].payload.asset] = true treats the asset hash as a unit identifier - but asset is a hash of the asset definition unit, not the unit hash itself - does storage.filterNewOrUnstableUnits() at line 19 correctly interpret this as needing to check the asset definition unit's stability, or will it fail to find the unit and incorrectly return it as 'unfinished'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e06f1e8-fa13-4958-bbff-5feb67406a86",
+    "timestamp": "2025-12-23 17:37:01.453112",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [includeLatestElement parameter inconsistency] At line 15, the loop starts at index 0 if includeLatestElement is true, else 1 - however, at line 86, this function is called with includeLatestElement=false, skipping the head element - if the head element itself is unstable, will storage.filterNewOrUnstableUnits() still catch it via the asset definition check at line 14, or could unstable head elements be validated prematurely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b44da49-6f95-41ce-95a5-d1ace8317a92",
+    "timestamp": "2025-12-23 17:37:15.177513",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Light client vs full node inconsistency] Lines 85-90 implement different logic for light clients (checking unfinished units) vs full nodes (direct validation) - can this create a scenario where a private payment is accepted by light clients but rejected by full nodes, or vice versa, causing disagreement on valid asset balances and potential chain splits between light and full nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a87f2d9c-181a-49d6-b545-23ef40e369a4",
+    "timestamp": "2025-12-23 17:37:29.466947",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Missing asset definition validation in light client] At line 14, the function adds the asset definition unit to assocUnits, but in light client mode, if this asset definition unit is not yet stable or not received, and filterNewOrUnstableUnits() at line 19 doesn't properly detect this, can the subsequent validateAndSave() proceed without having the asset definition, causing validation errors or accepting payments for undefined assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0410335-1c24-4717-b8f2-72af3a0256be",
+    "timestamp": "2025-12-23 17:37:44.992847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Light client premature validation] At lines 85-90, in light client mode (conf.bLight), if findUnfinishedPastUnitsOfPrivateChains returns an empty array (no unfinished units), validation proceeds immediately - can an attacker craft a private payment chain that references future units not yet received by the light client, bypass the waiting logic, and have the payment validated against incomplete DAG state, potentially accepting invalid payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_add2ea32-f851-43d4-9ef5-2d646eb47485",
+    "timestamp": "2025-12-23 17:38:01.586818",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module exception propagation] If the asset-specific validateAndSavePrivatePaymentChain() at line 77 validates successfully but then throws an exception during the database write phase, will the transaction be rolled back properly by the BEGIN/ROLLBACK logic at lines 42-48, or could the exception bypass the rollback mechanism and leave partial writes in the outputs/inputs tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe566f5e-59ab-4ef1-bc52-70cc04fb53fe",
+    "timestamp": "2025-12-23 17:38:20.075345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module callback contract violation] The code assumes divisibleAsset and indivisibleAsset modules will call either transaction_callbacks.ifError or transaction_callbacks.ifOk exactly once - if a buggy or malicious asset module calls both callbacks, or neither, can this cause double-rollback/double-commit errors or connection leaks that accumulate over time and eventually halt all transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf8b560d-88af-4291-9d70-762b5574ce90",
+    "timestamp": "2025-12-23 17:38:39.174242",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module selection timing attack] At line 76, assetModule is selected based on objAsset.fixed_denominations, then line 77 calls its validateAndSavePrivatePaymentChain() - if objAsset data is cached and becomes stale (asset definition changed from divisible to indivisible), can this cause the wrong module to process the payment, leading to incorrect output format in database (amount+blinding vs denomination+output_hash) and permanent corruption of asset balance tracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53f087d2-a56d-4687-bf35-7b03cf284bea",
+    "timestamp": "2025-12-23 17:38:59.364907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Early return on duplicate without proper cleanup] At line 74, if a duplicate is detected, transaction_callbacks.ifOk() is called directly without rolling back the transaction started at line 42 - does this mean the transaction is committed even though no work was done, potentially causing issues if the connection is reused with uncommitted state, or leading to deadlocks in high-concurrency scenarios?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f119cb6-3dce-4cbc-91d8-c9c4428cc013",
+    "timestamp": "2025-12-23 17:39:19.705589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Multiple rows exception] At lines 70-71, if more than one row is returned from the duplicate check query, an Error is thrown but not caught - can an attacker intentionally corrupt the database state to create duplicate outputs that trigger this condition, causing all subsequent private payment validations to crash and freeze private payment processing network-wide?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5292e120-8cef-47c7-8a79-201212cbec2e",
+    "timestamp": "2025-12-23 17:39:40.995535",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Incomplete duplicate check for divisible assets] At lines 58-64, the duplicate detection query for divisible assets (non-fixed_denominations) does not include output_index in the WHERE clause - if a single unit/message has multiple outputs, can an attacker replay the same private payment chain multiple times, each time revealing a different output_index, and have all of them accepted as non-duplicates, inflating the asset supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cff4b51d-a4aa-4cab-bb9f-f726f1b1429d",
+    "timestamp": "2025-12-23 17:40:03.755472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Duplicate detection bypass via NULL address] At lines 72-74, the code considers an output duplicate only if rows[0].address is truthy - if an attacker can somehow cause a NULL address to be stored in the outputs table for their private payment, can they then send the same private payment again and bypass the duplicate check, enabling unlimited double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed930974-255e-4f8b-8e7d-e450a6cf1b19",
+    "timestamp": "2025-12-23 17:40:27.332747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Nested transaction BEGIN without check] Line 42 executes BEGIN unconditionally after taking a connection from the pool - if the connection was already in a transaction state (due to connection pool bug or improper release), can this cause nested transaction errors that crash the validation process and prevent all private payments from being processed, causing temporary network freeze?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7255c39-425d-4d9d-b376-9c166a90978a",
+    "timestamp": "2025-12-23 17:40:52.268956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Non-atomic commit/callback] At lines 51-54, callbacks.ifOk() is called inside the COMMIT callback - if the COMMIT succeeds but callbacks.ifOk() triggers an exception (e.g., in event emission code), is the connection still released properly, or could this cause the connection to be returned to the pool in an undefined transaction state, corrupting subsequent queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc4bf308-af92-4c3b-bdcb-1232bfc61eb3",
+    "timestamp": "2025-12-23 17:41:17.592157",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Connection leak on error] If the asset-specific validateAndSavePrivatePaymentChain() call at line 77 throws an exception instead of calling transaction_callbacks.ifError(), the connection obtained at line 41 will never be released (no conn.release() in catch block), potentially exhausting the connection pool and causing network-wide transaction processing delays exceeding 1 day?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f731851c-95b4-48c6-ae7b-7d3d58c547f0",
+    "timestamp": "2025-12-23 17:41:43.553243",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Transaction rollback failure] At lines 45-48, if conn.query('ROLLBACK') fails due to connection loss or database error, the connection is still released at line 46 without verifying the rollback succeeded - can this leave the database in a partially committed state where some outputs/inputs from the private payment chain are stored but not all, causing permanent inconsistency and potential fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7a4b65e-5fa9-4101-92c2-1b815920cb88",
+    "timestamp": "2025-12-23 17:42:10.439891",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Race condition on duplicate detection] At lines 58-74, the duplicate detection query checks if an output already exists, then inserts if not - if two identical private payment chains arrive simultaneously from different peers and both execute this code concurrently, can both pass the SELECT check before either INSERT commits, causing duplicate outputs to be stored and enabling a double-spend of the same private payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_527b6e09-5ac9-4a60-9cee-6866dc06e55f",
+    "timestamp": "2025-12-23 17:42:37.986130",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Null/undefined asset] If headElement.payload.asset is explicitly set to null or undefined (bypassing line 30 check somehow), will the storage.readAsset() call at line 36 handle this gracefully, or could it cause the callback to never fire, resulting in a connection leak when db.takeConnectionFromPool() at line 41 never releases the connection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2af6122d-146a-4e70-aef8-fd69d672d46d",
+    "timestamp": "2025-12-23 17:43:05.961254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing output_index validation] At lines 61-64, output_index validation only checks isNonnegativeInteger for fixed_denominations assets - can an attacker provide an extremely large output_index value that exceeds the actual number of outputs in the unit, causing the SQL query to insert invalid references into the outputs table and potentially enabling double-spend by referencing non-existent outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aca98feb-ce50-41da-8c59-21fcc0b34f15",
+    "timestamp": "2025-12-23 17:43:34.052395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing message_index validation] At line 32-33, only non-negative integer validation is performed on message_index, but there's no upper bound check - can an attacker supply an extremely large message_index value (e.g., 2^31-1) that could cause integer overflow in downstream SQL queries at lines 58-64 or in the asset-specific validation modules, potentially corrupting the outputs table or causing database errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24a027b9-0f5d-4722-b361-64d65fe91797",
+    "timestamp": "2025-12-23 17:44:03.171187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset type confusion] At lines 39-40, the code checks if objAsset.fixed_denominations matches the presence of headElement.payload.denomination - if an attacker crafts a private payment with denomination field present for a divisible asset (or absent for indivisible), can they bypass this check by manipulating the payload structure before it reaches this validation, causing the wrong asset module (divisible vs indivisible) to process the payment at line 76-77?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f355e79-3171-422a-b4ff-7823e92005c2",
+    "timestamp": "2025-12-23 17:44:33.139187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Input validation bypass] If arrPrivateElements is an empty array [], the isNonemptyArray check at line 24 will fail, but what happens if an attacker passes an array with a single null or undefined element - can this bypass validation and reach asset reading logic, potentially causing downstream crashes or undefined behavior in divisibleAsset/indivisibleAsset modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_688c8922-bda0-4ed4-861d-0c6665b8f5a0",
+    "timestamp": "2025-12-23 17:45:04.897935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Duplicate unit handling across chains] If arrChains contains multiple chains that reference the same intermediate units (overlapping chains), lines 13-17 will add the same unit to assocUnits multiple times (last write wins) - can this cause storage.filterNewOrUnstableUnits() to behave incorrectly, or does the use of object keys handle this safely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00058373-8444-4004-9784-641ba5cb61a1",
+    "timestamp": "2025-12-23 17:45:33.524345",
+    "report_generated": false
   }
 ]
