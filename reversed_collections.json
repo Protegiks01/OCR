@@ -12448,5 +12448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_936d158b-1b08-41b6-b24e-bc5a9dac873e",
     "timestamp": "2025-12-23 18:02:58.858663",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Not 1 ball by unit error] At lines 234-235, if rows.length !== 1, an error is thrown. Can a unit have multiple balls due to database corruption, or zero balls if the ball hasn't been created yet, causing this function to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb401a0a-9097-4728-a80d-fd7637ca8241",
+    "timestamp": "2025-12-23 18:04:15.467065",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Stability check race condition] At line 230, main_chain.determineIfStableInLaterUnitsWithMaxLastBallMciFastPath checks if last_stable_mc_ball_unit is stable. If stability changes between this check and the subsequent ball query, can this cause incorrect last ball selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59955bf5-73f7-4777-b3c1-5713af3b8349",
+    "timestamp": "2025-12-23 18:04:27.996582",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [Max parent last ball MCI] At line 205, storage.readMaxLastBallMci is called. If this function has a race condition or returns stale data, can it cause findLastStableMcBall to select an inconsistent last stable ball across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71b80d86-8722-4691-b79c-b69f87bc9341",
+    "timestamp": "2025-12-23 18:04:41.382113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [ORDER BY DESC with LIMIT 1] At line 216, the query orders by main_chain_index DESC and limits to 1. If multiple units have the same max main_chain_index, which one is selected, and can this cause non-deterministic last ball selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_391580ab-e639-4ccc-9747-4532d0bb741b",
+    "timestamp": "2025-12-23 18:04:54.633075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [IFNULL latest_included_mc_index] At line 210, IFNULL returns 0 if no unit in arrParentUnits has latest_included_mc_index. Can this cause the query to return a very old stable ball when it should fail, leading to incorrect last ball selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da955ada-de26-4ca5-aa4b-8d862951583c",
+    "timestamp": "2025-12-23 18:05:08.602355",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [Witness count requirement] At line 218, the query requires COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses. Can an attacker exploit witness list mutations to make no stable MC units meet this requirement, causing findLastStableMcBall to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02df6de5-c906-4880-a51d-e6c519c51d6e",
+    "timestamp": "2025-12-23 18:05:23.697186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [No stable ball found] At lines 220-221, if no stable ball is found, the error 'failed to find last stable ball' is returned. Can an attacker manipulate the witness list or max_parent_last_ball_mci to make this condition always true, preventing all new transactions (Critical severity: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f0913b9-3b98-45a7-a674-f7f7c88d8a57",
+    "timestamp": "2025-12-23 18:05:40.587446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [bAdvanceLastStableUnit flag] At line 209, the comparison operator is '>=' if bAdvanceLastStableUnit is true, '=' otherwise. Can inconsistent values of this constant across nodes cause different last stable ball selection, leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8f19de3-0686-4fe7-a51e-e24fb76cc3a8",
+    "timestamp": "2025-12-23 18:05:58.789220",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Witnessed level retreat message] At lines 192-195, the function checks if child_witnessed_level >= max_parent_wl. If this check fails multiple times, can the repeated 'will look for older parents' messages lead to infinite recursion between this function and pickDeepParentUnits/pickParentUnitsUnderWitnessedLevel?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a6ab6b7-1bc7-472d-8eff-713cc3888efc",
+    "timestamp": "2025-12-23 18:06:17.616955",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [No best parent scenario] At line 194, if best_parent_unit is null, the error message says 'no best parent'. Can this occur in legitimate scenarios, and does it cause permanent transaction failure for certain DAG topologies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aee5c406-bcb3-4903-badc-c78184dcee57",
+    "timestamp": "2025-12-23 18:06:37.869129",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Retry logic divergence] At lines 198-200, bRetryDeeper determines whether to call pickDeepParentUnits or pickParentUnitsUnderWitnessedLevel. Can this boolean flag be in different states on different nodes due to timing, causing nodes to select different parent sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46d7ec15-dfae-467a-bb03-3303654f98d9",
+    "timestamp": "2025-12-23 18:06:58.720627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Hub early exit] At lines 196-197, if conf.bServeAsHub is true, the function returns an error immediately without retrying. Can attackers exploit this by sending malicious requests to hubs, causing hubs to fail parent selection for legitimate users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82936a13-51ca-49c3-9c56-98b81fd22025",
+    "timestamp": "2025-12-23 18:07:20.593881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Multiple parents with max WL] At lines 170-174, the query selects the unit with maximum witnessed_level. If multiple parents have the same max witnessed_level, which one is selected, and can this cause non-deterministic parent ordering across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c6f5956-14e1-4933-ab75-f87e04d6c531",
+    "timestamp": "2025-12-23 18:07:41.908769",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Version parameter] At line 168, constants.version3 is passed to determineWitnessedLevelAndBestParent. If different nodes use different version constants due to upgrade timing, can this cause different witnessed level calculations and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_706df343-bd78-4e5b-adb6-9e4fdb262aca",
+    "timestamp": "2025-12-23 18:08:05.384374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Witnessed level consistency] At lines 177-180, if bestParentProps.witnessed_level equals max_parent_wl, parent_with_max_wl is updated. Can a race condition cause bestParentProps to be stale, leading to incorrect parent_with_max_wl identification and witnessed level retreat?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2de277d6-bf0d-4d63-a599-6b3f59147b2c",
+    "timestamp": "2025-12-23 18:08:29.870635",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [No best parent handling] At lines 175-176, if best_parent_unit is null, handleResult is called without it. Can this null value propagate through subsequent logic and cause errors or incorrect witnessed level comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4d91a80-e89c-4fe7-b2ac-3f14ec41139d",
+    "timestamp": "2025-12-23 18:08:55.442496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Best parent race condition] At lines 168-181, storage.determineWitnessedLevelAndBestParent is called followed by a query for max witnessed_level. If units are being added concurrently, can best_parent_unit become outdated between these calls, causing incorrect parent_with_max_wl selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef6a7e3c-f119-4387-a1cf-4db98591824c",
+    "timestamp": "2025-12-23 18:09:21.506529",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Timestamp condition consistency] At lines 144-145, the timestamp condition is only applied if bWithTimestamp is true. Can nodes with different storage.getMinRetrievableMci() values select different deep parents, causing a chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91cede0d-48bd-4bc0-8971-4ec5e9a3439e",
+    "timestamp": "2025-12-23 18:09:48.996651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Single parent vulnerability] At lines 160-161, pickDeepParentUnits returns a single parent unit. Can forcing all units to use a single deep parent create a bottleneck where all transactions must reference the same parent, slowing confirmation times (Medium severity: 1+ hour delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c80d511-8ef5-47a9-89fc-7796c705dc53",
+    "timestamp": "2025-12-23 18:10:17.350552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Latest included MC index ordering] At line 155, results are ordered by 'latest_included_mc_index DESC LIMIT 1'. Can an attacker manipulate latest_included_mc_index values to control which deep unit gets selected, potentially causing nodes to select different deep parents based on database state timing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3eea52a0-7412-4bcd-99d8-13a3b53592d0",
+    "timestamp": "2025-12-23 18:10:46.654472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [No deep units error] At lines 158-159, if no compatible deep units are found, an error 'failed to find compatible parents: no deep units' is returned. Can an attacker create a situation where all compatible deep units are archived or invalidated, causing all new transactions to fail permanently (Critical severity: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_feb47405-9276-4833-beb1-60e4a8c23570",
+    "timestamp": "2025-12-23 18:11:16.769342",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Main chain requirement] At line 143, when max_wl is not null, the query requires 'is_on_main_chain=1'. Can an attacker cause the main chain determination to be delayed or incorrect, making this query return no results and causing pickDeepParentUnits to fail repeatedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf2ea6a5-80c5-4549-8841-8f2d87c37fd8",
+    "timestamp": "2025-12-23 18:11:47.562014",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [LIMIT bypass] At line 125, results are limited to MAX_PARENTS_PER_UNIT. If MAX_PARENTS_PER_UNIT is set to 1 in configuration, does this force all units to have single parents, breaking the DAG structure and potentially causing chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67cb4b0b-5bbd-407c-af12-ac98f9d194a8",
+    "timestamp": "2025-12-23 18:12:18.978156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [ORDER BY manipulation] At line 125, results are ordered by 'witnessed_level DESC, level DESC'. Can an attacker flood the database with units at specific witnessed_level and level values to manipulate which units get selected as parents, potentially causing all nodes to select the same attacker-controlled parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12ed0666-7701-41a0-bafd-b1d128d0fbe9",
+    "timestamp": "2025-12-23 18:12:51.494572",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Witness compatibility count] At line 126, the query requires COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses. Can an attacker exploit the exact boundary condition by creating units with exactly this many matching witnesses but incompatible overall witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc4d3ac4-1a0c-4f41-b201-30e906692c88",
+    "timestamp": "2025-12-23 18:13:23.792163",
+    "report_generated": false
   }
 ]
