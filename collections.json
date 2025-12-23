@@ -6748,5 +6748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69f388f4-0691-4d3d-a92d-915869de90f0",
     "timestamp": "2025-12-23 08:59:54.792881",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Op Count Manipulation] If an attacker creates a definition with multiple 'in data feed' operators referencing many oracle addresses, does the complexity increment per address (line 389) correctly prevent exceeding MAX_OPS, or can the attacker bypass this by using multiple operators with arrAddresses.length-1 increments to cause integer overflow in count_ops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ca7dd9d-bc98-4df7-9ed6-5af04eb6082c",
+    "timestamp": "2025-12-23 09:01:01.766824",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Complexity Race Condition] Since complexity and count_ops are shared variables across async recursive calls, can two parallel evaluate() branches racing to increment these counters cause one branch to exceed limits while the other succeeds, leading to non-deterministic validation results across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3909d20-4ade-49b1-8f80-e914d6bd4afb",
+    "timestamp": "2025-12-23 09:01:14.186743",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Formula Complexity Inheritance] When evaluating a 'formula' operator, the formula parser updates complexity and count_ops variables, but does the parent validateDefinition check these updated values against MAX_COMPLEXITY/MAX_OPS again after formula validation returns, or can a formula consume the entire budget leaving no room for outer definition checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c1a5f97-c95e-45d7-b9ae-5aae5ce854f1",
+    "timestamp": "2025-12-23 09:01:27.039077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Async Complexity Check] The complexity check occurs at line 100 before async operations, but if an async operation (e.g., database query for 'definition template') takes long enough for another evaluate() call to increment complexity beyond MAX_COMPLEXITY, can both branches proceed past the check causing total complexity to exceed 2*MAX_COMPLEXITY?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_059c57b7-bd88-4485-bdc6-85751b94b25a",
+    "timestamp": "2025-12-23 09:01:41.209582",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'address' case] [Infinite Loop via Circular References] If address A's definition references address B, and address B's definition references address A (either directly or through a chain), does the evaluate() function detect this cycle before stack overflow, or can an attacker permanently freeze validation by submitting a unit that triggers infinite recursion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2facd2d9-77ef-4eec-9327-c01d47d6b829",
+    "timestamp": "2025-12-23 09:01:56.701120",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'address' case] [Definition Redefinition Attack] When evaluating an 'address' operator, if the inner address was redefined via definition_chg after the outer definition was created but before last_ball_mci, does the validation use the new or old definition, and can an attacker exploit timing to make a previously-valid outer definition become invalid, permanently freezing funds locked in that definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e8a8031-fd9b-43b9-a0c5-d17fbddd23f7",
+    "timestamp": "2025-12-23 09:02:12.163741",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - needToEvaluateNestedAddress()] [Nested Evaluation Skip Bypass] The optimization at lines 88-94 skips evaluating nested addresses if no authentifiers match the path, but can an attacker craft a definition where the skipped nested address contains a complexity bomb that would exceed MAX_COMPLEXITY, allowing the definition to pass validation but fail when actually used with matching authentifiers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6bf0d44-1757-4b98-a4d6-2182dbd9601c",
+    "timestamp": "2025-12-23 09:02:29.126724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'address' case] [Definition Not Found Race] At lines 715-720, if an inner address definition is not found in storage but is being defined in the current unit, the code filters objUnit.authors for a matching definition, but if multiple authors define the same address with different definitions in the same unit, does the code properly reject this or can it non-deterministically pick one definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c11adfa-2777-4c57-b67c-0240d811d5f9",
+    "timestamp": "2025-12-23 09:02:47.020814",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'address' case] [Path Authentication Bypass] The pathIncludesOneOfAuthentifiers check at line 708 determines if the nested address should be evaluated, but can an attacker provide authentifiers for a parent path that don't match the nested address path, causing the validation to skip signature checks for the nested address entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b515a3c0-6252-4dcf-bbde-5d7c0edf4feb",
+    "timestamp": "2025-12-23 09:03:05.580720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'definition template' case] [Template Unit Not Stable] The query at lines 293-294 requires the template unit to be stable (is_stable=1), but does this check prevent an attacker from creating a unit that references a template from a unit that appears stable locally but is not stable globally due to network partition, causing different nodes to use different templates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_243b9438-e259-46a6-9ce6-2cd7effeff78",
+    "timestamp": "2025-12-23 09:03:25.046693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'definition template' case] [Template Payload Parsing] At line 300, the template payload is parsed with JSON.parse() without validation, so if the template unit contains malformed JSON or non-array template payload, can this cause JSON.parse() to throw an exception that isn't caught, crashing the validation and causing network DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ae64872d-3cea-46e9-be63-701fd5db3e66",
+    "timestamp": "2025-12-23 09:03:44.796833",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: replaceInTemplate()] [Parameter Type Confusion] The replaceInVar function at lines 1289-1291 allows params[name] to be string or number, but when replacing a variable in the template, does this preserve type safety? Can an attacker pass a number where a string address is expected, causing validation to incorrectly accept an invalid definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31bed47e-0145-4157-943a-a879fbd3846d",
+    "timestamp": "2025-12-23 09:04:05.242795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: replaceInTemplate()] [Missing Variable Exception Handling] If a template references a variable name that isn't provided in params, NoVarException is thrown at line 1339, but in validateAuthentifiers() at line 742, is this exception properly caught and converted to a validation failure, or can it bubble up and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_656f2116-b492-4d14-aa56-752fc98853f0",
+    "timestamp": "2025-12-23 09:04:27.783393",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: replaceInTemplate() - replaceInVar()] [Nested Object Mutation] The function mutates nested objects in-place at lines 1343-1347 after cloning the template, but if the same template is being evaluated concurrently by multiple units on different validation threads, can race conditions in the cloneDeep or assignField operations cause one evaluation to see partially-mutated template data from another?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61155359-45f4-4f80-9e39-79d598b04e36",
+    "timestamp": "2025-12-23 09:04:51.077952",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'definition template' case] [Template Complexity Accumulation] When replaceInTemplate fills a template and then evaluate() is called recursively on the filled template, does the complexity from evaluating the inner definition get added to the outer definition's complexity counter? If not, can an attacker nest templates to create exponential complexity that bypasses MAX_COMPLEXITY per template?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74033167-ddd9-4ac7-babc-bb2e0cdc47f6",
+    "timestamp": "2025-12-23 09:05:14.513130",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'sig' case] [Placeholder Signature Acceptance] At line 684, if objValidationState.bUnsigned is true and signature[0] === '-', the signature is accepted without verification, but can an attacker set bUnsigned inappropriately (e.g., through a race condition or by exploiting other validation logic) to bypass signature checks on a real unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7346a847-c5a3-497c-b480-fd73eb2b7aae",
+    "timestamp": "2025-12-23 09:05:38.191067",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'sig' case] [Fatal Error Silent Failure] At line 687, if signature verification fails, fatal_error is set but the function returns cb(false) instead of cb(fatal_error), so the error message is stored but not immediately returned; later at line 1318, fatal_error is checked, but can async race conditions cause fatal_error to be overwritten by a later failing signature before line 1318 is reached?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26d9d173-6e73-46e8-a587-0b7819e54624",
+    "timestamp": "2025-12-23 09:06:01.999662",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'hash' case] [Hash Preimage Time-of-Check-Time-of-Use] At line 699, the code verifies that the SHA256 hash of assocAuthentifiers[path] matches args.hash, but if assocAuthentifiers is mutable and modified between this check and when arrUsedPaths is verified at line 1320, can an attacker pass validation with one preimage but have a different preimage recorded in arrUsedPaths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c76efa3d-c5e6-4e21-9655-bd28383e1511",
+    "timestamp": "2025-12-23 09:06:26.864315",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers()] [Unused Authentifiers Check Bypass] At lines 1320-1321, the code checks that all provided authentifiers are used by comparing arrUsedPaths.length with Object.keys(assocAuthentifiers).length, but if an attacker provides duplicate authentifiers at different paths (e.g., 'r.0' and 'r.1' with the same signature), can this cause arrUsedPaths to have fewer unique entries than assocAuthentifiers, allowing unused authentifiers to slip through?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b4e3af0-6c97-4ebc-91ff-2cd502bee197",
+    "timestamp": "2025-12-23 09:06:52.906636",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate()] [Path Computation Inconsistency] Throughout the recursive evaluate() function, paths are constructed by concatenating parent path with '.'+index (e.g., lines 600, 620, 640), but if the validateDefinition() and validateAuthentifiers() functions use different path construction logic, can an attacker craft authentifiers that match paths in validateAuthentifiers but not in validateDefinition, bypassing signature requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63590547-7a21-43e3-920c-910a60644918",
+    "timestamp": "2025-12-23 09:07:18.959080",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - getFilterError()] [Private Asset Self-Reference] At lines 52-53, if bAssetCondition is true and filter.asset === 'this asset' and objValidationState.bDefiningPrivateAsset is true, an error is returned, but does this check prevent all forms of circular reference where a private asset condition indirectly references itself through other definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd911734-092c-4e52-b5f5-7fc9ad742e55",
+    "timestamp": "2025-12-23 09:07:46.087672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - getFilterError()] [Asset Condition Address Reference] At lines 62-63, asset conditions cannot reference 'this address' or 'other address', but can an attacker use 'definition template' or nested 'address' operators within an asset condition to indirectly reference these special addresses, bypassing the restriction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e47785d0-93ac-48ad-8abb-21b4e354e786",
+    "timestamp": "2025-12-23 09:08:13.891623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Asset Condition Operation Restrictions] Multiple operators (sig, hash, address, in merkle) check bAssetCondition and return errors if true (lines 218-219, 233-234, 250-251, 419-420), but is this list complete? Can an attacker use other operators like 'cosigned by' or 'formula' in an asset condition that shouldn't be allowed, causing non-deterministic asset condition evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3dfda36-7c3c-4a9a-8dcb-edb829b09265",
+    "timestamp": "2025-12-23 09:08:41.732620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: evaluateAssetCondition()] [Authentifier Parameter Confusion] At line 582, evaluateAssetCondition calls validateAuthentifiers with address=null and assocAuthentifiers=null, but the bAssetCondition flag is determined at line 1301 by checking if assocAuthentifiers is null; if evaluateAssetCondition is called with non-null assocAuthentifiers by mistake, would this bypass asset condition restrictions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16f8f71f-b160-4dea-83f3-276bcc7c4b5a",
+    "timestamp": "2025-12-23 09:09:10.848085",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - determineIfAnyOfAssetsIsPrivate()] [Private Asset Check Race] At lines 80-86, the function queries the database to check if any assets are private, but if an asset's is_private flag is changed between this query and when the definition is actually used, can this cause different nodes to evaluate the same definition differently, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ef84607-3839-4bb7-a8ed-1c860785d5b4",
+    "timestamp": "2025-12-23 09:09:40.613878",
+    "report_generated": false
   }
 ]
