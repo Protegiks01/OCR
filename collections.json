@@ -6448,5 +6448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a2c9b9d-2de5-4893-9e33-802c166f701c",
     "timestamp": "2025-12-23 08:39:46.845847",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Async.eachSeries error propagation] Lines 255-264 use async.eachSeries but the callback at line 260 receives 'err' only if aborted - if readDataFeedByAddress throws Error instead of calling callback, can the iteration hang indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84572ffb-aa6a-414d-b01d-c775e0febd24",
+    "timestamp": "2025-12-23 08:41:00.815213",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Multiple callback invocation] Lines 367-381 call cb() multiple times in different branches - if execution reaches multiple return statements due to async timing, can the callback be invoked more than once, causing AA formula evaluation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8c1a31f-f32e-463a-bef1-701193dbcfb4",
+    "timestamp": "2025-12-23 08:41:13.466495",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Inequality operator recursive callback] Lines 97-101 recursively call dataFeedByAddressExists for '!=' decomposition - if max recursion depth is reached, can this cause stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_34bdf3ad-64e4-4d84-8466-d874e973c956",
+    "timestamp": "2025-12-23 08:41:27.080463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Zero value handling] When comparing numeric values, line 54 checks 'typeof value === number && typeof feed_value === number' - can posting feed_value=0 or value=0 cause division by zero or other edge cases in downstream AA formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e8109f5-f97f-4fa3-b00a-00b48156d3d7",
+    "timestamp": "2025-12-23 08:41:40.611877",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Negative zero comparison] JavaScript distinguishes +0 and -0 but line 44's equality check may not - can an oracle post -0 that doesn't match queries for +0, breaking AA price feed logic that expects zero equality?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5bc3050-83b7-4f88-a0b9-e05a879cb78e",
+    "timestamp": "2025-12-23 08:41:55.066820",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Float encoding edge cases] Line 109 calls encodeDoubleInLexicograpicOrder(float) which handles -0 specially - if an oracle posts both +0 and -0 as separate feeds, can queries for 0 match both, causing duplicate detection issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9638a7b-a3cb-469a-aa61-c9c62997f571",
+    "timestamp": "2025-12-23 08:42:10.464871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Very large number handling] If feed_value or value is Number.MAX_VALUE or larger, can arithmetic comparisons (lines 54, 66) overflow or lose precision, causing incorrect inequality checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ff623e2-7f88-4a27-a4a5-70cffcc9fd0c",
+    "timestamp": "2025-12-23 08:42:26.948604",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Empty string feed name] If feed_name is empty string '', line 123's key_prefix becomes 'df\\\\n'+address+'\\\\n\\\\n'+prefixed_value - can the double newline cause key parsing ambiguity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_95b0952f-22ef-440b-9386-ea2e0af167d4",
+    "timestamp": "2025-12-23 08:42:44.531944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Boolean feed values] Lines 384-386 accept boolean values, but can an oracle post feed_value=false that AA formulas misinterpret as absence of feed (falsy value)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e37401e-affa-49ce-83bb-9785f1324154",
+    "timestamp": "2025-12-23 08:43:03.515782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Ifseveral abort with unstable] Lines 233-235 set bAbortedBecauseOfSeveral=true when multiple unstable candidates exist and ifseveral='abort' - can an attacker post multiple conflicting unstable AA feeds to force legitimate AAs to abort execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c76c22a7-7ef5-4341-86cf-565af84cf46e",
+    "timestamp": "2025-12-23 08:43:23.728174",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [Ifseveral last mode ambiguity] Lines 298-299 check 'ifseveral === last && mci > objResult.mci' to select latest feed - if two feeds have identical MCI, which one is selected and is it deterministic across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_daa0bf83-2519-4c61-b826-ec0a3db4da6b",
+    "timestamp": "2025-12-23 08:43:44.111973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [Abort check after limit] Line 290 sets limit=2 for abort mode but line 293 checks 'objResult.value !== undefined' - if exactly 2 feeds exist, does the function always abort even when it should select the first?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e9031d1-be74-48f5-bda2-2ce8e7dc07af",
+    "timestamp": "2025-12-23 08:44:05.972516",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Ifseveral validation bypass] Lines 348-351 validate ifseveral is 'abort' or 'last' but default is 'last' (line 347) - can attacker pass ifseveral=null to bypass validation but still use default?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4aec8fa8-d0c6-4ac6-a1c7-316fdfff45f7",
+    "timestamp": "2025-12-23 08:44:28.449073",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Mixed stable/unstable with ifseveral] If unstable messages contain 1 candidate and stable DB contains 1 candidate, and ifseveral='abort', does the function abort or does it only check within each source separately (lines 224-253)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d951438-95da-4b38-8713-4200f459ceff",
+    "timestamp": "2025-12-23 08:44:52.470718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [What=unit return] Lines 371-372 return objResult.unit when what='unit' - if the unit doesn't exist in storage anymore (deleted or garbage collected), can returning a stale unit hash cause AA to reference non-existent units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2578e50-40a0-4b88-b1ad-eef6728f0847",
+    "timestamp": "2025-12-23 08:45:15.887866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Type parameter conversion] Lines 373-374 check 'if (type === string)' and convert value.toString() - can this lose precision for very large numbers or create ambiguity between numeric 123 and string '123' in AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c44dfbb-a7e0-4d0f-a478-d17880d1ee7e",
+    "timestamp": "2025-12-23 08:45:40.388057",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [What parameter validation] Lines 354-357 validate 'what' is 'unit' or 'value' but don't handle what=null or what=undefined - can passing undefined bypass validation but cause errors at line 371?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_121589e3-fe34-4d6b-9f16-c7f7e92080e2",
+    "timestamp": "2025-12-23 08:46:06.565914",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [ObjResult structure mutation] Lines 192-193 initialize objResult with specific fields, but lines 226-228, 249-251 mutate it - if multiple addresses are queried (line 255), can the objResult from first address leak into second address query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c115bca3-069b-49bb-aab4-0c257e57b7a8",
+    "timestamp": "2025-12-23 08:46:33.433724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [bAA flag bypass] Lines 30-31 check 'if (!objUnit.bAA) continue' to skip non-AA unstable units - can an attacker post a regular unstable data_feed unit that bypasses this check because bAA parameter (line 12) is false, but still affects the query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2304d852-0a72-41ec-a806-7b7b1cb57972",
+    "timestamp": "2025-12-23 08:47:00.496515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [bIncludeAllUnstable flag] Lines 194, 201 check bIncludeAllUnstable to include non-AA unstable units - if unstable_opts='all_unstable', can unvalidated unstable units from malicious peers be included in feed queries before being rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd3e1582-19bc-4558-a852-570409d844e7",
+    "timestamp": "2025-12-23 08:47:27.861405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Unstable vs stable priority] Lines 195-253 check unstable messages first, then 255-264 query stable DB - if both contain same feed, which takes priority and is this consistent across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_efd76d7b-c37c-4f29-80fb-94ff2052687d",
+    "timestamp": "2025-12-23 08:47:55.035046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Early return from unstable check] Line 81 returns immediately when bFound=true from unstable check without querying DB - can this cause different results if the unstable unit is later rejected and DB query would have returned false?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa8b8ce3-e2aa-455f-b981-8bb332003da3",
+    "timestamp": "2025-12-23 08:48:22.003795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [toNumber precision inconsistency] Lines 107, 277 call string_utils.toNumber(value, bLimitedPrecision) - if the toNumber function has bugs in handling scientific notation (e.g., '1e309'), can it return null when it should return Infinity or vice versa, causing feed queries to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fec49ea3-b646-4e0f-9266-b7f3c7dea6cc",
+    "timestamp": "2025-12-23 08:48:50.355342",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [encodeDoubleInLexicograpicOrder overflow] Line 109 encodes doubles to hex - if the encoding doesn't handle subnormal numbers or denormalized floats correctly, can feeds with very small values like 1e-308 be stored with incorrect sort order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a90c4db-5aee-417a-9dc6-0447f4ce7446",
+    "timestamp": "2025-12-23 08:49:17.680368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [encodeMci padding error] Line 121 calls string_utils.encodeMci(min_mci) - if encodeMci doesn't properly zero-pad to 8 hex characters, can MCIs sort incorrectly in KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fd1b5da-34af-4851-9195-5f3c934afbcd",
+    "timestamp": "2025-12-23 08:49:45.065049",
+    "report_generated": false
   }
 ]
