@@ -14998,5 +14998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2b78945-6c77-4b3c-b2fd-2057485442de",
     "timestamp": "2025-12-23 18:12:16.125737",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getJointHash()] [Joint Structure Validation] Since getJointHash() doesn't use the same validation as getSourceString(), can an attacker include circular references, functions, or other invalid JavaScript objects in joints that crash nodes during JSON.stringify() or cause denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bffceb05-b4f2-4f3a-ac62-e5e59d136be1",
+    "timestamp": "2025-12-23 18:13:44.872121",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getJointHash()] [UTF-8 Encoding Assumption] Line 116 explicitly specifies 'utf8' encoding - if the input objJoint contains binary data or invalid UTF-8 sequences, can JSON.stringify() handle them consistently across platforms, or will encoding errors cause hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6dd230e3-7b5a-4129-a7e3-7fe31802587f",
+    "timestamp": "2025-12-23 18:13:57.389065",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNulls()] [Shallow vs Deep] cleanNulls() only removes null at the top level (lines 120-123) while cleanNullsDeep() recurses (lines 126-132) - if consuming code calls the wrong function, can deep null values survive and cause hash inconsistencies, especially in nested unit structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00386c5b-df41-4fbd-8907-efc3e23a64e2",
+    "timestamp": "2025-12-23 18:14:10.890276",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNullsDeep()] [Array Null Preservation] Line 130 checks 'typeof obj[key] === object' which includes arrays - but arrays are iterated by index, so if an array contains null elements [1, null, 3], are the nulls preserved or removed, and can this inconsistency be exploited?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02d793a0-9521-435d-9b0a-41fb34ab535b",
+    "timestamp": "2025-12-23 18:14:24.371785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNullsDeep()] [Recursive Mutation] cleanNullsDeep() mutates the input object in place (line 129) - if the same object is used in multiple places (shallow copies), can cleaning nulls in one location affect hash calculations in another, causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c1149a1-ba32-44f1-8bfa-fae185f190f2",
+    "timestamp": "2025-12-23 18:14:38.597630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNullsDeep()] [Prototype Pollution] Lines 127-132 iterate Object.keys() and recursively process values - if an attacker pollutes Object.prototype with null-valued properties, can cleanNullsDeep() remove prototype properties and cause unexpected behavior in other parts of the code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_352d5e04-8b7c-4830-9e52-d953cc1b81b1",
+    "timestamp": "2025-12-23 18:14:54.020329",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNullsDeep()] [Circular Reference Handling] If obj contains circular references (obj.child.parent = obj), cleanNullsDeep() will recurse infinitely (line 131) - can an attacker crash nodes by submitting device messages or other objects with circular references that undergo null cleaning?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d7a2051-c83e-4531-9053-a4be065d3752",
+    "timestamp": "2025-12-23 18:15:10.536021",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: cleanNulls()] [Non-Object Input] If cleanNulls() is called with a non-object input (string, number, null itself), Object.keys() (line 120) will fail or return empty - can this cause crashes or undefined behavior in code paths that expect null cleaning to always succeed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7113532d-b422-4d46-91d8-37ebd975b65c",
+    "timestamp": "2025-12-23 18:15:28.910686",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceAddress()] [Leading Zero Prefix] Line 142 prepends '0' to the chash160 to create device addresses - the comment (lines 138-140) states this prevents confusion with payment addresses, but can an attacker strip the '0' prefix and use the remaining string as a payment address to redirect funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7691453c-9252-4b2b-8612-560c2656189e",
+    "timestamp": "2025-12-23 18:15:47.940038",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceAddress()] [Public Key Format] The function accepts b64_pubkey without validating it's valid base64 or a valid public key - can an attacker pass arbitrary strings to generate device addresses that collide with payment addresses or other device addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bf83815-9450-439c-8623-7583d0f2dc96",
+    "timestamp": "2025-12-23 18:16:07.812461",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceAddress()] [Base32 Collision] Device addresses use base32 encoding (via chash160) while payment addresses might use base64 - even with the '0' prefix, can an attacker find strings where '0' + base32(X) visually resembles a payment address, enabling phishing attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_abc328cc-3d3f-45c3-84d6-9553d7acd9a3",
+    "timestamp": "2025-12-23 18:16:28.748309",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceAddress()] [Raw Public Key Hashing] Line 142 hashes the raw public key without any address definition structure - does this mean device addresses are single-sig only, and can an attacker exploit this by tricking users to send funds to device addresses (which lack the definition layer protection)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6abc3737-7302-426b-86f1-090443d84016",
+    "timestamp": "2025-12-23 18:16:51.017797",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceMessageHashToSign()] [Signature Deletion] Line 147 uses _.clone() (shallow) then deletes signature (line 147) - if the original objDeviceMessage.signature is a nested object or the message has signature fields in nested structures, can incomplete deletion allow signature malleability attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5032bc21-2bd8-4e40-a3dc-f36d24cbdd4b",
+    "timestamp": "2025-12-23 18:17:14.888087",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceMessageHashToSign()] [Free Format Comment] Line 148 comments 'device messages have free format' - does this mean device messages can contain arbitrary structure including functions, getters, or proxy objects that behave differently during cloning vs hashing, enabling signature bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0081bac7-0e12-4d6a-9674-33a784b07e5e",
+    "timestamp": "2025-12-23 18:17:39.851719",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceMessageHashToSign()] [CleanNullsDeep Call] Line 148 calls cleanNullsDeep() on device messages 'to avoid malicious fields' - but if cleanNullsDeep() has the circular reference vulnerability, can an attacker DoS nodes by sending device messages with circular references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2572be1c-7ddb-4f7a-9330-088040d6d824",
+    "timestamp": "2025-12-23 18:18:04.788075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceMessageHashToSign()] [Malicious Field Handling] The comment mentions preventing 'malicious fields' but cleanNullsDeep() only removes null-valued fields - can an attacker include fields with undefined, NaN, Infinity, or other special values that pass null cleaning but cause hash inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f365de3a-452d-4607-9c8a-897edac260a3",
+    "timestamp": "2025-12-23 18:18:31.024937",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getDeviceMessageHashToSign()] [Shallow Clone Limitation] Line 146 uses _.clone() which is shallow - if objDeviceMessage has nested objects with signature fields at deeper levels, are those preserved in the hash-to-sign, allowing signature reuse attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0b2480b-0da6-4d8e-b830-fd2d7e916bc9",
+    "timestamp": "2025-12-23 18:18:57.423873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: getUnitHash() → getStrippedUnit() → getUnitContentHash()] [Hash Chain Integrity] If an attacker modifies objUnit between the content_hash check (line 58) and the getStrippedUnit() call (line 60), can they bypass content hash verification while producing a valid unit hash, enabling payload manipulation attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87bcaee9-0f5b-4a6c-8d43-0c5f593e9ebc",
+    "timestamp": "2025-12-23 18:19:24.307321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: getUnitHashToSign() and getUnitHash()] [Signature Binding] getUnitHashToSign() removes authentifiers (line 88) before hashing, while getUnitHash() includes them (via getNakedUnit) - if validation checks unit_hash but signs unit_hash_to_sign, can an attacker modify authentifiers after signing without invalidating the unit hash, enabling signature malleability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fce52351-f0b2-41af-b237-88b3f10a31c5",
+    "timestamp": "2025-12-23 18:19:51.760021",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: getBase64Hash() with bJsonBased flag] [Inconsistent Encoding] If some code paths call getBase64Hash(obj, true) and others call getBase64Hash(obj, false) for the same object type, can the resulting hashes differ, and can an attacker exploit this by submitting objects that pass validation with one encoding but execute with another?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f23a7af-6ed4-4f69-8588-5a833b46f817",
+    "timestamp": "2025-12-23 18:20:19.465929",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: cleanNullsDeep() → getDeviceMessageHashToSign()] [Null Cleaning Side Effects] Since cleanNullsDeep() mutates the input object (line 129), does calling getDeviceMessageHashToSign() modify the original device message, and can this cause signature verification to fail if the message is signed before cleaning but verified after?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f434c8ec-78d0-4236-9dc5-bb7f889d284c",
+    "timestamp": "2025-12-23 18:20:46.161217",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: getNakedUnit() → _.cloneDeep()] [Clone Depth Limit] If _.cloneDeep() has a recursion depth limit, can an attacker craft deeply nested unit structures that partially clone, resulting in shared mutable state between original and naked units that causes hash inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5d09fa0-8719-4a78-8474-dd463690cfc6",
+    "timestamp": "2025-12-23 18:21:15.232930",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Cross-function: getChash160() for AA addresses] [AA Definition Injection] Since getChash160() treats ['autonomous agent', definition] specially (line 11), can an attacker inject a legitimate-looking but malicious definition that still hashes to the same address as a benign AA, stealing funds through address collision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f2a3072-d059-4950-9a36-0bf8cb41eba5",
+    "timestamp": "2025-12-23 18:21:43.459620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Version handling across functions] [Version Constant Mismatch] Multiple functions check objUnit.version against constants.versionWithoutTimestamp (lines 38, 53, 57, 80, 89, 97) - if different nodes load different constant values due to configuration errors or network split between testnet/mainnet, can they compute different hashes for the same unit, causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd96d8bf-60e0-48dc-aca6-6874a2a0c117",
+    "timestamp": "2025-12-23 18:22:13.242274",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Version handling: getNakedUnit()] [Version Field Mutation] If getNakedUnit() deletes the timestamp field conditionally (line 39), but the input objUnit is later reused, can the presence/absence of timestamp field cause different hashes in subsequent operations, enabling replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c544ae55-101f-4c06-8849-c9ebb1020adf",
+    "timestamp": "2025-12-23 18:22:43.031493",
+    "report_generated": false
   }
 ]
