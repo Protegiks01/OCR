@@ -7798,5 +7798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e851668c-9fbe-491b-ad7d-c7cae08a270e",
     "timestamp": "2025-12-23 10:09:01.530761",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [PreCommitCallback error handling] At lines 352-359, validateAndSaveDivisiblePrivatePayment is called in preCommitCallback. If this function calls cb(err) but writer.saveJoint at line 378 has already begun committing, can this cause a partial commit where the unit is saved but private payment data is not, making outputs unspendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_684bfd2d-eb67-446d-ab25-623b6a837f16",
+    "timestamp": "2025-12-23 10:10:14.742589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Non-private preCommitCb bypass] At lines 362-366, if not private but callbacks.preCommitCb is defined, it's used as preCommitCallback. If callbacks.preCommitCb fails asynchronously after writer.saveJoint has committed the unit, can this leave the unit in the database without the expected pre-commit side effects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7318970d-1c1b-4351-adc1-fda50dea3a28",
+    "timestamp": "2025-12-23 10:10:27.276944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Light vendor posting failure] At lines 369-376, composer.postJointToLightVendorIfNecessaryAndSave attempts to post to light vendor before saving. If the post succeeds but the save callback is never invoked due to a bug, can this cause light clients to see a unit that full nodes never save, creating network divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b56bee0-966d-44a1-923b-d352245a4533",
+    "timestamp": "2025-12-23 10:10:41.509856",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [SaveJoint error recovery] At line 381, writer.saveJoint calls onDone with err parameter. If err is not null but validation_unlock() and combined_unlock() are called anyway at lines 383-384, can releasing these locks while the unit is in an error state allow other threads to proceed with invalid assumptions about database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ee9e82e-3854-49d5-8380-426b19e15d7a",
+    "timestamp": "2025-12-23 10:10:54.945701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Private chains construction] At line 385, arrChains is constructed as [[objPrivateElement]] for private payments. If objPrivateElement is undefined due to prior errors in private payload processing, can this pass null or undefined to callbacks.ifOk at line 386, causing downstream errors in payment chain handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fed9f1e7-2563-4fb6-939f-5530f6185191",
+    "timestamp": "2025-12-23 10:11:09.044434",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Address validation bypass] At lines 409-412, the function checks for non-empty available_paying_addresses and available_fee_paying_addresses, but doesn't validate these are well-formed addresses. Can an attacker pass invalid addresses that cause composer.readSortedFundedAddresses to return empty arrays even when funds exist, leading to false 'not enough funds' errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ab2cba0-c9ed-4637-a3dd-6cc80e8c09cf",
+    "timestamp": "2025-12-23 10:11:24.195803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Asset null interpretation] At line 413, composer.readSortedFundedAddresses is called with params.asset, but at line 421, it's called with null for base currency. If params.asset is explicitly null (not undefined), can this be confused with base currency query, causing incorrect UTXO selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfde6210-1fe0-4bd8-8029-ec66dc5be318",
+    "timestamp": "2025-12-23 10:11:40.727781",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Uncapped asset issuance bypass] At lines 415-418, if arrFundedPayingAddresses is empty but available_paying_addresses.length === 1, the address is used anyway (assumed to be issuing). Can an attacker exploit this special case to issue unlimited amounts of an asset that should be capped by providing a single unfunded address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b468aedf-9d8b-47c4-943a-3b549baed91f",
+    "timestamp": "2025-12-23 10:11:58.478623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [TYPICAL_FEE constant staleness] At line 404, TYPICAL_FEE is hardcoded to 1000 bytes. If network fee dynamics change (e.g., due to congestion or protocol upgrade), can this constant become too low, causing composeMinimalDivisibleAssetPaymentJoint to underestimate required bytes and compose underfunded transactions that fail validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45f28206-c050-42af-9925-b3f6edfe37d2",
+    "timestamp": "2025-12-23 10:12:17.318472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Spend_unconfirmed inconsistency] At line 421, spend_unconfirmed defaults to 'own' if not specified, but at line 413 it uses params.spend_unconfirmed || conf.spend_unconfirmed || 'own'. Can this inconsistency cause different UTXO selection for asset coins vs fee coins, leading to situations where asset UTXOs are available but fee UTXOs are not (or vice versa), causing composition to fail unnecessarily?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea49ef19-ec34-4a33-8694-0d2fe5f0954d",
+    "timestamp": "2025-12-23 10:12:37.729930",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Funded addresses race condition] Between readSortedFundedAddresses calls at lines 413 and 421, the funded status of addresses can change (e.g., due to concurrent transactions). Can this race cause the minimal parameter calculation at lines 424-429 to use stale funded address lists, resulting in composed units that are invalid by the time they're broadcast?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c7ded82-2b5f-4850-8f65-c2139c5be735",
+    "timestamp": "2025-12-23 10:12:59.219666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Minimal params mutation] At lines 424-429, params is cloned and modified. If the original params object is used elsewhere concurrently (e.g., in a retry loop), can modifications to minimal_params affect the original params through shared object references, causing unintended side effects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2c7c70b-d81e-4ba3-99cb-3660f33a5588",
+    "timestamp": "2025-12-23 10:13:21.722402",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeAndSaveMinimalDivisibleAssetPaymentJoint()] [Callback wrapping overhead] At line 438, getSavingCallbacks wraps params.callbacks. If params.callbacks itself is already a wrapped callback from a prior operation, can deep callback nesting cause stack overflow or make error handling impossible to trace through multiple wrapper layers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_973314cc-6185-4997-b8c5-b15690418357",
+    "timestamp": "2025-12-23 10:13:44.109188",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [storage.loadAssetWithListOfAttestedAuthors race condition] At line 228, loadAssetWithListOfAttestedAuthors is called with last_ball_mci. If last_ball_mci advances between when it's captured and when this function executes, can objAsset properties (is_transferrable, cosigned_by_definer, arrAttestedAddresses) reflect a different protocol state, causing validation to pass in composition but fail in validation.validate()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b82008c-50d0-430c-b3c9-046b85fec237",
+    "timestamp": "2025-12-23 10:14:06.723875",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [inputs.pickDivisibleCoinsForAmount non-determinism] At lines 242-243, pickDivisibleCoinsForAmount is called to select inputs. If this function has non-deterministic UTXO selection (e.g., random tiebreaking), can two nodes composing identical payments select different inputs, causing different unit hashes and breaking synchronization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bedae2c6-9b23-4c79-94f7-c571607b99bd",
+    "timestamp": "2025-12-23 10:14:30.295322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [validation.validate assumptions violation] At line 314, validation.validate is called assuming it will eventually call one of the callback functions. If validation.validate can hang indefinitely (e.g., waiting for missing parent units), can the mutex acquired at line 309 remain locked forever, halting all transaction processing on the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7a6b3dd-ec9d-490c-ac69-b333aa2529ad",
+    "timestamp": "2025-12-23 10:14:55.573091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [writer.saveJoint atomicity] At line 378, writer.saveJoint is expected to atomically save the unit and execute preCommitCallback. If writer.saveJoint has bugs that cause partial saves (e.g., unit saved but preCommitCallback not executed), can this violate the assumption at line 385 that arrChains is valid when callbacks.ifOk is invoked?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69f25dd3-9e1e-48f5-b4e0-db6885e71359",
+    "timestamp": "2025-12-23 10:15:21.937987",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [composer.composeJoint paying_addresses union] At line 212, paying_addresses is set to _.union(params.paying_addresses, params.fee_paying_addresses). If these arrays contain duplicate addresses, does the union operation preserve all duplicates or deduplicate them? Can deduplication cause fee calculation errors if the same address is counted twice in one path but once in another?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c8ace1d-e6b7-45c3-85c8-5abd32696582",
+    "timestamp": "2025-12-23 10:15:49.127019",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [validation.initPrivatePaymentValidationState side effects] At line 89, initPrivatePaymentValidationState is called before spend proof validation. If this function modifies global state or database state that affects subsequent spend proof queries at lines 113-115, can this create order-dependent validation results leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d2863a0-f849-45b3-a8a5-52eec21c9fec",
+    "timestamp": "2025-12-23 10:16:18.061077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [validation.validatePayment input/output checks] At line 161, validatePayment is called to check balance conservation. If validatePayment has bugs that allow sum(inputs) < sum(outputs) for private payments (e.g., due to blinding calculations), can attackers inflate asset supply without detection in divisible_asset.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_244d0702-d963-4e16-90b6-b1295eb6c2c2",
+    "timestamp": "2025-12-23 10:16:45.858313",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [composer.postJointToLightVendorIfNecessaryAndSave light-only assumption] At line 369, postJointToLightVendorIfNecessaryAndSave is called with onLightError callback at line 371. The comment says 'light only', but if a full node accidentally triggers this path, can the error handling at lines 372-375 cause full nodes to skip saving valid units, creating network inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_934ae95b-5f5d-42ff-a3ae-4fcfda87931c",
+    "timestamp": "2025-12-23 10:17:14.589122",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSavePrivatePaymentChain()] [Single element assumption] At line 18, there's a comment 'we always have only one element' and the function directly processes arrPrivateElements[0]. If a caller violates this assumption and passes a multi-element array, does the code silently ignore subsequent elements, or can processing only the first element leave the payment chain in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb517100-8905-4d4e-af92-f88c0331fdf7",
+    "timestamp": "2025-12-23 10:17:43.379865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [Empty arrAssetPayments] After constructing arrAssetPayments at lines 202-210, if all three conditions (to_address, asset_outputs, outputs_by_asset) somehow result in an empty array, does composer.composeJoint at line 211 handle messages being an empty array, or can this cause it to create a unit with no payment messages, wasting fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93b32dea-70a3-413f-aaf9-e890aaea26d5",
+    "timestamp": "2025-12-23 10:18:12.633939",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [Unknown input type handling] At line 135, if input.type is neither 'issue' nor undefined (transfer), the callback returns 'unknown input type: '+input.type. Can an attacker craft an input with a novel type (e.g., 'steal') that passes validation.js checks but is rejected here, causing validation divergence between modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f7e20cc-b629-4de9-9e3b-50d9f22fa5e9",
+    "timestamp": "2025-12-23 10:18:39.936144",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Database query timeout] At lines 141-153, the spend_proofs query doesn't have explicit timeout handling. If the database is under load and the query takes minutes to execute, can this block the validation callback indefinitely, causing all private payment validation to stall and halting the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b6922ed-80c4-4da0-bd08-9e975b6245cf",
+    "timestamp": "2025-12-23 10:19:05.103827",
+    "report_generated": false
   }
 ]
