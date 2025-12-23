@@ -5698,5 +5698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa619ea3-0966-4716-b094-4f5551c3d9c4",
     "timestamp": "2025-12-23 09:18:12.727133",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Double-claim via fee fallback] Lines 2476-2485 retry with addressTo in fee_paying_addresses if textcoin is insufficient, but this allows claiming with external funds - can an attacker partially drain a textcoin then claim remainder with victim's funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c56e707-09d0-4451-91e7-699262bf887b",
+    "timestamp": "2025-12-23 09:19:23.690084",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Mnemonic injection] Lines 2420-2431 call expandMnemonic() which splits on '-' and spaces, but doesn't sanitize input - can an attacker inject control characters to bypass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45a974fd-2396-403b-a1ea-ada9f0b82cda",
+    "timestamp": "2025-12-23 09:19:36.131060",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().sign] [Merkle proof validation missing] Lines 1877-1882 accept merkle proof without validation if !bLocal - can a remote device send invalid merkle proofs that fail during actual unit validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d5a2473-45b6-49d9-a8bf-84ef792beae2",
+    "timestamp": "2025-12-23 09:19:49.085933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().sign] [Contract confirmation bypass] Lines 1823-1875 filter contract-related signing requests to show custom confirmation dialogs, but complex async logic with cb(true) may allow bypassing confirmations - can an attacker exploit race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffae18c6-a70a-4c8a-a1af-3e48dcba053d",
+    "timestamp": "2025-12-23 09:20:02.464175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().sign] [Refused signature handling] Line 1817 checks if sig === '[refused]' and emits refused_to_sign event, but doesn't fail the transaction - can a malicious cosigner refuse to sign while allowing transaction to proceed with incomplete signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d14bb736-1ebe-42cf-8690-5690c8f9d652",
+    "timestamp": "2025-12-23 09:20:17.629799",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().sign] [Signature cache bypass] Lines 1812-1816 cache signatures by device_address+address+buf_to_sign but use toString(",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7efb08d4-b3e1-4593-a199-dc5a8b7edee1",
+    "timestamp": "2025-12-23 09:20:32.557249",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().sign] [Remote signature timeout] Lines 1809-1820 wait for remote signatures via eventBus.once() without timeout - can an attacker refuse to sign, blocking transactions indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a0d39a2-aca9-4cd5-89b6-8d4c73d02d04",
+    "timestamp": "2025-12-23 09:20:49.073733",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner().readDefinition] [Definition cache poisoning] Lines 1780-1793 read definitions from three tables with UNION, but if an attacker inserts duplicate definitions with different content, which one is returned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87a41ab0-f486-47c8-beea-e6c5b5c9bc51",
+    "timestamp": "2025-12-23 09:21:07.602162",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner()] [Secret path injection] Lines 1770-1772 use opts.secrets[signing_path] without validating signing_path format - can an attacker inject arbitrary paths to retrieve secrets they shouldn't access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3c75968-2857-492e-aca3-cce9f2b0c115",
+    "timestamp": "2025-12-23 09:21:26.245714",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: getSigner()] [Merkle proof replay] Lines 1767-1768 use opts.merkle_proof without validating uniqueness - can an attacker replay the same merkle proof across multiple transactions to forge signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b178aa39-d175-46aa-b13c-3e2fd74519f7",
+    "timestamp": "2025-12-23 09:21:46.357367",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Outputs_by_asset asset mixing] Lines 2162-2175 detect if outputs_by_asset contains multiple non-base assets for private/indivisible assets and rewrites parameters - can an attacker exploit the rewrite logic to bypass restrictions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e259bdb6-e2ee-46b1-a692-b5c6719d99a1",
+    "timestamp": "2025-12-23 09:22:07.340695",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Change address handling] Line 2287 adds change_address to outputs with amount: 0, but if change_address equals to_address, can this create duplicate outputs confusing validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9493f03e-7760-4899-b311-2f965eee52a0",
+    "timestamp": "2025-12-23 09:22:29.472257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Send_all with assets error] Line 2139 throws Error('send_all with asset') - can an attacker trick a wallet into calling sendMultiPayment with both send_all and asset set, crashing the wallet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ae63bed-7b4b-40b2-83ab-6e99543ced9b",
+    "timestamp": "2025-12-23 09:22:52.682699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [AssocPrivatePayloads length check] Lines 2238-2239 check if private payload count differs between dry-run and actual run - if indivisible asset composition is non-deterministic, can this cause transaction to fail after fees were calculated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48ab389e-c6c6-455e-8cf6-dd0641dcf9c0",
+    "timestamp": "2025-12-23 09:23:16.747880",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Indivisible asset fee dry-run] Lines 2218-2255 perform dry-run composition for indivisible assets to calculate fees, but the dry-run uses tolerance_plus/minus = 0 - can this cause the actual payment to select different inputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_582223e1-7770-494d-ab7d-8f4d2db6cfa8",
+    "timestamp": "2025-12-23 09:23:41.639250",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [TPS fee estimation] Line 2093 estimates TPS fee using composer.estimateTpsFee() with double the result - if the estimation function is inaccurate, can textcoins have insufficient funds to claim?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64a5bd02-8378-47d5-8bee-ce1f4ee5fee6",
+    "timestamp": "2025-12-23 09:24:07.655333",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Textcoin fee calculation race] Lines 2089-2136 calculate fees for textcoins in two phases (estimate then actual), but if network conditions change between phases, can this cause insufficient fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c52b2659-d332-4ff2-a301-3978c5d9b9c5",
+    "timestamp": "2025-12-23 09:24:34.807432",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Private payment forwarding bypass] Lines 2182-2213 forward private chains to recipients and cosigners, but if wallet parameter is null (paying from addresses array), can this skip cosigner forwarding and break shared address private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00ab37a9-9700-4f8a-a2a8-1f1bbe30dbe4",
+    "timestamp": "2025-12-23 09:25:02.912098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [preCommitCb race condition] Lines 2040-2052 iterate over assocMnemonics and execute async inserts, but if ++i reaches length before last insert completes, cb() fires prematurely - can this cause incomplete mnemonic storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_967b7091-a1c0-44e5-a25e-4411fb187a19",
+    "timestamp": "2025-12-23 09:25:30.141647",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Email validation bypass] Line 2006 checks ValidationUtils.isValidEmail() but doesn't prevent sending to attacker-controlled emails - can an attacker receive textcoins meant for others?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f8499ef-da26-4718-a94a-62ed06031974",
+    "timestamp": "2025-12-23 09:25:58.363829",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Textcoin address reuse] Lines 2010-2012 derive addresses from mnemonics using fixed path m/44'/0'/0'/0/0 - can an attacker precompute target addresses and front-run textcoin creation to steal funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37c89b75-b36d-4c03-b70a-4b70200342c1",
+    "timestamp": "2025-12-23 09:26:27.480670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Textcoin mnemonic collision] Lines 2001-2004 generate mnemonics without checking uniqueness - if Mnemonic library has weak entropy, can two textcoins have identical mnemonics allowing double-claims?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d2ddb1a-2fe4-435b-93bc-7179c2e83f9c",
+    "timestamp": "2025-12-23 09:26:56.870282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Funded addresses validation] Lines 1980-1983 check if arrFundedAddresses.length === 0 but don't validate arrBaseFundedAddresses when nonbaseAsset exists - can an attacker create transactions that fail at composition stage wasting resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1db8198e-acbd-4815-b610-6dc278135baf",
+    "timestamp": "2025-12-23 09:27:25.036225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [AA address check bypass] Lines 1965-1973 call aa_addresses.checkAAOutputs() and recursively call sendMultiPayment() if checks fail, but opts.aa_addresses_checked flag can be set by attacker - can this skip AA checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2a1132e-542e-4557-b56d-54983c25aaa2",
+    "timestamp": "2025-12-23 09:27:53.884468",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendMultiPayment()] [Parameter validation bypass] Lines 1932-1949 validate parameter combinations, but line 1951 allows recipient_device_address === device.getMyDeviceAddress() to be nulled - can an attacker exploit self-payments to bypass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c2054bc-3abf-4dbf-af3d-6a1915b4a9aa",
+    "timestamp": "2025-12-23 09:28:22.730596",
+    "report_generated": false
   }
 ]
