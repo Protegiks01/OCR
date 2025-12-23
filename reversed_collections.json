@@ -8548,5 +8548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c361cdd-f274-4c23-981c-23ca7601d0c1",
     "timestamp": "2025-12-23 13:45:30.326472",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: close()] [network.js Shutdown Race] If network.js is still receiving and processing units while sqlite_pool.js is closing connections, can units be partially stored with some database writes succeeding and others failing, corrupting the DAG and preventing the node from restarting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32e02744-37d1-4826-b925-4729e4670ef1",
+    "timestamp": "2025-12-23 13:46:47.067392",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [aa_validation.js State Read Race] When AA execution reads state variables across multiple queries, if another AA execution commits state changes between these reads, can the first AA see inconsistent state (phantom reads), causing non-deterministic formula evaluation that breaks consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_abda8ff0-0852-42e6-b479-7087b1007fe6",
+    "timestamp": "2025-12-23 13:46:59.692168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [main_chain.js MC Update Race] If main_chain.js updates MC indices using one connection while validation.js reads MC indices using another connection without proper locking, can validation read stale MC values and accept units with incorrect witness levels, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e562d32-2809-4b3d-aa4a-415be200ed5b",
+    "timestamp": "2025-12-23 13:47:12.704334",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: query()] [validation.js Deadlock] If validation.js performs expensive queries while holding a connection, and another module is waiting in arrQueue for a connection to commit the validated unit, can a circular dependency deadlock occur where validation never completes because the unit can't be committed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40650111-1475-412d-ace7-280ae6e58dc1",
+    "timestamp": "2025-12-23 13:47:26.431868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [storage.js Transaction Assumption] If storage.js assumes queries on the same connection are atomic, but sqlite_pool.js doesn't guarantee transaction boundaries, can interleaved queries from different modules corrupt multi-step operations like unit insertion, causing DAG inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e1945ba-e3f4-493a-b3d0-f03f58303336",
+    "timestamp": "2025-12-23 13:47:41.376810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [iOS Library Backup] On iOS, files in Library/ are backed up to iCloud by default. Does this cause the database file (containing private keys) to be uploaded to iCloud, where it could be accessed by Apple or leaked in data breaches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b2c3bdd-7226-4953-8bef-8cd2df6b6072",
+    "timestamp": "2025-12-23 13:47:56.826318",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [Cordova File System Permissions] On Android, the database is stored in applicationStorageDirectory/databases/. Can this location be readable by other apps with storage permissions, allowing malicious apps to clone the database and extract private keys or transaction history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3eb41df-a1ea-47dd-a85a-9e776a8699b8",
+    "timestamp": "2025-12-23 13:48:14.098933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getParentDirPath()] [Platform Detection Bypass] The platform detection uses window.cordova.platformId which can be 'ios', 'android', or default. Can an attacker run on an unsupported platform (e.g., Windows Phone, browser) that defaults to Android paths, causing database operations to fail or write to incorrect locations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b5cf2a7-1eb7-40f1-a7f7-f9804fa937bf",
+    "timestamp": "2025-12-23 13:48:31.947288",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Cordova Query Path Differences] On Cordova, queries use self.db.query() while on desktop they use db.all()/db.run(). Can subtle differences in parameter binding or error handling between these implementations cause queries to behave differently, breaking consensus between mobile and desktop nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d8a8036-62a3-4c0d-909d-8a211e123745",
+    "timestamp": "2025-12-23 13:48:51.453614",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Cordova SQLite Plugin Unavailable] The code checks 'window.cordova' to detect Cordova environment but doesn't verify that cordova-sqlite-plugin is actually installed. Can an app launch in Cordova mode without the plugin, causing cordovaSqlite constructor to be undefined and all database operations to fail silently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b29229b2-5a3f-4aec-99ec-9b33828bce8a",
+    "timestamp": "2025-12-23 13:49:12.329037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [EventEmitter Memory Leak] When !bReady, listeners are registered on eventEmitter.once('ready'). If onDbReady() fails to fire due to database initialization errors, do these listeners accumulate with each failed connection attempt, causing a memory leak that eventually crashes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b658872-e4c5-41c4-b47b-a46d87f9a64c",
+    "timestamp": "2025-12-23 13:49:33.402754",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Connection Object Leak] Each connection object has a setInterval timer for printLongQuery(). If connections are created but never properly closed, do these timers continue running indefinitely, gradually accumulating timers that consume CPU and prevent garbage collection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c3135de-610d-443c-926f-0031a838357b",
+    "timestamp": "2025-12-23 13:49:56.216009",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Query History Accumulation] The connection.currentQuery field stores the full query and parameters. If these contain large binary blobs or very long strings, does the memory accumulate over time across all connections, eventually causing memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_328bdda5-c47f-4ab3-a914-31e510e07b3c",
+    "timestamp": "2025-12-23 13:50:19.895131",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Large Array Parameters] If an attacker passes array parameters with millions of elements, does the placeholder expansion create SQL strings with millions of '?' placeholders, consuming excessive memory during string concatenation and causing crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15a2ce34-a566-4fad-add7-c773c5e40e48",
+    "timestamp": "2025-12-23 13:50:44.923217",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Large Result Set Memory] When executing SELECT queries with db.all(), all rows are loaded into memory. Can an attacker craft queries that return millions of rows (e.g., SELECT * FROM units), exhausting available memory and crashing the node with OOM errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ce8067a-18d7-40e6-9e98-a3f21fc6e73a",
+    "timestamp": "2025-12-23 13:51:10.688788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: escape()] [Array Escaping Recursion] The escape() function recursively escapes array members. Can an attacker pass deeply nested arrays that cause stack overflow during recursion, crashing the node and preventing transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb2ed1b5-310c-4fad-9ae8-992debf3c9f4",
+    "timestamp": "2025-12-23 13:51:37.620612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: dropTemporaryTable()] [Table Name Injection] The dropTemporaryTable() function constructs 'DROP TABLE IF EXISTS ' + table. Can an attacker pass table names with SQL injection payloads (e.g., 'temp; DROP TABLE units; --') that drop permanent tables instead of temporary ones, corrupting the entire database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b57bf55-2d64-4051-94a8-a02112804b89",
+    "timestamp": "2025-12-23 13:52:06.040613",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: forceIndex()] [Index Name Injection] The forceIndex() function returns 'INDEXED BY ' + index without escaping. Can an attacker pass index names containing SQL keywords or operators (e.g., 'idx; DROP TABLE units;') that execute arbitrary SQL when the query is built?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e4bd8b5-93ee-4e37-bd58-c466072bcede",
+    "timestamp": "2025-12-23 13:52:34.004756",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getFromUnixTime()] [Timestamp Injection] The getFromUnixTime() function constructs datetime(ts, 'unixepoch') by concatenating ts. Can an attacker provide a string like '0) || (SELECT password FROM users) || (' that extracts sensitive data from the database via SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5627fd4c-a5f5-452e-bd9b-2be4fc228448",
+    "timestamp": "2025-12-23 13:53:01.036356",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getUnixTimestamp()] [Date Parameter Injection] The getUnixTimestamp() function concatenates the date parameter into SQL like strftime('%s', date). Can an attacker pass malicious date values (e.g., datetime('now') || '; DROP TABLE units; --') that inject SQL commands?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_015ac2b6-f3a4-4776-90f6-e8b76aa83b77",
+    "timestamp": "2025-12-23 13:53:30.580185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: addTime()] [SQL Injection in Time Intervals] The addTime() function constructs SQL like datetime('now', '-8 SECOND') by string concatenation. Can an attacker pass interval values containing SQL injection payloads (e.g., '0 SECOND'); DROP TABLE units; --') that execute arbitrary SQL when the query is run?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_350673a0-edfb-4955-b52f-8b6f9e8e415d",
+    "timestamp": "2025-12-23 13:54:01.131981",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Undefined Parameter Handling] If parameters array contains undefined values, are they bound as NULL in SQL? Can an attacker exploit this to bypass NOT NULL constraints or cause unexpected NULL equality checks in WHERE clauses, potentially retrieving or modifying unintended records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73ce5b59-d661-405e-ad3b-fafdb610f904",
+    "timestamp": "2025-12-23 13:54:34.899462",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: addQuery()] [Async.series Callback Injection] The addQuery() function wraps callbacks for async.series(). If the original callback doesn't call callback() to signal completion, does the async.series chain hang, preventing subsequent queries in the batch from executing and causing transaction confirmation delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d5cdb82-452f-4459-aa7f-fd3fb5532f03",
+    "timestamp": "2025-12-23 13:55:04.077842",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.cquery()] [conf.bFaster Validation Bypass] When conf.bFaster is true, cquery() skips the actual query and immediately calls the callback. Can an attacker enable this configuration during critical validation queries (e.g., checking if an output is already spent), allowing double-spends to pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78ee1990-553d-4d58-90a7-40be1b5046c8",
+    "timestamp": "2025-12-23 13:55:34.682963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [This Context Binding] The callback uses 'this.changes' and 'this.lastID' which come from sqlite3's db.run() context. Can an attacker manipulate the execution environment to corrupt the 'this' binding, causing affectedRows or insertId to return values from a previous query and breaking unit storage logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e66c91a9-0d1d-4f97-9050-dc57fe0261fa",
+    "timestamp": "2025-12-23 13:56:03.832160",
+    "report_generated": false
   }
 ]
