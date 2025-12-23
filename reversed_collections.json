@@ -3448,5 +3448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22105dd6-b795-4402-810a-2b4a98408a4c",
     "timestamp": "2025-12-23 06:48:09.997068",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 82] [String slicing performance] The function uses str.slice(1, -1) to remove braces. For extremely large formulas (near max allowed size), is slice() O(n) complexity? If called repeatedly during validation, could this cause validation to take excessive time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63883384-14c4-4768-8fd9-f072f1fd2cac",
+    "timestamp": "2025-12-23 06:49:20.928645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: assignObject() Lines 59-62] [Object.assign performance] If source has a deeply nested structure with thousands of properties, will Object.assign perform a deep copy or shallow copy? If shallow, can an attacker exploit shared references between AAs? If deep, can it cause performance degradation during AA response composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf9004d2-ded4-49a4-9d48-dc18d5f6d9af",
+    "timestamp": "2025-12-23 06:49:33.365008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: clearObject() Lines 52-56] [Deletion performance attack] The function iterates over all keys and deletes them individually. If an AA's state object has thousands of keys, will this operation take excessive time (O(n) deletions), causing transaction processing to slow down below 1 hour per block (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce1e08db-6fff-4a07-8e92-22e0cfbddb4e",
+    "timestamp": "2025-12-23 06:49:46.068166",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Lines 5-7] [Cache size limit bypass] The cacheLimit is 100, but there's no enforcement on the total memory size of cached parser results. If an attacker deploys AAs with extremely large formulas (near the maximum allowed size), can 100 large formulas consume gigabytes of RAM, causing the node to OOM and crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eff6346e-5d53-4b3e-9472-e4d9d9926d57",
+    "timestamp": "2025-12-23 06:49:59.619836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 94-99] [testnet flag race condition] If constants.bTestnet is read from a config file that can be modified while the node is running, can a testnet-to-mainnet transition mid-block cause some AAs in the same block to receive formula fixes while others don't, creating divergent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0f93d43-bd1c-44d4-8853-fecd23c1be33",
+    "timestamp": "2025-12-23 06:50:13.671778",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Lines 5-7, 88-99] [Cache timing non-determinism] If two nodes process the same AA trigger at slightly different times, and one has the formula cached while the other doesn't (due to cache eviction timing), could the parsing step introduce non-deterministic behavior if the parser depends on external factors like system locale, timezone, or random number generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d97ffdb-5189-4613-b4b5-30dfb8923523",
+    "timestamp": "2025-12-23 06:50:29.759798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toDoubleRange() Lines 38-41] [Underflow determinism] When val.toNumber() === 0 due to underflow, the function returns new Decimal(0). If two nodes evaluate this at slightly different times or with slightly different CPU states, could they disagree on whether underflow occurred (due to timing-dependent floating-point operations), causing one node to use the original underflowed value while another uses exactly 0?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_320003ad-a97b-43ef-a107-a97221f353c3",
+    "timestamp": "2025-12-23 06:50:46.095779",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 11-18] [Rounding mode consensus] The ROUND_HALF_EVEN mode is banker's rounding, which behaves differently than ROUND_HALF_UP used in many financial systems. If an AA author assumes ROUND_HALF_UP behavior (because that's common in their local testing environment), but production uses ROUND_HALF_EVEN, can this cause the AA to behave unexpectedly, potentially transferring funds to unintended recipients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0aea7a51-3d63-4635-a9e7-e1e7a1dcce29",
+    "timestamp": "2025-12-23 06:51:03.655361",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 20-32] [Immutability assumption] The object is defined with literal syntax but not frozen via Object.freeze(). The comment says properties are for the base asset, implying they should be immutable. If an AA formula accidentally or deliberately modifies these properties (e.g., objBaseAssetInfo.is_transferrable = false), will all subsequent AAs in the same process see the corrupted value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cc9baa9-91dd-49ee-a975-77a16023ee32",
+    "timestamp": "2025-12-23 06:51:22.030847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toOscriptPrecision() Lines 48-50] [Precision reduction side effects] The function calls 'new Decimal(num).times(1).toString()'. If num is already a Decimal with attached metadata or custom properties, does times(1) strip those properties, and can this cause issues if the formula engine expects metadata to be preserved?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f300e725-c266-4ffc-a435-b270cbb0f4c5",
+    "timestamp": "2025-12-23 06:51:41.815236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isFiniteDecimal() Lines 34-36] [NaN handling] The function checks isFinite(val.toNumber()), which returns false for NaN. However, if val is a Decimal representing NaN (created via invalid operations), can it pass val.isFinite() but fail isFinite(val.toNumber()), or vice versa, causing inconsistent validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b987408-8b56-42dd-bf37-97bc6ed5d74b",
+    "timestamp": "2025-12-23 06:52:02.562522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: createDecimal() Lines 43-45] [String input injection] The function calls 'new Decimal(val)' without validating that val is a safe input. Can an attacker pass a maliciously crafted string like '1e+99999999' that causes Decimal.js to hang or consume excessive memory during parsing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_edcf11de-cd91-4aab-86f7-316de7ee9aa5",
+    "timestamp": "2025-12-23 06:52:25.277600",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toDoubleRange() Lines 38-41] [Zero comparison vulnerability] The function checks 'val.toNumber() === 0' to detect underflow. In JavaScript, -0 === +0 is true, but they're different values in IEEE754. Can an attacker exploit signed zero (-0) to cause subtle bugs in division operations (1/-0 === -Infinity vs 1/+0 === +Infinity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_11ba3a07-4f28-483b-acaf-ca54a3ff6227",
+    "timestamp": "2025-12-23 06:52:47.587481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 11-18] [Global Decimal mutation] The Decimal.set() call modifies the global Decimal configuration. If any other code in the process also calls Decimal.set() with different settings (e.g., precision: 20), will this affect AA formula evaluation mid-execution, causing non-deterministic results depending on timing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0321dc34-ed4c-451c-8044-4c934379a041",
+    "timestamp": "2025-12-23 06:53:09.971450",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function Exports Lines 108-119] [Function identity assumption] Functions like isFiniteDecimal, toDoubleRange, createDecimal are exported by reference. If malicious code elsewhere monkey-patches these functions (e.g., global.require.cache manipulation), can all AA formula evaluations be compromised without any visible changes to the common.js file itself?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b224e34-5d5b-429d-85de-6a6b4f0334d2",
+    "timestamp": "2025-12-23 06:53:34.797444",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Export Line 105] [Decimal library version mismatch] The Decimal object is exported for use by other modules. If different parts of the codebase use different versions of Decimal.js (e.g., due to nested node_modules), will they have incompatible configurations (precision, rounding), causing formulas evaluated in one module to produce different results than formulas evaluated in another?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e79f3075-3123-4d2c-8f7b-3288012f03a7",
+    "timestamp": "2025-12-23 06:54:00.074475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Exports Lines 101-119] [Module state sharing vulnerability] The cache, formulasInCache, cacheLimit, and objBaseAssetInfo are all exported as live references (not deep copies). If multiple AAs executing concurrently in the same Node.js process modify these shared objects (e.g., one AA corrupts the cache while another is reading it), can this cause race conditions leading to non-deterministic formula evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4593cfe-578e-47f8-b8e8-4bd02acd3980",
+    "timestamp": "2025-12-23 06:54:25.492483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: hasCases() Lines 91-92] [Cases array content validation] The function only checks that value.cases is a non-empty array but doesn't validate the content of each case. Can an attacker include malicious objects within the cases array (e.g., [null, undefined, {循環参照}]) that later cause formula evaluation to fail or behave incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_706a13af-98c7-4fe6-be22-94a3d1edfc9a",
+    "timestamp": "2025-12-23 06:54:52.691338",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: hasCases() Lines 91] [Key count verification weakness] The function checks 'Object.keys(value).length === 1'. Can an attacker pass an object with inherited properties that aren't counted by Object.keys but still affect formula evaluation (e.g., {cases: [...], __proto__: {malicious: true}})?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e74004a-bf85-4f31-a1cb-183c0505e636",
+    "timestamp": "2025-12-23 06:55:21.094138",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: hasCases() Lines 91] [Object prototype pollution] The check 'typeof value === 'object'' will also match null (since typeof null === 'object' in JavaScript). If value is null, will Object.keys(null) throw an error, causing AA validation to crash? Or does the check fail gracefully, potentially allowing null to be treated as a valid cases structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f845aa0-cb47-4826-b91c-8a8e7df1fdbc",
+    "timestamp": "2025-12-23 06:55:50.703490",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: hasCases() Lines 90-92] [Cases array validation bypass] The function checks if value is an object with exactly one key 'cases' that is a non-empty array. If an attacker passes {cases: []}, does ValidationUtils.isNonemptyArray correctly reject it, or can an empty cases array pass through and cause issues when the formula engine expects at least one case?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f56f690-1567-4502-9001-2821689f3a79",
+    "timestamp": "2025-12-23 06:56:20.052526",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 84-85] [Dead code branch] Lines 84-85 check 'else if (bOptionalBraces)' but line 78-79 already throw an error if bOptionalBraces is true, making this branch unreachable. Does this indicate a logic error where bOptionalBraces was intended to work but is currently disabled, and could re-enabling it introduce a security bug?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ece2578c-e16c-43d2-a0c5-03a554dd2332",
+    "timestamp": "2025-12-23 06:56:49.213696",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 82] [Unicode brace confusion] The function checks for ASCII braces '{' and '}'. Can an attacker use Unicode lookalike characters (e.g., U+FF5B '｛' or U+FF5D '｝') that appear as braces visually but aren't detected by this check, causing the formula to be incorrectly parsed or not stripped of its braces?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af2d6d9f-4268-4a13-9a5d-965b8e3e82d9",
+    "timestamp": "2025-12-23 06:57:15.806559",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 80-87] [Empty formula bypass] If formula is exactly '{}', this function returns an empty string ''. Can an AA be deployed with an empty formula that passes validation but does nothing, potentially locking funds forever because there's no logic to release them?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af68bdc8-7772-4b0c-bbe8-b3c44e2b9930",
+    "timestamp": "2025-12-23 06:57:41.717564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 78-79] [Exception vs null inconsistency] If bOptionalBraces is true, the function throws an Error. If false but formula lacks braces, it returns null. Can this inconsistency cause calling code to not properly handle the error case (expecting null but getting an exception), leading to unhandled promise rejections or process crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce0a37a9-b56e-4f3f-b421-1b57e28c2893",
+    "timestamp": "2025-12-23 06:58:08.539190",
+    "report_generated": false
   }
 ]
