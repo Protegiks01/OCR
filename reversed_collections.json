@@ -9448,5 +9448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9571915e-d58a-4311-9f31-085ccf8d8e6f",
     "timestamp": "2025-12-23 14:45:53.370366",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [Light node AA responses] Line 334 conditionally includes foreign key to aa_addresses only for full nodes - could light nodes store aa_responses for non-existent aa_addresses, and when upgraded to full node, violate referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e78cd53c-b325-4022-bd4b-45190325e7fb",
+    "timestamp": "2025-12-23 14:47:03.589646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA responses uniqueness] Lines 323-337 create aa_responses with UNIQUE(trigger_unit, aa_address) - if an AA is somehow triggered multiple times by the same unit (via different execution paths), could the uniqueness constraint prevent storing all responses, causing AA state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e97b6f2-32cf-4c76-8ea0-77c52f27a13b",
+    "timestamp": "2025-12-23 14:47:16.148282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 23] [Prosaic contracts status check] Lines 237-252 create prosaic_contracts table with status CHECK constraint - if invalid status values exist in any system attempting to sync this data, does the constraint violation prevent data import, causing sync failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bba6e6f7-a287-413f-972d-dc1b58ac56b8",
+    "timestamp": "2025-12-23 14:47:29.594481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [INSERT IGNORE semantics] Lines 205-207 use connection.getIgnore() for INSERT - does this silently skip duplicate attestations without warning, potentially hiding data corruption where the same (unit, message_index, field) combination appears multiple times in the source data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22c461f7-e299-4a03-adfc-8f450eb7bf36",
+    "timestamp": "2025-12-23 14:47:42.817125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Field length validation] Lines 203-208 check field/value lengths against constants.MAX_PROFILE_FIELD_LENGTH and MAX_PROFILE_VALUE_LENGTH before inserting - if these constants change between versions, could previously valid attestations be excluded from the migrated table, causing attestation data loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5df92e14-4037-4374-976b-999237cdf7ed",
+    "timestamp": "2025-12-23 14:47:56.833823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Light node conditional FK] Line 181 conditionally includes a foreign key constraint only for full nodes (conf.bLight check) - if a node switches from light to full mode, is this constraint missing, allowing orphaned attestation records that violate referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cde08b0c-78ed-4057-bd6c-251942ac0ccb",
+    "timestamp": "2025-12-23 14:48:12.181106",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 17] [Private profile auto-increment] Line 149 uses AUTOINCREMENT for private_profile_id - if the sequence overflows or wraps around (after 2^63 profiles), could new private profiles get duplicate IDs, allowing one user to access another's private attestation data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed6d6ff8-be57-45f2-b5d6-599ba96ad441",
+    "timestamp": "2025-12-23 14:48:27.822717",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 15] [Asset metadata foreign keys] Lines 121-132 create asset_metadata with FOREIGN KEY to assets and units - if these referenced tables are missing entries due to archiving or pruning, does the migration fail when trying to establish referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59644ed9-2288-4ac7-91d1-8ef722d4bffb",
+    "timestamp": "2025-12-23 14:48:46.349467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 14] [Subquery performance] Line 117 updates unit_authors._mci using a subquery to units table - for large databases, could this query take extremely long or lock tables, causing the migration to timeout or deadlock with other database operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_132e43d9-dc6f-48d1-8d1e-cc30c45e2ed4",
+    "timestamp": "2025-12-23 14:49:05.206477",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 13] [NULL mci values] Line 113 adds _mci column to unit_authors with NULL default - before version 14 populates this (line 117), are there operations that assume _mci is non-null, potentially causing crashes or incorrect behavior during the migration window?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65998fc6-a9f7-4e89-b61c-5f1acbb6e121",
+    "timestamp": "2025-12-23 14:49:24.552361",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 10] [ON DELETE CASCADE] Line 89 adds ON DELETE CASCADE to chat_messages foreign key - if correspondent_devices records are deleted during migration, could this cascade delete chat messages that contain critical pairing or payment information, leading to fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c4e4eb1-5475-41af-b4a2-ae29ec039c2d",
+    "timestamp": "2025-12-23 14:49:45.371168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 6] [Foreign key constraint] Lines 57-65 create chat_messages table with FOREIGN KEY to correspondent_devices - if correspondent_devices records are missing for some chat messages, does the migration fail, and does this prevent node upgrades, causing network fragmentation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0a70cc0-264f-4b6e-8d79-c4a6a77aed63",
+    "timestamp": "2025-12-23 14:50:07.147598",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 2] [Index creation timing] Lines 48-50 create unique indexes on headers_commission_outputs and witnessing_outputs by (address, main_chain_index) - if duplicate entries exist in these tables from a previous bug, will the index creation fail and prevent migration, or silently ignore duplicates, potentially allowing double-claiming of witness rewards?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e79ec56-11de-4d6e-bba2-903e02da7f74",
+    "timestamp": "2025-12-23 14:50:29.183014",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 2] [Known bad joints deletion] Lines 51, 69, 73, 95, 111, 145, 222, 292, 417 all delete from known_bad_joints table - if this table is used to prevent re-processing of previously rejected units, could repeated deletion allow an attacker to resubmit malicious units that were already marked as bad, leading to double-spend or consensus violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e82f6220-d79d-4bd6-8ef1-210d454c800a",
+    "timestamp": "2025-12-23 14:50:51.700208",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Long upgrade warning] Lines 25-31 warn about long upgrades for version < 31 on full nodes - but is there a timeout or watchdog that could kill the migration process, leaving the database partially upgraded and permanently corrupting it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b18599b-4bea-4970-b39a-e2ed5a7d2b5b",
+    "timestamp": "2025-12-23 14:51:16.086901",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Event bus timing] Line 26 emits 'started_db_upgrade' event and line 599 emits 'finished_db_upgrade' - if other modules rely on these events to pause/resume critical operations, and an event is missed due to timing issues, could units be written to the database during migration, causing corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37340216-ab92-430d-a46a-e3061457c592",
+    "timestamp": "2025-12-23 14:51:40.819645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [UPDATE without WHERE clause safety] Lines 587-591 update units table to set is_aa_response and count_primary_aa_triggers for existing units - if these queries are slow due to large table size, could the migration take hours/days, blocking all database operations and causing temporary network freeze (>1 day transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12773a62-3ae2-4174-a572-1bcda2f32c52",
+    "timestamp": "2025-12-23 14:52:06.682372",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [Column addition check] Lines 574-586 check if units table already has 'oversize_fee' column before adding new fee-related columns - if the string matching on units_sql (line 574) fails to detect the column due to SQL formatting differences, could the migration attempt to add duplicate columns, causing migration failure and preventing node upgrades?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_842fd35b-30f0-4d5a-8bb7-d3a0dca7d72d",
+    "timestamp": "2025-12-23 14:52:32.158607",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [System tables creation] Lines 518-591 create system_votes, op_votes, numerical_votes, system_vars, tps_fees_balances, and node_vars tables only for non-light nodes - if a node switches from light to full mode after this migration, are these tables missing, causing the node to crash or malfunction when attempting to process governance votes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69341c90-7213-4fac-9edf-2f2936e7b5c9",
+    "timestamp": "2025-12-23 14:52:58.689304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 35] [AA balance recalculation] Lines 377-386 recalculate AA balances from outputs table - if this query incorrectly sums balances due to concurrent unit storage operations, could AAs end up with wrong balance records, allowing overspending or preventing legitimate withdrawals (permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9d399b6-d32d-43c2-8621-d181e9d0b6d9",
+    "timestamp": "2025-12-23 14:53:25.438529",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Batch write failure] Lines 665-667 write all type-prefixed state variables in a single batch.write() - if this fails after the stream has already read all data, does the migration retry from the beginning or skip the upgrade, potentially leaving some nodes with typed state vars and others without, causing non-deterministic AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5096c96a-2f76-4109-8eff-da9750537557",
+    "timestamp": "2025-12-23 14:53:53.707230",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Type inference vulnerability] Lines 653-654 use getNumericFeedValue() to determine if a state variable should be typed as numeric or string - if this function has edge cases where it misclassifies values, could migrated nodes interpret state variables differently than pre-migration nodes, causing AA execution divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b46a9b49-ab87-49b2-a45f-494090bd895c",
+    "timestamp": "2025-12-23 14:54:22.352547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [Unbounded memory consumption] Lines 618-632 load all AA state variable sizes into memory (assocSizes object) - if a malicious actor previously created millions of state variables across many AAs, could this migration consume excessive memory and crash the node during upgrade, preventing nodes from upgrading and causing network split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b7e407ba-5085-49db-a4c9-0f0e86f7eeae",
+    "timestamp": "2025-12-23 14:54:51.638575",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [KV stream race condition] Lines 627-636 read from kvstore stream and accumulate sizes in assocSizes object - if new state variables are written to kvstore by another process during this read, could the storage_size calculations be incorrect, either over-counting (preventing legitimate AA operations) or under-counting (allowing storage DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b654be12-84a3-4274-aebe-eb71f1184717",
+    "timestamp": "2025-12-23 14:55:21.891227",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 34] [Storage size initialization] Lines 370-373 call initStorageSizes() which reads from kvstore and updates aa_addresses.storage_size - if this migration is interrupted, could some AAs have incorrect storage_size values, allowing attackers to exceed storage limits or bypass storage fees, leading to DoS via unbounded state growth?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_580f6b66-b11a-41c1-a5dd-b8aa9e284595",
+    "timestamp": "2025-12-23 14:55:51.923440",
+    "report_generated": false
   }
 ]
