@@ -4498,5 +4498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83770ed0-1ce9-406a-b5d7-bac4f73c03e6",
     "timestamp": "2025-12-23 07:59:01.021491",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readNextAddressIndex()] [Null vs 0 ambiguity] The function returns 0 when last_used_index is null (line 515) - but 0 is also a valid address index. Can this cause confusion where 'no addresses ever used' is indistinguishable from 'address 0 was last used'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24c34312-c1ef-4b3e-8252-0fef57eff797",
+    "timestamp": "2025-12-23 08:00:09.331525",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectNextChangeAddress()] [Ternary operator ambiguity] The function uses ternary addressInfo ? handleAddress(addressInfo) : issueAddress() (line 672) - if addressInfo is truthy but invalid (e.g., empty object), can this cause handleAddress to be called with bad data instead of issuing new address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_957dc613-cb89-40b2-a145-4085f0fc0ef1",
+    "timestamp": "2025-12-23 08:00:21.849059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectNextChangeAddress()] [First unused vs next index mismatch] The function computes first_unused_index as last_used_index + 1 (line 667) but compares it to next_index - if first_unused < next_index, it tries to read address at first_unused. Can malicious database corruption make first_unused > next_index, causing Error 'unused > next' to be thrown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1fef59ea-6ea8-41e6-a26c-3455d2bebbba",
+    "timestamp": "2025-12-23 08:00:34.775873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectNextAddress()] [Random address selection bias] The function uses selectRandomAddress() which orders by db.getRandom() (line 631) - if the database's random function is predictable or has low entropy, can attackers predict which addresses will be reused?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_86488373-315f-4073-ac7c-3b6fa35b7ad0",
+    "timestamp": "2025-12-23 08:00:49.168331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectNextAddress()] [Last used index null handling] When last_used_index is null, the function compares next_index - null >= MAX_BIP44_GAP (line 656) - does JavaScript treat this correctly, or can NaN comparisons cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27ceb815-0c39-4780-b3ba-10958a16b41e",
+    "timestamp": "2025-12-23 08:01:03.316054",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectNextAddress()] [MAX_BIP44_GAP boundary] When next_index exactly equals MAX_BIP44_GAP (20), the function issues new address (line 654) - but should the limit be inclusive or exclusive? Can this create exactly 21 consecutive unused addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3009744-06c7-45db-bcd1-ceb1342029ef",
+    "timestamp": "2025-12-23 08:01:19.547687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueNextAddress()] [Next index race condition] Between reading next_index (line 641) and issuing address (line 642), can another process issue the same index, causing both to attempt inserting the same address with INSERT IGNORE silently failing for one?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3116c88-f732-4eb8-9ec4-d137220a68a2",
+    "timestamp": "2025-12-23 08:01:35.505105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueNextAddress()] [Mutex deadlock] The function locks 'issueNextAddress' mutex (line 640) but doesn't specify timeout - can concurrent address issuance cause permanent mutex deadlock if unlock() is never called due to exceptions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc9e3e22-3c38-441c-b1f8-047545389de0",
+    "timestamp": "2025-12-23 08:01:52.938422",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueAddress()] [Asynchronous checkAddress timing] The function calls checkAddress() after 5 second timeout (lines 609-611) - if the issueAddress() call fails after scheduling this timeout, can the checkAddress() run on non-existent addresses causing errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22283b67-edf5-4936-8de3-05d50fadd5e7",
+    "timestamp": "2025-12-23 08:02:11.410306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueAddress()] [Timestamp overflow] The function uses Date.now()/1000 (line 606) - in year 2038, will this overflow when converted to int32 timestamp, causing addresses to have incorrect creation_ts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d236c3cc-220d-4e3e-a409-fd621cab97fa",
+    "timestamp": "2025-12-23 08:02:31.418960",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueAddress()] [Device notification failure] The function sends address to other devices in forEach loop (lines 602-605) - if sendNewWalletAddress() fails for some devices, the address is still returned. Can this cause address synchronization to break across multi-sig wallet members?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b639626e-e2cf-4ae1-b565-1d17fcad25b3",
+    "timestamp": "2025-12-23 08:02:51.034156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueAddress()] [Gap check bypass] The function issues address without checking if address_index exceeds MAX_BIP44_GAP (line 599) - unlike issueOrSelectNextAddress(), can this allow unlimited gap creation when called directly by other modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cca1bbca-6468-4e5b-bd25-e7842fe5f918",
+    "timestamp": "2025-12-23 08:03:11.510159",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: recordAddress()] [Event emission timing] The function emits 'new_address-'+address and 'new_address' events (lines 579-580) - if event handlers throw exceptions, can this prevent onDone() from being called and leave the address in inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30d10ca4-b680-4dcb-99be-b19c1c52e637",
+    "timestamp": "2025-12-23 08:03:32.610687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: recordAddress()] [Definition serialization] The definition is JSON.stringify'd (line 577) - can large or deeply nested definitions cause serialization failures, memory exhaustion, or exceed database column limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d79137bd-046d-400a-8057-b069b43a31f9",
+    "timestamp": "2025-12-23 08:03:55.230254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: recordAddress()] [Light client unprocessed address] For light clients, unprocessed_addresses is inserted before my_addresses (line 570) - can race conditions between these insertions cause addresses to be added to my_addresses without corresponding unprocessed_addresses records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ffce977-f4f8-4689-9d71-c1d0903448d5",
+    "timestamp": "2025-12-23 08:04:17.771251",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: recordAddress()] [Column name injection] The address_index_column_name is set based on typeof check (line 568) - can an attacker craft address_index to be an object with numeric toString() to bypass type check and inject 'app' column when it should be 'address_index'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de360af8-f352-47e2-8812-59bfee6b74eb",
+    "timestamp": "2025-12-23 08:04:41.245693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: recordAddress()] [String index for change address] The function throws Error if address_index is string AND is_change is true (line 566-567) - but what if is_change is a truthy non-boolean value like 1 or '1'? Can this bypass the check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b32768c-aad4-48c2-b396-63c28709b039",
+    "timestamp": "2025-12-23 08:05:05.819944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Address hash collision] The function computes address using objectHash.getChash160() (line 558) - is there any collision detection to prevent two different definitions from generating the same address, which could enable fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61a1edd4-4486-4e4b-9453-3b0227a8d87b",
+    "timestamp": "2025-12-23 08:05:30.470690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Definition template replacement] The function calls Definition.replaceInTemplate() (line 557) - if the params object has unexpected keys due to device_address manipulation, can this cause the wrong pubkeys to be inserted or template corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f779d97a-65e3-4017-aa0d-43e56f3f1b5a",
+    "timestamp": "2025-12-23 08:05:55.733304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Path construction] The path is constructed as 'm/'+is_change+'/'+address_index (line 549) - can non-numeric is_change or address_index values cause malformed paths that Bitcore misinterprets or crashes on?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_acb06741-9ed8-4795-8c69-d06344b5e822",
+    "timestamp": "2025-12-23 08:06:21.272145",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Extended pubkey missing check] The function throws Error if no extended_pubkey (line 553) - but this check is inside the forEach loop. Can a wallet with some devices having xPubKeys and others missing proceed with partial derivation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f314b23-fd90-4f82-9cae-39f2bce69e05",
+    "timestamp": "2025-12-23 08:06:48.271774",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Full approval check bypass] The function checks full_approval_date (line 540-541) - but what if the wallet's full_approval_date is set to a future time, or the database timestamp is manipulated? Can addresses be derived before wallet is actually ready?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b330019-c36e-4c34-bba2-92086c049fa0",
+    "timestamp": "2025-12-23 08:07:14.290184",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deriveAddress()] [Wallet not found timing] The function throws Error if wallet not found (line 539) - but this is after database query completes. Can an attacker delete the wallet between query and error check, causing the error to leak information about wallet existence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16de9e31-fb20-4e4d-b149-e9058cdafda0",
+    "timestamp": "2025-12-23 08:07:40.021534",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: derivePubkey()] [Key format conversion] The function converts to base64 using .toString('base64') (line 533) - can this conversion fail for certain key values, produce non-canonical encodings, or truncate data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3bd79b2-9b16-4c26-b92d-41d69065de2b",
+    "timestamp": "2025-12-23 08:08:06.780162",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: derivePubkey()] [Path injection] The path parameter is passed directly to hdPubKey.derive() (line 533) - can attackers inject malicious paths like 'm/../../' or paths with large numbers that cause Bitcore to derive weak keys or crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51a090a7-2e93-424f-aa0d-08ce124bcf75",
+    "timestamp": "2025-12-23 08:08:34.038638",
+    "report_generated": false
   }
 ]
