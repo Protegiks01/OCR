@@ -10348,5 +10348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3a4e552-3615-4c47-8237-fedf5157da78",
     "timestamp": "2025-12-23 15:46:21.937775",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [CPU Exhaustion] If an attacker creates an AA that calls is_valid_sig with a 4096-bit RSA key (maximum size allowed by line 101 check), how long does a single verification take, and could an attacker trigger thousands of such verifications by sending many trigger units, causing all nodes to become CPU-bound and unable to process normal transactions for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83b7bad0-b1d4-4310-a86b-0be9eda2da6d",
+    "timestamp": "2025-12-23 15:47:32.567532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Buffer.from() Behavior] Does Buffer.from(b64_sig, 'base64') behave identically across all Node.js versions when handling invalid base64 (e.g., missing padding, invalid characters) - or could version differences cause the same b64_sig to decode to different byte arrays, leading to different verification results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00b534a5-43f4-465b-8e5b-4b0f6534eee9",
+    "timestamp": "2025-12-23 15:47:45.340222",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Encoding Detection Non-Determinism] ValidationUtils.isValidHexadecimal() at line 27 determines encoding - if this function's behavior changes across validation_utils.js versions, could the same signature string be interpreted as hex on some nodes and base64 on others, causing verification to pass on some nodes and fail on others?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc162afe-15c2-43f5-8271-8235474ad191",
+    "timestamp": "2025-12-23 15:47:58.233711",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Normalization Non-Determinism] The whitespace removal at line 99 uses regex /\\\\s/g which matches different characters in different JavaScript engines - could Node.js updates change which Unicode codepoints are considered whitespace, causing the same PEM key to normalize differently pre/post-update and breaking signature verification for existing AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e42448c-0532-45aa-910b-2d4df26b283d",
+    "timestamp": "2025-12-23 15:48:11.757070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Library Version Pinning] Does package.json pin the exact version of the 'secp256k1' library, or could nodes running different versions (e.g., 4.x vs 5.x) have different validation behavior, causing some nodes to accept signatures that others reject, leading to network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4c2a43a-87ef-46cd-9e38-b4c42d499ffc",
+    "timestamp": "2025-12-23 15:48:25.979386",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [OpenSSL Version Differences] If different nodes run different OpenSSL versions (e.g., OpenSSL 1.0.2 vs 1.1.1 vs 3.0), could subtle differences in RSA padding validation, curve implementation, or hash computation cause verifyMessageWithPemPubKey() to return different results for the same inputs, leading to permanent chain split when validating AA units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e386ed04-b896-4a3e-b65b-21d3298923f8",
+    "timestamp": "2025-12-23 15:48:41.281895",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Brainpool Curves] objSupportedPemTypes includes Brainpool curves (brainpoolP160r1, etc.) which have controversial origin and potential backdoors - could state-level attackers who know the curve generation parameters exploit structural weaknesses to forge signatures, bypassing AA access controls?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e8d30f3-7f16-4765-aa8d-f5677e12769b",
+    "timestamp": "2025-12-23 15:48:57.592937",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Binary Field Curves] objSupportedPemTypes includes binary field curves (sect113r1, sect131r1, etc.) which have been deprecated due to security concerns - could these curves have implementation bugs in OpenSSL that cause non-deterministic verification results across different nodes, leading to permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d454213e-8bad-4017-8970-668310d074af",
+    "timestamp": "2025-12-23 15:49:15.137626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Weak Curves] objSupportedPemTypes includes weak curves like secp112r1 (56-bit security), sect113r1 (60-bit security), and secp128r1 (64-bit security) - could an attacker brute-force private keys for these curves in hours/days on modern hardware, then forge signatures for AAs that use is_valid_sig with these weak curves, stealing all funds controlled by such AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8848be9f-ffd5-4632-9712-32a1859e25ab",
+    "timestamp": "2025-12-23 15:49:33.720503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [SHA256 Weakness] The function uses crypto.createVerify('SHA256') at line 24 - if a SHA256 collision is discovered (birthday attack requiring ~2^128 operations), could an attacker create two different messages with the same SHA256 hash, allowing them to sign one message legitimately then substitute another message that also verifies, breaking oracle data integrity or AA authorization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f301b90b-9e32-4aac-a208-b0f1c9f31ffc",
+    "timestamp": "2025-12-23 15:49:53.170031",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [secp256k1 Library] The verify() function uses the 'secp256k1' npm package at line 3 - if this library has a critical vulnerability (e.g., non-constant-time operations leaking private keys via timing attacks), could an attacker who controls network timing observe signature verification times and extract private keys from witness or oracle nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7501a42e-d6a9-4deb-9a90-ad7304695553",
+    "timestamp": "2025-12-23 15:50:12.689250",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [VRF Verification] Formula/evaluation.js line 1637 uses verifyMessageWithPemPubKey() to verify VRF proofs in vrf_verify operations - but if the 'proof' is just a normal RSA signature (not a real VRF proof), could an oracle manipulate vrf_verify results by generating multiple signatures until finding one that produces a desired output, breaking the unpredictability guarantee of VRFs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f5f2c1a-5ecd-40d4-93f2-8b84e8dd4d37",
+    "timestamp": "2025-12-23 15:50:33.170988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Network.js Authentication] Network.js uses verify() for device authentication - if an attacker can cause verify() to return true for invalid signatures through exception handling bugs, could they impersonate any device and send malicious units/messages to other peers, potentially executing DoS or eclipse attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_86e62cca-efea-4634-a1a9-ac366cd3bb5e",
+    "timestamp": "2025-12-23 15:50:54.698167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Formula Integration] Formula/evaluation.js validates signature length ≤ 1024 but not PEM key length - if an attacker provides a massive PEM key (up to 736 base64 chars = ~552 bytes) that passes validateAndFormatPemPubKey(), could the subsequent verifyMessageWithPemPubKey() consume excessive CPU during cryptographic operations, delaying AA execution and causing network-wide slowdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6998d9c-27b4-4c2e-81dc-3289c8046d20",
+    "timestamp": "2025-12-23 15:51:16.462110",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [AA Formula Integration] Formula/evaluation.js line 1605 uses verifyMessageWithPemPubKey() for is_valid_sig operations - if the evaluated_message contains malicious Unicode or control characters that are normalized differently by crypto.createVerify() versus the AA formula string handling, could an attacker create a signature that verifies in is_valid_sig but fails when actually used, breaking AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f5d9d5a-2581-4dee-b84f-368e6234f4c1",
+    "timestamp": "2025-12-23 15:51:39.026059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Placeholder Signature] Definition.js line 683 allows signatures starting with '-' as placeholders when bUnsigned=true - if this flag is set incorrectly during validation (e.g., during catchup), could nodes accept unsigned units as valid, allowing anyone to spend from addresses defined with 'sig' operators?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_743fdd00-88b6-4714-aac0-45e84c6bb816",
+    "timestamp": "2025-12-23 15:52:02.341646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Integration with definition.js] When definition.js line 685 calls ecdsaSig.verify() during 'sig' evaluation, if the unit_hash_to_sign was computed incorrectly in object_hash.js due to non-deterministic JSON serialization, could verify() return true for an invalid signature because it's checking against the wrong hash, allowing unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0594203-81e5-48ca-8f6e-b229bdc70b74",
+    "timestamp": "2025-12-23 15:52:26.808789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessageWithRsaPemPrivKey()] [VRF Security] The vrfGenerate() function at line 55-57 simply calls signMessageWithRsaPemPrivKey(seed, 'hex', privkey) - but true VRF (Verifiable Random Function) requires additional properties like unpredictability and collision resistance - does this implementation actually provide VRF security, or is it just a regular signature that could be exploited by attackers who can predict VRF outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a5f0cda-afc4-46e9-89dc-eb218f23d5f9",
+    "timestamp": "2025-12-23 15:52:52.214581",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessageWithRsaPemPrivKey()] [Conditional PEM Formatting] Lines 61-68 only reformat the PEM key if it includes 'BEGIN RSA PRIVATE KEY' - but if an RSA private key is provided in PKCS#8 format (BEGIN PRIVATE KEY) instead of PKCS#1 (BEGIN RSA PRIVATE KEY), the formatting is skipped - could this cause signMessage() to fail with certain valid RSA keys, breaking VRF generation in formula/evaluation.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_591d0c74-0d94-4949-bcdd-43b3d79fa9c7",
+    "timestamp": "2025-12-23 15:53:17.850871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessageWithEcPemPrivKey()] [Header Validation] The regex at line 47 matches both '-----BEGIN EC PRIVATE KEY-----' headers, but what if pem_key contains multiple headers or malformed headers - does replace() remove all of them or just the first occurrence, potentially leaving malicious content in the key?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7875997d-5cc6-4a65-87d0-ec090ee97048",
+    "timestamp": "2025-12-23 15:53:43.446307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessageWithEcPemPrivKey()] [PEM Formatting] Lines 47-51 reconstruct the PEM key by removing and re-adding headers/footers with specific newline formatting - if the original pem_key had different whitespace (e.g., \\\\r\\\\n vs \\\\n, extra spaces), does this normalization ensure that the private key material is identical, or could subtle differences in ASN.1 padding cause different signing results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eeb33aad-f5dd-4108-bf10-04716518f7f4",
+    "timestamp": "2025-12-23 15:54:09.393436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessage()] [Null Return] If both sign.sign() calls at lines 79, 82 throw exceptions, the function returns null at line 85 - do all callers of signMessage() properly check for null, or could null signatures propagate to validation code causing units to be accepted without valid signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bacf5bf4-4099-4fbe-862a-7932ad2728fd",
+    "timestamp": "2025-12-23 15:54:36.658143",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessage()] [Node.js API Compatibility] Lines 79-86 use double try-catch to handle different Node.js API versions - if the first sign.sign(pem_key, encoding) succeeds on one node version but the second sign.sign({key: pem_key}, encoding) succeeds on another version, and these produce different signature formats, could signatures generated on different nodes be incompatible, causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bfc65d72-348f-4bc3-b99d-c7eef7bfc429",
+    "timestamp": "2025-12-23 15:55:04.413973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessage()] [PEM Key Validation] signMessage() accepts any pem_key without validation - could an attacker call this function directly (or through vrfGenerate/signMessageWithRsaPemPrivKey) with a malformed PEM key that causes sign.sign() at line 79 to throw an exception containing the private key contents, leaking the key material?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4da56528-6426-4713-8b12-12c1811e7234",
+    "timestamp": "2025-12-23 15:55:31.252989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessage()] [Default Encoding] At lines 73-74, if encoding parameter is falsy, it defaults to 'base64' - but if caller passes encoding=null or encoding=undefined explicitly, does JavaScript's truthiness check treat these differently than omitting the parameter, potentially causing inconsistent signature encodings across different calling contexts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0c16174-98d7-4342-97dc-8bdf797533a2",
+    "timestamp": "2025-12-23 15:55:59.652916",
+    "report_generated": false
   }
 ]
