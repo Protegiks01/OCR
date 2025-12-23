@@ -11698,5 +11698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c214488-ff0a-4078-b431-b9570cbc8ff0",
     "timestamp": "2025-12-23 14:31:14.194957",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Large History Exception] At line 192-193, if response.error contains 'your history is too large', an Error is thrown without cleanup - does this throw bypass the finish() callback, leaving ws.bRefreshingHistory=true and preventing any future refreshes, effectively bricking the light client until restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_634ff2ee-006d-4f99-be93-a519de1ab784",
+    "timestamp": "2025-12-23 14:32:23.495221",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Network Error During Processing] At lines 196-216, light.processHistory() is called with ifError and ifOk callbacks, but if the network connection drops during processing (after line 190), can the callbacks never fire, leaving ws.bRefreshingHistory stuck and preventing all future refreshes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c7445ef-9eb1-43df-8e83-0be5b0d2e9ab",
+    "timestamp": "2025-12-23 14:32:36.315507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Silent Failure] At lines 229-230, if network.requestFromLightVendor() errors, the error is only logged to breadcrumbs without any retry or fallback - can a temporarily unavailable light vendor cause double-spend units to remain unarchived indefinitely, allowing an attacker to resurrect old double-spend attempts months later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e916b18-d23a-420b-b7a4-882f8f0d5b77",
+    "timestamp": "2025-12-23 14:32:49.139670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Response Validation Bypass] At line 191, only response.error is checked before processing - if the response object is malformed (null, undefined, or missing required fields), can light.processHistory() crash with an exception that doesn't go through the ifError callback, leaving the refresh in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b99e2e76-1c7b-448d-a07e-2f4f2ded66d4",
+    "timestamp": "2025-12-23 14:33:02.557362",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: connected] [Error Handling in Query Callback] At lines 126-137, database errors in the SELECT or DELETE queries are not explicitly caught - if the query fails due to database corruption, can the callback never fire, preventing unprocessed addresses from being cleared and causing the same addresses to be reprocessed on every connection, amplifying DoS attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed615f7b-3820-4c13-a547-328a08137fb5",
+    "timestamp": "2025-12-23 14:33:16.613327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilHistoryRefreshDone()] [Promise Rejection] At lines 266-277, if the promise version is used and network.findOutboundPeerOrConnect() returns an error, the promise rejects - but if the callback version is used and an exception occurs in the eventBus.once() handler, can this create an unhandled exception that crashes the process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0109849d-2bb1-4ef7-a0e9-8a97292ce8d4",
+    "timestamp": "2025-12-23 14:33:31.852729",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_address] [Address Format Validation] At line 107, a 'new_address' event is received with address parameter, but there's no validation that the address is a valid Obyte address (base32, correct checksum) - can an attacker emit fake new_address events with malicious strings that contain SQL injection, causing database corruption when the address is used in queries at lines 109 and 115?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_610a5024-47c7-46c0-9377-133176588c15",
+    "timestamp": "2025-12-23 14:33:48.430406",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_address] [Address Length DoS] At lines 112-116, refreshLightClientHistory() is called with a single-element array [address] - if the address parameter is an extremely long string (e.g., 1MB), can this cause memory exhaustion when the address is used in SQL queries at line 71, or when sent to the light vendor in the history request, leading to DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a2a64fa-5e4d-4f3b-8d9c-f91146e02e05",
+    "timestamp": "2025-12-23 14:34:06.510391",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Address Array Injection] At lines 54 and 56-57, newAddresses or arrAddresses are used without validation - if these contain non-string elements (null, undefined, objects), can this cause db.escape() to fail or produce unexpected output that corrupts SQL queries or sends malformed requests to the light vendor?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f75a5a36-4b7e-4c6e-a07b-be23b91fd2f2",
+    "timestamp": "2025-12-23 14:34:25.319269",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: connected] [Unprocessed Address Validation] At lines 126-135, addresses are read from unprocessed_addresses table and used directly - if an attacker previously inserted invalid address formats into this table, can the subsequent history refresh or DELETE statement fail silently, leaving addresses permanently unprocessed and funds undetectable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b28d6a4d-4c3c-438c-ba08-87158df585ef",
+    "timestamp": "2025-12-23 14:34:45.274773",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Empty Address Array] At lines 61-69, if arrAddresses.length === 0, objHistoryRequest.addresses is not set, but the function continues - can this cause the light vendor to return history for ALL addresses in the network, overwhelming the client with gigabytes of irrelevant data and causing memory exhaustion DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48942f41-78fc-4820-92b5-3c10f33b2a9b",
+    "timestamp": "2025-12-23 14:35:05.995718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Address Count Limit] At lines 61-62, objHistoryRequest.addresses is set to arrAddresses without any limit on array size - if a user has registered 10,000 addresses, can the resulting history request be so large that the light vendor rejects it, the network layer times out, or the response is so massive that it causes permanent memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_806ef074-82b6-4f21-9176-e14b738c0962",
+    "timestamp": "2025-12-23 14:35:28.252239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_my_transactions] [Unit Hash Validation] At line 243, arrUnits is received from event but not validated - can an attacker emit fake new_my_transactions events with malicious unit hashes that cause SQL injection at line 244 or invalid asset proof requests at line 248 that crash the network module?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_960f5227-e204-4ef4-8df1-ed10c9dca9d0",
+    "timestamp": "2025-12-23 14:35:50.640994",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global] [Reconnection Timer Race] At line 23, setInterval() schedules reconnection every 60 seconds, and line 24 adds 'connected' event handler - if the client connects exactly at the 60-second mark, can both triggers fire simultaneously, causing duplicate reconnection attempts that bypass the bRefreshingHistory check and corrupt history processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90e4ae38-34ae-4060-b903-1a8c63e0ee54",
+    "timestamp": "2025-12-23 14:36:14.385261",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Selective Refresh Delay] At lines 182-184, selective refresh is delayed by 2 seconds if full refresh is ongoing - but what if full refresh takes >2 seconds and completes while the delayed selective refresh is waiting? Can the selective refresh start just as the next full refresh begins, causing concurrent processing and DAG corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02f0898b-9a2b-488f-8b25-da83aab2f116",
+    "timestamp": "2025-12-23 14:36:38.814378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilFirstHistoryReceived()] [Deadlock] At lines 257-264, if bFirstHistoryReceived is false, the function waits for 'first_history_received' event - but if the event was already emitted before this function is called (race condition), can the callback never fire, causing wallet operations to hang indefinitely and freeze all funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f32b2d3-1713-49fe-8002-c7dbf078f647",
+    "timestamp": "2025-12-23 14:37:03.379615",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilHistoryRefreshDone()] [Deadlock] At lines 266-277, if bRefreshingHistory is false when checked at line 272, the function returns immediately - but if refresh starts between the check and return, can subsequent code proceed assuming refresh is done when it's actually ongoing, causing transaction composition with incomplete data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6999e7f-53b7-4958-9c79-2da31abdea3e",
+    "timestamp": "2025-12-23 14:37:29.114162",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global] [Archive Timer] At line 242, archiveDoublespendUnits() runs every 24 hours - if the light client is offline for 48 hours, then comes online, can the timer fire immediately and archive legitimate transactions that took 25 hours to confirm due to network congestion, hiding those transactions from the user's history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a1df51e-ab7f-4ae3-b46a-feef3c1d5a4d",
+    "timestamp": "2025-12-23 14:37:55.287830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Processing Time Estimation] At line 196, an interval is set to emit events every 10 seconds during history processing - if processing actually takes 10 hours due to massive history, can the 3600 event emissions cause memory leaks or CPU exhaustion that crash the client mid-processing, leaving the database in a corrupted state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04333391-2983-40ac-bd5d-802561ccce43",
+    "timestamp": "2025-12-23 14:38:23.157643",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_my_transactions] [Asset Proof Timing] At lines 243-250, asset proofs are requested immediately when new transactions arrive - but if those transactions are still unstable and get double-spent before proofs arrive, can the proofs validate a transaction that no longer exists, causing the user's balance to show received funds that aren't actually available?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_549171d1-ba09-4798-b9bc-794f5119b67b",
+    "timestamp": "2025-12-23 14:38:49.352636",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilFirstHistoryReceived()] [Promise/Callback Dual Mode] At lines 258-259, the function supports both callback and promise modes - if caller accidentally provides both a callback and expects a promise, can the callback be called but the promise never resolve, causing memory leaks from waiting promises?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2231c5ab-7b1b-4117-87dc-834de39354d2",
+    "timestamp": "2025-12-23 14:39:16.261657",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilFirstHistoryReceived()] [Event Handler Memory Leak] At line 263, eventBus.once() is used, but if the 'first_history_received' event is never emitted (e.g., refresh fails permanently), can the registered callback remain in memory indefinitely, causing a memory leak that accumulates with each failed wait attempt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71e859b3-7ead-4a1e-b5f5-dbdcc47de373",
+    "timestamp": "2025-12-23 14:39:42.018678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilHistoryRefreshDone()] [Callback Error Propagation] At lines 268-271, if network.findOutboundPeerOrConnect() returns an error, cb(err) is called - but if the caller expects the error to be an Error object and it's a string, can this cause unhandled exceptions in the caller's error handling code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8804b91d-e650-4448-a2e1-579328d2d8e1",
+    "timestamp": "2025-12-23 14:40:08.965457",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilHistoryRefreshDone()] [Event Handler Race] At line 275, eventBus.once() is registered, but if 'refresh_light_done' event fires between line 272 (check) and line 275 (registration), can the callback never be invoked, causing permanent deadlock in any code waiting for history refresh completion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_757216af-2852-4152-ae9f-9668857d457f",
+    "timestamp": "2025-12-23 14:40:35.712531",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Callback Invocation Order] At lines 161-170, finish() callback is defined to call the user-provided handle() callback - if handle() throws an exception, can this prevent 'refresh_light_done' event emission at line 169, breaking any code waiting via waitUntilHistoryRefreshDone()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0227c6ac-c912-4d78-93b2-445c0a130209",
+    "timestamp": "2025-12-23 14:41:03.446770",
+    "report_generated": false
   }
 ]
