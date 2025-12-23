@@ -10648,5 +10648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13240eb3-f4a8-4ba9-b340-2a2ee1947d38",
     "timestamp": "2025-12-23 13:19:05.194480",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: saveUnhandledJointAndDependencies + readDependentJointsThatAreReady] [TOCTOU Race] If saveUnhandledJointAndDependencies() commits dependencies at the same moment readDependentJointsThatAreReady() is checking for ready joints, can the COUNT query (lines 101-107) return incorrect counts due to uncommitted reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c864d7b-5450-49c6-8eeb-9e87409e6173",
+    "timestamp": "2025-12-23 13:20:25.807069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: purgeJointAndDependencies + readDependentJointsThatAreReady] [Deleted Joint Processing] If purgeJointAndDependencies deletes a joint while readDependentJointsThatAreReady is about to process its dependents, can the dependents be processed with invalid parent reference?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3eb09d89-7f23-4f4d-a1d7-a6f0f572451a",
+    "timestamp": "2025-12-23 13:20:38.670699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: checkIfNewUnit + purgeJointAndDependencies] [Cache State Race] If checkIfNewUnit is checking a unit (line 29 query) while purgeJointAndDependencies is marking it bad (line 148), can the unit pass checkIfNewUnit as 'new' despite being already marked bad in cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cee4211-1065-4943-b273-77088e18729b",
+    "timestamp": "2025-12-23 13:20:52.046195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: removeUnhandledJointAndDependencies + saveUnhandledJointAndDependencies] [Delete-Insert Race] If the same unit is being removed by one thread and saved by another simultaneously, can database constraints be violated or can the unit exist in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20a348d9-3593-4da8-83c6-3ce294c22e40",
+    "timestamp": "2025-12-23 13:21:05.593569",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: purgeOldUnhandledJoints + saveUnhandledJointAndDependencies] [Premature Purge] If purgeOldUnhandledJoints runs while saveUnhandledJointAndDependencies is saving a unit that already has old creation_date (copied from peer), can the unit be immediately purged after being saved?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cef381da-ccbe-48c3-ab0c-bd2c1ef75ee8",
+    "timestamp": "2025-12-23 13:21:19.917156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Transaction: Multiple functions] [Isolation Level] No explicit transaction isolation level is set in any BEGIN statement - can READ UNCOMMITTED or READ COMMITTED defaults cause dirty reads between concurrent purge/save operations (Critical: chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_658df705-fd49-49c0-b174-c9ad6a3a00ad",
+    "timestamp": "2025-12-23 13:21:35.809430",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Transaction: purgeUncoveredNonserialJoints] [Connection Leak] Lines 244-287 hold a database connection for extended archiving - if an exception is thrown during archiving, is conn.release() (line 277) guaranteed to execute, or can connections leak (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e743f48-07f8-40d9-ba7d-9fd2e6422db6",
+    "timestamp": "2025-12-23 13:21:52.744049",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Transaction: saveUnhandledJointAndDependencies] [Rollback on Error] If any query in the transaction (lines 78-81) fails, does async.series properly handle rollback, or can partial state be committed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bce37aa8-2b3f-4ba0-ab3e-16cb6f1c410e",
+    "timestamp": "2025-12-23 13:22:10.335991",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Query: readDependentJointsThatAreReady] [Subquery Correlated Performance] Line 113 executes a separate query for EACH row returned by the main query (lines 99-108) - if 1000 joints are ready, does this create 1000 sequential database round trips (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_294ff8fb-6259-43a6-b0f6-487bc0a9e910",
+    "timestamp": "2025-12-23 13:22:29.260478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Query: findLostJoints] [Stale Timestamp] Line 133 filters by 'creation_date < 8 seconds ago' but doesn't re-validate after the query completes - if query takes 10 seconds to run on large dependencies table, can units that become >8 seconds old during query execution be missed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab6b0dd0-1a9a-444f-adc9-49343f12d59b",
+    "timestamp": "2025-12-23 13:22:49.164450",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Error: collectQueriesToPurgeDependentJoints] [Error Object Cloning] The same error string is propagated to all descendants (line 155, 203) - if the original error contains sensitive information or stack traces, can this leak data through the dependency graph?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c904c54f-17ac-4c8d-92ef-5a75192f1ee3",
+    "timestamp": "2025-12-23 13:23:10.469228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Error: saveKnownBadJoint] [Unchecked Database Errors] Line 324's db.query has no error handling in its callback - if INSERT fails (constraint violation, disk full), the onDone callback still executes, potentially misleading the caller?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67b6f2fa-891d-42d3-90ad-1f7a30c93231",
+    "timestamp": "2025-12-23 13:23:33.045815",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Error: readJointsSinceMci] [Silent Missing Units] Lines 304-307 log to breadcrumbs instead of propagating errors when units aren't found - can this mask critical data corruption where expected units are missing from storage (High: permanent state divergence)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c717850b-ded0-412a-80d3-f779aa486305",
+    "timestamp": "2025-12-23 13:23:56.349891",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Network: saveUnhandledJointAndDependencies] [Peer Attribution] The peer parameter (line 70, 79) identifies which peer sent the joint - if this peer string is not validated and contains special characters, can it cause issues in downstream code that uses this value for peer reputation/banning logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03ee8de6-01af-45de-8fac-dd46afd928ec",
+    "timestamp": "2025-12-23 13:24:19.942277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Network: readDependentJointsThatAreReady] [Peer-Based Notification] Line 115 passes internal_row.peer to handleDependentJoint callback - if different peers sent the same joint (duplicates in unhandled_joints), will handleDependentJoint be called multiple times with different peer values, causing duplicate processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93c62b0d-4338-4df0-94d1-94de07fe0c5d",
+    "timestamp": "2025-12-23 13:24:45.239608",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Network: findLostJoints] [Request Amplification] If findLostJoints identifies 100 lost joints and handleLostJoints broadcasts requests to 50 peers, does this create 5000 network requests that could overwhelm peer nodes or network bandwidth (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5db745a-9f65-409f-a437-d287b48a919b",
+    "timestamp": "2025-12-23 13:25:11.202154",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Dependency: Circular Dependencies] [Deadlock Detection] None of the functions explicitly check for circular dependencies where unit A depends on B, B depends on C, and C depends on A - can such cycles cause infinite loops in collectQueriesToPurgeDependentJoints (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26765224-28d6-4936-b28b-187e93260953",
+    "timestamp": "2025-12-23 13:25:37.970017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Dependency: Orphaned Dependencies] [Cleanup] If a parent unit is removed from the units table (e.g., via archive) but its dependencies entries are not deleted, can these orphaned dependencies accumulate and degrade query performance over time (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2c87334-cf88-4f46-aeea-b294395bdcc6",
+    "timestamp": "2025-12-23 13:26:05.857496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Dependency: Missing Parent Validation] [Invalid References] When saveUnhandledJointAndDependencies creates dependencies (lines 74-76), there's no validation that arrMissingParentUnits contains valid unit hashes - can invalid hashes be inserted causing later queries to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0345b8bb-b8f7-4107-b7e8-5ed52bbdf365",
+    "timestamp": "2025-12-23 13:26:34.433305",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Time: purgeUncoveredNonserialJoints] [Clock Skew] Line 231 uses db.addTime('-10 SECOND') to check creation_date - if the database server's clock is skewed forward by 20 seconds relative to application server, can units be prematurely archived?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec10c9ae-f6eb-44a7-8ad2-41a6270b9873",
+    "timestamp": "2025-12-23 13:27:02.125365",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Time: findLostJoints] [NTP Attack] Line 133 uses db.addTime('-8 SECOND') - if an attacker can manipulate NTP to temporarily freeze or slow the clock, can they prevent lost joints from ever being detected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46b6453c-6c1b-446b-8be8-8bf17f30cb3b",
+    "timestamp": "2025-12-23 13:27:32.561603",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Time: purgeOldUnhandledJoints] [Timezone Issues] Line 334 uses db.addTime('-1 HOUR') - are time zone conversions handled correctly across MySQL vs SQLite, or can this cause inconsistent purging behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e42564f9-4001-4f2c-9158-3bdcfd4804e0",
+    "timestamp": "2025-12-23 13:28:03.618868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: saveUnhandledJointAndDependencies + readDependentJointsThatAreReady] [TOCTOU Race] If saveUnhandledJointAndDependencies() commits dependencies at the same moment readDependentJointsThatAreReady() is checking for ready joints, can the COUNT query (lines 101-107) return incorrect counts due to uncommitted reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2969edf3-9211-4459-9155-fb1f22b67e57",
+    "timestamp": "2025-12-23 13:28:34.794311",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: purgeJointAndDependencies + readDependentJointsThatAreReady] [Deleted Joint Processing] If purgeJointAndDependencies deletes a joint while readDependentJointsThatAreReady is about to process its dependents, can the dependents be processed with invalid parent reference?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_19d631e1-c8dd-4a53-a344-25339aa98756",
+    "timestamp": "2025-12-23 13:29:04.631664",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Cross-function: checkIfNewUnit + purgeJointAndDependencies] [Cache State Race] If checkIfNewUnit is checking a unit (line 29 query) while purgeJointAndDependencies is marking it bad (line 148), can the unit pass checkIfNewUnit as 'new' despite being already marked bad in cache?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bcec578c-3a5e-4f07-9554-1313acaf288a",
+    "timestamp": "2025-12-23 13:29:34.930142",
+    "report_generated": false
   }
 ]
