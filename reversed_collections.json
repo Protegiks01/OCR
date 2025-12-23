@@ -7198,5 +7198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62b8c77d-002c-4046-8a07-60463d5d797d",
     "timestamp": "2025-12-23 12:15:16.368268",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Same Address in Parents] Can an attacker submit a unit with two parent units both authored by the same address (checked at line 526), exploiting the nonserial detection to mark their own units as nonserial and avoid validation rules that apply only to serial units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eb8a0240-e788-47ae-8a37-5fad182f734d",
+    "timestamp": "2025-12-23 12:16:33.724141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Oversize Fee Mismatch] Can an attacker craft a unit where the calculated oversize_fee from storage.getOversizeFee() doesn't match objUnit.oversize_fee (line 626), exploiting rounding differences or integer overflow to underpay fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15eaae45-cca1-41c4-863d-b5e906846d3d",
+    "timestamp": "2025-12-23 12:16:46.620032",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Witness List Removal] For version 4.0+ units, can an attacker exploit the requirement that witnesses/witness_list_unit should not be present (lines 620-623) to cause chain splits if some nodes haven't upgraded their version checking logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7cef0f99-858e-4640-8859-3a1774ed4647",
+    "timestamp": "2025-12-23 12:16:59.355413",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Version Upgrade Attack] Can an attacker submit a unit with version 4.0+ before constants.v4UpgradeMci (checked at line 619), exploiting timing of MCI advancement to cause nodes at different stability points to accept/reject the same unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0044211b-cd46-4894-bfde-141306aa7c9b",
+    "timestamp": "2025-12-23 12:17:12.775453",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Timestamp Retreat] Can an attacker craft a unit with timestamp less than parent timestamps (checked at line 556) to violate causality, exploiting units with version=versionWithoutTimestamp to skip this check and cause temporal inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55a76167-4a90-459a-b8f2-9dcb85c72d21",
+    "timestamp": "2025-12-23 12:17:26.914563",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Last Ball Unit Mismatch] If last_ball_unit is stable but its ball field doesn't match last_ball (checked at lines 596, 652), can an attacker exploit database inconsistency between units and balls tables to submit units with mismatched last ball references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d46c709-c451-4a9b-8a73-971368215645",
+    "timestamp": "2025-12-23 12:17:42.540681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Parent Relation DoS] Can an attacker submit a unit with MAX_PARENTS_PER_UNIT parents that are all unrelated (checked via graph.compareUnitsByProps at line 565), causing O(n²) graph traversal operations and exponential validation time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89b99966-2795-49c6-907a-4fd91359731e",
+    "timestamp": "2025-12-23 12:17:58.828405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Last Ball MCI Retreat] Can an attacker craft a unit where max_parent_last_ball_mci > last_ball_mci (checked at line 534) by exploiting a race condition during stability advancement, allowing the last ball to retreat and violate monotonicity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17585885-acdd-4959-ac02-39eb56cf8f12",
+    "timestamp": "2025-12-23 12:18:16.315974",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParentsExistAndOrdered()] [Parent Ordering Attack] Can an attacker submit parent_units where consecutive parents have equal hashes (violating line 477) but are actually different units due to hash collision, exploiting the ordering check to hide duplicate parent references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61fec354-9f33-4c33-a381-0247c01ca559",
+    "timestamp": "2025-12-23 12:18:35.001789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParentsExistAndOrdered()] [Known Bad Parents] Can an attacker reference parent units that are marked as known_bad_joints but exist in storage caches (checked at line 480), bypassing the database check at line 492 and allowing bad units to be built upon?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eb770409-fe09-4609-91b6-8f3cada6e095",
+    "timestamp": "2025-12-23 12:18:56.285773",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParentsExistAndOrdered()] [Parent Count DoS] Can an attacker submit units with exactly MAX_PARENTS_PER_UNIT parents (line 472) where all parents exist but are known bad, exploiting the query at line 492 to cause excessive database lookups and DoS validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6e4a378-2c2b-4554-b037-21999d939153",
+    "timestamp": "2025-12-23 12:19:17.139682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateSkiplist()] [Unstable Skiplist] For unstable skiplist units (line 453), can an attacker exploit the lack of MC verification to include units that will never be on MC, causing ball hash mismatches when the unit reaches stability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecd83189-a530-4307-b086-18e31b425de2",
+    "timestamp": "2025-12-23 12:19:38.664733",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateSkiplist()] [Skiplist Ordering] Can an attacker craft skiplist_units where units are ordered by hash but not by MCI, passing the check at line 446 but causing main chain determination errors when the true MCI ordering differs from hash ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67470357-fb17-404a-9407-052751a3bd06",
+    "timestamp": "2025-12-23 12:20:01.095199",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateSkiplist()] [MCI Divisibility Bypass] Can an attacker submit a skiplist unit that is stable and on MC but with MCI not divisible by 10 (checked at line 456), exploiting a race condition where the unit becomes stable after this check passes to corrupt the skiplist structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfea51d0-74f2-417b-aad5-9bb093c6c2eb",
+    "timestamp": "2025-12-23 12:20:24.653255",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHashTreeParentsAndSkiplist()] [Ball Array Sorting] If arrParentBalls or arrSkiplistBalls are incorrectly sorted at lines 419-420, can an attacker exploit this to generate colliding ball hashes that validate incorrectly but match the expected ball hash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64bf2216-18fe-4caa-819a-2f06f9645f22",
+    "timestamp": "2025-12-23 12:20:48.608345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHashTreeParentsAndSkiplist()] [Skiplist Ball Not Found] Can an attacker reference skiplist units that exist in the database but have no ball yet (line 430), exploiting the race condition between stability determination and ball creation to cause validation inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b84bb745-ce68-4717-991b-5b2abb304f14",
+    "timestamp": "2025-12-23 12:21:14.243923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHashTreeParentsAndSkiplist()] [Ball Hash Mismatch] At line 403, can an attacker exploit timing between ball storage and hash tree updates to submit a unit with correct parent balls in database but incorrect balls in hash tree, causing hash mismatch that gets accepted by some nodes but not others?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b41f2af-454c-40a8-9770-5f587e527fa4",
+    "timestamp": "2025-12-23 12:21:40.482323",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHashTreeBall()] [Need Hash Tree DoS] Can an attacker repeatedly send balls with unknown ball hashes to trigger 'need_hash_tree' errors (line 389), forcing nodes into continuous catchup mode and preventing them from accepting new units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bcd1130-e42a-472d-bfd0-87b9a78c31fd",
+    "timestamp": "2025-12-23 12:22:08.475487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHashTreeBall()] [Hash Tree Poisoning] If storage.assocHashTreeUnitsByBall is populated from untrusted peers during catchup, can an attacker poison this cache with incorrect ball→unit mappings to cause legitimate units to be rejected at line 391?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_306b47a5-e3da-4c19-8e70-7e3c444db2eb",
+    "timestamp": "2025-12-23 12:22:37.530679",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkDuplicate()] [Transient Error Abuse] Can an attacker repeatedly submit the same unit to trigger transient errors (line 378), causing validators to waste resources re-validating while the attacker prepares a double-spend attack?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9dffa6b1-9915-4156-a923-b2ccbf94749d",
+    "timestamp": "2025-12-23 12:23:06.087486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkDuplicate()] [TOCTOU Race] Between the SELECT query at line 372 and the callback at line 373, can another thread insert the same unit, causing both validations to proceed and resulting in duplicate unit storage with conflicting sequences?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7c00a12-50ec-499c-be59-04bfe030a233",
+    "timestamp": "2025-12-23 12:23:35.386373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Content Hash Stripping] When content_hash is present (line 106), can an attacker submit a ball with content_hash but mismatched ball hash, exploiting the fact that message validation is skipped for stripped units to inject invalid historical data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_372d5370-b210-4c31-ac78-acc83eadb34a",
+    "timestamp": "2025-12-23 12:24:06.358795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Genesis Validation] For the genesis unit check at line 73, can an attacker craft a fake genesis unit hash that matches storage.isGenesisUnit() but contains malicious messages, exploiting special genesis validation paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66ba26a0-de8e-421b-adf0-3e7021ce49cd",
+    "timestamp": "2025-12-23 12:24:37.051321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Unit Size Bypass] Can an attacker craft a unit where headers_commission + payload_commission slightly exceeds MAX_UNIT_LENGTH due to integer overflow but passes the check at line 140 because the overflow wraps to a small positive value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3bd940a3-4d9d-4c1b-84b1-b7c8557f3ef2",
+    "timestamp": "2025-12-23 12:25:08.204733",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Commission Calculation] If objectLength.getHeadersSize() or objectLength.getTotalPayloadSize() calculations have rounding errors or overflow, can the checks at lines 136-139 be bypassed to submit units with incorrect commission values, allowing underpayment of fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eeb9fd0f-dc79-4113-aab2-d0d417ac5a2a",
+    "timestamp": "2025-12-23 12:25:39.933641",
+    "report_generated": false
   }
 ]
