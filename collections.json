@@ -14248,5 +14248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52568faf-dd49-48f5-abeb-f4559534624d",
     "timestamp": "2025-12-23 17:21:17.743365",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addQuery()] [Async.series Dependency - Version Compatibility] The addQuery function assumes a specific async.series callback signature (line 89) - if the async library version used has different callback semantics, can this cause queries to execute out of order or not at all, breaking atomicity of multi-step transactions like AA secondary triggers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a75faae6-e96c-4b51-ac58-3cf54a10c4f0",
+    "timestamp": "2025-12-23 17:22:29.821242",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Error Message Leakage - Database Schema] When query errors are logged with the full SQL (line 36), does this expose database schema details including table names, column names, and relationships that could help an attacker craft more effective SQL injection or timing attacks against the DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6267889-0bec-4498-9e62-1e786739bafc",
+    "timestamp": "2025-12-23 17:22:42.439605",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Connection Wrapper Cache - Stale State] If connections are recycled by the pool but maintain stale cached state from previous uses (e.g., transaction isolation levels or session variables), can this cause non-deterministic query results when the same connection is reused across different protocol operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1ff85be-5629-4a94-be18-c1324f18ae3c",
+    "timestamp": "2025-12-23 17:22:55.540887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Object.assign Shadow Properties - Prototype Pollution] The Object.assign({}, row) call (line 55) creates a new object but inherits from Object.prototype - can an attacker pollute Object.prototype with malicious properties that appear in query results, passing validation checks that expect certain fields to be undefined?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e5580f3-31cb-4e93-a274-b44cdefd9565",
+    "timestamp": "2025-12-23 17:23:09.130511",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: release()] [Release Without Transaction Commit - Dirty Reads] If release() is called before a transaction is committed, does the connection return to the pool with an open transaction, allowing other queries to see uncommitted data and violate isolation guarantees during witness vote counting or balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_555c5ffd-fa1a-4784-8108-f040ce89031d",
+    "timestamp": "2025-12-23 17:23:23.550292",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addTime()] [Interval String Validation - Code Execution] The interval parameter in addTime (line 126) is directly concatenated - can an attacker pass intervals like '1 DAY); DROP TABLE units; --' to inject arbitrary SQL, or does MySQL's interval parsing provide sufficient protection against this attack vector?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dcad4c01-88f6-4982-9061-6292ca253a97",
+    "timestamp": "2025-12-23 17:23:39.313218",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: cquery()] [Fast Mode State Inconsistency] When conf.bFaster causes queries to be skipped (lines 71-72), does this leave the application state inconsistent with database state, where in-memory caches expect certain rows to exist but they were never inserted due to skipped queries, causing validation failures on subsequent operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_263d5869-52e9-49ef-bc9d-af3ec2ae4bbd",
+    "timestamp": "2025-12-23 17:23:56.003775",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Consumed Time Overflow - Negative Timestamps] If Date.now() wraps around or returns values in the past due to system clock manipulation, can the consumed_time calculation (line 57) underflow or overflow, causing the slow query detection to malfunction and hide systematic performance degradation attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96e1997d-43f5-4d89-9262-fbae75a755ee",
+    "timestamp": "2025-12-23 17:24:13.309648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getCountUsedConnections()] [Undefined Property Access - Type Error] If the connection pool implementation changes and _allConnections or _freeConnections become undefined (line 118), does the subtraction throw a TypeError that crashes the monitoring code, preventing operators from detecting pool exhaustion before it causes network failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_125d5b3f-631c-402a-9b18-6da9b2f6faa0",
+    "timestamp": "2025-12-23 17:24:32.099705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Callback Invocation Context - this Binding] When handleConnection is invoked (line 113), the 'this' context may be different from what the caller expects - can this cause errors when the callback tries to access instance properties or methods, breaking connection management in object-oriented code patterns?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ef45f5d-3bc8-45c6-9eab-7a39371bba7b",
+    "timestamp": "2025-12-23 17:24:51.901247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Promise Resolve Value - Interface Mismatch] When queries without callbacks return Promises that resolve with the callback's first argument (line 29), but normal callbacks receive (results, fields), do Promise consumers lose access to the fields parameter, breaking code that relies on column metadata for validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_027449d3-bce5-4f48-9413-b74dea294e7c",
+    "timestamp": "2025-12-23 17:25:12.829812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Filter Array Allocation - Memory Pressure] The query logging creates a filtered array of arguments (line 59) for every slow query - during a DoS attack with many slow queries, can this excessive array allocation cause garbage collection pauses that delay critical validation operations, contributing to transaction delays exceeding Medium severity thresholds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb42778d-a23a-4ade-bffa-873047d9e281",
+    "timestamp": "2025-12-23 17:25:35.008003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendRequest()] [Request Tag Collision] In sendRequest() at lines 217-275, if an attacker can predict or force collisions in the tag generated by objectHash.getBase64Hash(request, true), can they intercept responses intended for legitimate requests by registering their own responseHandler for the same tag, potentially stealing sensitive data like private payment proofs or AA state variables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6de9fe48-646e-444b-a43e-495eff01b8b3",
+    "timestamp": "2025-12-23 17:25:57.685836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendRequest()] [Rerouting Race Condition] In sendRequest() at lines 233-257, when a request is rerouted after STALLED_TIMEOUT (5 seconds), if the original peer responds just after rerouting begins but before the rerouted request completes, can both responses be processed simultaneously causing the responseHandler to be called twice with different data, potentially corrupting local state or causing double-processing of critical operations like joint storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ba02a9b-2c1a-4875-8cd5-c43968bf3909",
+    "timestamp": "2025-12-23 17:26:21.484345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendRequest()] [Rerouting Amplification] In the reroute logic at lines 238-256, if a malicious peer intentionally delays responses to trigger rerouting, and the reroute target also delays, can an attacker force exponential amplification of requests across the network as each timeout triggers another reroute, causing a distributed DoS where the same request is simultaneously pending on dozens of peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_490ad8dc-9ec6-4017-aa79-2d594a0857b8",
+    "timestamp": "2025-12-23 17:26:46.137337",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendRequest()] [Response Timeout Bypass] At lines 259-264, non-reroutable requests are canceled after RESPONSE_TIMEOUT (300 seconds) with error '[internal] response timeout'. Can an attacker exploit this by forcing a node into a state where all requests timeout, preventing the node from ever syncing catchup chains or receiving critical joints, effectively isolating it from the network and causing a permanent inability to confirm transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_043c3ba1-f071-4a47-a557-a3a572a59cfe",
+    "timestamp": "2025-12-23 17:27:12.654721",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleResponse()] [Pending Request Validation] In handleResponse() at lines 303-315, the function checks if ws.assocPendingRequests[tag] exists before processing. If an attacker can trigger deletePendingRequest() via connection close while a legitimate response is in transit, can the response be silently dropped even though the data was received, causing operations like catchup to fail and requiring manual intervention to resume sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8d22ff4-6340-4ea1-9c5c-62c9261dce31",
+    "timestamp": "2025-12-23 17:27:39.347996",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: deletePendingRequest()] [Reroute Chain Cleanup] In deletePendingRequest() at lines 278-300, when cleaning up rerouted requests (lines 286-295), if a request was rerouted to multiple peers in sequence, does the cleanup properly cancel ALL pending instances, or can orphaned requests remain active on some peers, causing duplicate responses hours later that might conflict with new state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_849d2541-e8f2-4bb1-af5d-7c326acf005b",
+    "timestamp": "2025-12-23 17:28:07.018030",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: cancelRequestsOnClosedConnection()] [Immediate Reroute Exploit] At lines 317-336, when a WebSocket closes, reroutable requests are immediately rerouted (line 325) without checking if they were already rerouted. Can an attacker force-close connections in a pattern that causes the same request to be rerouted multiple times simultaneously to different peers, creating a request storm that exhausts connection limits and prevents legitimate traffic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca723ae5-326d-4f8c-8367-78b45325ca6f",
+    "timestamp": "2025-12-23 17:28:34.822464",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendRequest()] [Duplicate Handler Accumulation] At lines 225-228, when an identical request is already pending, the new responseHandler is simply appended to the array. If an attacker repeatedly sends the same request before any response arrives, can they cause an unbounded accumulation of responseHandlers in memory, eventually causing an OOM crash when the response finally arrives and all handlers execute?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbdde136-4eb2-4aaf-b745-d9bd97edeba1",
+    "timestamp": "2025-12-23 17:29:02.709420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: findNextPeer()] [Peer Selection Bias] In tryFindNextPeer() at lines 355-365, when selecting the next peer for rerouting, the function uses (peer_index+1)%len which cycles through outbound sources in order. Can an attacker who controls multiple outbound peers arranged sequentially in the array cause all rerouted requests to flow through their controlled nodes, allowing them to selectively drop requests for specific units and prevent the node from syncing critical parts of the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0332413-8764-43cc-99be-f292446b9ed0",
+    "timestamp": "2025-12-23 17:29:30.407046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: findRandomInboundPeer()] [Trusted Peer Exhaustion] At lines 371-396, the function queries peer_hosts table filtering by count_invalid_joints/count_new_good_joints < MAX_TOLERATED_INVALID_RATIO. Can an attacker who initially behaves honestly accumulate a high count_new_good_joints, then later inject many invalid joints to be discovered slowly over time, bypassing the ratio check since their historical good behavior keeps them 'trusted' while they cause damage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5417efff-57c1-4f99-aaec-34a15ad343f9",
+    "timestamp": "2025-12-23 17:29:59.196455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: connectToPeer()] [Connection Timeout Race] At lines 440-446, if a connection attempt times out after 5 seconds and is abandoned, but the actual WebSocket connection succeeds later, the duplicate detection at lines 457-464 will close the new connection. Can an attacker exploit this race by repeatedly connecting/disconnecting to cause the node to close legitimate incoming connections from the same URL, effectively blocking specific peers from ever establishing stable connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c85647b5-e82f-4c2c-98f1-01d6e04e9edb",
+    "timestamp": "2025-12-23 17:30:27.635348",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: addOutboundPeers()] [Recursive Peer Starvation] At lines 504-537, if no good peers are found, the function recursively calls itself with multiplier*2 (line 534), relaxing the MAX_TOLERATED_INVALID_RATIO threshold up to 32x. Can an attacker who controls the database or network state force this function into maximum recursion by ensuring no peers meet even the relaxed criteria, causing exponential query complexity and database lock contention that freezes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_738b2a03-17a2-4cdd-9cbe-7394b9091a0b",
+    "timestamp": "2025-12-23 17:30:56.361503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleNewPeers()] [Peer Injection via get_peers] In handleNewPeers() at lines 677-710, when processing peer URLs received from get_peers response, the function checks if peer is known via database query (line 699) before connecting. Can an attacker who controls a peer inject thousands of malicious peer URLs in the response, forcing the node to perform expensive database queries and connection attempts for each one, causing CPU and network exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac7ac2b6-c28a-421e-9591-cf987571bcef",
+    "timestamp": "2025-12-23 17:31:22.650374",
+    "report_generated": false
   }
 ]
