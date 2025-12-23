@@ -7798,5 +7798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7df12021-0d28-4c86-b2fd-d63ef9c602b9",
     "timestamp": "2025-12-23 12:55:38.227702",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Definition fetch redirect exploitation] The https.get() call at line 262 may follow redirects by default. Can an attacker provide a URL that redirects to 'file://', 'ftp://', or other protocols to bypass HTTPS-only validation and exploit protocol confusion vulnerabilities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c769c958-ed4c-4693-bfdf-9ac58034f362",
+    "timestamp": "2025-12-23 12:56:55.401996",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Definition fetch size limit bypass] At lines 268-270, response data is accumulated with 'data += chunk' without size limits. Can an attacker provide a URL serving gigabytes of data that causes memory exhaustion, crashing the node and preventing transaction processing for 1+ day (Medium/Critical severity network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20ab99ff-0db9-4749-b838-17c84a992a39",
+    "timestamp": "2025-12-23 12:57:07.850731",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Definition fetch timeout bypass] The fetchUrl() function at lines 251-291 has no timeout configured. Can an attacker provide a URL to a slow-responding server (e.g., slowloris attack) that holds connections open indefinitely, exhausting node resources and causing 1+ day network delay (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46989e00-b759-4052-b638-7a858a47a404",
+    "timestamp": "2025-12-23 12:57:20.748041",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Data definition SSRF] At lines 124-136, if definition starts with 'https://', the URL is fetched with fetchUrl(). Can an attacker submit a URL pointing to internal network resources (e.g., 'https://localhost:3306/', 'https://169.254.169.254/metadata') to exploit SSRF and exfiltrate sensitive information or interact with internal services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9ca84ef-8b01-44af-811d-8eec08ae848e",
+    "timestamp": "2025-12-23 12:57:33.986801",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Data vote unit hash collision] At lines 122-123, poll units are validated with ValidationUtils.isValidBase64() checking constants.HASH_LENGTH (32 bytes). Can an attacker submit a SHA256 collision or second pre-image that passes validation but references a different poll than intended, manipulating vote outcomes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff5e4c09-b963-4056-895c-1e8865c7bb44",
+    "timestamp": "2025-12-23 12:57:48.780556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Data attestation address bypass] At lines 120-121, attestation addresses are validated with ValidationUtils.isValidAddress(). If there's a discrepancy between uri.js address validation and the validation in definition.js or validation.js, can an attacker submit an address that passes here but fails later, causing inconsistent state or transaction failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e643256e-d282-4310-8e9c-00e63026dc28",
+    "timestamp": "2025-12-23 12:58:04.206508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Data app type injection] At lines 118-119, the app type is validated against a hardcoded whitelist. Can an attacker submit app types with trailing/leading whitespace, null bytes, or Unicode homoglyphs that pass the whitelist check but are interpreted differently by downstream AA validation or message storage modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c6add6d-db8b-4b74-84d9-c60e9456932a",
+    "timestamp": "2025-12-23 12:58:19.920039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Textcoin type confusion] At lines 91-102, two different paths set objRequest.type = 'textcoin' - one with explicit 'textcoin?' prefix and one with hyphen-separated words. Can an attacker exploit differences in how these two paths are handled downstream to bypass additional validation or trigger unexpected behavior in wallet claiming logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e5f3b0c-65de-4810-a98b-cd199a837fd4",
+    "timestamp": "2025-12-23 12:58:37.838854",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: handleMnemonic()] [Mnemonic injection after validation] The mnemonic is assigned to objRequest.mnemonic at line 80 after validation. If downstream code (wallet.js, composer.js) doesn't re-validate the mnemonic format, can an attacker exploit race conditions or state corruption to modify objRequest.mnemonic between validation and usage, stealing textcoin funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc46cbc6-9294-4331-ae54-ffc2a4f875a6",
+    "timestamp": "2025-12-23 12:58:56.154663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Textcoin word count bypass] At lines 98-101, exactly 12 hyphen-separated words are required. Can an attacker submit URIs with 11 words + empty string (e.g., 'word1-word2-...-word11-') that passes the length check but generates invalid or predictable keys, allowing the attacker to steal funds (Direct loss of funds - Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00cc6b6a-c95c-4bb0-b521-2270071cf811",
+    "timestamp": "2025-12-23 12:59:15.685668",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Textcoin mnemonic substitution] At line 94, hyphens in the textcoin parameter are replaced with spaces. Can an attacker submit a URI with mixed delimiters like 'word1-word2 word3-word4' that gets inconsistently parsed, causing the mnemonic to validate but derive incorrect private keys, leading to permanent fund loss when user claims the textcoin?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d396803b-d3ca-4a42-bd0c-9c36ca4ce275",
+    "timestamp": "2025-12-23 12:59:35.910069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri() & handleMnemonic()] [Mnemonic validation bypass] At lines 79-87, mnemonic validation relies on Mnemonic.isValid() but exceptions are caught and return generic error. Can an attacker craft a mnemonic that causes an uncaught exception in a specific edge case (e.g., memory allocation failure), causing the node to crash and potentially leading to 1+ hour network delay (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88be0360-efb2-4a6e-9ea6-fd3210a66a46",
+    "timestamp": "2025-12-23 12:59:57.420013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Auth param precedence attack] At lines 52-72, the code checks 'url' first, then 'device'. If both are present in the query string, can an attacker exploit param precedence to bypass validation (e.g., submit both url and device where url passes but device has malicious content that gets processed later)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ccce561d-3619-4efa-8351-74a096a0999b",
+    "timestamp": "2025-12-23 13:00:19.342453",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Auth missing parameter validation] Lines 57-72 check for required params but don't validate that pairing_secret, app, pubkey, and hub contain only expected characters. Can an attacker inject SQL injection payloads, XSS vectors, or control characters into these fields that get unsafely used in database queries or UI rendering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3dee024c-7ee7-4c98-aee5-b167ba0af23a",
+    "timestamp": "2025-12-23 13:00:42.769247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Auth hub address injection] At line 68, the hub address is validated with a blacklist regex '/[^\\\\w\\\\.:-]/'. Can an attacker inject valid-looking but malicious hub addresses like 'evil.com:65535' or '0.0.0.0:80' that bypass the blacklist but cause connection issues or exploit services running on unusual ports?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f58c064a-46af-47b6-810c-a54373df5796",
+    "timestamp": "2025-12-23 13:01:06.344156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Auth device pubkey length check bypass] At line 66, the pubkey length is checked against constants.PUBKEY_LENGTH (44 characters). If constants.PUBKEY_LENGTH is modified or undefined due to a configuration error, can an attacker submit invalid-length pubkeys that corrupt the device pairing database or cause signature verification failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b867a92-3baf-4ec7-b423-2a381eaf72a0",
+    "timestamp": "2025-12-23 13:01:30.738082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Auth URL validation bypass] At lines 52-54, auth URLs must start with 'https?://' but this only checks the prefix. Can an attacker inject a URL like 'http://trusted.com@evil.com/callback' or 'https://evil.com%00trusted.com' that passes validation but redirects authentication tokens to an attacker-controlled server?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2f26e58-0148-4375-901d-4ed1a6373ca5",
+    "timestamp": "2025-12-23 13:01:56.428044",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pairing regex catastrophic backtracking] The pairing regex at line 35 uses multiple character classes with '+' quantifiers. Can an attacker craft a near-match URI with thousands of characters that causes catastrophic backtracking in the regex engine, leading to CPU exhaustion and network DoS (1+ hour transaction delay - Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5394fd34-1d58-4df9-9e06-777d60cbd357",
+    "timestamp": "2025-12-23 13:02:22.480922",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pairing URL encoding bypass] At line 35, '%23' is replaced with '#' before regex matching. Can an attacker double-encode characters like '%2523' to bypass validation and inject malicious characters into pubkey, hub, or pairing_secret fields that get decoded later in the flow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b75f4d8-f71b-4d91-8d17-957a5cbca073",
+    "timestamp": "2025-12-23 13:02:49.306755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pairing secret length bypass] Lines 41-42 contain commented-out validation for pairing_secret length >12. Since this check is disabled, can an attacker submit extremely long pairing secrets (e.g., 1MB+) that cause memory exhaustion or buffer overflow when the secret is stored or processed by device.js pairing handlers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a757b33-42c4-4fad-b6fe-ebd2ffbe0b15",
+    "timestamp": "2025-12-23 13:03:16.706361",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pairing hub injection] The hub address at line 39 is extracted from the URI and assigned without validation beyond the regex pattern. Can an attacker inject a malicious hub address like 'evil.com:443/../../../etc/passwd' that exploits path traversal or SSRF vulnerabilities in subsequent WebSocket connection attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da6b142c-a999-496f-a376-b4c2a29896f5",
+    "timestamp": "2025-12-23 13:03:43.567762",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pairing pubkey validation bypass] At lines 35-43, pairing URIs are parsed with regex matching a 44-character pubkey. Does the regex properly validate that all 44 characters are valid base64 characters, or can an attacker inject special characters that pass regex but fail in actual cryptographic operations, causing undefined behavior in device.js pairing logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa05047b-b6f9-4692-b250-01ed0320d63c",
+    "timestamp": "2025-12-23 13:04:10.618711",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Error message information leakage] When protocol validation fails at line 27, the error message reveals the expected protocol format. Can an attacker use this to fingerprint which network (testnet/devnet/mainnet) a node is running and tailor network-specific attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e725814-dd18-42f2-be44-25e662d6f0b4",
+    "timestamp": "2025-12-23 13:04:37.094868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Protocol fallback vulnerability] At lines 17-28, the function tries three different protocol formats (byteball, obyte, default obyte). Can an attacker submit URIs that match multiple protocols and exploit timing or state differences in how different protocol variants are processed by downstream modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cefeb3dd-0dd2-468f-bc98-1741bf1cfe91",
+    "timestamp": "2025-12-23 13:05:03.114063",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Protocol prefix injection] When process.env.testnet or process.env.devnet are set (lines 11-14), can an attacker exploit environment variable injection to make the protocol matcher accept modified protocols like 'byteball-tn-dn:', potentially causing testnet/mainnet confusion in downstream validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83911d48-1362-4a3d-a05a-81cb334b8251",
+    "timestamp": "2025-12-23 13:05:29.783239",
+    "report_generated": false
   }
 ]
