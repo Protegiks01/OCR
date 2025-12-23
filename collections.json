@@ -11848,5 +11848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0227c6ac-c912-4d78-93b2-445c0a130209",
     "timestamp": "2025-12-23 14:41:03.446770",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Handle Callback Optional] At lines 166-167, handle() callback is only invoked if it's truthy - but if handle=null was passed, can critical cleanup code that the caller expected to run in the callback never execute, leaving the application in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1fb05dfe-9fba-4d21-992e-00be579c46c7",
+    "timestamp": "2025-12-23 14:42:16.118561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: readListOfUnstableUnits()] [Stale Read] At line 41, unstable units are read without transaction isolation - if another process is simultaneously marking units as stable (in storage.js or validation.js), can the query return a mix of old and new is_stable values, causing some unstable units to be missed in history refresh and double-spend detection to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a17a1df-5016-46dc-af1b-09617e780b00",
+    "timestamp": "2025-12-23 14:42:28.554673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Transaction Boundary] At lines 73-84, multiple queries are executed (unit_authors UNION outputs, then conditional query for known_stable_units or last_stable_mci) without explicit transaction - can units become stable between these queries, causing the history request to have inconsistent min_mci and known_stable_units that confuse the light vendor?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfa7ea54-b085-4bee-932d-7ad9da552aee",
+    "timestamp": "2025-12-23 14:42:41.526517",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_address] [Delete Before Refresh] At lines 109 and 115, unprocessed_addresses is deleted after refreshLightClientHistory() completes - but if refresh fails partway through (line 113-114), can the DELETE still execute at line 115, causing the address to be marked as processed despite incomplete history, hiding future transactions to that address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65239121-5615-4495-8c41-2837936cd9ee",
+    "timestamp": "2025-12-23 14:42:54.802123",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: connected] [Atomic Delete] At line 134, unprocessed_addresses is deleted in a single query without verifying refresh success - if refreshLightClientHistory() at line 131 fails due to network error, can the DELETE still execute, marking addresses as processed when they weren't, causing permanent loss of transaction history for those addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad17cfc7-6bcd-4fa8-8da1-871d8bf1cbc8",
+    "timestamp": "2025-12-23 14:43:09.104357",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [MAX() Query Edge Case] At line 87, MAX(main_chain_index) is queried which returns NULL if no stable units exist - the code uses rows[0].last_stable_mci || 0 at line 89, but what if rows is empty array? Can this cause undefined access that crashes the client or sets min_mci to undefined, breaking history requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d39f7ef6-4253-43e9-b4ce-52e8b3f8cd92",
+    "timestamp": "2025-12-23 14:43:24.543655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Archive Without Transaction] At line 233, storage.archiveJointAndDescendantsIfExists() is called, which likely modifies multiple database tables - if this operation is not atomic and crashes midway, can the database be left in a state where some parts of the unit are archived but others aren't, causing future queries to get inconsistent results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f16a0208-2843-4790-b094-2a3a1795aff9",
+    "timestamp": "2025-12-23 14:43:40.976148",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Witness List Wait Mode] At line 97, myWitnesses.readMyWitnesses() is called with 'wait' parameter - what does 'wait' do, and can an attacker prevent witness list initialization, causing this function to wait indefinitely and block all history refreshes, effectively freezing all user funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4fc6b4c-2057-4b29-bfa5-304808bb2401",
+    "timestamp": "2025-12-23 14:43:59.148125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Witness List Race] At lines 49-51, if arrWitnesses.length === 0, refresh is skipped - but what if witness list is being updated concurrently by my_witnesses.js? Can a race condition cause the light client to skip refresh during witness list change, missing critical units that affect witness compatibility?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0902409e-4f2e-45d4-a6b0-4c97c2bea8ca",
+    "timestamp": "2025-12-23 14:44:17.024436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Witness List Validation] At line 199, objRequest.witnesses is passed to light.processHistory() - are these witnesses validated to be the current witness list? If the light vendor returns history for a different witness set that's incompatible, can this cause the client to accept units that violate witness compatibility rules, leading to a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2aafee4-828a-422a-a2ac-1e107c876094",
+    "timestamp": "2025-12-23 14:44:36.478707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Witness Count] At line 52, objHistoryRequest.witnesses is set to arrWitnesses - but the protocol requires exactly 12 witnesses; if arrWitnesses has <12 or >12 elements due to database corruption, can the light vendor return invalid history or reject the request, causing the client to never sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fea38ce-3984-4f4b-b177-467e0afb3700",
+    "timestamp": "2025-12-23 14:44:56.359988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: setLightVendorHost()] [Vendor-Witness Alignment] At lines 16-26, light vendor is set but there's no verification that the vendor actually supports the user's witness list - can a mismatch cause the vendor to return history for incompatible witness set, leading to the client accepting invalid units and creating a permanent chain split when it tries to post transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_602e98f0-58fb-4038-8c9f-fec96e56e41a",
+    "timestamp": "2025-12-23 14:45:17.794253",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [requested_joints Size Limit] At lines 63-65, all unstable units are added to requested_joints without size limit - if a light client has accumulated 100,000 unstable units due to network issues, can the resulting history request be so large that it exceeds network message size limits, causing the request to be rejected and the client to never sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5656911-6956-4e1b-a649-71b911ea224f",
+    "timestamp": "2025-12-23 14:45:39.929722",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [known_stable_units Uniqueness] At line 79, known_stable_units are collected from UNION of unit_authors and outputs - can the same unit appear multiple times if it has multiple authors or outputs? If the array contains duplicates, can this confuse the light vendor or waste bandwidth/processing on redundant data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bdfc0f6-9d35-4fc6-bcf3-a6713aae9684",
+    "timestamp": "2025-12-23 14:46:02.194734",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Response Size Validation] At lines 190-199, the light vendor response is received but there's no check on response size before passing to light.processHistory() - can a malicious vendor return a 10GB history response that causes memory exhaustion and crashes the Node.js process, DoS-ing the light client?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b867fe30-5b5e-4054-aad6-06b87e4b659a",
+    "timestamp": "2025-12-23 14:46:26.032153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Response Field Validation] At line 191, only response.error is checked - what if response.joints, response.proofs, or other expected fields are missing, malformed, or contain unexpected types? Can this cause light.processHistory() to crash with a type error that leaves the client in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93c589ee-4f3b-4f75-bb7c-f994c3215535",
+    "timestamp": "2025-12-23 14:46:51.477302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [min_mci vs known_stable_units Conflict] At lines 78-82, for new addresses, known_stable_units are provided with optional min_mci, but at lines 86-92, for existing addresses, only min_mci is provided - can the light vendor be confused by requests that have both, causing it to return duplicate or missing units that corrupt the client's DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1298ae27-0f4b-4b6b-8b80-e2bf2b9e29a3",
+    "timestamp": "2025-12-23 14:47:18.461742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Command Injection] Can an attacker inject shell commands through the params.to parameter when it's passed directly to child_process.spawn('/usr/sbin/sendmail', ['-t', params.to]), potentially executing arbitrary commands on the host system if params.to contains shell metacharacters like ';', '&&', or '|'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d869b6c-f061-44ca-9ca3-e766062bf22a",
+    "timestamp": "2025-12-23 14:47:45.675250",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Email Header Injection - CRLF] Can an attacker inject arbitrary email headers by including CRLF sequences (\\\\r\\\\n) in params.from, params.to, params.subject, or params.body when these are written to child.stdin without sanitization, allowing spoofing of sender, adding BCC recipients, or injecting malicious headers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3252e952-2cf4-44db-a447-51d349204ae5",
+    "timestamp": "2025-12-23 14:48:13.855081",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Information Disclosure] When network.js calls sendBugEmail() with body.message and body.exception from a peer's bugreport message, does the function send potentially sensitive information (stack traces, internal state, database queries, private keys in memory) to the configured bug_sink_email address without rate limiting or validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db2b3bc7-2a1e-492c-8151-06cbdab00405",
+    "timestamp": "2025-12-23 14:48:41.993438",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Denial of Service] Can a malicious peer flood the node with bugreport messages to trigger unlimited calls to sendBugEmail(), causing the node to spawn thousands of sendmail processes or SMTP connections, exhausting file descriptors, memory, or network bandwidth and potentially crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ae5a96b-e533-4ada-9b9c-6b8e09df9746",
+    "timestamp": "2025-12-23 14:49:10.942105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Path Traversal] Is the hardcoded path '/usr/sbin/sendmail' validated to exist and be executable before spawning, and could an attacker who gains filesystem access create a malicious binary at this path (e.g., via symlink attack or package installation) to execute arbitrary code whenever emails are sent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d6d5b11-fc70-4f95-b57c-e08d366fea9f",
+    "timestamp": "2025-12-23 14:49:40.067437",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [DNS Poisoning] When DNS.resolveMx() is called to find the recipient's mail server, does the code validate the returned MX records, or could a DNS poisoning attack (or compromised DNS server) redirect emails to an attacker-controlled SMTP server, allowing interception of textcoin mnemonics, bug reports, or admin notifications?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_721648eb-afbd-4037-aba5-25f54651980d",
+    "timestamp": "2025-12-23 14:50:08.590919",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Module Initialization] [DNS Configuration] Are the hardcoded DNS servers '8.8.8.8' and '114.114.114.114' set via DNS.setServers() potentially unreliable or subject to hijacking, and could using these servers (especially the China-based 114dns) expose email routing to state-level interception or censorship?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48866a99-70a2-4a0b-9b20-e1e2d55572ac",
+    "timestamp": "2025-12-23 14:50:37.285615",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [TLS Misconfiguration] The tls.rejectUnauthorized is set to true, but does this prevent connections when the target SMTP server has a self-signed or expired certificate, potentially causing emails (including critical textcoin payments) to fail silently without proper error handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9bda04e-1b14-4950-bf7f-9d4328ddefad",
+    "timestamp": "2025-12-23 14:51:06.857681",
+    "report_generated": false
   }
 ]
