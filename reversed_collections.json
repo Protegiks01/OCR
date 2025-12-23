@@ -9748,5 +9748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e36f95e2-08a7-4d18-99e5-6b34fcaa25b4",
     "timestamp": "2025-12-23 15:06:08.147203",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Partial Signing State] At lines 70-107, if signing fails partway through (e.g., one of multiple authors fails to sign), the objUnit is left in a partially signed state. If this objUnit object is reused or inspected elsewhere, can the partial signatures cause confusion or allow partial authentication bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f61c0de-e819-446e-9e36-8c7df786ab6b",
+    "timestamp": "2025-12-23 15:07:26.827728",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Exception in Try-Catch Swallowing] At lines 217-227, the code wraps hash calculation in try-catch but only returns the error message string, losing the stack trace. If the exception contains important debugging information or is caused by memory corruption, can this mask serious underlying issues that need investigation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77696e32-3c10-467f-b877-60b6a637a719",
+    "timestamp": "2025-12-23 15:07:39.410547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessageSync()] [Synchronous Assumption Violation] At lines 243-253, validateSignedMessageSync() assumes the validation callback will be called synchronously and throws if not (line 251). However, if network-aware validation with last_ball_unit lookup is used, the callback will be async. Can this cause crashes or incorrect error handling in code that assumes synchronous validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55a09b62-d071-4660-b9e8-db02b39d3bf4",
+    "timestamp": "2025-12-23 15:07:52.301102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Callback Double-Call] The validateSignedMessage() function calls handleResult (the callback) in multiple places (lines 123-155 for validation errors, line 164 for missing last_ball, line 233-236 for validation results). If an error occurs after a callback has already been called, can this cause double-callback bugs that corrupt application state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc8b1891-e6ea-4ec2-aae7-f253bec759ba",
+    "timestamp": "2025-12-23 15:08:05.637094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Definition Read Error Handling] At lines 53-55, when signer.readDefinition() returns an error, the code throws an exception instead of calling the callback. This inconsistent error handling could cause unhandled promise rejections or crashes. Can an attacker trigger this error path repeatedly to crash the signing process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45f3eec3-e324-470b-a773-bb65f714314c",
+    "timestamp": "2025-12-23 15:08:19.944119",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [bNoReferences Flag Manipulation] At line 222, the code sets bNoReferences: !bNetworkAware in validation state. If downstream validation code makes security decisions based on this flag (e.g., allowing/disallowing certain operations), can an attacker manipulate the network-aware status to bypass restrictions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7189da3d-249a-4c78-913a-3aeb20753419",
+    "timestamp": "2025-12-23 15:08:35.231479",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Composer Integration Attack] At line 44, the code calls composer.composeAuthorsAndMciForAddresses(). If this function has vulnerabilities or can be manipulated to return incorrect authors or last_ball_unit, can an attacker cause signMessage() to create signed messages with mismatched author definitions or invalid last_ball references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3f8245a-fc02-4031-89ba-7c40f385e6b7",
+    "timestamp": "2025-12-23 15:08:51.773158",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Storage Race in Network-Aware Mode] At line 179-198, the code uses storage.readDefinitionByAddress() with callbacks for found/not-found cases. If there's a race between when the definition is stored and when this validation occurs, can different nodes get different results (some finding the definition, others not), causing non-deterministic validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9be39e2f-587e-4c1b-9fbf-fc7538228128",
+    "timestamp": "2025-12-23 15:09:09.734297",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Catchup Done Event Spoofing] At line 170, the code listens for 'catching_up_done' event. If the event bus allows events from untrusted sources, or if an attacker can trigger events through other means (e.g., causing a brief catchup to complete), can they cause premature validation retry that fails due to incomplete state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_777c4c7d-e969-48ea-8195-47cb15233762",
+    "timestamp": "2025-12-23 15:09:28.664558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Light Client Partial History Attack] At lines 166-168, light clients request history for the last_ball_unit and author address. If an attacker is the hub or MitM, can they provide partial history that makes the light client think a definition exists when it doesn't (or vice versa), causing incorrect validation decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f98f9d9-65ce-4030-bd4d-c6ed244be0ad",
+    "timestamp": "2025-12-23 15:09:48.446246",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [MCI Reference Manipulation] At line 177 and 221, the code uses last_ball_mci for definition lookup and validation state. If an attacker can reference a last_ball_unit with a very old MCI (close to genesis), can they access ancient definitions that had weaker security requirements, bypassing modern authentication standards?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bef1fd9-a12e-4bde-9f9d-8cdc79c357a7",
+    "timestamp": "2025-12-23 15:10:09.809299",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Inclusion Rule Bypass] At lines 180-192, the code expects definition to be provided when it's the first use, and rejects it when it's already known (lines 194-195). Can an attacker exploit timing to include/exclude the definition inappropriately, either forcing unnecessary definition storage or bypassing definition validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2625a18-b472-4c60-aef2-899d8f7b4ab3",
+    "timestamp": "2025-12-23 15:10:32.107848",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Network-Aware Signing Race] At lines 43-50, in network-aware mode, the code calls composer.composeAuthorsAndMciForAddresses() to get last_ball_unit. If the last stable unit changes between when this is called and when the message is broadcast, can the message reference an old last_ball_unit that causes validation failures or allows manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ff14276-d9b4-4172-b960-69a503129a2e",
+    "timestamp": "2025-12-23 15:10:54.654524",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Network Mode Inconsistency] At line 153, the code determines bNetworkAware based on presence of last_ball_unit field. If an attacker includes last_ball_unit in some copies of the message but not others when broadcasting to different peers, can they cause some nodes to validate in network-aware mode and others in non-network-aware mode, leading to inconsistent validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b722753-d18e-4e12-af1e-c4ddff0f564d",
+    "timestamp": "2025-12-23 15:11:17.994101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Last Ball Unit Not Found Exploitation] At lines 161-174, when last_ball_unit is not found, the code has different behavior for light clients vs full nodes. If an attacker provides a last_ball_unit that will never exist (e.g., a random hash), can they cause full nodes to wait indefinitely for catchup to complete, while light clients might accept it after requesting history, creating divergent validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92e3a187-d061-441c-bef5-4161604b341e",
+    "timestamp": "2025-12-23 15:11:42.924798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Database Transaction Timing] The code makes multiple database calls (lines 160, 179) without explicit transaction boundaries. If an attacker times their signed message submission to coincide with other database writes (e.g., new units being saved), can they exploit transaction isolation level inconsistencies to read uncommitted or inconsistent data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_817d5209-0334-479c-9f3f-8d7de4872d8b",
+    "timestamp": "2025-12-23 15:12:08.627163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Retry Timing Exploitation] At line 167 and 186, the code calls validateOrReadDefinition() recursively after requesting history. If an attacker repeatedly sends messages that trigger history requests, can they cause exponential retries with increasing delays, effectively DoSing the validation process through retry amplification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d655cb96-b68c-4f2e-aaa5-6aded8167cd0",
+    "timestamp": "2025-12-23 15:12:35.616318",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Light Client Sync Timing] At lines 166-168 and 185-187, light clients request history before retrying. If an attacker can control the hub's response timing or provide partial history, can they cause the light client to make validation decisions based on incomplete state, accepting invalid messages or rejecting valid ones?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_305bede2-4aa1-4285-8f02-877bfab5a050",
+    "timestamp": "2025-12-23 15:13:03.200929",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Event Bus Timing Race] At line 170-173, the code waits for 'catching_up_done' event. If an attacker can trigger false 'catching_up_done' events or prevent the event from firing, can they cause validation to proceed with stale state or hang indefinitely, freezing message validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a218e4a-ec71-4557-a761-d42713d21593",
+    "timestamp": "2025-12-23 15:13:31.673683",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Async Callback Timing Attack] At lines 70-108, signatures are collected asynchronously. If an attacker can delay one of the signing callbacks (e.g., by controlling a remote signer in multi-sig setup), can they cause the signing process to timeout or complete with partial signatures, creating invalid signed messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd8b60a8-9eae-422f-b133-5654dc09bee7",
+    "timestamp": "2025-12-23 15:13:59.477467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Timestamp Validation Timing] At line 178, the code reads last_ball_timestamp but only uses it in validation state (line 221). If there's a significant time delay between reading the timestamp and using it, and the timestamp is used for time-sensitive validation (e.g., time-locked conditions), can an attacker exploit this gap?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8577b7d5-f01f-4148-981c-bc7321a975d1",
+    "timestamp": "2025-12-23 15:14:27.621802",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Last Ball Unit Reorg Attack] At line 160, the code looks up the last_ball_unit in the units table. If the last_ball_unit references a unit that later becomes orphaned due to a mini-reorg or witness incompatibility, can the signed message validation behave differently before and after the reorg, causing non-deterministic state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f787274b-f85e-41b1-8ab4-4a2ad1cd78e1",
+    "timestamp": "2025-12-23 15:14:54.951917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Definition Change Timing Race] In network-aware mode (lines 43-50), the code gets last_ball_unit from composer.composeAuthorsAndMciForAddresses(). If the definition for from_address changes between this call and when the message is validated, can the signature be valid at signing time but invalid at validation time, or vice versa, causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89b209ff-4432-4390-90bb-2c1f9b008b91",
+    "timestamp": "2025-12-23 15:15:24.270398",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Catchup State Timing Attack] At line 163, the code checks network.isCatchingUp() to decide whether to wait. If an attacker can cause the node to enter catchup mode (e.g., by withholding units), and then submit signed messages during catchup, can they exploit different validation behavior during catchup versus normal operation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83c5d9cc-b248-465b-9ba1-95a7499803b6",
+    "timestamp": "2025-12-23 15:15:53.623760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [MCI-Based Timing Attack] At line 177 and 221, the code uses last_ball_mci from the database to read the definition at a specific point in time. If an attacker can predict or control the timing of when their signed message is validated relative to MCI advancement, can they exploit a window where the definition has changed but the last_ball_unit still points to the old MCI, allowing authentication with outdated credentials?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40b67bf9-d47e-4f6d-842d-f6d6f4dae030",
+    "timestamp": "2025-12-23 15:16:23.806482",
+    "report_generated": false
   }
 ]
