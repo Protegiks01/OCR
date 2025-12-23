@@ -12898,5 +12898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d948bc47-0b89-4304-bbcb-6f383d11923c",
     "timestamp": "2025-12-23 15:50:03.261489",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Single element] For single-element arrays, getMerkleRoot() returns hash(arrElements[0]) directly - is this consistent with proof verification expectations? Can an attacker exploit the difference between single-element and multi-element tree structures to forge proofs that work for one structure but claim membership in another, bypassing oracle validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08394af0-66a5-4619-a050-1d7d673d7404",
+    "timestamp": "2025-12-23 15:51:12.261046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Array mutation] getMerkleRoot() line 10 uses arrElements.map(hash) which creates a new array, but does not validate arrElements is actually an array - if an attacker passes an array-like object with a malicious map function, could they inject arbitrary hashes into the tree construction and generate a controlled root that validates forged proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_991ee2e2-7142-40cb-9e1f-02d587999850",
+    "timestamp": "2025-12-23 15:51:24.788285",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Array length change] getMerkleProof() does not freeze or copy arrElements before processing - if another thread or callback modifies arrElements during proof generation (especially in async contexts), could the proof become inconsistent with the final root, creating race conditions that allow temporary proof forgeries during AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f271e8a5-b807-45cf-a7e1-45d1c736bda4",
+    "timestamp": "2025-12-23 15:51:38.306638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [AA non-determinism] Since AA formula evaluation calls verifyMerkleProof() (formula/evaluation.js line 1668), and JavaScript's type coercion behavior may vary across Node.js versions or V8 implementations, could proof.index type confusion (string vs number) cause non-deterministic validation results on different nodes, leading to chain splits where some nodes accept an AA response and others reject it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b17db2e-b0b9-4dcf-8819-1b435aceade7",
+    "timestamp": "2025-12-23 15:51:51.801386",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: deserializeMerkleProof()] [Proof size DoS] formula/evaluation.js limits proof length to 1024 chars (line 1662), but deserializeMerkleProof() still processes it - can an attacker craft a 1024-char proof with thousands of tiny siblings (single-char + delimiters) that causes verifyMerkleProof() to iterate excessively, creating a DoS vulnerability where AA execution times out and blocks network transaction processing for hours or days?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c2f4ee7-6a54-4c88-aeab-7a3ca8e6b129",
+    "timestamp": "2025-12-23 15:52:05.984544",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Element coercion in AA] formula/evaluation.js lines 1651-1654 coerce boolean/number elements to strings before passing to verifyMerkleProof() - could the difference between JavaScript's string coercion ('true' vs 'false', '0' vs '0.0') and the actual string stored in oracle data feeds cause valid proofs to fail or invalid proofs to pass, breaking AA authorization logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df6c3b41-d234-4850-9950-1b6b46971a88",
+    "timestamp": "2025-12-23 15:52:21.383050",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Encoding mismatch in AA] hash() uses UTF-8 encoding (line 6) - if AA formula data or oracle feeds contain binary data or different encodings, could encoding mismatches cause hash() to produce different results than expected, allowing attackers to create proofs that verify in AA context but don't match the actual oracle data, manipulating AA state and causing fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91c52faf-c853-4051-b806-b3d86a06e4e7",
+    "timestamp": "2025-12-23 15:52:38.358409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Definition validation bypass] In definition.js 'in merkle' operator (line 939), if verifyMerkleProof() returns false, it sets fatal_error and returns false - but if verifyMerkleProof() throws an exception due to malformed proof, is the exception caught properly, or could it bypass the fatal_error check and allow the definition evaluation to continue with undefined results, potentially authorizing unauthorized spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1bbacc5-5363-4bf1-a6ba-bdb0e880e72c",
+    "timestamp": "2025-12-23 15:52:56.430327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: deserializeMerkleProof()] [Authentifier injection] definition.js line 936 gets serialized_proof from assocAuthentifiers[path] - can an attacker craft a malicious path string that causes deserializeMerkleProof() to return a proof object with prototype pollution (e.g., proof.__proto__ or proof.constructor), allowing them to override verifyMerkleProof() behavior and bypass all Merkle validation in address definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9653a387-12dd-448b-8df1-10ea3a16de89",
+    "timestamp": "2025-12-23 15:53:15.470254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Root comparison with data feeds] definition.js line 943 checks if proof.root exists in data_feeds - if verifyMerkleProof() returns true but proof.root is undefined, empty string, or null, could the database query match everything or nothing, either allowing unauthorized access or causing DoS by rejecting all legitimate 'in merkle' definitions and permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e2bc07e-10e5-404e-83e6-ca34ba468440",
+    "timestamp": "2025-12-23 15:53:34.355622",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Base64 encoding collision] hash() outputs base64 (line 6) which can contain '+', '/', '=' characters - if these appear in hashes and interact badly with the '-' delimiter in serialization, could this cause deserialization ambiguity where one serialized proof deserializes to multiple different proof structures, enabling proof forgery?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_078e4581-a099-442d-a32e-eddee0e8044a",
+    "timestamp": "2025-12-23 15:53:54.996863",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [UTF-8 edge cases] hash() uses UTF-8 encoding - if an attacker includes invalid UTF-8 sequences or Unicode normalization-sensitive characters in elements, could different nodes normalize strings differently, causing hash() to return different results and breaking consensus on Merkle root validation across the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88e14250-71bc-4b00-afcd-02ba823be498",
+    "timestamp": "2025-12-23 15:54:16.284816",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Length extension attack] While SHA-256 itself is resistant to length extension, the concatenation in getMerkleRoot() line 15 (hash(hashA + hashB)) creates a new input - could an attacker exploit the structure of base64-encoded hashes to craft extension attacks where hash(A + B + X) for some X equals hash(C + D), allowing tree structure manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ae42d144-a38b-469e-9027-e2fe2753c09d",
+    "timestamp": "2025-12-23 15:54:39.026850",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Exponential tree depth] getMerkleProof() recursively halves array size (line 43) - for an array of size 2^30, this requires 30 iterations - can an attacker submit an extremely large oracle data feed that causes getMerkleProof() to consume excessive memory or CPU when building proof.siblings, creating a DoS vulnerability that freezes nodes attempting to validate 'in merkle' definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09e6f570-9bf6-4c5a-b634-6bc719bbb429",
+    "timestamp": "2025-12-23 15:55:02.881884",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Siblings array bomb] If proof.siblings contains thousands of entries (from a deep tree), verifyMerkleProof() lines 87-94 must iterate through all of them - even with the 1024-char serialization limit in AA context, could a cleverly compressed proof with minimal siblings size but maximal iteration count cause verification to become a DoS vector?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71ef5ed8-da61-4979-a99c-5c1314693a95",
+    "timestamp": "2025-12-23 15:55:26.584046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Memory exhaustion] getMerkleRoot() builds arrOverHashes arrays repeatedly (lines 12-17) - for very large element arrays, does this cause multiple large array allocations that exhaust Node.js memory, potentially crashing nodes that attempt to process oracle data feeds with millions of elements and causing network-wide outages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1730a506-561f-44b8-bf2b-837cf52232e7",
+    "timestamp": "2025-12-23 15:55:51.794931",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Index at boundary] When element_index is exactly arrElements.length - 1 (last element) in an odd-sized array, getMerkleProof() duplicates this element as its own sibling (line 32) - does this create a degenerate proof that could be exploited to claim any element is the last element, bypassing positional verification in oracle data structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_143af92d-b3e6-412f-916f-cbb938fc6644",
+    "timestamp": "2025-12-23 15:56:18.093647",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Proof with zero siblings] If proof.siblings is [] (single-element tree), verification becomes (hash(element) === proof.root) - can an attacker who controls one element in an oracle feed use this to construct a single-element subtree proof that validates, then claim this proof represents membership in the full multi-element feed, bypassing data integrity checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0957ae6-e066-4d4d-b18e-6460f50ab897",
+    "timestamp": "2025-12-23 15:56:44.560763",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Null/undefined input] hash() line 6 calls .update(str, 'utf8') - if str is null or undefined, does the crypto library throw an exception or coerce to string? Could an attacker exploit this in AA formulas by passing null elements that either crash the node (DoS) or produce predictable hashes that forge proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9d339b8-c1bd-4d5f-8da2-d382d0e31bfb",
+    "timestamp": "2025-12-23 15:57:10.868790",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Non-power-of-2 sizes] For array sizes that aren't powers of 2, getMerkleRoot() duplicates the last element multiple times at different levels - could this create structural patterns in the tree that make it easier to find hash collisions at specific positions, weakening the security of oracle data feed validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58ec8dc1-5328-4670-b83a-9ab7c6ae817e",
+    "timestamp": "2025-12-23 15:57:38.097310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: serializeMerkleProof() + deserializeMerkleProof()] [Round-trip loss] If serializeMerkleProof() is called on a proof object with additional properties (e.g., proof.metadata), deserializeMerkleProof() only restores index/siblings/root - could this cause information loss that makes subsequent operations behave differently, potentially allowing attackers to bypass validation steps that depend on proof metadata?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_661c6efd-f565-4358-aa53-6ddafe745531",
+    "timestamp": "2025-12-23 15:58:04.899050",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: serializeMerkleProof()] [Index type preservation] serializeMerkleProof() line 68 converts proof.index to string via concatenation - if proof.index was originally a number, does the type change after round-trip through deserializeMerkleProof() affect verifyMerkleProof() behavior due to JavaScript's === vs == comparison semantics?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dec5f704-bc68-4206-ad9b-f5555ead7fd5",
+    "timestamp": "2025-12-23 15:58:31.845760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: deserializeMerkleProof()] [Siblings ordering] deserializeMerkleProof() line 80 assigns arr directly to proof.siblings - if arr was modified during split() operation (unlikely but possible with prototype pollution), could the siblings order be corrupted, causing valid proofs to fail verification and freezing funds in 'in merkle' addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_159a6cab-0a5a-47eb-b4ce-3e3c2fc6a4c5",
+    "timestamp": "2025-12-23 15:59:00.408109",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Non-atomic tree construction] getMerkleRoot() modifies arrHashes in-place across multiple loop iterations (line 17) - in a concurrent environment where multiple threads generate Merkle roots simultaneously, could race conditions cause one thread's arrHashes to be corrupted by another thread, producing non-deterministic roots that break consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6442d90f-d5b9-448d-9458-0645ef2cd35e",
+    "timestamp": "2025-12-23 15:59:27.527695",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Index tracking corruption] getMerkleProof() tracks index and overIndex across loop iterations (lines 26, 35, 39, 46) - if Node.js event loop allows context switching during this function, could the index variables be corrupted by reentrancy, generating incorrect proofs that either fail verification (DoS) or incorrectly verify (authorization bypass)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f876bced-cd36-4b23-9126-96913b5b699b",
+    "timestamp": "2025-12-23 15:59:53.354981",
+    "report_generated": false
   }
 ]
