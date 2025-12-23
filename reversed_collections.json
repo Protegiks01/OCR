@@ -4348,5 +4348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2cc31ec-28b4-4fd0-b9d6-89a3abdcc580",
     "timestamp": "2025-12-23 07:48:56.750562",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [bForwarded parameter missing] This function calls forwardPrivateChainsToDevices with bForwarded=true hardcoded (line 851) - but forwardPrivateChainsToOtherMembersOfWallets() accepts bForwarded as parameter. Can this inconsistency cause chains to be marked as forwarded when they shouldn't be?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83ade788-0f4d-45f5-908a-74064387cfa2",
+    "timestamp": "2025-12-23 07:50:14.177324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readDeviceAddressesControllingPaymentAddresses()] [Address ownership ambiguity] The function queries my_addresses joined with extended_pubkeys - can addresses controlled by multiple wallets (shouldn't happen, but possible with bugs) return duplicate device addresses, causing chains to be forwarded multiple times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef9c5205-6dad-492e-90a6-c9208f1fd440",
+    "timestamp": "2025-12-23 07:50:26.758083",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readDeviceAddressesControllingPaymentAddresses()] [Empty address array handling] The function returns early if arrAddresses.length === 0 (line 835) - but what if arrAddresses is undefined or null? Can this cause the query to execute with undefined parameter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_887f3ed1-783f-4c11-a700-9f485240ae7e",
+    "timestamp": "2025-12-23 07:50:39.544888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Connection parameter injection] The function accepts optional conn parameter (line 822) - if attacker can inject a malicious connection object, can this redirect private chains to attacker's database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0d8039c-6abb-4b7f-b424-fb11e372f408",
+    "timestamp": "2025-12-23 07:50:53.561304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Self-exclusion bypass] The function excludes device.getMyDeviceAddress() from recipients (line 825) - but what if device address changes during query execution? Can the node forward chains to itself, causing infinite loops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87f4ff53-e7b4-4d30-9b3a-6a222cbd1741",
+    "timestamp": "2025-12-23 07:51:07.930553",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Wallet array validation] The function passes arrWallets directly to SQL IN clause (line 824) - if arrWallets contains non-string elements or is empty, can this cause SQL syntax errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a22199a3-005a-482b-a92c-2b72289c72ca",
+    "timestamp": "2025-12-23 07:51:23.366688",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Left join null handling] The function uses LEFT JOIN with correspondents (line 396) - if correspondent records are deleted concurrently, can row.name be null for non-self devices, causing incorrect error messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f78e1285-5604-4f36-ac9d-89f157d70fc6",
+    "timestamp": "2025-12-23 07:51:39.734852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Missing correspondent detection] The function throws Error if cosigner not found in correspondents (line 406) - but this check is AFTER setting row.me flag. Can race conditions cause the error to reference wrong device address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c78b04cf-c343-435f-97e6-6f0ba2741834",
+    "timestamp": "2025-12-23 07:51:57.501935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Self-identification logic] The function checks if device_address === device.getMyDeviceAddress() to identify self (line 400) - if device module state is corrupted, can the node fail to identify itself, or incorrectly identify another device as self?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c563bc2-755b-4657-824d-631c1b1f39ec",
+    "timestamp": "2025-12-23 07:52:16.285375",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Silent verification success] The function only logs 'addresses match' via breadcrumbs (line 760) - if addresses don't match, no breadcrumb is added. Can this make debugging address corruption difficult?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f198712-fd59-4ee0-a35d-dea9b316d82b",
+    "timestamp": "2025-12-23 07:52:36.807681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Mismatch error handling] The function throws Error on pubkey or address mismatch (lines 757, 759) - are these errors caught by calling code, or do they crash the node? Can attackers trigger these errors to cause DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ad1a887-5ea5-4b24-b15a-88498f5f8071",
+    "timestamp": "2025-12-23 07:52:57.345227",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Pubkey extraction from definition] The function extracts pubkey using JSON.parse(definition)[1].pubkey (line 755) - can malformed definitions with different structure cause array access errors or extract wrong pubkey?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a0efa35-70ab-4b55-8d61-9af0faea871f",
+    "timestamp": "2025-12-23 07:53:19.297857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Single wallet assumption] The function expects exactly 1 row from query (line 742) but only checks for === 0 or > 1 - what if account is used across multiple wallets? Does the function silently skip verification in this case?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff1f0a35-99a2-4e11-a5c4-d77eaacdd767",
+    "timestamp": "2025-12-23 07:53:41.634796",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAllAddresses()] [Memory exhaustion] The function selects ALL addresses for a wallet with no limit (line 806) - can wallets with millions of addresses cause memory exhaustion when this function loads them all into an array?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_681e1b54-f18f-4be8-8642-212a036490c5",
+    "timestamp": "2025-12-23 07:54:04.896420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAddresses()] [Limit parameter overflow] If opts.limit is set to MAX_INT32 or larger (line 775), can this cause database memory exhaustion or integer overflow in query processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c92a0849-7f4b-4943-9b3b-04cda20909b9",
+    "timestamp": "2025-12-23 07:54:29.235812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAddresses()] [SQL injection via opts] The function constructs SQL by concatenating opts.is_change, opts.reverse, opts.limit (lines 769-775) - if these fields come from user input, can attackers inject SQL commands?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa452f56-8d15-4667-acc7-20c544822ff2",
+    "timestamp": "2025-12-23 07:54:54.895690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [App name as address index] The function passes app_name directly as address_index to issueAddress() (line 734) - can special app names like '__proto__', 'constructor', or '0' cause property pollution or type confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b00d45ab-ff3e-4952-8f00-2a9963932c7b",
+    "timestamp": "2025-12-23 07:55:21.705750",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [Multiple address error] The function throws Error if rows.length > 1 (line 731) - but this is after database query completes. Can race conditions cause multiple app addresses to be inserted concurrently, with only one execution detecting the error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fc7603c-c9fb-4457-aab5-a674a689f408",
+    "timestamp": "2025-12-23 07:55:48.981946",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [App name SQL injection] The app_name parameter is used in WHERE clause (line 729) - if app_name contains SQL metacharacters, can this cause SQL injection despite parameterized queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f15d7af9-e2a0-4b43-b33a-c199202b7b86",
+    "timestamp": "2025-12-23 07:56:15.568342",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Event emission timing] The function emits 'maybe_new_transactions' after gap filling (line 719) - but are all addresses guaranteed to be committed to database, or can event handlers query for addresses that aren't yet visible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f9ccfad-2480-490f-acba-6dc3e3ed1bb6",
+    "timestamp": "2025-12-23 07:56:42.062724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Sequential address issuance DoS] The function issues all missing addresses sequentially with async.eachSeries (line 716) - can this take hours or days for wallets with large gaps, effectively DoS'ing the node during gap filling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_933762e3-40ae-4990-857f-f266193ffaa3",
+    "timestamp": "2025-12-23 07:57:09.770344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Missing address array memory] The function builds arrMissingAddressInfos array (lines 699-700, 703-704) which could contain thousands of entries if massive gaps exist - can attackers create wallets with address indices 0 and 1000000, causing memory exhaustion when scanForGaps tries to fill all intermediate indices?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d7483b3-6a4d-48fb-b8ea-dc1bbfdc8954",
+    "timestamp": "2025-12-23 07:57:37.133812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Gap detection algorithm] The function identifies gaps by checking if address_index !== prev_address_index + 1 (line 698) - but what if addresses are inserted out of order in the database? Can this cause false positives where no actual gaps exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a7fa2cd-92ae-49dc-9001-ac8654c03d93",
+    "timestamp": "2025-12-23 07:58:04.493423",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Multisig wallet detection] The function identifies multisig wallets by COUNT(*) > 1 in wallet_signing_paths (line 684) - can single-sig wallets with duplicate signing path entries (database corruption) be incorrectly treated as multisig?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89046ad4-5351-431b-936b-9d2026b38205",
+    "timestamp": "2025-12-23 07:58:31.880978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readLastUsedAddressIndex()] [Join with outputs table] The function joins my_addresses with outputs table (line 522) - can this be exploited by creating fake outputs in the database that point to non-existent addresses, causing incorrect last_used_index calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83770ed0-1ce9-406a-b5d7-bac4f73c03e6",
+    "timestamp": "2025-12-23 07:59:01.021491",
+    "report_generated": false
   }
 ]
