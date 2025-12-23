@@ -9748,5 +9748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79217ded-97c9-4971-924a-4d3fabfaa31d",
     "timestamp": "2025-12-23 12:18:54.983155",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Asset Cap Type Confusion] The code checks !!objAsset.cap (line 515). Can an attacker define an asset with cap='0' (string) or cap=false to bypass cap checks while appearing to have a cap?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57e85dce-e9de-4d5e-a1f0-3b58fbeaeed0",
+    "timestamp": "2025-12-23 12:19:56.337933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Output_index Array Indexing] Many functions use payload.outputs[output_index] without bounds checking. Can an attacker provide output_index >= outputs.length to cause array out-of-bounds access, returning undefined and bypassing validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03bb0150-5dc0-496f-a341-bb772e5734fc",
+    "timestamp": "2025-12-23 12:20:09.816497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Message Index Validation] The code frequently uses message_index from user input. Can an attacker provide negative or very large message_index values to access unintended messages or cause database query errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c38c6394-ff65-4af7-80cb-1a7f1c98a401",
+    "timestamp": "2025-12-23 12:20:23.147494",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Tolerance Parameter Abuse] Functions accept tolerance_plus and tolerance_minus parameters. Can an attacker provide MAX_SAFE_INTEGER for tolerance to force selection of all available coins, bloating units and causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd8f53fe-e626-4871-93c9-3e9a73203cd2",
+    "timestamp": "2025-12-23 12:20:36.349499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Change Address Validation] The change_address parameter is passed by user but not validated. Can an attacker provide an invalid or non-owned address as change_address, causing funds to be sent to uncontrolled addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf39d1a6-dcb2-4489-a716-683eba1882de",
+    "timestamp": "2025-12-23 12:20:50.476969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Spend Unconfirmed Setting] The spend_unconfirmed parameter defaults to conf.spend_unconfirmed || 'own'. Can an attacker modify conf.spend_unconfirmed globally to enable spending of all unconfirmed outputs network-wide?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_167fcdb4-2c96-4592-9ce1-d9a6d4c39f61",
+    "timestamp": "2025-12-23 12:21:06.767399",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Asset Definition Modification] The code loads asset properties dynamically using storage.loadAssetWithListOfAttestedAuthors. Can an attacker modify asset properties (is_private, fixed_denominations, cap) between load and use, causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01ed5681-229d-4a3a-bf68-4de781ae02ba",
+    "timestamp": "2025-12-23 12:21:23.448340",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Multi-Message Payment Ordering] When creating multiple messages for one payment (lines 755-786), messages are shuffled. Can this shuffling be exploited to cause different nodes to process messages in different orders, causing validation divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f17bdd94-8707-48d4-8614-95ae37ecc036",
+    "timestamp": "2025-12-23 12:21:42.098284",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Count Authors Check] The code queries count_authors from unit_authors table. Can an attacker create units with zero authors or manipulate the table to return incorrect counts, bypassing multi-author validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_677dd4b3-752f-4200-99e4-1fff666a3633",
+    "timestamp": "2025-12-23 12:22:00.097146",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Issue vs Transfer Type] Input type is determined by presence/absence of src_unit. Can an attacker craft database entries where src_unit is NULL but other fields indicate transfer, causing type confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e568080-3100-47b8-b417-bc39ef262ab0",
+    "timestamp": "2025-12-23 12:22:19.225486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Output Hash Preimage] For private assets, output_hash is calculated from address+blinding. Can an attacker find two different (address, blinding) pairs that produce the same output_hash, allowing output substitution in private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_353e21bb-283f-4af8-ad8d-27c497f2b1b8",
+    "timestamp": "2025-12-23 12:22:38.358108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Profiler Side Effects] The code uses profiler.start() and profiler.stop() extensively. Can enabling profiling cause timing-based attacks where attackers measure operation duration to infer private information like balance amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01a5cffa-5138-4a31-ae96-f3ffd9a6ac1c",
+    "timestamp": "2025-12-23 12:22:58.770945",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Lodash Clone Depth] The code uses _.cloneDeep() for payloads (lines 154, 607, 765, 868, 1009). Can an attacker provide deeply nested objects that cause excessive memory allocation or stack overflow during cloning?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1199c1da-53d0-4d49-b10d-46d4dd0acc1e",
+    "timestamp": "2025-12-23 12:23:19.864739",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [SQL Injection] In lines 54-62, the function constructs SQL INSERT statements using string interpolation with `'${address}'`, `'${strOPs}'`, and other variables directly embedded in the query string without parameterization - can an attacker who controls the preloaded voter addresses or system parameter values inject malicious SQL to corrupt the system_votes, op_votes, or numerical_votes tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5643347-262b-40bc-abbc-c10066b90bea",
+    "timestamp": "2025-12-23 12:23:42.564918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [SQL Injection] The INSERT query on line 62 concatenates `values.join(', ')` where values are constructed using template literals with unescaped `address` and `op` variables - if an attacker can influence the arrPreloadedVoters or arrOPs arrays through constants.js manipulation, can they execute arbitrary SQL commands during initialization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69d36c7c-6e73-432b-9c0d-a1afa390b66a",
+    "timestamp": "2025-12-23 12:24:06.136685",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [SQL Injection] Lines 71-78 insert into system_vars table using direct string interpolation of `strOPs` and numerical values without prepared statements - can a malformed op_list value in constants.js containing SQL metacharacters cause injection attacks during bootstrap?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_835b997c-b8c5-42bc-8849-e544f57ed6a5",
+    "timestamp": "2025-12-23 12:24:30.062949",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Transaction Atomicity] The function checks if system_vars table is populated on line 7-8 without holding a database lock, then begins a transaction on line 33 - can two nodes simultaneously calling initSystemVarVotes() both detect empty tables and both attempt to insert initial votes, causing primary key constraint violations or duplicate vote records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3012e6b1-f695-496a-803c-bef4f0164e68",
+    "timestamp": "2025-12-23 12:24:53.978840",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Race Condition] Between the check on line 7 (`SELECT 1 FROM system_vars LIMIT 1`) and the BEGIN transaction on line 33, another process could initialize the tables - can this race condition cause duplicate initialization attempts that corrupt the voting state or cause transaction rollback failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8dfb83ae-fed4-4521-b6d5-d96d554cf3bb",
+    "timestamp": "2025-12-23 12:25:18.413496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Partial Initialization] If the transaction between lines 33-79 fails after some but not all INSERT statements complete (e.g., due to constraint violation on line 62 or 72), and the COMMIT on line 79 fails, can the database be left in a partially initialized state where some preloaded voters have votes recorded but others don't, breaking vote counting consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e92e6874-6f41-4f3b-b8df-3196a7e680bc",
+    "timestamp": "2025-12-23 12:25:43.906989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Non-Deterministic Bug Fix] Lines 9-29 contain testnet-specific bug fix logic that executes BEFORE the main initialization check - if this bug fix modifies the system_vars table but then the main initialization also proceeds (due to race conditions), can nodes end up with inconsistent system variable histories?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0f451ca-7f1f-410b-9780-21b0cbc2de4a",
+    "timestamp": "2025-12-23 12:26:10.272558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Bug Fix Validation] The bug fix on lines 10-19 checks for exactly 13 OPs and deletes the 13th one - but what if due to corruption or attack, there are 14+ OP votes for address 'EJC4A7WQGHEZEKW6RLO7F26SAR4LAQBU'? Will the fix still execute correctly or throw an error that prevents initialization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba9313fe-cf2f-4938-9fb5-3a58c0fd693a",
+    "timestamp": "2025-12-23 12:26:37.700933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Bug Fix Chain Split Risk] Lines 21-28 modify the op_list in system_vars if vote_count_mci equals exactly 3547796 and value matches a specific JSON array - if some testnet nodes applied this fix and others didn't (due to timing or version differences), can this cause a permanent chain split where nodes have different governance OP lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2929746a-260f-42e6-b28a-7e209ec1f149",
+    "timestamp": "2025-12-23 12:27:04.289153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Bug Fix Reversion] The testnet bug fix on line 27 uses a direct UPDATE without checking if the current value is still the expected one - if the op_list changed between line 25 (read) and line 27 (write), can this overwrite a newer legitimate op_list with the buggy one, causing governance corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1532d289-9ab9-42f1-bdd1-31e14bfa2cea",
+    "timestamp": "2025-12-23 12:27:31.327962",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Network Type Confusion] Lines 39-44 select different arrOPs based on constants.bDevnet and constants.bTestnet - if an attacker can manipulate environment variables to make constants.bTestnet evaluate to true on mainnet (or vice versa), can they force wrong OP lists to be initialized, causing a governance takeover?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08d458d4-8e9d-40c9-8dd8-8110714993b0",
+    "timestamp": "2025-12-23 12:27:58.959164",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Hard-coded OP List] The mainnet OP list on lines 43-44 contains 12 hard-coded addresses - if any of these addresses are compromised or lost control, there is no mechanism in this initialization to update them, potentially leading to permanent freezing of governance if majority of these addresses become inaccessible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a128e58c-d6ed-47be-8117-1af84fd2d14e",
+    "timestamp": "2025-12-23 12:28:24.496097",
+    "report_generated": false
   }
 ]
