@@ -5398,5 +5398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96f7f6a8-0bbc-4dd8-b634-4a2236283b4a",
     "timestamp": "2025-12-23 07:18:09.077066",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 54-57] [Validation.js Parameter Mismatch] If validation.js and network.js both read MAX_TOLERATED_INVALID_RATIO but at different times, can a runtime conf modification cause validation to use 0.1 while network uses 0.5, leading to inconsistent peer banning where validation rejects units but network keeps the peer connection alive?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a78818ad-9938-4d6a-ae72-76239abfc0e9",
+    "timestamp": "2025-12-23 07:30:06.806612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 52] [Environment Variable Injection] WS_PROTOCOL depends on process.env.devnet. Can an attacker who gains access to the system set a persistent environment variable (e.g., via .bashrc, systemd service file, or Docker ENV) to force devnet mode on a production node, causing it to use ws:// and accept connections from insecure peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6f76d17-0291-44f8-af52-78f993b56a97",
+    "timestamp": "2025-12-23 07:30:19.240434",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 52] [Devnet Flag Persistence] If a node is started with process.env.devnet=true for testing, then restarted without the flag, does the node correctly switch back to wss:// or does cached configuration persist, causing the node to continue using insecure protocol after restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48b37a9b-5965-444b-8f21-3a28b3083728",
+    "timestamp": "2025-12-23 07:30:32.660209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 122-131] [MySQL/SQLite Confusion] If a node is configured with exports.storage = 'mysql' but database.filename is also set (SQLite parameter), does the database initialization logic in db.js or storage.js detect this inconsistency, or can it cause the node to attempt opening both databases simultaneously, leading to corrupted state or crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a301700-9815-43c9-a01a-0ce3a8caa79e",
+    "timestamp": "2025-12-23 07:30:46.029868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 128-131] [Light/Full Database Mismatch] SQLite filename defaults to 'byteball-light.sqlite' if exports.bLight is true, else 'byteball.sqlite'. If bLight is toggled at runtime via conf modification after database connection is established, can this cause the node to write full-node data to light database or vice versa, corrupting the schema or indexes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5acc1a14-a827-4e96-81da-a6ba9e71408b",
+    "timestamp": "2025-12-23 07:31:00.063564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 98-118] [Configuration Source Priority] If both appRootDir/conf.js and appDataDir/conf.json exist and set conflicting values for the same property (e.g., MAX_INBOUND_CONNECTIONS), which takes precedence? Can an attacker exploit this priority to override security-critical settings set by the app developer via user conf.json injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d501a936-4c31-44f1-ac47-286d0cf92f77",
+    "timestamp": "2025-12-23 07:31:15.199899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 99-104] [JavaScript Code Execution] App root conf.js is loaded via require(), executing arbitrary JavaScript. Can an attacker who compromises the app root directory inject a malicious conf.js that executes code to steal private keys, modify other config files, or establish backdoors, even if the node never explicitly calls require on that file?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46e4c283-200a-4916-a2be-022bc039de67",
+    "timestamp": "2025-12-23 07:31:31.402332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 113-117] [JSON Injection via conf.json] While conf.json is safer than conf.js (no code execution), can an attacker inject JSON with prototype pollution payloads (e.g., {\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc356bcf-f8f0-4441-a637-71472e6d1d65",
+    "timestamp": "2025-12-23 07:31:49.177203",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 102-104] [Fail-Open Config Loading] When loading app root conf.js fails (catch block prints 'not using app root conf' but continues), can an attacker deliberately cause this load to fail (e.g., by introducing syntax errors) to prevent security-hardening configurations from being applied, leaving the node with default insecure settings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc31d742-992d-4dba-9920-eb93d3322f0a",
+    "timestamp": "2025-12-23 07:32:07.792448",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 115-118] [Fail-Open User Config] Similarly, if user conf.json load fails, the node continues with defaults. Can an attacker corrupt the conf.json file (e.g., via partial write or disk error) to force fallback to defaults, bypassing user-specified connection limits or witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15f9a533-e2d0-41d5-afe8-ca71e5580861",
+    "timestamp": "2025-12-23 07:32:27.696635",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [No witness configuration] This file does not set witness lists directly, but are witness lists validated against conf settings elsewhere? Can an attacker override witness-related configs in conf.js to force the node to use incompatible witness lists, causing permanent chain split from the main network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7d5a6a3-165e-45c4-9012-5a33348de54f",
+    "timestamp": "2025-12-23 07:32:48.515210",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 41-49] [Proxy-Based Network Partition] If an attacker configures socksHost or httpsProxy to a selective proxy that only forwards connections to attacker-controlled peers, can this isolate the victim node into an attacker-controlled network partition where fake units are confirmed via fake witnesses, causing the victim to accept invalid transaction history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0878d7aa-0f09-4a50-beb3-939a467500b3",
+    "timestamp": "2025-12-23 07:33:09.512827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 54-59] [Connection Limit Eclipse Attack] By setting MAX_OUTBOUND_CONNECTIONS = 1 via conf override, can an attacker force the victim node to connect to only one outbound peer (the attacker), then control all information the victim receives, enabling censorship of valid units, injection of fake units, or denial of witness proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5822314d-ee28-4721-8918-510a4eacbdcc",
+    "timestamp": "2025-12-23 07:33:31.931958",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 56] [Zero Invalid Ratio] Can MAX_TOLERATED_INVALID_RATIO be set to 0 via conf override, causing the node to ban any peer that sends even a single invalid unit (possibly due to propagation race conditions or temporary validation delays), leading to network fragmentation where all peers ban each other?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3dd0213-2e34-475e-a4eb-f8e4fb3c83d8",
+    "timestamp": "2025-12-23 07:33:55.373336",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 56] [Negative Invalid Ratio] Does the code validate that MAX_TOLERATED_INVALID_RATIO is in range [0, 1]? Can an attacker set it to -1 or 2.5, causing undefined behavior in network.js peer banning logic, potentially allowing malicious peers to never get banned or all peers to be banned immediately?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d0556c5-6609-4454-ba53-83afcc652c6c",
+    "timestamp": "2025-12-23 07:34:19.021940",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 54-55] [Zero Connection Limits] Can MAX_INBOUND_CONNECTIONS or MAX_OUTBOUND_CONNECTIONS be set to 0 via conf override, causing the node to reject all peer connections and become isolated from the network, unable to sync new units or propagate transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d40875dc-b386-40a1-9161-352f250422e5",
+    "timestamp": "2025-12-23 07:34:44.393690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 54-55] [Negative Connection Limits] Does the code validate that connection limits are positive integers? Can setting them to negative values cause integer underflow in connection counting logic, potentially allowing unlimited connections despite the negative limit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f609d911-5c6c-4fe2-9097-33a23a1488a1",
+    "timestamp": "2025-12-23 07:35:10.405949",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 57] [Excessive MIN_COUNT_GOOD_PEERS] Can MIN_COUNT_GOOD_PEERS be set to an extremely high value (e.g., 1000000) via conf override, causing the node to constantly request peer lists and never be satisfied with its peer count, leading to excessive network traffic and resource exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ed27777-c0e8-4cf7-b399-a051e39a2689",
+    "timestamp": "2025-12-23 07:35:37.344766",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 122-131] [Missing Database Configuration] If exports.storage = 'mysql' but none of the database.* properties are set (no defaults applied due to override priority), does the database connection fail gracefully or cause the node to crash with unhandled errors during initialization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df36b5af-a7e3-401c-a367-6bb6d40a6617",
+    "timestamp": "2025-12-23 07:36:03.516619",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 130] [SQLite Filename Collision] If multiple nodes (e.g., full node and light wallet) run on the same system with default SQLite filenames, can they both attempt to write to the same database file, causing lock contention, corrupted writes, or inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61ec1ace-05b7-46df-8acc-da0c970623f8",
+    "timestamp": "2025-12-23 07:36:29.971823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Function: mergeExports()] [Type Confusion] Does mergeExports() validate that merged properties match expected types (e.g., MAX_INBOUND_CONNECTIONS should be number, not string)? Can type confusion cause parseInt() failures or comparison bugs in modules that read these configs, leading to logic errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9128839d-3c9a-4f3b-83f8-629bf1dcabd0",
+    "timestamp": "2025-12-23 07:36:55.770489",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Function: mergeExports()] [Overwriting Functions] Can an attacker's conf.js override exports.mergeExports itself with a malicious function, causing subsequent merge operations to execute attacker code or skip security-critical configurations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0708c88-657b-4960-8b7e-09183cd78961",
+    "timestamp": "2025-12-23 07:37:22.101147",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 93-96] [Program Name Injection] exports.program and exports.program_version are read from package.json. Can an attacker inject extremely long strings (megabytes) into package.json name/version fields, causing memory exhaustion when these are logged, transmitted in network protocol headers, or stored in databases?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5241e21-0a84-437a-b442-31d792ef66f4",
+    "timestamp": "2025-12-23 07:37:47.120279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [All exports] [Configuration Tampering Detection] Does the system include any integrity checks (checksums, signatures) to detect if conf.js, conf.json, or package.json have been tampered with? Without such checks, can attackers persistently modify configurations without detection, maintaining long-term compromise?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6fe5d1a-693d-49ba-aba5-c8e7f2c44a1b",
+    "timestamp": "2025-12-23 07:38:14.371072",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 98-118] [TOCTOU Configuration Race] Between the time conf.js/conf.json files are checked for existence (require()) and when they are loaded, can an attacker replace them with malicious versions, exploiting a time-of-check-time-of-use race condition to inject configurations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_635a9ee0-1b46-45e9-970f-19ce01f1ee06",
+    "timestamp": "2025-12-23 07:38:42.357924",
+    "report_generated": false
   }
 ]
