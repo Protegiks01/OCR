@@ -7948,5 +7948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83911d48-1362-4a3d-a05a-81cb334b8251",
     "timestamp": "2025-12-23 13:05:29.783239",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Protocol validation bypass] Can an attacker craft a URI with mixed case like 'oBYtE:' or 'BYTEBALL:' that bypasses protocol validation due to case-insensitive regex matching at lines 15-26, potentially allowing malicious URIs to be processed when the application expects only specific protocol formats?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9d4b18fd-c305-4e93-97cd-61e0fae2536d",
+    "timestamp": "2025-12-23 13:06:39.891498",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: main_chain.js] [MCI key ordering] In main_chain.js, data feed keys are constructed using `encodeMci()` to enable efficient range queries by MCI. If the reverse hex encoding at line 60 has any edge cases (e.g., MCI near 0, MCI near 0xFFFFFFFF), could this cause database keys to sort incorrectly, breaking the main chain's ability to retrieve data feeds in chronological order and causing AA executions to read stale oracle data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4576277-cd77-47ab-a41b-cdb90ae605d3",
+    "timestamp": "2025-12-23 13:06:52.475301",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: formula/evaluation.js] [Feed value coercion] AA formulas can access data feeds via `data_feed[[oracles=ADDR, feed_name=NAME]]` syntax. The retrieved value is processed through `getValueFromDataFeedKey()` and `toNumber()` in string_utils.js. If an attacker submits a data feed with a numeric string that's valid pre-AA2 but invalid post-AA2 due to precision limits, could AAs execute differently on nodes at different upgrade stages, causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f6fd302-eb89-488d-91d3-14e700eab67e",
+    "timestamp": "2025-12-23 13:07:05.288300",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: data_feeds.js] [Mixed type comparison] In data_feeds.js lines 53-74, the code compares feed values that may be numbers or strings. The logic at line 58 uses `toNumber(value, bLimitedPrecision)`. If one node is just before the AA2 upgrade MCI and another is just after, will they use different precision modes, causing one to treat a value as numeric and the other as string, breaking AA execution consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7557f2b-9a8c-41ed-8abf-d8721e29c641",
+    "timestamp": "2025-12-23 13:07:18.641859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: data_feeds.js] [Data feed comparison] In data_feeds.js line 58, `toNumber()` is used to convert string data feed values to numbers for comparison. If an attacker submits a price feed like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e97946ca-12ea-436f-8905-d6982954469e",
+    "timestamp": "2025-12-23 13:07:32.891167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: object_hash.js] [AA address derivation] AA addresses are derived by hashing `['autonomous agent', definition]` using `getJsonSourceString()` in object_hash.js line 11. If an attacker crafts an AA definition with edge-case JSON structures (e.g., deeply nested, empty arrays with `bAllowEmpty=true`, Unicode surrogates), could they generate hash collisions allowing two different AA definitions to have the same address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e35cb464-c5c7-49ac-9255-d347fb69702c",
+    "timestamp": "2025-12-23 13:07:48.153899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Integration: object_hash.js] [Unit hash determinism] Since `getSourceString()` is used to compute unit hashes in object_hash.js lines 11-26, any non-determinism in string_utils.js directly causes hash mismatches. If a unit contains floating-point numbers near the precision limit (e.g., `1.7976931348623157e+308`), will different CPU architectures or JavaScript engines serialize these identically, or could x86 vs ARM or V8 vs SpiderMonkey produce different hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef506dea-5834-4294-9604-2f6b47395e1a",
+    "timestamp": "2025-12-23 13:08:05.227091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Cross-function] [encodeMci vs getMciFromDataFeedKey] The encode/decode functions should be perfect inverses. If an attacker finds an MCI value where `getMciFromDataFeedKey(key.split('\\\\n')[5])` after `encodeMci(mci)` produces a different MCI due to integer overflow or hex parsing edge cases, could they manipulate data feed query results in AAs, causing incorrect state transitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de2ddd7f-e98d-4102-8c80-b32feaa3aeda",
+    "timestamp": "2025-12-23 13:08:23.434071",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Cross-function] [toNumber vs getNumericFeedValue] Both functions parse numeric strings but with different precision limits. In data_feeds.js lines 58-59, `toNumber()` is called with `bLimitedPrecision`. If the precision mode is inconsistent between validation and execution phases (e.g., due to MCI boundary race conditions), could an AA accept a data feed value during validation but reject it during execution, causing bounce responses and fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9a7b736-b44d-4335-8e5a-a5193ff5e120",
+    "timestamp": "2025-12-23 13:08:42.396515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Cross-function] [getSourceString vs getJsonSourceString] The two functions use different serialization formats (type prefixes + null byte separator vs JSON syntax). In object_hash.js line 11, AA definitions use `getJsonSourceString()` while regular objects use `getSourceString()`. Could an attacker craft an object that hashes identically under both methods, allowing them to create a non-AA unit that is validated as an AA, bypassing AA-specific checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dcd26a9d-9d10-4e7c-b6c0-b747add48eb0",
+    "timestamp": "2025-12-23 13:09:02.065213",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Missing break statement] At line 214, the switch case for \\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24d2245e-e3e1-4e6c-af38-53c7e15db7b1",
+    "timestamp": "2025-12-23 13:09:22.903155",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Boolean toString consistency] At line 201, booleans are converted using `variable.toString()`. In JavaScript, this produces `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_155595a7-9e4b-4878-b395-9d37bd287aba",
+    "timestamp": "2025-12-23 13:09:44.527917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Comma separator collision] The function joins array elements with commas at line 206 and object key-value pairs with commas at line 212. If an attacker includes commas in string values, could this create ambiguous JSON where `[\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b82ea129-3551-40f7-8c4a-4ae7b9cf7de4",
+    "timestamp": "2025-12-23 13:10:06.948795",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Key sorting consistency] At line 209, object keys are sorted using `Object.keys(variable).sort()`. For AA definitions containing Unicode keys, will the sort order be identical across all JavaScript engines and Node.js versions? Could differences in locale-aware sorting cause different canonical strings on different systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf8f71d8-a79a-4891-951f-531ba1d2f877",
+    "timestamp": "2025-12-23 13:10:30.399810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Recursive call without depth limit] The `stringify()` function at line 191 is recursive (called at lines 206, 212) with no depth limit. Similar to `getSourceString()`, can an attacker submit an AA definition with deeply nested structures to cause stack overflow, crashing nodes during AA validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3baf0c6-d3e1-4e50-b7fb-1210736f6098",
+    "timestamp": "2025-12-23 13:10:55.195059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getJsonSourceString()] [Empty array/object toggle] The function has a `bAllowEmpty` parameter that, when true, allows empty arrays and objects (lines 204, 210). This is used for AA definitions where `obj[0] === 'autonomous agent'`. If an attacker finds a way to set `bAllowEmpty` to true for non-AA objects (e.g., by manipulating the calling context in object_hash.js), could they create units with empty arrays that produce different hashes than expected, breaking signature validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bb9d541-cb6f-4512-b6da-6b05be1d9955",
+    "timestamp": "2025-12-23 13:11:19.361504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toWellFormedJsonStringify()] [Regex global flag] The regex at line 187 uses the `g` flag for global replacement, but does not anchor the pattern. If the input string contains multiple lone surrogates, are they all replaced correctly, or could some be missed due to how the regex advances through the string?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2b57e370-e990-4470-b852-e4c9ae753d64",
+    "timestamp": "2025-12-23 13:11:44.659596",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toWellFormedJsonStringify()] [Comment inconsistency] At line 186, the code contains a commented-out ternary operator that would check `bWellFormedJsonStringify` but always uses the replace logic. If future Node.js versions change their `JSON.stringify()` behavior for surrogates, could this cause nodes on different Node versions to produce different JSON strings, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c3e7c51-6330-4e81-9fd8-439d7b454f6e",
+    "timestamp": "2025-12-23 13:12:10.657129",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toWellFormedJsonStringify()] [Codepoint conversion] The replacement at line 187 uses `chr.codePointAt(0).toString(16)` to get the hex value. For lone surrogates, `codePointAt()` returns the surrogate's code unit (e.g., 0xD800), not a valid Unicode code point. Will this produce a malformed escape sequence that fails to round-trip when parsed, causing unit hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5515da3d-1893-466d-a21f-849c3003914e",
+    "timestamp": "2025-12-23 13:12:38.282990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toWellFormedJsonStringify()] [Surrogate pair handling] At line 187, the function replaces lone surrogates `[\\\\ud800-\\\\udfff]` with escaped Unicode sequences. However, if a unit contains a valid surrogate pair (high surrogate followed by low surrogate), will the regex incorrectly replace them individually, breaking the pair and causing the decoded string to differ from the original?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3860cddf-8ed8-41fd-a466-bd4a67a2141c",
+    "timestamp": "2025-12-23 13:13:04.723056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: String.prototype.padStart] [Repeat overflow] At line 174, if `targetLength / padString.length` results in a very large value (e.g., target length 2^31), the `repeat()` call could allocate excessive memory, causing OOM and node crash. Can this be exploited via crafted MCI values that trigger pathological padding?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_152a87a2-1f09-4170-8a59-73dc1b5ad8ae",
+    "timestamp": "2025-12-23 13:13:33.270008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: String.prototype.padStart] [Integer truncation] At line 167, `targetLength` is truncated using `>> 0` (unsigned right shift by 0). For negative target lengths or non-integer values, this coercion could produce unexpected results. Can an attacker trigger a code path where `encodeMci()` calls `padStart()` with an attacker-controlled target length, causing the padding to be wrong and breaking data feed key ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f38244e3-bcc4-4d2b-ac9c-4b9d8530bf04",
+    "timestamp": "2025-12-23 13:14:01.493351",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: String.prototype.padStart] [Prototype pollution] The polyfill modifies the global `String.prototype` at line 166. If an attacker can execute code before this module loads (e.g., via another module's constructor), could they override this polyfill with a malicious implementation that subtly changes padding behavior, causing MCI encoding at line 60 to produce non-deterministic results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf997277-57d5-4691-b400-a707513c7e04",
+    "timestamp": "2025-12-23 13:14:31.276561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: decodeLexicographicToDouble()] [Buffer underflow] If the input `hex` string is shorter than 16 characters, `Buffer.from()` will create a smaller buffer. When `readDoubleBE(0)` is called at line 157, will this read beyond the buffer bounds, causing a segfault or returning undefined behavior, potentially crashing nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8f7ac61-d80d-46ea-83c6-c1930d133e73",
+    "timestamp": "2025-12-23 13:15:00.861153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: decodeLexicographicToDouble()] [Negative zero restoration] At line 158-159, the function converts `-0` to `+0` after decoding. Is this consistent with the encoding logic? If an oracle posts a data feed with -0 (e.g., a temperature of -0.0°C), will it round-trip correctly, or will the sign be lost, causing AAs to misinterpret the data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38623e81-735b-414e-b4e1-083b2c8c3ab6",
+    "timestamp": "2025-12-23 13:15:28.241273",
+    "report_generated": false
   }
 ]
