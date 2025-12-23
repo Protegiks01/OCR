@@ -9898,5 +9898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40b67bf9-d47e-4f6d-842d-f6d6f4dae030",
     "timestamp": "2025-12-23 15:16:23.806482",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Hash Length Validation Bypass] At line 154-155, the code validates last_ball_unit length using constants.HASH_LENGTH. If constants.HASH_LENGTH is defined incorrectly or can be modified at runtime, can an attacker bypass the length check and provide truncated or extended hashes that cause downstream issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_712025b4-12d2-49cc-ad42-dc76b22c7e51",
+    "timestamp": "2025-12-23 15:17:49.119446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signature Encoding Vulnerability] The code stores signatures in author.authentifiers[path] (lines 84, 92) as strings. If the signature encoding (e.g., base64) has vulnerabilities or allows multiple encodings for the same signature, can an attacker exploit this to create signature malleability, where different encoded versions of the same signature pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_998d1a38-a17d-443b-9e16-20547841b4f4",
+    "timestamp": "2025-12-23 15:18:02.103865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Template Injection] When reading the definition from storage at line 179, if the address uses a definition template that includes parameterized values, and those parameters aren't properly validated, can an attacker inject malicious parameters that change the definition's authentication requirements after it's been validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d7ccf85-e80c-4725-9b61-c0977aebfedb",
+    "timestamp": "2025-12-23 15:18:15.260979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Weak Randomness in Signatures] At line 92, the code calls ecdsaSig.sign(text_to_sign, privKey). If the ECDSA signature implementation uses weak randomness for the nonce (k value), can attackers extract private keys through signature analysis (e.g., nonce reuse attacks or bias attacks)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89b2fc20-fa9f-49b4-884a-7f6211692aaf",
+    "timestamp": "2025-12-23 15:18:28.818691",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Signature Replay Across Networks] The validateSignedMessage() function doesn't include any network identifier or chain ID in the validation. If an attacker captures a valid signed message from testnet and replays it on mainnet (or vice versa), can they cause unauthorized actions since the signature would technically be valid for the same address/definition on both networks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80b4a8a3-4a69-4582-8795-185f9d9c5bdb",
+    "timestamp": "2025-12-23 15:18:42.993761",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Text-to-Sign Canonicalization] At line 69, the code generates text_to_sign which will be signed. If the objectHash.getSignedPackageHashToSign() function has inconsistencies in JSON canonicalization (e.g., different ordering of object keys, handling of Unicode characters, or float precision), can different nodes generate different hashes for the same logical message, breaking signature verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d349f68-3210-4604-9910-c35e6d477b2a",
+    "timestamp": "2025-12-23 15:18:58.173766",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Hash Collision] At lines 189-190 and 205-206, the code compares definition hashes using objectHash.getChash160(). Since chash160 is only 160 bits, can an attacker perform a birthday attack to find two different definitions that hash to the same value, allowing them to substitute a malicious definition for a legitimate one?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6bfc01ef-fc94-48fd-a140-f29331aeb3d4",
+    "timestamp": "2025-12-23 15:19:15.115705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Private Key Exposure via Error] At lines 89-94, the code reads private keys using signer.readPrivateKey() and signs with ecdsaSig.sign(). If an error occurs and gets logged (line 105 uses console.log with full objUnit inspection), can private keys or signatures be exposed in error logs, allowing attackers to extract keys?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_173d2a9b-2275-478d-84b9-7787264acf16",
+    "timestamp": "2025-12-23 15:19:32.649673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signature Malleability via Clone] At line 215 in validateSignedMessage(), the code uses _.clone(objSignedMessage) before adding messages property. If _.clone() is a shallow clone and objSignedMessage contains nested objects that get mutated during validation, can this cause the hash calculated at line 219 to differ from the hash that was originally signed, allowing signature malleability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_29c98042-48eb-450f-a8c6-461be9d15f7a",
+    "timestamp": "2025-12-23 15:19:51.426051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Hash-to-Sign Manipulation] At lines 218-226, the code calculates unit_hash_to_sign using objectHash.getSignedPackageHashToSign(objSignedMessage). If an attacker can modify objSignedMessage between the validation checks (lines 122-155) and the hash calculation (line 219), can they cause the hash to be calculated over different data than what was validated, leading to signature verification of wrong content?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88df11ce-ddd0-41ad-be36-faf3f154db23",
+    "timestamp": "2025-12-23 15:20:11.076282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [From Address Injection] At line 27, the from_address parameter is not validated before use. If an attacker provides a from_address with special characters, extremely long string, or SQL injection payload, can they cause errors in database queries at line 53 (signer.readDefinition) or line 44 (composer.composeAuthorsAndMciForAddresses)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b7e0340-2e9f-419a-9c5c-bb46d9b4fece",
+    "timestamp": "2025-12-23 15:20:32.659620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Timestamp Field Injection] At line 124, timestamp is allowed in the signed message object. If an attacker provides a timestamp that is extremely far in the future or past, or not a number, can this cause integer overflow in timestamp comparisons or break time-based validation logic elsewhere in the system?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_581a2c43-7f4b-4646-b74e-7b82b495694c",
+    "timestamp": "2025-12-23 15:20:54.813895",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Author Definition Injection] At line 158, the code checks if 'definition' exists in objAuthor. If an attacker provides a definition that is an empty array, empty object, or contains only whitespace, does it pass the existence check but cause failures in downstream definition validation, potentially bypassing authentication?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3866ab29-227e-4762-85f2-dddf92dde40c",
+    "timestamp": "2025-12-23 15:21:16.983205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Version Field Injection] At line 128, the code checks the version field against constants.supported_versions. If an attacker provides a version value that is not a string but a number or object that matches one of the supported versions when coerced, can they bypass version-specific validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91cad206-5ff5-4504-98ec-f400037133d7",
+    "timestamp": "2025-12-23 15:21:41.178593",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Authentifiers Object Injection] At line 144-145, the code checks if author.authentifiers is a non-empty object but doesn't validate the keys or values. If an attacker provides authentifiers with keys like '__proto__' or 'constructor', or values that are objects instead of strings, can they exploit prototype pollution or cause type confusion in Definition.validateAuthentifiers()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b537628-f3d3-4b3b-b15a-9074749afdcf",
+    "timestamp": "2025-12-23 15:22:05.291888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Message Parameter Injection] At line 27, the signMessage() function accepts a 'message' parameter but doesn't validate its type or content before embedding it in objUnit.signed_message (line 38). If an attacker provides a message with circular references, prototype pollution properties, or extremely large objects, can this cause JSON serialization failures or hash calculation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a437016-de9a-472c-9389-76dc71769ded",
+    "timestamp": "2025-12-23 15:22:30.268407",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Signed Message Type Confusion] At line 122-123, the code checks if objSignedMessage is an object. However, arrays are objects in JavaScript. If an attacker passes an array instead of an object, can this cause type confusion in downstream code that assumes object properties, leading to undefined behavior or crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65fa59e5-29d5-41b6-a345-6157b552457d",
+    "timestamp": "2025-12-23 15:22:55.573715",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Last Ball Unit Injection] At line 154-155, the code validates last_ball_unit using ValidationUtils.isValidBase64(). If an attacker provides a valid base64 string that is actually SQL injection payload or contains special characters that break database queries at line 160, can they inject malicious SQL or cause query errors that bypass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e66e6079-4376-451a-a922-04dafcfc2957",
+    "timestamp": "2025-12-23 15:23:22.488793",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Address Validation Bypass] At line 142, the code validates author addresses using ValidationUtils.isValidAddress(). If an attacker provides an address that passes isValidAddress() but is actually a special value (e.g., '__proto__', 'constructor', or a very long string that causes buffer overflow in downstream code), can they exploit prototype pollution or memory corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91af1f7a-adbb-4409-b949-f7080b77205b",
+    "timestamp": "2025-12-23 15:23:49.563378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Field Injection via hasFieldsExcept Bypass] At line 124, the code checks for unexpected fields using ValidationUtils.hasFieldsExcept(). If the hasFieldsExcept() function has vulnerabilities that allow certain field names (e.g., with null bytes, Unicode tricks, or prototype pollution patterns) to bypass the check, can an attacker inject malicious fields that corrupt the validation process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20b91132-d3ea-45d1-b6f4-f03ba0f33de8",
+    "timestamp": "2025-12-23 15:24:17.129250",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Exception Handling DoS] At lines 207-208 and 225-226, the code has try-catch blocks that return errors. If calculating definition hash or unit_hash_to_sign throws exceptions rapidly (e.g., due to malformed input), can the exception handling overhead accumulate across thousands of concurrent validations, degrading performance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_085beeeb-df2d-4c52-b987-d65df59c4748",
+    "timestamp": "2025-12-23 15:24:46.025100",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Validation State Object DoS] At lines 218-223, the code creates an objValidationState object. If the signed message contains extremely large nested structures (e.g., huge authentifier objects), and these are copied into the validation state, can this cause memory exhaustion during the validation process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b4c603c-4a0a-43c5-9df4-20d5b942b0d7",
+    "timestamp": "2025-12-23 15:25:14.827278",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Light Client History Request DoS] At lines 166-168 and 185-187, light clients request history when data is missing. If an attacker repeatedly sends signed messages with missing last_ball_units or address history, can they cause the light client to spam history requests to the hub, overwhelming both the client and hub, or causing the client to store excessive historical data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3740b50f-ef61-403c-8e3c-5922b64c086e",
+    "timestamp": "2025-12-23 15:25:43.599115",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Database Query Flooding] At lines 160 and 179, the code makes database queries during validation. If an attacker floods the network with thousands of signed messages with non-existent last_ball_units, can they cause massive database query load, slowing down all other database operations and freezing the network for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bdd8f6a7-c233-4d71-a9d8-51ef7f9570cc",
+    "timestamp": "2025-12-23 15:26:12.265712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Multi-Author Amplification DoS] At lines 70-101, the code processes multiple authors in parallel. While validateSignedMessage() limits authors to 1 (line 133-134) when no specific address is provided, signMessage() has no such limit. Can an attacker call signMessage() with thousands of authors, each with many signing paths, causing exponential work in the nested async loops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05df61cf-b6d1-416a-a0ac-1bfd35bf5e39",
+    "timestamp": "2025-12-23 15:26:40.378312",
+    "report_generated": false
   }
 ]
