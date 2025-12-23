@@ -14698,5 +14698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fdce4ac-f5e0-4230-afdf-c25609f8b148",
     "timestamp": "2025-12-23 17:52:01.559509",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('watch_system_vars')] [System Vars Broadcast Storm] At lines 2908-2911, when a client requests to watch system vars, ws.bWatchingSystemVars is set to true and sendSysVars() is called. If an attacker connects with thousands of WebSocket connections and all request watch_system_vars, does each system var update trigger thousands of broadcasts via sendUpdatedSysVarsToAllLight() at lines 162-167, causing network saturation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0200a6e9-9897-4b09-9b6e-891989d98a47",
+    "timestamp": "2025-12-23 17:53:09.743790",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('exchange_rates')] [Rate Update Authority] At lines 2913-2918, exchange_rates are accepted from any peer where ws.bLoggingIn || ws.bLoggedIn. If a malicious peer can set these flags (e.g., by exploiting a hub login vulnerability), can they inject false exchange rates that get broadcast to all clients via eventBus.emit('rates_updated'), causing applications to make financial decisions based on incorrect prices?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f11bb7dd-c1b9-4da4-beef-128286354b01",
+    "timestamp": "2025-12-23 17:53:22.267300",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('upgrade_required')] [Force Disconnect Attack] At lines 2934-2939, if a peer sends 'upgrade_required', the node closes the connection and throws an error. Can an attacker who controls a hub force all connected clients to disconnect and crash by sending this message, causing widespread service disruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99ea627e-738e-4519-b0a4-39fccb1de69b",
+    "timestamp": "2025-12-23 17:53:35.369160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('subscribe')] [Subscription ID Collision] At lines 2980-3016, the subscribe command checks if subscription_id already exists across all peers at line 2986. If the subscription_id is only 30 random bytes (base64 encoded, ~40 chars) generated at line 773, can an attacker with high connection volume force a collision by repeatedly connecting until they match an existing subscription_id, causing legitimate peers to be disconnected for 'self-connect'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e2c1d10-e048-45e6-bccb-c67b46fb72ad",
+    "timestamp": "2025-12-23 17:53:48.703967",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('subscribe')] [Old Core Connection Leak] At lines 3001-3007, if the peer has old_core=true (set in version handler or here), the connection is closed. However, the peer is already in the subscription flow. Can this create a state where the peer is marked as subscribed (line 3008) but then immediately disconnected, leaving stale subscription state that causes joints to be forwarded to a dead connection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e67eda43-3440-4758-9a26-f3937840c4f4",
+    "timestamp": "2025-12-23 17:54:02.876863",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('get_joint')] [Joint Response Manipulation] At lines 3018-3037, get_joint reads a joint and conditionally removes the ball and skiplist_units at lines 3027-3030 if objJoint.ball exists and main_chain_index > getMinRetrievableMci(). Can an attacker requesting a joint at exactly minRetrievableMci+1 receive a joint without ball data, but if they request it again a moment later after the MCI threshold moves, receive the same joint WITH ball data, creating confusion about stability status?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10411ec2-9a50-4b1a-a115-4125b331dc15",
+    "timestamp": "2025-12-23 17:54:17.879040",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('post_joint')] [Post Joint Object Key Ratio] At lines 3039-3048, post_joint checks objectLength.getRatio() > 3 at line 3043. This is the same check as in 'joint' justsaying handler. If an attacker knows the exact formula for getRatio(), can they craft a joint with ratio exactly 3.0 that passes this check but has abnormally large keys, and since it's posted by a light client, it gets special handling that might bypass other size checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_390de76d-13c9-4d00-9c00-404ff7d9165d",
+    "timestamp": "2025-12-23 17:54:34.480178",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('catchup')] [Catchup Mutex Timeout] At lines 3050-3068, catchup requests acquire mutex.lock(['catchup_request']). If catchup.prepareCatchupChain() at line 3057 takes an extremely long time (e.g., due to complex database queries), can subsequent catchup requests from other peers queue up behind the mutex, and if the first request never completes due to a bug, does this permanently block all catchup operations across the entire network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_363a4b58-d9ed-4824-a274-d70f2568cfb4",
+    "timestamp": "2025-12-23 17:54:51.927848",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getChash160()] [AA Address Derivation] The function uses special JSON-based hashing for 'autonomous agent' arrays (line 11) - can an attacker craft a non-AA object that gets JSON-hashed due to matching the pattern [length=2, first='autonomous agent'], resulting in address collision with legitimate AA addresses and allowing theft of funds sent to that address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3af9936b-72a6-4579-aa98-d036724ffcf8",
+    "timestamp": "2025-12-23 17:55:10.698979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getChash160()] [Non-deterministic Hashing] Since getChash160() switches between getJsonSourceString() and getSourceString() based on object structure (line 11), can an attacker exploit differences in key ordering or encoding between these two methods to generate the same chash160 for two different objects, causing address collision and fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca1459f3-8169-4a51-86da-8b1c276c8e93",
+    "timestamp": "2025-12-23 17:55:30.886570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getChash160()] [Type Confusion] If an attacker passes an object that is Array.isArray() === true with obj[0] === 'autonomous agent' but obj.length !== 2, does the function still use getJsonSourceString() and potentially create unexpected hashing behavior that could be exploited for address collision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aff1088d-9bf6-41eb-a1c5-3de07346e59d",
+    "timestamp": "2025-12-23 17:55:52.094015",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getChash288()] [Chash Length Mismatch] The getChash288() function always uses getSourceString() (line 16) - can an attacker exploit the fact that it doesn't have the special AA handling that getChash160() has to create non-deterministic hashing across nodes if some mistake AA definitions for regular objects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8733dfef-600f-4f25-8044-c6e1cc18c085",
+    "timestamp": "2025-12-23 17:56:13.914809",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getChash160()] [Unicode Normalization] Does the chash.getChash160() implementation normalize Unicode strings consistently across platforms, or can an attacker exploit Unicode normalization differences (NFC vs NFD) to generate the same chash160 for visually identical but byte-different strings, enabling phishing or address collision attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d048dbf6-b196-433a-9952-241f432e9809",
+    "timestamp": "2025-12-23 17:56:36.299614",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBase64Hash()] [Conditional JSON Hashing] The bJsonBased parameter switches between getJsonSourceString() and getSourceString() (line 24) - can an attacker exploiting calling code that incorrectly sets this flag cause hash collisions by hashing the same object with different encoding methods in different parts of the system?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e8a117d-1b7a-4308-83e0-7c171aad6e7a",
+    "timestamp": "2025-12-23 17:56:58.733760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getHexHash()] [No JSON Mode] getHexHash() always uses getSourceString() (line 20) and never getJsonSourceString() - can this inconsistency with getBase64Hash() be exploited to create units that hash differently when the same object is hashed with hex vs base64, breaking consensus or allowing signature bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77e622ee-ad24-472d-97c1-d5295f0259b1",
+    "timestamp": "2025-12-23 17:57:23.180687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getBase64Hash()] [Base64 Padding] Does the base64 encoding include proper padding, and can an attacker exploit implementations that strip or mishandle padding characters to create hash collisions or bypass signature verification when hashes are compared?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_004648eb-3fe0-412a-b078-ffaba25d6622",
+    "timestamp": "2025-12-23 17:57:48.658830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Deep Clone Mutation] The function uses _.cloneDeep() (line 30) - if lodash's cloneDeep has vulnerabilities with prototype pollution or fails to clone certain object types (Symbols, getters/setters), can an attacker craft a unit that mutates during cloning and produces different hashes on different nodes, causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f6cb1e8-7831-4947-87de-7c39e0bd16c8",
+    "timestamp": "2025-12-23 17:58:15.265485",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Version-Specific Field Deletion] The function only deletes 'timestamp' if version === versionWithoutTimestamp (lines 38-39) - can an attacker exploit units with undefined/null version to cause non-deterministic deletion of timestamp field across nodes, resulting in different unit hashes and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a000794-3200-4330-b94e-01f8b24ba3c5",
+    "timestamp": "2025-12-23 17:58:43.289627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Message Payload Deletion] Lines 41-46 delete payload and payload_uri from messages - if an attacker includes both 'payload' and 'payload_uri' in a message, are both guaranteed to be deleted consistently, or can race conditions or object property ordering cause one to remain in some nodes, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9e5c150-ddec-4d15-8a60-b76161d78f78",
+    "timestamp": "2025-12-23 17:59:11.446096",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Actual TPS Fee Retention] Line 36 deletes 'actual_tps_fee' but the commented line 35 shows 'tps_fee' is NOT deleted - can an attacker exploit the presence of both tps_fee and actual_tps_fee fields to manipulate fee calculations while maintaining valid unit hashes, stealing fees or causing validation discrepancies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58763269-d676-44a5-800d-dacc00310a82",
+    "timestamp": "2025-12-23 17:59:40.412847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Commission Field Deletion] Lines 32-34 delete headers_commission, payload_commission, and oversize_fee - if these fields contain BigInt or non-standard number types, can incomplete deletion or type coercion during cloning cause hash mismatches across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a117b83-2d51-4409-83ca-86f5118d1829",
+    "timestamp": "2025-12-23 18:00:10.043087",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Empty Messages Array] If objUnit.messages is defined but empty (length=0), the loop (lines 42-46) doesn't execute - does this create an edge case where an empty messages array is hashed differently than undefined messages, allowing unit hash manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc3ee558-6f3f-48aa-b045-6f03d433abee",
+    "timestamp": "2025-12-23 18:00:38.081344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getNakedUnit()] [Message Index Manipulation] The message payload deletion iterates by index (line 42) - if an attacker crafts a unit where messages array has gaps (sparse array with undefined elements), can the iteration skip malicious payloads that should be stripped, causing hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_453847b2-e6d2-4866-9d88-c869db90f011",
+    "timestamp": "2025-12-23 18:01:07.277746",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitContentHash()] [Version Check Inversion] Line 53 checks objUnit.version !== constants.versionWithoutTimestamp to determine JSON hashing - can an attacker craft a unit with version explicitly set to undefined or null, bypassing the version check and causing different nodes to use different hashing methods, resulting in permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e506cafb-5718-4715-81d9-ee91710cd0ee",
+    "timestamp": "2025-12-23 18:01:34.222220",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Function: getUnitContentHash()] [Naked Unit Reuse] getUnitContentHash() calls getNakedUnit() (line 53) which uses _.cloneDeep() - if the same objUnit is hashed multiple times, can mutations between calls cause different content hashes for the same logical unit, enabling double-spend attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec357741-4789-447b-8621-6183e8dd669e",
+    "timestamp": "2025-12-23 18:02:00.808844",
+    "report_generated": false
   }
 ]
