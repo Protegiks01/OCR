@@ -8398,5 +8398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6760b5dc-fc19-48f6-87f8-1ef16373e767",
     "timestamp": "2025-12-23 13:35:30.354326",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getCountUsedConnections()] [Race Condition Visibility] This function iterates arrConnections and counts bInUse flags. Can concurrent modifications to bInUse cause incorrect counts that misrepresent pool health, leading to incorrect resource allocation decisions by monitoring systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff916549-8148-40a5-9447-b7fd45b0e130",
+    "timestamp": "2025-12-23 13:36:46.107838",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: close()] [No Callback Handling] The close() function accepts an optional callback but doesn't wait for pending queries to complete before closing. Can this cause in-flight queries to fail mid-execution, corrupting database state if partial writes complete before the close?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18aac2f0-583f-44a1-a143-2a9400a16336",
+    "timestamp": "2025-12-23 13:36:58.730000",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Promise Resolve Race] When using promises, if multiple handlers are queued and onDbReady() fires, do all pending promises get resolved with the same connection, causing race conditions where multiple operations think they have exclusive access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a808d3ba-9352-421f-8fb8-db5557fc9983",
+    "timestamp": "2025-12-23 13:37:12.107873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Callback vs Error Throw] When no callback is provided, errors are thrown synchronously. Can this cause unhandled exceptions in promise chains that crash the entire node process instead of returning rejected promises, causing network-wide outages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d375218-983f-488b-a20b-c5c8e2155f9f",
+    "timestamp": "2025-12-23 13:37:25.540888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Parameter Type Confusion] If params array contains non-array objects that have a length property (e.g., strings, buffers), does the function incorrectly treat them as arrays and attempt to expand placeholders, causing parameter count mismatches and query failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_462430f0-b984-48ce-9796-4a6d4578c564",
+    "timestamp": "2025-12-23 13:37:39.653825",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getIgnore()] [OR IGNORE Semantic Differences] The function returns 'OR IGNORE' which silently ignores constraint violations. Can this cause critical errors (e.g., duplicate unit insertion) to be silently ignored, allowing an attacker to create duplicate units with different content that break deterministic validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96c6910f-4891-4a82-a2e7-31bfcd603b92",
+    "timestamp": "2025-12-23 13:37:54.850682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getRandom()] [RANDOM() Predictability] The getRandom() function returns SQLite's RANDOM(). Is this cryptographically secure, or can an attacker predict or influence the random values used in queries (e.g., for selecting witnesses or parents), causing deterministic behavior that enables attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_317d9674-f3a0-4fa2-a3e6-30b527cf3186",
+    "timestamp": "2025-12-23 13:38:11.446236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: getNow()] [SQLite Time Manipulation] The getNow() function returns datetime('now') which uses SQLite's built-in time. Can an attacker with OS-level access manipulate the system clock to make SQLite return incorrect timestamps, causing witness level calculations to be wrong and breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8a4e285-c1b5-41a6-824e-a1febbff7e81",
+    "timestamp": "2025-12-23 13:38:29.088502",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Foreign Key Deferred Checking] SQLite foreign key constraints are checked immediately by default. If a transaction needs to temporarily violate foreign keys (e.g., during unit reorg), can the immediate checking cause transaction aborts that leave the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a00aa89-7c4b-45bc-89e8-d7ef3ac5941e",
+    "timestamp": "2025-12-23 13:38:48.014373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Foreign Key Cascade Delete] With foreign_keys=1, DELETE operations cascade to dependent rows. Can an attacker trigger deletion of a parent unit that cascades to delete witness records, breaking witness proofs and causing light clients to reject the entire chain as invalid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b6d86ad-6185-4db0-a5bf-107418bf6de5",
+    "timestamp": "2025-12-23 13:39:07.988478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Foreign Key Timing Window] PRAGMA foreign_keys=1 is set after database open but before migrations. If migrations create tables with foreign keys referencing not-yet-created tables, do the foreign key checks fail, causing migration failures that leave the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b072c20-89ef-4eb0-bfb3-34c1db0819ab",
+    "timestamp": "2025-12-23 13:39:29.255698",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Path Injection via desktop_app] The database path comes from desktop_app.getAppDataDir(). If that module has vulnerabilities allowing path manipulation, can an attacker redirect the database to attacker-controlled locations, enabling database substitution attacks that inject pre-signed malicious units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02b69646-66a8-4b02-9118-d46e288f8c74",
+    "timestamp": "2025-12-23 13:39:50.788393",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.cquery()] [conf.bFaster Security Mode] The cquery() method bypasses actual queries when conf.bFaster is enabled. If this configuration can be modified at runtime (e.g., via API or message), can an attacker enable it during critical operations to skip validation queries and inject invalid units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4291001-3064-4ef6-b8fd-3d22e8f69561",
+    "timestamp": "2025-12-23 13:40:13.956928",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [conf.bLight Cache Setting] For light nodes, the cache_size pragma is not set (only full nodes get -200000). Can light nodes with default small cache sizes experience severe performance degradation during catchup, causing sync delays >1 day and preventing timely transaction confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a187e72-5191-41ee-aa74-398c63a3c18d",
+    "timestamp": "2025-12-23 13:40:37.119311",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database Name Validation] The db_name parameter is directly concatenated into file paths without validation. Can an attacker control this parameter (e.g., via configuration injection) to specify absolute paths like '/etc/passwd', causing the node to corrupt system files or leak sensitive data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70dc3d07-7e3f-48fb-b3ae-7eb90b0b562b",
+    "timestamp": "2025-12-23 13:41:00.316017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: Module Export] [MAX_CONNECTIONS Parameter] The MAX_CONNECTIONS parameter is passed by the caller. If different modules use different MAX_CONNECTIONS values for the same database, can this cause connection pool fragmentation where some pools exhaust connections while others have idle capacity, causing unnecessary delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6789876-b6f4-46c4-a44e-59eaab8e8111",
+    "timestamp": "2025-12-23 13:41:25.113552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Sequential PRAGMA Execution] Multiple PRAGMA statements are executed sequentially in nested callbacks. Can this initialization delay cause connections to time out during high load, reducing effective MAX_CONNECTIONS and degrading performance below acceptable thresholds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b907f79-8c93-431d-9d57-f0a227085988",
+    "timestamp": "2025-12-23 13:41:50.997912",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [15 Second Loading Window] The bLoading flag is set to false after 15 seconds. If database initialization actually takes longer (e.g., due to migrations or large initial database), can queries executed during this window face different timeout behavior or missing indexes, causing inconsistent performance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2964471-9389-4994-813b-429516b76a12",
+    "timestamp": "2025-12-23 13:42:17.911900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [25ms Log Threshold] Queries taking >25ms are logged with full SQL and parameters. Can this logging itself cause performance issues during high transaction volume, where the log I/O becomes a bottleneck that delays subsequent queries and causes cascading slowdowns?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0015e378-ab18-4185-8448-c62b42177db3",
+    "timestamp": "2025-12-23 13:42:45.749946",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.printLongQuery()] [Long Query Detection Threshold] The printLongQuery() method only logs queries running for >60 seconds. Can attackers craft queries that run for 58 seconds repeatedly, staying under the threshold while still causing severe performance degradation that delays transaction confirmation by >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f223c4d4-ff91-4654-abc9-7aa726e2de28",
+    "timestamp": "2025-12-23 13:43:12.499480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [WAL Mode Concurrent Writers] SQLite's WAL mode allows one writer and multiple readers. If multiple node processes accidentally open the same database (e.g., during upgrade), can concurrent writers corrupt the WAL file, requiring manual database recovery and causing extended downtime?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2844f554-96fd-4a1f-a125-a726d5f62c7d",
+    "timestamp": "2025-12-23 13:43:40.274989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [WAL Mode Crash Recovery] If a node crashes while uncommitted transactions are in the WAL, does the next startup correctly recover these transactions, or can partial transactions be lost, causing inconsistencies between database state and the DAG stored on disk?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4ae6da1-1a05-4c4a-88a8-4eb62f1d2391",
+    "timestamp": "2025-12-23 13:44:07.220902",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [WAL Mode Readonly Conflict] When opening in readonly mode (bReadOnly=true), WAL mode may still require write access to the -shm shared memory file. Can readonly nodes fail to open the database or cause conflicts with other processes, preventing light clients from syncing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7a706251-3bb0-4971-b7e1-fef0c2de06b3",
+    "timestamp": "2025-12-23 13:44:35.049020",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [WAL Checkpoint Starvation] With journal_mode=WAL, write-ahead logs must be periodically checkpointed. If the database experiences high write volume and checkpoints never complete, can the WAL file grow unboundedly until disk space is exhausted, crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75a0535c-0edc-404c-b6b4-f5d4acff8511",
+    "timestamp": "2025-12-23 13:45:03.396777",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [wallet.js Balance Calculation] If wallet.js calculates balances using snapshot reads without transaction isolation, and composer.js simultaneously spends outputs, can wallet.js see inconsistent balance states and compose transactions that spend non-existent outputs, causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c361cdd-f274-4c23-981c-23ca7601d0c1",
+    "timestamp": "2025-12-23 13:45:30.326472",
+    "report_generated": false
   }
 ]
