@@ -8398,5 +8398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13947b40-2953-447c-8dee-78570e8d80d2",
     "timestamp": "2025-12-23 10:47:59.304774",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter.emit()] [Race condition with DB commits] When main_chain.js emits 'mci_became_stable' from inside a database transaction (as seen in network.js handler that uses mutex.lock to wait for write completion), can a listener execute before the transaction commits, reading stale data (e.g., old last_ball_mci) and making incorrect decisions like broadcasting invalid witness proofs to light clients, allowing light clients to accept invalid history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa4c1926-08a5-49cd-b222-df088353e357",
+    "timestamp": "2025-12-23 10:49:11.913205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Synchronous emission race] Can multiple modules simultaneously call eventBus.emit() for different events (e.g., 'new_joint' from network.js and 'mci_became_stable' from main_chain.js) in a way that their synchronous handler chains interleave, causing one handler's state modifications (e.g., updating assocUnstableMessages in storage.js) to be visible to another handler mid-execution, leading to inconsistent state and validation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed020bda-9ee4-4805-88dc-105e5eeb8771",
+    "timestamp": "2025-12-23 10:49:24.435277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [process.nextTick timing] Some emitters (like storage.js line 939 and main_chain.js line 1635) wrap eventBus.emit() in process.nextTick() to avoid synchronous execution, but others emit directly - can this inconsistency cause timing-dependent bugs where a handler registered for event A expects event B to have already been processed, but due to nextTick delays, event B's handlers haven't run yet, causing incorrect behavior (e.g., wallet composing transaction before AA definition is marked as saved)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4c7e657-8068-49d4-83ef-56237ceab514",
+    "timestamp": "2025-12-23 10:49:37.854684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Handler registration timing] If module X emits an event before module Y has loaded and registered its listener, will Y's handler never execute for that emission, and can an attacker exploit this by sending units early in the node startup process (e.g., during catchup) before all handlers are registered, causing some critical validations or state updates to be skipped and allowing invalid units into the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36101987-dd68-4299-bb99-b1910ec7f56c",
+    "timestamp": "2025-12-23 10:49:51.030878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Reentrancy in event handlers] Can a handler for event A emit event B, whose handler emits event A again, creating a reentrant call chain, and if this happens with critical events like 'mci_became_stable' → 'aa_response' → 'new_joint' → 'mci_became_stable', does this cause stack overflow, infinite loops, or double-processing of the same MCI, leading to node crash or consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8fa210e5-5388-4546-966e-079126db7e18",
+    "timestamp": "2025-12-23 10:50:05.285332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Recursive event emission] If an AA triggers a secondary AA which triggers the original AA in a cycle, and each trigger emits events like 'aa_request' and 'aa_response', can this create unbounded recursion in event handlers, consuming stack space until the node crashes with 'Maximum call stack size exceeded', causing network halt for that node and potential fund freezing if the AA sequence was part of a withdrawal process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6ad002f-96e9-4e20-9ca9-aed48dcd5d71",
+    "timestamp": "2025-12-23 10:50:20.829154",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Stack depth in handler chains] If 40 different modules each register handlers for the same event (approaching the maxListeners limit), and one of these handlers has a bug causing it to run slowly or block, does this cause the entire synchronous handler chain to block, preventing subsequent handlers from executing and causing critical operations (like network unit propagation or consensus updates) to stall for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4afb2c0-83de-4c7b-8d47-19f163b0c71f",
+    "timestamp": "2025-12-23 10:50:37.208481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Uncaught exceptions in handlers] If an event handler throws an uncaught exception, does Node.js's EventEmitter continue executing remaining handlers or stop the chain, and can an attacker craft units that trigger exceptions in early handlers (e.g., validation.js) to prevent later critical handlers (e.g., storage.js, network.js) from executing, causing units to be validated but not stored or broadcast, leading to DAG corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_032a8d6c-0e06-4506-b127-5c514f795ec7",
+    "timestamp": "2025-12-23 10:50:55.530093",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter error event] Does the event bus have a handler for the special 'error' event, and if an emitter calls eventBus.emit('error', err) without a registered handler, will Node.js throw an unhandled error and crash the entire process, and can an attacker trigger this by causing errors in deeply nested operations (e.g., AA formula evaluation errors) to cascade into unhandled 'error' events, causing network-wide node crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71eb5bb4-3e28-44c5-b9e9-19a6dc147ac1",
+    "timestamp": "2025-12-23 10:51:14.353596",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Handler exception propagation] When a handler for 'nonfatal_error' itself throws an exception, does this create an error-handling loop or cause the exception to go unhandled, and can an attacker exploit this by triggering scenarios where error handlers fail (e.g., by corrupting the storage layer that error handlers try to log to), causing the node to crash without proper error reporting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_43de5982-ee3c-4200-b6cf-88bad7c16174",
+    "timestamp": "2025-12-23 10:51:34.137741",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Silent handler failures] If an event handler returns or completes without error but fails to perform its critical operation (e.g., network.js handler for 'new_joint' fails to broadcast due to network partition, or storage.js handler fails to persist due to database lock), does the emitter have any way to detect this failure, or does the system incorrectly assume the event was handled successfully, leading to incomplete state updates and divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37a3b89a-24e9-48f7-9b8e-4c1570f32424",
+    "timestamp": "2025-12-23 10:51:54.937251",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Event name typos] Since event names are strings with no compile-time checking, can a typo in event emission or listener registration (e.g., emitting 'mci_became_stabel' instead of 'mci_became_stable', or listening to 'new-joint' vs 'new_joint') cause critical handlers to never execute, and can an attacker exploit this by studying the codebase for such typos to understand which protocol operations will fail, allowing them to craft attacks that exploit the missing functionality?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68f4b26d-0a1a-48cb-a74d-c1f238afde12",
+    "timestamp": "2025-12-23 10:52:16.410968",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Dynamic event names] For events with dynamic names like 'validated-{unit}' where {unit} is a unit hash, can an attacker craft unit hashes containing special characters or escape sequences that cause event name collisions or regex injection in handlers that pattern-match event names, potentially allowing one unit's validation event to trigger handlers intended for a different unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee948a22-0382-4692-b49d-c028a61b7488",
+    "timestamp": "2025-12-23 10:52:39.335902",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Event namespace pollution] Can an attacker register listeners for event names they discover through reconnaissance (e.g., by analyzing network traffic, memory dumps, or open-source code) but that are intended to be internal-only, allowing them to observe sensitive events (like 'aa_definition_saved' with private AA logic, 'system_var_vote' with governance data, or unit validation results) and front-run transactions or manipulate protocol behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd6fce2d-560b-4c05-9501-3d3ae525ffa1",
+    "timestamp": "2025-12-23 10:53:02.683923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [mci_became_stable event] If the 'mci_became_stable' event emitted by main_chain.js is dropped, delayed, or processed out of order due to event bus issues (listener limit reached, handler exception, reentrancy), can this cause some nodes to advance their stability point while others don't, leading to disagreement on which units are stable and causing permanent chain split requiring hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_790b6f01-04f1-4222-9684-041261ad3085",
+    "timestamp": "2025-12-23 10:53:27.710798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [mci_became_stable duplication] Can the 'mci_became_stable' event be emitted multiple times for the same MCI (e.g., due to reentrancy, retry logic, or database replay), causing handlers to double-process stability updates, potentially double-spending outputs marked as stable, crediting AA state variables twice, or notifying light clients of duplicate stability, leading to fund loss or consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4eb60090-e4e1-43be-b32b-6ddd8407d268",
+    "timestamp": "2025-12-23 10:53:53.291913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [new_joint event ordering] When multiple 'new_joint' events are emitted rapidly (e.g., during catchup or under high network load), if handlers don't complete before the next emission, can this cause joints to be processed out of topological order (child before parent), breaking DAG invariants like parent existence checks or witness level calculations and causing validation to accept invalid units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9cefc59-e1aa-4584-8ab3-83783dc46b72",
+    "timestamp": "2025-12-23 10:54:20.421783",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [aa_definition_saved timing] If storage.js emits 'aa_definition_saved' before the database transaction commits (despite the process.nextTick wrapper), can aa_composer.js receive the event and attempt to compose a trigger for the AA before its definition is actually persisted, causing the trigger composition to fail or reference a non-existent AA, potentially freezing funds sent to that AA address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4528afda-f806-446d-83ae-3cd22befb2f6",
+    "timestamp": "2025-12-23 10:54:48.399010",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Module load order dependency] If wallet.js registers a handler for 'mci_became_stable' before network.js does, but wallet's handler expects network to have already notified light clients (which network's handler does), can this ordering dependency cause wallet to proceed with transaction confirmation before light clients are informed, leading to double-spend attempts where the wallet composes a conflicting transaction before light clients see the first one as stable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df1814ab-1a06-4e2f-b24b-9e87e6e427a5",
+    "timestamp": "2025-12-23 10:55:17.440187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Circular event dependencies] Can module A's handler for event X emit event Y, and module B's handler for event Y emit event X, creating a circular dependency that causes infinite event emission loops, stack overflow, or deadlock if handlers acquire locks, and can an attacker trigger this by crafting units that activate both event chains simultaneously (e.g., an AA trigger that also changes an address definition)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91cf0666-9fa1-4fdd-82f2-110a94e608ce",
+    "timestamp": "2025-12-23 10:55:47.440025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Handler interdependencies] If writer.js emits 'system_var_vote' and multiple handlers (e.g., in arbiter_contract.js and paid_witnessing.js) respond by modifying shared state (like witness lists or payment schedules), but these handlers have implicit ordering requirements not enforced by the event bus, can race conditions cause incorrect state updates, potentially allowing attackers to manipulate witness voting or payment distributions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_11a95093-b5f3-421d-b3a4-6d08b35304ba",
+    "timestamp": "2025-12-23 10:56:17.330286",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Async handler ordering] If a handler for 'new_joint' is async (returns a Promise or uses callbacks) and doesn't block the event emission, can subsequent events be processed before the async handler completes, and can an attacker exploit this by sending a sequence of units where unit B's validation depends on unit A's handler completing, but the event bus processes B's events before A's async handler finishes, causing B to be incorrectly accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c81f3fc3-0b8e-40e2-81b5-9775875c46fc",
+    "timestamp": "2025-12-23 10:56:47.246051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Callback hell in handlers] If handlers use nested callbacks (common pattern in the codebase) and one callback fails to execute due to error or timing issue, can this cause partial completion of critical operations like storing a unit but not updating balances, or broadcasting a unit but not marking it as sent, leading to state inconsistencies that allow double-spends or fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b407974-af5d-424c-a29f-ed1952703ecc",
+    "timestamp": "2025-12-23 10:57:15.143170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Promise rejection in handlers] If a handler returns a rejected Promise or throws in an async function, does the EventEmitter handle this gracefully or does it go unhandled, and if unhandled, will Node.js's unhandledRejection event terminate the process (in future Node.js versions), causing unexpected node shutdowns and network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3f87d8e-31b8-452c-81d7-83b7106165f5",
+    "timestamp": "2025-12-23 10:57:43.409314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Synchronous handler blocking] If an attacker crafts a unit that causes an event handler to execute a CPU-intensive operation synchronously (e.g., validation of a large multi-sig with 100 signatures, or AA formula with complex cryptographic operations), can this block the entire event loop, preventing all other events from being processed and effectively halting the node for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b362247f-c28d-4710-a537-381a859e1187",
+    "timestamp": "2025-12-23 10:58:12.540004",
+    "report_generated": false
   }
 ]
