@@ -11248,5 +11248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b21a1a1f-634d-4b4e-aae0-155936c662e5",
     "timestamp": "2025-12-23 14:00:30.173311",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareLinkProofs()] [Single Element Chain Rejection] At lines 627-628, chains of one element are rejected with error. Can this prevent legitimate proof requests for adjacent units, causing light clients to fail to verify spend chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0bd795a-5ae4-4206-a5ed-956066d65b10",
+    "timestamp": "2025-12-23 14:01:52.894296",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareLinkProofs()] [Mutex Lock Timeout] At line 629, mutex.lock(['prepareLinkProofs']) is acquired but no timeout is specified. Can a long-running proof creation cause the mutex to be held indefinitely, blocking all concurrent prepareLinkProofs() calls and causing network delay ≥1 day?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc41e950-5976-437c-b849-3f6d1ae12d3b",
+    "timestamp": "2025-12-23 14:02:05.700095",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareLinkProofs()] [Array Index Assumptions] At lines 632-638, the code assumes arrUnits[i-1] and arrUnits[i] are valid. Can malformed input arrays cause array index errors that crash the node, causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df061ec7-5f0e-438f-aefd-987695eb3cbc",
+    "timestamp": "2025-12-23 14:02:18.771276",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareLinkProofs()] [Error Propagation Failure] At lines 639-643, if createLinkProof() returns an error, it's passed to callbacks.ifError(). Can error messages leak sensitive database information or unit details that help attackers understand the DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d47973ac-02ba-452d-b7ab-1c52a17745de",
+    "timestamp": "2025-12-23 14:02:32.789841",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [Later Unit Not Found] At lines 652-654, if later_unit is not found, an error is returned. Can an attacker request proofs for non-existent units to probe which units exist in the database, leaking transaction graph information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6b8b9e4-ee62-4fe8-874f-f95bf6ca66ff",
+    "timestamp": "2025-12-23 14:02:47.157748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [Earlier Unit Not Found] At lines 661-663, similar error for earlier_unit. Can this be exploited in a DoS attack by requesting proofs for many non-existent units, wasting server resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a744ce2-f580-499d-b710-3c339ccae1e7",
+    "timestamp": "2025-12-23 14:03:02.926428",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [MCI Comparison Logic Error] At lines 667-668, the code checks if later_mci < earlier_mci and returns 'not included'. Can units with NULL MCIs bypass this check, allowing proofs to be created for units that aren't actually linked in the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_893bb823-b363-4c59-bb4c-38fea40ee5a8",
+    "timestamp": "2025-12-23 14:03:19.950359",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [Last Ball MCI Calculation] At line 659, later_lb_mci is retrieved from last_ball_unit properties. Can manipulated last_ball_unit references cause incorrect MCI calculations, leading to invalid proof chains being accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61445a5a-7d42-41f3-86b2-53a1d0f9e73a",
+    "timestamp": "2025-12-23 14:03:38.366334",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [Inclusion Check Bypass] At lines 676-678, graph.determineIfIncluded() determines if earlier_unit is included in later_unit. Can this check be bypassed through race conditions or database inconsistencies, allowing proofs for non-included units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4d63025-1862-44c0-8f2a-b8d0e04f3835",
+    "timestamp": "2025-12-23 14:03:58.026503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [ProofChain Build Failure] At lines 670-673, proofChain.buildProofChain() is called but error handling is absent. Can failures in proof chain building silently succeed, creating incomplete proofs that light clients can't verify?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25b8d5a0-06e7-4999-b39c-3262e0d1b2ba",
+    "timestamp": "2025-12-23 14:04:18.256720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: createLinkProof()] [Unconfirmed Output Spending Path] At lines 675-682, if output was unconfirmed when spent, buildPath() is called. Can this create unbounded proof chains for deeply nested unconfirmed transactions, causing memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ba3c7f1-3d23-4743-a5ca-7b3f2461f232",
+    "timestamp": "2025-12-23 14:04:39.137058",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [Recursive Stack Overflow] The function uses nested callbacks with goUp() and buildPathToEarlierUnit(). Can deeply nested DAG structures cause stack overflow, crashing the node and causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d480706-8e9b-4190-9b97-3e262ce0e98e",
+    "timestamp": "2025-12-23 14:05:01.427898",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [Best Parent Chain Following] At lines 710-712, the query follows best_parent_unit. Can manipulated best_parent relationships (due to database corruption or race conditions) create infinite loops or incorrect paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9405efd-8bc0-40d0-9e2f-984e5242cca3",
+    "timestamp": "2025-12-23 14:05:25.017873",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [MCI Comparison with NULL] At lines 718-719, MCI is compared with NULL checks. Can edge cases where both units have NULL MCI cause the comparison logic to fail, creating invalid paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46e276f7-e1a8-4006-8706-8edbd58af262",
+    "timestamp": "2025-12-23 14:05:47.186514",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [Inclusion Check Async Race] At line 720, graph.determineIfIncluded() is awaited. Can concurrent database modifications during this check cause race conditions where the inclusion result is stale by the time buildPathToEarlierUnit() is called?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ebf73da-80cb-42fb-a805-c83c2b20fe29",
+    "timestamp": "2025-12-23 14:06:11.971603",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [Parent Selection from Multiple Parents] At lines 746-760, when multiple parents exist, async.eachSeries() searches for one that includes earlier_unit. Can this fail to find any valid parent if inclusion checks are inconsistent, throwing an error and failing proof generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a8d55d2-6024-4029-a293-ec95940ce3df",
+    "timestamp": "2025-12-23 14:06:37.978034",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [MCI Undefined Check] At lines 731-732, if MCI is undefined, an error is thrown. Can race conditions during unit storage leave MCI undefined temporarily, causing legitimate proof requests to fail during sync periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55b6b282-b9d4-4aee-82de-9287ee9a7339",
+    "timestamp": "2025-12-23 14:07:04.613127",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [No Parents Found Error] At lines 738-739, if no parents are found with same MCI, an error is thrown. Can database inconsistencies cause this error for valid DAG structures, preventing proof generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_164a213e-5abe-4a6e-99d4-edfdbda593bd",
+    "timestamp": "2025-12-23 14:07:31.500819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: buildPath()] [Same Unit Early Exit] At lines 765-766, if later and earlier units are the same, onDone() is called immediately. Can this bypass necessary validation steps that should occur even for self-proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbc05a02-3c65-4491-b418-c7ad04828693",
+    "timestamp": "2025-12-23 14:07:59.461697",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [First Element Validation] At lines 772-774, only the first element is checked against arrUnits[0]. Can an attacker provide a valid first element but manipulate subsequent elements to inject fake proof chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d01ef64e-6686-4776-a999-d9d85d759e19",
+    "timestamp": "2025-12-23 14:08:25.991472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Known Units Bootstrap] At line 777, assocKnownUnits[arrUnits[0]] is set to true without validating arrUnits[0] exists or is valid. Can attackers initialize the known units set with fake units, allowing entire fake proof chains to validate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51079d44-1a47-4270-b94f-5786b7913f39",
+    "timestamp": "2025-12-23 14:08:53.053069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Hash Validation Bypass] At line 786, validation.hasValidHashes() is called but may not check all fields. Can attackers modify non-validated fields after hash validation to inject malicious data into validated proof chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff999634-5d20-4c41-8fda-1fdd5875ca3f",
+    "timestamp": "2025-12-23 14:09:22.465403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Last Ball Reference Validation] At lines 788-789, last_ball and last_ball_unit are added to known sets without validation. Can fake last ball references be injected to create false stability checkpoints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4cce058-bfed-4b08-bb03-9cb92eefc5d9",
+    "timestamp": "2025-12-23 14:09:52.501490",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Parent Unit Trust Propagation] At lines 790-792, parent_units are added to assocKnownUnits without validation. Can a single valid joint with fake parent_unit references poison the entire known units set, allowing fake proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8dcb5b5-8e1d-44d9-886b-e6ab7e9ee22b",
+    "timestamp": "2025-12-23 14:10:23.343528",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Ball Hash Validation Formula] At line 798, ball hash is validated using objectHash.getBallHash(). Can differences in hash calculation between client and server (due to version differences or bugs) cause legitimate proofs to be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7ff614f-1b55-4a69-a24e-1ceb68d9ff87",
+    "timestamp": "2025-12-23 14:10:53.714955",
+    "report_generated": false
   }
 ]
