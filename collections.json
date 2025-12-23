@@ -14098,5 +14098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76416bd5-53c1-433a-860a-7acee2518514",
     "timestamp": "2025-12-23 17:11:11.923207",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addQuery()] [Callback Double-Invocation] In the callback wrapping logic (lines 90-98), if the mysql callback is invoked multiple times (e.g., due to a mysql library bug), does the async.series callback get called multiple times, causing duplicate execution of subsequent queries in the series and potential double-crediting of payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6b80187-2458-4aba-9d86-afc342af6b19",
+    "timestamp": "2025-12-23 17:12:40.846504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [SQL Logging - Credential Leakage] When failed queries are logged with q.sql (line 36), can this expose sensitive data like private payment blinding factors or AA state secrets if they are passed as SQL parameters, allowing attackers monitoring logs to deanonymize transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50b07381-8fde-4bed-8d5a-340cf2ed9276",
+    "timestamp": "2025-12-23 17:12:53.561124",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: release()] [Connection Leak - Pool Exhaustion] If release() is called on a connection that was obtained through takeConnectionFromPool but an exception occurs in the code path before release is called, does the connection remain locked forever, eventually exhausting the pool and halting all database operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9b05377-a274-4280-b716-df16cfa7e652",
+    "timestamp": "2025-12-23 17:13:06.933281",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Array Result Modification - Validation Bypass] When query results are mapped to new objects with Object.assign (line 55), if validation logic assumes results are immutable or sealed objects, can an attacker modify result properties after they're returned but before validation completes, bypassing witness signature checks or unit hash verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbb83131-be39-480f-b5c2-ed916186f618",
+    "timestamp": "2025-12-23 17:13:20.516561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getFromUnixTime()] [Integer Overflow in Timestamp] The getFromUnixTime function (line 134) directly embeds the timestamp parameter - can an attacker pass extremely large timestamp values that cause MySQL's FROM_UNIXTIME to overflow or return invalid dates, corrupting unit timestamp ordering and breaking main chain selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_747bc12b-9e3e-4299-a51d-2cae05074df5",
+    "timestamp": "2025-12-23 17:13:34.832990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Concurrent Query Modification - Race Condition] Since the query wrapper modifies the arguments array (lines 22-31) while the original query may still be referencing it, can concurrent query calls from different event loop ticks corrupt each other's parameters, causing units to be stored with wrong parent references or witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fff2a616-d5ac-4735-a7ca-0615c4a56efa",
+    "timestamp": "2025-12-23 17:13:50.305200",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Error Handling - Connection Loss] When getConnection fails and throws an error (line 111), does this leave the connection pool in an inconsistent state where the failure count is incremented but recovery is impossible, requiring a node restart and causing network delays exceeding 1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21a2f52b-7b48-48aa-8517-efad924394bb",
+    "timestamp": "2025-12-23 17:14:07.011573",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [start_ts Capture - Timing Race] The start_ts variable is captured before the query executes (line 63) but consumed_time is calculated in the callback (line 57) - can extreme clock skew or NTP adjustments during query execution cause negative or overflowing time measurements that crash the logging code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb00d179-9688-4064-bad3-1c656d9afbe8",
+    "timestamp": "2025-12-23 17:14:25.373353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addQuery()] [Array Push Race - Incorrect Ordering] If addQuery is called concurrently from multiple async contexts on the same array (line 89), does JavaScript's non-atomic array push operation allow queries to be inserted in non-deterministic order, breaking the expected sequence of unit storage and balance updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6507422-e61c-46a3-a535-ff8c0643ea20",
+    "timestamp": "2025-12-23 17:14:45.621871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: escape()] [Escaping Bypass - Special Characters] If the original mysql escape function has known bypasses for certain character encodings or MySQL configurations, does the thin wrapper (lines 76-78) inherit these vulnerabilities, allowing SQL injection in unit payload data or AA formula strings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_25d2cf1c-6e3c-479f-9452-c6abc0ae5d84",
+    "timestamp": "2025-12-23 17:15:05.627767",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Buffer Inspection - Type Confusion] The Buffer.isBuffer check (line 52) determines whether to convert fields - can an attacker craft malicious objects that pass Buffer.isBuffer but cause toString() to throw an exception or return non-string values, corrupting unit hashes or addresses stored in VARBINARY columns?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60762441-2558-400c-9f94-f56cf8ef254e",
+    "timestamp": "2025-12-23 17:15:26.520793",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: cquery()] [Configuration Injection] If the conf.bFaster flag can be modified at runtime through a configuration reload or AA formula that writes to conf module exports, can an attacker dynamically enable query skipping during specific critical operations like double-spend checks, then disable it afterwards to hide the attack?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2832aacc-713e-4a2a-97e8-126fae6ac26b",
+    "timestamp": "2025-12-23 17:15:48.892410",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Callback Argument Count - Logic Errors] The query wrapper assumes callbacks take (results, fields) parameters (line 60), but MySQL callbacks actually receive (err, results, fields) - if any code path accidentally provides results as the first argument, can this cause validation logic to treat error objects as valid query results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f299e8c-9265-4b62-9d21-bb75c54ade92",
+    "timestamp": "2025-12-23 17:16:11.872755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Promise-Callback Hybrid - Double Return] The function supports both callback and Promise interfaces (lines 106-107) - if a caller accidentally provides a callback AND awaits the Promise, does the connection get released twice, corrupting the connection pool's free connection tracking and potentially causing connection reuse conflicts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0d6b45a-d819-478b-95e5-d8dee4c9c028",
+    "timestamp": "2025-12-23 17:16:34.919907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: close()] [Graceful Shutdown - Transaction Loss] When close() is called to shutdown the pool (line 122), does it wait for all in-flight queries to complete, or can it forcefully terminate connections mid-transaction, causing partially committed unit data that breaks DAG referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9101a725-53b3-44d6-8b16-dd8a9e92c931",
+    "timestamp": "2025-12-23 17:16:59.513039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getRandom()] [Non-Deterministic Query Results] The getRandom function returns RAND() for SQL (line 138) - if this is used in queries during consensus-critical operations like parent selection or main chain determination, can different nodes get different query results, causing permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1241e141-bed0-4f95-8ede-c483ebc9e3fa",
+    "timestamp": "2025-12-23 17:17:23.986265",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Long Query Threshold - DoS Detection] The 25ms threshold for logging slow queries (line 58) may be too high for detecting systematic DoS attacks - can an attacker craft queries that take 20-24ms each and flood the network, avoiding detection while still causing cumulative delays exceeding 1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_239368e3-33cc-4240-ae50-5a3bac726945",
+    "timestamp": "2025-12-23 17:17:49.429979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Load Average Logging - System Info Leak] The query logging exposes os.loadavg() (line 59) - can an attacker use this information to time attacks when the system is already under load, maximizing the impact of additional malicious queries to push the node into denial-of-service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fcf529b0-bfa8-47ce-a5c6-738bc93005de",
+    "timestamp": "2025-12-23 17:18:15.501682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addQuery()] [Callback Scope Binding - Variable Capture] The callback wrapping function captures the variable 'f' (line 93) in a closure - if the query_args array is modified after addQuery returns but before the query executes, can this cause the wrong callback to be invoked, mixing up results from different queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44cc4126-720c-4483-92a3-5e150404d840",
+    "timestamp": "2025-12-23 17:18:41.795310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getUnixTimestamp()] [SQL Injection via Date Parameter] The getUnixTimestamp function (line 154) directly embeds the date parameter - can an attacker inject SQL through date strings passed from AA formulas or unit payload data to manipulate timestamp comparisons in stability point calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_143e68b0-55ec-4efe-b7a9-a6bf4c1a89e4",
+    "timestamp": "2025-12-23 17:19:07.868128",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Exception in Result Processing - Transaction Abort] If an exception occurs during the Buffer-to-string conversion loop (lines 51-55) after the query has succeeded but before the callback is invoked, does the transaction remain uncommitted, causing units to be validated but never stored, creating ghost units that peers expect but can never sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8baf6bd-94bf-4380-ab1e-5da6f3466577",
+    "timestamp": "2025-12-23 17:19:34.639935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Module Exports Recursion - Circular Dependency] The function checks if new_connection.original_query exists (line 113) to avoid double-wrapping, but if module.exports is called recursively on the same connection through a circular dependency, can this create infinite wrapping layers that exhaust stack space during query execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0b06551-81b5-4940-aa4e-ec940f3a559c",
+    "timestamp": "2025-12-23 17:20:00.846679",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Arguments Object Mutation - Memory Leak] The function modifies the arguments object and creates new_args array (lines 21-26) - does this prevent the JavaScript engine from optimizing the function, causing excessive memory allocation during high-frequency query operations like unit validation, eventually leading to OOM crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_690db8e5-eadb-46c9-a6db-281a88aa89bb",
+    "timestamp": "2025-12-23 17:20:26.567221",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Callback Type Check - Code Injection] The check 'typeof last_arg === 'function'' (line 16) only validates that it's a function, not where it came from - can an attacker inject malicious functions through deserialization attacks or prototype pollution that get executed with database results as arguments, leaking sensitive data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bef9a497-be11-44fa-a5cd-a4223ede9d02",
+    "timestamp": "2025-12-23 17:20:51.716225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getIgnore()] [INSERT IGNORE Semantics - Silent Failures] The getIgnore function returns 'IGNORE' for SQL (line 150) - if this is used in unit insertion queries, can duplicate unit submissions be silently ignored without error, causing inconsistent propagation where some peers store a unit and others don't, leading to chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52568faf-dd49-48f5-abeb-f4559534624d",
+    "timestamp": "2025-12-23 17:21:17.743365",
+    "report_generated": false
   }
 ]
