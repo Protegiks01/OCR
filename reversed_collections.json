@@ -11398,5 +11398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d335d4f0-778b-4350-b3bc-e4794b6d9047",
     "timestamp": "2025-12-23 16:56:06.933781",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Partial ball assignment] The query at line 33-34 uses LEFT JOIN, meaning parent units without balls will return null in parent_row.ball. If the balls table is inconsistent (e.g., some stable units missing ball entries due to database corruption), could this cause the some() check at line 36 to throw errors unpredictably, causing non-deterministic proof chain failures across nodes (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdb25383-53f4-49a6-8834-dbe6dad5155c",
+    "timestamp": "2025-12-23 16:57:24.876834",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Parent balls missing] At line 36-37, the code checks if any parent units don't have balls (i.e., parent_row.ball is null). What happens if a unit's parent was marked as final-bad or nonserial after the unit was created? Would this throw an error and prevent proof chain construction for all descendants of that unit, permanently freezing funds in those units (High severity - permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b7140748-6fdf-4074-b9ee-5e23ebafa92e",
+    "timestamp": "2025-12-23 16:57:37.511543",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [MC unit uniqueness] At line 143-145, the query retrieves the unit at main_chain_index=mci with is_on_main_chain=1. If database corruption results in rows.length !== 1, an error is thrown. Could this error propagate to light clients in a way that makes them unable to verify any transactions, causing permanent operational failure requiring hard fork (Critical severity - permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_868f5117-2440-4ecd-9079-eb69875a28aa",
+    "timestamp": "2025-12-23 16:57:50.841136",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Missing unit in last mile] At line 79-81, the query expects exactly one unit with the given unit hash. If a malicious peer requests a proof chain for a unit that doesn't exist in the local database, the error thrown here propagates up. Could an attacker flood nodes with proof chain requests for non-existent units to cause DoS via exception handling overhead (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4befd5b2-d073-4a96-95a3-800e56d8e787",
+    "timestamp": "2025-12-23 16:58:05.293702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Non-deterministic query results] If two units somehow have the same main_chain_index and is_on_main_chain=1 (database consistency violation), the query at line 25 would return multiple rows. Would different nodes potentially select different units from these results, creating non-deterministic proof chains that cause permanent chain split (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a906664f-1e63-4b71-8c2b-9e8da2d9a587",
+    "timestamp": "2025-12-23 16:58:19.609136",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Missing MC unit] The database query at line 25 expects exactly one unit with main_chain_index=mci and is_on_main_chain=1, throwing an error at line 26-27 if rows.length !== 1. Can an attacker manipulate the database (e.g., via SQL injection in another component or database corruption) to have zero or multiple units claiming the same MCI, causing all proof chain construction to fail and halting light client operations (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_977aea96-ea2e-4a4f-aaf3-35bce0580ab0",
+    "timestamp": "2025-12-23 16:58:34.773882",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI equality short-circuit] At line 71-72, if earlier_mci === later_mci, onDone() is called immediately without adding any balls to arrBalls. Could an attacker craft a proof chain request where earlier_mci === later_mci to receive an empty proof chain, then use this to convince light clients that a unit is valid without any actual proof (Critical severity - direct fund loss via fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69aef910-0214-46b1-b71a-77e484a13bcf",
+    "timestamp": "2025-12-23 16:58:51.343353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI ordering violation] At line 69-70, the code checks if earlier_mci > later_mci and throws an error. But what if the database contains corrupted data where a unit's MCI is incorrectly assigned (e.g., through a previous bug)? Would this check prevent proof chain construction, causing all light clients to fail verification for legitimate transactions (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_091938c5-a5e7-4c5c-8261-8a859f01478b",
+    "timestamp": "2025-12-23 16:59:09.484238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI underflow] At line 23-24, if mci < 0, an error is thrown. However, what happens during skiplist traversal at line 61 when addBall(next_mci) is called with a computed next_mci that could be negative due to integer underflow or malicious skiplist_mci values? Could this crash the node or create infinite recursion (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_456c9697-0bed-4f30-a212-74583e3e856b",
+    "timestamp": "2025-12-23 16:59:27.988580",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [MCI equality edge case] When later_mci === earlier_mci at line 12, the code skips buildProofChainOnMc and goes directly to buildLastMileOfProofChain. Can an attacker exploit this by requesting proof chains with equal MCIs to bypass certain validation steps or produce incomplete proof chains that light clients incorrectly accept (Critical severity - incorrect chain verification)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a3ee783-6c21-40ef-a382-b156a458ed10",
+    "timestamp": "2025-12-23 16:59:46.978501",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Null MCI handling] When earlier_mci is null, the function throws an error at line 10-11, but what happens if a malicious caller provides earlier_mci=null for a unit that legitimately exists but hasn't been assigned an MCI yet? Could this cause legitimate light client proof requests to fail, resulting in temporary network partition where light clients cannot verify valid transactions (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_648bcfc9-1954-4037-a6a8-cccda69efd9e",
+    "timestamp": "2025-12-23 17:00:07.412393",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [State assumption] The SIGINT handler assumes profiler state is consistent and printable - if signal arrives during a profiler operation (e.g., mid-stop()), can race conditions cause the handler to access inconsistent state and crash during shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b5723a1-f637-4f4a-9382-77c3efc6ca8f",
+    "timestamp": "2025-12-23 17:00:29.136295",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [Process termination] Line 223 calls process.exit() after printing results - does this immediate exit prevent database connections from closing properly or in-flight validation operations from completing, potentially corrupting the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de251970-b0e4-414e-95dc-68dd43435e09",
+    "timestamp": "2025-12-23 17:00:51.327259",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [Uncaught exception] Lines 217-225 register SIGINT handler that calls print_on_log() and process.exit() - if profiler state is corrupted when SIGINT occurs, can print_on_log() throw an exception that prevents graceful shutdown and leaves database transactions uncommitted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f20d34cc-2c5e-4d2a-a5c8-a08bbf5cd84c",
+    "timestamp": "2025-12-23 17:01:15.017479",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: print_on_screen()] [Console flooding] Line 114 uses console.error to print profiling results - if printOnScreenPeriodInSeconds is set very low, can this flood the console and degrade performance or make it impossible to see critical error messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a94c3b12-8554-4aa6-afb3-b646d18749c3",
+    "timestamp": "2025-12-23 17:01:39.029148",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Console Override] [Information suppression] Line 219 restores console.log = clog in SIGINT handler - if console.log was overridden and SIGINT is never received, can important validation errors or security warnings be permanently suppressed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_056d5138-a2c7-42c4-ab9e-235463ee7e20",
+    "timestamp": "2025-12-23 17:02:04.198791",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Console Override] [Debugging artifact] Line 240 saves original console.log to clog and line 241 (commented out) would override console.log - if the commented line is uncommented in production, can this suppress critical error logs from validation.js, storage.js, or other modules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27dcf488-48ce-42c6-b44c-106c84d471ed",
+    "timestamp": "2025-12-23 17:02:30.637223",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: mark_end()] [Missing start] Line 57 returns early if timers[tag] doesn't exist - can this silently fail to record timing data if mark_start was never called, causing incomplete profiling results that hide performance issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9948814-5cac-424b-aafb-db8d4a36b443",
+    "timestamp": "2025-12-23 17:02:57.979269",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [ID collision] Line 48 defaults id to 0 if not provided - if multiple operations use mark_start(tag) without specifying unique IDs, can they collide and cause 'multiple start marks' errors even for logically separate operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85a354d0-6c65-451c-8740-34401ea7cc08",
+    "timestamp": "2025-12-23 17:03:26.526708",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [CPU usage calculation] Lines 194-197 use process.cpuUsage() to calculate CPU percentages - if the profiler runs for very long periods, can integer overflow in usage.user or usage.system cause incorrect or negative percentage calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0643d3e-9d09-49d7-9582-71f02a2953fa",
+    "timestamp": "2025-12-23 17:03:54.357432",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [Number overflow] Lines 182-189 calculate sum, max, min over timing results arrays - for very large result sets accumulated over long periods, can sum overflow Number.MAX_SAFE_INTEGER causing incorrect statistics?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3922f03-0b5c-4b04-aa66-14d14ebb08c5",
+    "timestamp": "2025-12-23 17:04:23.049353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: pad_right()] [String operations] Lines 201-204 use String.repeat() which may fail for very large padding lengths - can an attacker cause tag names or formatting to require excessive padding lengths, causing memory exhaustion or CPU spikes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d40672fb-df2d-4f2b-a457-96b80d185205",
+    "timestamp": "2025-12-23 17:04:51.716182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: pad_left()] [Type coercion] Line 207 coerces str to string with str+'' - if numeric values or objects are passed, can this cause unexpected string representations that break formatting in console output or file writing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2009373b-2dc0-4c9a-8ec6-39c49be5cef1",
+    "timestamp": "2025-12-23 17:05:20.254395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Global State Reset] [Race condition] Lines 129-135 reset all profiling state variables after MCI file writing - if concurrent validation threads are reading these variables during reset, can this cause them to see inconsistent state (e.g., times[tag] exists but counters[tag] is undefined)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3bfad6f-d44e-4106-80ad-346f6d4ed1c3",
+    "timestamp": "2025-12-23 17:05:46.902066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Division by zero] Line 153 calculates times_for_tag/count where count could be 0 if increment() is never called - although line 146 returns early, can the early return be bypassed if times is populated but count is 0?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d4dbdde-96d5-4dcb-80a3-b55347ac0568",
+    "timestamp": "2025-12-23 17:06:12.890452",
+    "report_generated": false
   }
 ]
