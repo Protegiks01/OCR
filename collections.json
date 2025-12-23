@@ -11098,5 +11098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b404ef68-e56f-47db-9cfb-b0cdb7aa9295",
     "timestamp": "2025-12-23 13:50:25.989698",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: getSqlToFilterMyUnits()] [SQL Injection via Unit Array] At line 489, arrUnits are escaped and joined but no validation is performed on the array contents. Can malformed unit hashes bypass db.escape() and inject SQL in the multiple UNION queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9dcf5a0a-b272-4f52-ad0c-c251c5440427",
+    "timestamp": "2025-12-23 13:51:45.962257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: getSqlToFilterMyUnits()] [Duplicate Unit Detection] The function uses multiple UNION queries without DISTINCT. Can duplicate units in the input array cause duplicate results, leading to multiple event emissions for the same unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77451bad-c3ab-4dc6-b881-9c825f89885f",
+    "timestamp": "2025-12-23 13:51:58.733853",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: getSqlToFilterMyUnits()] [Shared Address vs My Address Priority] At lines 490-496, both my_addresses and shared_addresses are checked. Can ambiguity in ownership cause incorrect event emission, such as emitting 'my_stable' events for shared addresses that should have different handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51dd1f27-ab4d-44c2-913e-8e7ed705652e",
+    "timestamp": "2025-12-23 13:52:11.830456",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: getSqlToFilterMyUnits()] [Watched Address Security] At lines 498-500, my_watched_addresses are included. Can an attacker who gains ability to add watched addresses trigger events for addresses they don't own, causing false transaction notifications?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_331eb49d-eb98-41da-ac0d-a189eb5e645b",
+    "timestamp": "2025-12-23 13:52:25.294791",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitStability()] [Event Emission Race Condition] At lines 510-513, events are emitted without locks. Can concurrent emitStability() calls emit duplicate 'my_stable-<unit>' events, causing wallet logic to process the same stabilization multiple times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4cc2a88b-f180-4085-90d6-89123c01d21c",
+    "timestamp": "2025-12-23 13:52:39.568963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitStability()] [OnDone Callback Timing] At line 508, onDone(ownUnits.length > 0) is called before event emission. Can the callback return control to caller while events are still being emitted asynchronously, causing race conditions in caller logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9433b24-3d9d-400e-80db-997f1145cbbe",
+    "timestamp": "2025-12-23 13:52:54.969042",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitStability()] [Not_my_stable Event Logic] At lines 515-517, 'not_my_stable' events are emitted for units not owned by the user. Can these events leak information about other users' transactions being stabilized, creating privacy concerns?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2c82a5b-3af3-465d-bdb2-c6bfbb237589",
+    "timestamp": "2025-12-23 13:53:11.476156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitStability()] [Array Difference Operation] At line 515, _.difference() is used. Can large arrays cause performance issues, delaying event emission and causing units to be processed in incorrect order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a2dd05d-d68c-4c5b-8989-17f8ece9eb5c",
+    "timestamp": "2025-12-23 13:53:29.451472",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitNewMyTransactions()] [Duplicate Event Emission] Similar to emitStability(), can concurrent calls emit duplicate 'new_my_unit-<unit>' events, causing wallet UI to show duplicate transaction notifications?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b5605fe-4a78-4f80-a1dc-30d8eedf7748",
+    "timestamp": "2025-12-23 13:53:48.530504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: emitNewMyTransactions()] [Event Emission Without Validation] At lines 527-530, events are emitted without re-checking if units are still valid or sequence is still good. Can invalidated units trigger events that cause incorrect balance updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1fcdf49-3093-4f51-b9e6-27c7052aaca2",
+    "timestamp": "2025-12-23 13:54:08.482761",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: updateAndEmitBadSequenceUnits()] [Retry Delay Exponential Backoff Cap] At lines 541-542, retryDelay is capped at 6400ms and function returns. Can units that take longer to validate be permanently missed, causing their sequence to remain 'good' when it should be 'temp-bad', allowing invalid spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32a5a5dd-9d0a-47f6-ba41-4179fa88f618",
+    "timestamp": "2025-12-23 13:54:28.965537",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: updateAndEmitBadSequenceUnits()] [Concurrent Update Race] At line 551, UPDATE units SET sequence='temp-bad' is performed without locking. Can concurrent calls update the same units multiple times, causing database contention or incorrect sequence state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_187de24b-ce90-4467-9d1f-7046043f444e",
+    "timestamp": "2025-12-23 13:54:50.442792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: updateAndEmitBadSequenceUnits()] [Is_stable=0 Filter] At line 551, only units with is_stable=0 are updated. Can stable units with bad sequence bypass this update, remaining marked as good and causing incorrect transaction history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_582b6b7b-59ef-48cc-b28d-e82ce3caf5ed",
+    "timestamp": "2025-12-23 13:55:13.727324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: updateAndEmitBadSequenceUnits()] [Event Emission for Already-Bad Units] At lines 552-556, events are emitted even if sequence was already temp-bad. Can duplicate 'sequence_became_bad' events cause wallet logic to double-process the sequence change?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ccfc11be-3562-47c2-9095-9502601c6d45",
+    "timestamp": "2025-12-23 13:55:37.741935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: updateAndEmitBadSequenceUnits()] [Recursive Call Stack Overflow] At lines 547-549, the function recursively calls itself with increasing delays. Can a large batch of arrNotSavedUnits cause stack overflow or exhaust system timers, causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2062b12-f5b0-47da-a3b4-e1543925758b",
+    "timestamp": "2025-12-23 13:56:01.423070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [Witness Address References Check] At lines 571-573, if witnesses have references in their addresses, an error is returned. Can an attacker register as a witness with a time-locked or complex definition that initially has no references but later develops references, causing units referencing these witnesses to be rejected and freezing transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_266bf6e0-2a6d-4257-9c48-2583df1abb90",
+    "timestamp": "2025-12-23 13:56:26.283905",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [Database Connection Release Timing] At line 582, conn.release() is called after parentComposer.pickParentUnitsAndLastBall() completes. Can errors in witness validation or subsequent processing leave the connection unreleased, causing connection pool exhaustion and network delay ≥1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a806574d-fc4c-440a-871d-fa717496c2be",
+    "timestamp": "2025-12-23 13:56:53.019729",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [TPS Fee Calculation Race] At lines 603-609, TPS fees are calculated based on current database state. Can concurrent transactions alter the TPS balance between calculation and actual unit composition, causing under-paid units to be rejected or over-paid fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d7275ad-fc3c-47f6-acbb-a4461b37c98b",
+    "timestamp": "2025-12-23 13:57:20.667387",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [V5 Light Bug Workaround] At lines 593-596, a workaround for buggy v5.0.0 light clients sets tps_fee=0 if no addresses are provided. Can attackers using old light client versions exploit this to avoid paying TPS fees, gaining unfair advantage in high-traffic periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d716b95-5d29-448e-97db-c84460346256",
+    "timestamp": "2025-12-23 13:57:49.769802",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [max_aa_responses Validation] At line 567, max_aa_responses is only validated as non-negative integer. Can an attacker provide extremely large values that cause integer overflow in TPS fee calculation at line 605, resulting in negative or zero fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3ca930f-13d8-410e-93c3-38087e43d94d",
+    "timestamp": "2025-12-23 13:58:17.759189",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [Output Addresses AA Detection] At line 603, AA addresses are detected in arrOutputAddresses. Can an attacker craft addresses that look like AAs but aren't, or vice versa, manipulating the TPS fee calculation to pay less than required?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3847d941-3421-401d-a9a3-4e2655907a65",
+    "timestamp": "2025-12-23 13:58:45.619997",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [First Address TPS Fee Payment] At line 607, TPS fees are paid by arrFromAddresses[0] only. Can an attacker structure transactions with a low-balance address first to avoid TPS fees, or cause legitimate transactions to fail due to insufficient fees in the first address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_abd666cf-efa0-4414-b0b0-c52726839e9e",
+    "timestamp": "2025-12-23 13:59:10.786093",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [TPS Balance Historical Lookup] At line 607, tps_fees_balance is queried with mci<=last_stable_mc_ball_mci. Can this query return stale balance data if recent TPS fee payments haven't been stabilized yet, causing incorrect fee calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6624e91c-05fa-4b95-98b4-de170c8c3e48",
+    "timestamp": "2025-12-23 13:59:36.832547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [Witness List Unit Missing] At lines 612-615, witness_list_unit may be null for older MCIs. Can this cause issues for clients expecting this field, potentially causing unit composition failures or validation rejections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57e7e7c9-60de-4333-8f50-5b1c4d80a61c",
+    "timestamp": "2025-12-23 14:00:03.729887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareParentsAndLastBallAndWitnessListUnit()] [Timestamp Manipulation] At line 575, timestamp is generated as Math.round(Date.now()/1000). Can system clock manipulation on the server affect timestamp values, causing units to have incorrect timestamps that violate protocol constraints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b21a1a1f-634d-4b4e-aae0-155936c662e5",
+    "timestamp": "2025-12-23 14:00:30.173311",
+    "report_generated": false
   }
 ]
