@@ -5848,5 +5848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c2054bc-3abf-4dbf-af3d-6a1915b4a9aa",
     "timestamp": "2025-12-23 09:28:22.730596",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readAdditionalSigningAddresses()] [Definition change query race] Lines 1663-1667 check for definition changes in addresses table, but the subquery uses LEFT JOIN definitions - can this miss addresses with pending definition changes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_496f7e83-ddf0-4658-b753-eef216918141",
+    "timestamp": "2025-12-23 09:29:36.203114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readAdditionalSigningAddresses()] [Recursive signing address explosion] Lines 1648-1688 recursively call readAdditionalSigningAddresses() - if shared addresses are deeply nested, can this cause exponential address collection and memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6818b690-eeb5-415a-8d78-aedeb8187d07",
+    "timestamp": "2025-12-23 09:29:48.759742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFundedAddresses()] [Fixed denomination shortcut] Lines 1610-1611 set estimated_amount = 0 for indivisible assets - can this cause all addresses to be selected even when only one is needed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e2b915f-2a3c-4c4d-9ef1-7a3e07567aef",
+    "timestamp": "2025-12-23 09:30:02.224147",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFundedAddresses()] [Infinity balance bypass] Line 1616 sets issuer_row.total = Infinity for uncapped assets - can this cause overflow or comparison errors in composer.filterMostFundedAddresses()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8261c171-7a7d-4eb9-8d02-fff8c91a1b8e",
+    "timestamp": "2025-12-23 09:30:15.780858",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFundedAddresses()] [Uncapped asset issuer bypass] Lines 1612-1623 allow uncapped assets to be issued from any address if issued_by_definer_only=false, but if an attacker creates multiple addresses, can they issue unlimited amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98d1a502-e6da-453e-8285-5cca5c94430c",
+    "timestamp": "2025-12-23 09:30:29.817667",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFundedAddresses()] [Definition change race] Lines 1604-1607 exclude addresses with pending definition changes, but between the query and actual spending, a definition change could be committed - can this cause transactions to fail or be invalid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d40e9f12-fc9a-4510-b5e9-e8f28629afc5",
+    "timestamp": "2025-12-23 09:30:45.063608",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFullSigningPaths()] [Peer address injection] Lines 1554-1562 parse signing_paths from peer_addresses table without validation - can an attacker inject malformed JSON to crash JSON.parse() or inject unexpected paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9ec0f32-fff1-4efb-85a0-7f477648b2f3",
+    "timestamp": "2025-12-23 09:31:02.287807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFullSigningPaths()] [Signing path accumulation error] Line 1543 concatenates path_prefix + row.signing_path.substr(1), but if row.signing_path doesn't start with 'r', substr(1) returns unexpected results - can this cause incorrect path resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_669ef60c-3147-4904-8951-2c9af24999a3",
+    "timestamp": "2025-12-23 09:31:20.455503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readFullSigningPaths()] [Recursive depth limit] Lines 1509-1567 implement recursive goDeeper() without depth limit - can an attacker create deeply nested shared address hierarchies to cause stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14cabc19-887d-45bf-9e06-451ad21da18b",
+    "timestamp": "2025-12-23 09:31:39.444721",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readTransactionHistory()] [Asset filter bypass] Line 1408 checks 'has_external_bytes_payment' to filter fee transactions, but if an attacker sends tiny asset amounts with large byte payments, can they hide asset transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e0eb4e9-3c2c-47e3-b335-09d66d5dbf17",
+    "timestamp": "2025-12-23 09:31:59.000805",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readTransactionHistory()] [AA detection bypass] Lines 1373-1382 check if payment is from AA by comparing arrPayerAddresses[0] with aa_address, but if there are multiple payers, can an attacker hide AA origin?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fab2f07f-2f0a-4891-b421-d6f06f6466d1",
+    "timestamp": "2025-12-23 09:32:19.716780",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readTransactionHistory()] [Unbounded query result] Line 1303 uses LIMIT only if opts.limit is provided - can an attacker omit limit to fetch millions of transactions, causing memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a4ac061-0381-4e23-85d3-fbc798776635",
+    "timestamp": "2025-12-23 09:32:41.138945",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readTransactionHistory()] [since_mci validation bypass] Line 1287 checks ValidationUtils.isNonnegativeInteger(opts.since_mci) but then directly interpolates it in SQL at line 1287 - can an attacker cause injection by passing since_mci as string '0; DROP TABLE units--'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13eebe3c-a854-4576-b9de-72d57305cfb6",
+    "timestamp": "2025-12-23 09:33:04.090603",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readTransactionHistory()] [SQL injection via wallet parameter] Lines 1276-1278 check if wallet is an address but don't sanitize it before use in queries - can attacker inject SQL through wallet parameter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca025062-6dfa-4ae5-a0e3-35ac13f545f0",
+    "timestamp": "2025-12-23 09:33:26.954815",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: fetchAssetMetadata()] [Race condition on REPLACE] Line 1248 uses REPLACE INTO for updatable registries - if two nodes fetch metadata simultaneously, can they overwrite each other's updates causing inconsistent metadata across network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f735c7b1-c3c5-4bb7-ae7d-c61256259aec",
+    "timestamp": "2025-12-23 09:33:52.256252",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: fetchAssetMetadata()] [Decimals overflow] Lines 1245-1247 parse decimals as integer but don't check maximum value - can setting decimals to 2^53 cause overflow in balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3685d2b6-e678-41a3-b6b7-7abd56df0f07",
+    "timestamp": "2025-12-23 09:34:17.097808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: fetchAssetMetadata()] [Metadata unit mismatch] Line 1235 checks if objJoint.unit.authors[0].address !== registry_address but there's a typo 'bjJoint' at line 1236 - does this cause the check to always fail, allowing fake metadata?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_95483c67-2173-441d-aa09-cdbd1a9fa4f1",
+    "timestamp": "2025-12-23 09:34:44.512896",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readAssetMetadata()] [Registry address validation] Line 1218 checks ValidationUtils.isValidAddress(registry_address) but doesn't verify the registry is trusted - can an attacker register assets with malicious registry addresses that serve fake metadata?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_312ee980-27ff-4791-955d-e8bc128ab4d9",
+    "timestamp": "2025-12-23 09:35:11.865862",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readAssetMetadata()] [Metadata expiration bypass] Lines 1149-1152 check if metadata is expired using ASSET_METADATA_EXPIRY_PERIOD, but an attacker controlling registry could repeatedly update metadata to force constant refetching, causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cadf32d-abea-439f-806f-c10f24f484da",
+    "timestamp": "2025-12-23 09:35:40.633023",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readBalancesOnAddresses()] [SQL injection via walletId] Line 1134 uses walletId directly in query - if walletId comes from user input without validation, can this enable SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_321757a7-a2f7-4250-8683-c17e1c1e0b7d",
+    "timestamp": "2025-12-23 09:36:09.760452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readBalance()] [Asset proof DoS] Lines 1118-1122 request proofs for all assets in light mode - if a wallet has thousands of different assets, can an attacker cause timeout or memory exhaustion by triggering balance reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e70b1bda-fb23-4ed1-adc9-e61c4066e4e0",
+    "timestamp": "2025-12-23 09:36:39.342243",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [Multiple results error] Lines 1034-1035 throw Error if rows.length > 1, but this terminates the process - can an attacker create duplicate address entries in database to DoS the wallet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9a3b984-166f-4118-a20f-a48f8bc87606",
+    "timestamp": "2025-12-23 09:37:08.498066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [Secret address bypass] Lines 1067-1069 check for 'secret' address but don't validate if the secret is actually known - can an attacker reference secret addresses they don't control?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9349fe3f-2cdc-4278-9eed-5761b0a51d45",
+    "timestamp": "2025-12-23 09:37:38.871727",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [Merkle address leakage] Lines 1065-1066 check for empty string address (merkle) and return bLocal flag - can an attacker enumerate merkle addresses by observing response timing differences?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7273e582-36f0-4bab-8e12-df7470e24f1d",
+    "timestamp": "2025-12-23 09:38:07.363556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [Authorization bypass via fallback] Lines 1088-1089 use fallback_remote_device_address if no candidate found - can an attacker set themselves as fallback to gain signing access to addresses they don't control?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2ef8b7e-fedb-4e0b-8150-5a7acf58f8d2",
+    "timestamp": "2025-12-23 09:38:37.077656",
+    "report_generated": false
   }
 ]
