@@ -10798,5 +10798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_774f2f4c-543e-46b8-abab-e8075fc42910",
     "timestamp": "2025-12-23 16:15:58.011632",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash()] [Hash Computation Cost] The getHash() function computes SHA256 on potentially large title and text strings. Can an attacker create contracts with multi-megabyte titles/texts that cause hash computation to consume excessive CPU, creating a denial of service when other nodes validate these contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50b37923-2746-4a5a-9ab7-cfb2bbf158cb",
+    "timestamp": "2025-12-23 16:17:11.490194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: decodeRow()] [Infinite Loop] The getAllByStatus() function iterates through rows and calls decodeRow() on each, but the iteration result is not used (row = decodeRow(row) doesn't modify the original rows array). If decodeRow() modifies row state in a way that causes the iteration to never complete or triggers repeated calls, can this create an infinite loop or resource exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5b80ef0-03ff-4e37-8671-7310c9c5b057",
+    "timestamp": "2025-12-23 16:17:23.958289",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getAllByStatus()] [Query Performance] The getAllByStatus() function queries contracts by status with DESC ordering but no LIMIT clause. If an attacker creates millions of contracts in 'pending' status, can this query cause database slowdown, memory exhaustion when loading all rows, or lock contention that delays other transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4936ccbd-b985-4cfb-8b2d-8891c47c8375",
+    "timestamp": "2025-12-23 16:17:37.381673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash()] [Timestamp Precision] The getHash() function hashes the creation_date string which only has second precision. Can an attacker create multiple contracts within the same second with identical title and text, all producing the same hash and colliding in the database primary key?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8803dfa-e3e0-4d10-8e9b-bf4907150927",
+    "timestamp": "2025-12-23 16:17:50.799376",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: decodeRow()] [Date Parsing] The decodeRow() function creates a Date object by replacing spaces with 'T' and appending '.000Z', assuming the database stores dates in 'YYYY-MM-DD HH:MM:SS' format. Can database timezone differences, daylight saving time, or SQLite vs MySQL date format inconsistencies cause creation_date_obj to be incorrect, breaking TTL expiration logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c2f8cb9-0d46-419b-8cbd-a45fc025908e",
+    "timestamp": "2025-12-23 16:18:05.022523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: decodeRow()] [Prototype Pollution] The decodeRow() function parses JSON cosigners and assigns it directly to row.cosigners. If the parsed JSON contains __proto__ or constructor properties, can an attacker pollute the Object prototype when this row object is later used, affecting all JavaScript objects in the process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_494408ae-4c8b-4f67-953b-884509a1ac5c",
+    "timestamp": "2025-12-23 16:18:20.955272",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [JSON Stringify Injection] The createAndSend() function calls JSON.stringify(cosigners) without validating the cosigners array structure. Can an attacker provide a cosigners object with circular references, getters, or prototype pollution that causes JSON.stringify() to throw, hang, or produce malicious JSON?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b63f91e-e219-4489-971e-a767e5276bec",
+    "timestamp": "2025-12-23 16:18:37.626616",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: decodeRow()] [JSON Parse Error] The decodeRow() function calls JSON.parse(row.cosigners) without try-catch error handling. If the database contains malformed JSON (e.g., due to direct SQL manipulation or migration bugs), can this cause an unhandled exception that crashes the node when iterating through contracts via getAllByStatus()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9a34f36-bf9e-4a3a-94d6-4a96ffd41bf8",
+    "timestamp": "2025-12-23 16:18:55.506093",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getByHash() + getBySharedAddress()] [Null Callback] Both query functions call cb(null) when no rows are found, but calling code might not distinguish between 'not found' and 'error occurred'. Can this ambiguity cause wallet logic to mishandle missing contracts, treating them as errors or vice versa?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a80e918-ec8e-4720-871b-2214b0cc27b6",
+    "timestamp": "2025-12-23 16:19:14.681705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [Insert Failure Ignored] The store() function calls the callback with the result object but doesn't check if the insert succeeded (affectedRows > 0). Can an attacker exploit INSERT IGNORE failures to make the caller believe a contract was stored when it actually failed, leading to logic errors in wallet.js that assumes storage succeeded?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37ee2355-5d3b-4299-896c-d1888256d4f4",
+    "timestamp": "2025-12-23 16:19:35.399413",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [Error Callback Missing] The respond() function sets a default empty callback (cb = function(){}) when cb is not provided, causing errors to be silently swallowed. If composer.composeAuthorsAndMciForAddresses() returns an error, can the contract enter an inconsistent state where status remains 'pending' but the peer believes it was declined?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99fb7751-b6bd-496b-bd5c-056bc4d63699",
+    "timestamp": "2025-12-23 16:19:55.911583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Callback Error Propagation] The createAndSend() function's database insert callback doesn't check for errors before calling device.sendMessageToDevice(). If the database insert fails (e.g., due to constraint violation), can the contract message still be sent, creating a state mismatch where the peer receives a contract that doesn't exist in the sender's database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01fd314d-06c8-43f6-ab77-f773b606b9fc",
+    "timestamp": "2025-12-23 16:20:16.250637",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [Signature Validation Gap] The respond() function calls composer.composeAuthorsAndMciForAddresses() when status='accepted' but doesn't verify the resulting authors array is valid or matches expected addresses. Can a malicious composer module inject fake author data that allows impersonation or unauthorized contract acceptance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_daead7a5-1adc-487b-999c-d5b44d2c9410",
+    "timestamp": "2025-12-23 16:20:38.239062",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: share()] [Unsolicited Sharing] The share() function sends contract details to an arbitrary device_address without the recipient requesting it. Can an attacker spam victims by repeatedly calling share() with the same contract hash, causing denial of service through message queue flooding or notification spam?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_caa3c736-d439-4498-8cc6-4c77557747a5",
+    "timestamp": "2025-12-23 16:21:02.148651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Message Tampering] The createAndSend() function sends a contract object to peer_device_address via device.sendMessageToDevice() but doesn't verify the message was delivered or signed by the sender's device key. Can a man-in-the-middle attacker intercept and modify the contract object (e.g., changing peer_address to steal contract benefits)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54f11b10-1b73-4e14-8782-067ba79e4570",
+    "timestamp": "2025-12-23 16:21:26.110706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [Response Replay] The respond() function sends a signed_message but doesn't include any expiration timestamp or nonce in the response structure. Can an attacker capture a legitimate acceptance response and replay it later (e.g., after the contract has been revoked) to falsely claim the contract was accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2da0bee-720f-4784-bf7d-2f96411ae6da",
+    "timestamp": "2025-12-23 16:21:51.103900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Replay Attack] The createAndSend() function generates a contract hash based only on title, text, and creation_date without including any nonce or sender identity. Can an attacker replay a legitimate contract offer to multiple victims by re-sending the same contract object with different peer_device_address values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da5de6bb-8d51-4050-8925-3754a55f1c83",
+    "timestamp": "2025-12-23 16:22:16.882427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getByHash() + getAllByStatus()] [Privacy Leak] These query functions don't filter results by caller identity, allowing any code with database access to retrieve all contracts. Can a malicious module or compromised dependency query all pending contracts and extract sensitive business terms, party identities, or negotiation details?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c105ea82-d5a1-4192-942c-5c162ee2f92d",
+    "timestamp": "2025-12-23 16:22:43.595733",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [Device Impersonation] The respond() function sends a contract response to objContract.peer_device_address without verifying that peer_device_address is still the legitimate owner of peer_address. If a device key is compromised or transferred, can an attacker intercept contract responses intended for the original device?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d83da3b-50a4-415d-a7cc-7bc0e46d54ba",
+    "timestamp": "2025-12-23 16:23:11.370390",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: share()] [Information Disclosure] The share() function retrieves a contract by hash and sends it to an arbitrary device_address without checking if that device has permission to view the contract. Can an attacker call share() with a victim's contract hash and their own device address to steal confidential contract details (title, text, cosigners)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9242617a-786b-4812-be95-2cdd5b3495d9",
+    "timestamp": "2025-12-23 16:23:39.333908",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Authorization Bypass] The setField() function allows updating any contract's status, shared_address, or unit without verifying the caller has permission to modify that contract. Can any attacker call setField() with an arbitrary hash to maliciously change contract states (e.g., setting status='accepted' on a declined contract)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d396411c-ce7f-4ccf-a081-f05f13725e05",
+    "timestamp": "2025-12-23 16:24:07.434793",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [INSERT IGNORE Semantics] The store() function uses INSERT IGNORE (via db.getIgnore()) which silently fails if the hash already exists. Can an attacker exploit this to prevent legitimate contract storage by front-running and inserting a malicious contract with the same hash first, effectively censoring the victim's contract?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c671453c-943b-4afb-8e8f-f971dbdc2f6c",
+    "timestamp": "2025-12-23 16:24:35.213801",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Primary Key Collision] The createAndSend() function uses the hash as the primary key, but if two contracts have the same title, text, and creation_date (same second), they'll have identical hashes. Can an attacker intentionally create hash collisions by sending multiple contracts in the same second with identical content, causing INSERT to fail or overwrite existing contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_180555a2-531c-4e40-8fe8-9ba749eb5e04",
+    "timestamp": "2025-12-23 16:25:02.283661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Inconsistent State] The setField() function allows updating status, shared_address, or unit independently without cross-field validation. Can an attacker set shared_address or unit on a contract that has status='declined' or 'revoked', creating logically invalid states that confuse wallet logic expecting these fields to only exist on accepted contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99ffa2af-75cd-4e91-a49d-bad228742312",
+    "timestamp": "2025-12-23 16:25:29.145489",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [Foreign Key Violation] The store() function inserts a contract with peer_address, peer_device_address, and my_address, but only the prosaic_contracts table schema shows a foreign key constraint on my_address. Can an attacker provide invalid peer_address or peer_device_address values that don't exist in correspondent or device tables, creating orphaned records that break referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a30b4e9-5d53-4dd8-9a86-f6184e98ca32",
+    "timestamp": "2025-12-23 16:25:55.213616",
+    "report_generated": false
   }
 ]
