@@ -4648,5 +4648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_001beca1-46d3-436a-bf42-f91b0875f6da",
     "timestamp": "2025-12-22 23:52:25.956293",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Burn fee manipulation] At lines 254-255, burn_fee is added to objUnit if params.burn_fee is provided. Can an attacker set an extremely high burn_fee to make the transaction invalid while consuming UTXO locks, causing a DoS on the paying addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ad466db-eab0-42b0-98e0-4574d30de2d7",
+    "timestamp": "2025-12-23 06:29:12.029890",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Fee calculation with unconfirmed parent units] When last_ball_mci is determined at line 369, if it's based on unconfirmed parent units that later become invalid, can the fee calculations (which depend on upgrade MCIs like constants.v4UpgradeMci) become incorrect after the parent units are rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b47a2b5-297a-45e9-bf15-220f42a4148f",
+    "timestamp": "2025-12-23 06:29:24.506230",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: estimateTpsFee()] [TPS fee estimation inaccuracy] At lines 593-620, estimateTpsFee() returns tps_fee based on a single address's balance (line 617-619). For multi-author units where multiple addresses pay TPS fees, can this underestimate the actual fee, causing composition to fail when the real composeJoint() is called?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f853099c-24b4-481d-9cd7-2f51a98ec2e5",
+    "timestamp": "2025-12-23 06:29:38.072251",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Multiple change outputs vulnerability] At lines 211-212, the code throws an error if there are more than one change output. However, what if an attacker modifies arrChangeOutputs array after this check but before the change amount is set at line 539? Can they create multiple change outputs with arbitrary amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b531b145-1002-41a9-a3f9-7860bb4d602b",
+    "timestamp": "2025-12-23 06:29:51.494004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [No change output bypass] At lines 213-214, the code throws an error if there are zero change outputs. But if params.outputs is modified by the retrieveMessages callback at lines 447-461, can an attacker remove all change outputs after the initial validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24335756-8a5b-4ea4-bc29-bc8bda935e10",
+    "timestamp": "2025-12-23 06:30:05.642598",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Change output address manipulation] At lines 208-214, arrChangeOutputs is filtered based on output.amount === 0. If an attacker provides an output with amount = 0 but later modifies it, or provides negative amounts that get filtered incorrectly, can they bypass change output validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b974663d-fff8-4fdf-9544-e8bade2aee00",
+    "timestamp": "2025-12-23 06:30:22.071397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Change output sorting attack] At line 540, outputs are sorted using sortOutputs(). If the sorting function has vulnerabilities (line 35-38 compares addresses lexicographically), can an attacker craft addresses that sort unexpectedly, causing the change output to not be in the expected position?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51e21b63-438b-44f4-989c-5662a8aed0e3",
+    "timestamp": "2025-12-23 06:30:38.614163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Zero change handling in send_all mode] At lines 531-537, if change <= 0 in send_all mode, it returns NOT_ENOUGH_FUNDS error. But what happens if change is exactly 0? Is this a valid state, and can it cause the change output (which expects amount > 0 after assignment at line 539) to have 0 amount, causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3308f51-fd52-4424-971b-2e2946f425e5",
+    "timestamp": "2025-12-23 06:30:56.713878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Change output asset mismatch] The change output at line 539 is assigned an amount in the base asset. If the transaction involves multiple assets, how is the change for non-base assets handled? Can an attacker exploit this to lose non-base asset change or steal it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f79c1a20-6b9b-4a8f-92c0-bca74517af3c",
+    "timestamp": "2025-12-23 06:31:15.322486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Unstable predecessor bypass] At lines 325-344, checkForUnstablePredecessors() queries for unstable definition changes and non-serial sequences. If an attacker times their transaction to reference a parent unit right before a definition change stabilizes, can they bypass this check and include an unstable definition in their unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c97ae855-258a-409f-ad32-b4940f0907ee",
+    "timestamp": "2025-12-23 06:31:35.251225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Definition change race condition] At line 330-340, the query checks for definition changes with main_chain_index > last_ball_mci OR NULL. If a definition change is added to a unit after last_ball_mci is determined but before the unit is composed, can the check miss it, allowing unstable definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_578deb62-761b-427e-aa07-3bc0ff264a8a",
+    "timestamp": "2025-12-23 06:31:56.340578",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Parent unit manipulation in light mode] At lines 346-354, for light clients, parent_units, last_ball, and last_ball_unit are taken directly from lightProps provided by the light vendor. Can a malicious light vendor provide fake parent units that don't exist or last_ball values that fork the chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a991726-ec2e-4b08-9722-c691bdc0a102",
+    "timestamp": "2025-12-23 06:32:17.776094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Last ball MCI manipulation] At line 369, last_ball_mci is set based on parentComposer.pickParentUnitsAndLastBall(). If an attacker controls some parent units and delays their propagation, can they influence the last_ball_mci to manipulate fee calculations or bypass upgrade checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c55c1faf-bd24-41d4-b77b-f3a63ffb58fb",
+    "timestamp": "2025-12-23 06:32:40.870044",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Primary AA trigger counting exploit] At lines 371-372, the code queries aa_addresses to count primary AA triggers. If an attacker repeatedly adds and removes AA addresses during composition, can they cause a race condition that miscounts triggers, affecting max_aa_responses and TPS fee calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ec8db86-9504-445c-a2ec-87d7e887efa0",
+    "timestamp": "2025-12-23 06:33:04.268459",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Timestamp manipulation] At lines 321, 351, and 356, objUnit.timestamp is set based on Date.now() or lightProps.timestamp. Can an attacker manipulate the system clock or light vendor response to set timestamps far in the future or past, affecting parent selection and potentially causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83e39c52-bd8e-4a52-a795-9275fbad68c2",
+    "timestamp": "2025-12-23 06:33:28.598623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Genesis timestamp bypass] At line 321, for genesis units with witnesses and v4UpgradeMci === 0, timestamp is set to Math.round(Date.now() / 1000). Otherwise it's set to 1561049490. Can an attacker exploit this branching to create genesis units with controlled timestamps?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b8edf87-2a6f-4879-bcca-a96fa56a4522",
+    "timestamp": "2025-12-23 06:33:54.545295",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Parent unit non-existence] The code at lines 357-389 calls parentComposer.pickParentUnitsAndLastBall() but doesn't validate that the returned parent units actually exist in the database before using them at line 366. Can this cause composed units to reference non-existent parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffa247cc-9e41-4f0d-a44f-c75eed869e3b",
+    "timestamp": "2025-12-23 06:34:20.601793",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Last ball unit mismatch] At lines 368-369, both last_ball and last_ball_unit are set. If these two values are inconsistent (last_ball_unit doesn't hash to last_ball), can the composed unit pass initial checks but fail validation later, causing wasted resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7aa6e4f9-6448-40a8-a0a8-f4f33048892c",
+    "timestamp": "2025-12-23 06:34:47.640465",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [Definition disclosure bypass] At lines 866-872 and 894-906, the code decides whether to include the address definition based on whether the address has been used before and if there's a definition change. Can an attacker avoid including their definition by creating units in a specific sequence, allowing them to later claim a different definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f548b8d-5e89-4d3e-9908-efeb139f215f",
+    "timestamp": "2025-12-23 06:35:14.487025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [Authentifier placeholder length mismatch] At lines 879-882, authentifiers are filled with placeholder dashes based on assocLengthsBySigningPaths. If the signer returns a signature of different length than expected, can this cause the unit hash to change after signing, invalidating all signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef1f182b-c8c3-4885-957a-4da3ded55124",
+    "timestamp": "2025-12-23 06:35:41.689889",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Signature replacement attack] At lines 543-588, signatures are added after the unit structure is finalized. If the signer.sign() callback at line 551-559 or signer.readPrivateKey() at line 562-567 is compromised, can an attacker replace signatures with invalid ones after the unit hash is calculated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_168a67f9-36e4-4e7f-a7df-cd0da9eba0ee",
+    "timestamp": "2025-12-23 06:36:08.860108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Multisig refusal DoS] At lines 555-556, if a cosigner returns '[refused]', the entire composition fails with error. Can a malicious cosigner repeatedly refuse to sign, causing DoS on all other participants' funds that are locked by the mutex?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79b35905-7f6c-4f1e-a5f4-14b91924dadf",
+    "timestamp": "2025-12-23 06:36:36.961967",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [Definition change timing] At lines 894-906, the code queries for the last stable definition change and checks if the definition is in the database. If a definition change occurs between the query and the unit being composed, can the wrong definition be included or omitted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfc9d0a3-008a-4e04-8d37-1d13bc47de43",
+    "timestamp": "2025-12-23 06:37:05.826748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [First message definition requirement] At lines 891-892, if no previous messages exist from an address, setDefinition() is called unconditionally. Can an attacker exploit this by sending many first-time messages to bloat units with redundant definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72b5ae9b-38bc-404c-8f53-46edc3810b38",
+    "timestamp": "2025-12-23 06:37:35.714732",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Author ordering manipulation] At line 218, arrFromAddresses is sorted. If the sorting is inconsistent with how validation.js orders authors, can composed units be rejected? Can an attacker exploit different sorting algorithms to create units that pass composition but fail validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50f618b5-80da-4059-a055-e6b8dccd2aed",
+    "timestamp": "2025-12-23 06:38:04.253832",
+    "report_generated": false
   }
 ]
