@@ -10198,5 +10198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0ceb9d8-29db-4fdf-b3ba-7a28029f4616",
     "timestamp": "2025-12-23 12:48:28.648937",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewUnit()] [Race Condition] If two threads call checkIfNewUnit() simultaneously for the same unit before either completes the database query at line 29, can both proceed to callbacks.ifNew() causing duplicate processing and potential double-insertion into storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8723b60a-0194-44e1-9e5e-3e231ea186d9",
+    "timestamp": "2025-12-23 12:49:43.122206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewUnit()] [Cache Poisoning] Can an attacker flood the network with invalid units to populate assocKnownBadUnits (line 16) indefinitely, causing memory exhaustion that crashes the node and prevents new transaction processing (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc48631f-b812-42b6-a849-786cd7b768a2",
+    "timestamp": "2025-12-23 12:49:56.121449",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewUnit()] [Stripped Unit Bypass] At lines 32-33, units marked 'final-bad' with MCI below min retrievable are treated as new - can an attacker exploit this by repeatedly sending stripped bad units to trigger reprocessing and validation overhead (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_254b307f-f043-4d24-bfbd-92d79c62076a",
+    "timestamp": "2025-12-23 12:50:08.940314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewUnit()] [Storage Inconsistency] If storage.isKnownUnit() returns false (line 22) but the database query (line 29) finds the unit, and storage.setUnitIsKnown() (line 34) fails or is delayed, can the unit be reprocessed multiple times causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_541c92b1-aba9-49cc-a50c-46f32289dc65",
+    "timestamp": "2025-12-23 12:50:22.297570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewUnit()] [Unhandled Unit Cache Bypass] If a unit exists in assocUnhandledUnits (line 24) but gets deleted from the database before line 29's query, will it incorrectly return callbacks.ifKnownUnverified() instead of detecting the inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8fbef4be-fbc9-4ebb-bf08-39648ae155a5",
+    "timestamp": "2025-12-23 12:50:37.176702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewJoint()] [Joint Hash Collision] At line 47, assocKnownBadJoints is checked by joint hash - if objectHash.getJointHash() has a collision (different joints produce same hash), can a valid joint be incorrectly marked as bad, causing permanent rejection of valid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1ab589a-9e64-46be-8563-1e470c703872",
+    "timestamp": "2025-12-23 12:50:52.424346",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: checkIfNewJoint()] [Cache Desynchronization] If a joint's unit passes checkIfNewUnit() but the joint hash is in assocKnownBadJoints (line 47), can this mismatch cause inconsistent handling where the unit is accepted but the joint is rejected, corrupting DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2c4b155-97b2-4349-b60c-7e6486414944",
+    "timestamp": "2025-12-23 12:51:08.580041",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: removeUnhandledJointAndDependencies()] [Transaction Atomicity] The BEGIN/COMMIT transaction (lines 57-60) performs DELETE operations but assocUnhandledUnits deletion (line 62) occurs after conn.release() - if the process crashes between COMMIT and line 62, will the in-memory cache remain inconsistent with database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_acaebbba-061e-4759-a388-56794185a5dd",
+    "timestamp": "2025-12-23 12:51:25.524318",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: removeUnhandledJointAndDependencies()] [Orphaned Dependencies] If removeUnhandledJointAndDependencies() deletes dependencies at line 59 but another thread is simultaneously adding new dependencies via saveUnhandledJointAndDependencies(), can race conditions create orphaned dependency records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e23157a-5668-46d1-814b-95851f5279eb",
+    "timestamp": "2025-12-23 12:51:44.077930",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: removeUnhandledJointAndDependencies()] [Connection Pool Exhaustion] If onDone callback (line 65) throws an exception or never completes, the connection may not be released properly despite conn.release() (line 63) - can attackers trigger this repeatedly to exhaust the connection pool (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c51dc6e3-7efb-4be0-b290-c7bb414a0132",
+    "timestamp": "2025-12-23 12:52:03.277899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [Memory Leak via Cache] At line 72, assocUnhandledUnits[unit] is set to true without any size limits - can an attacker flood the network with units having missing parents to grow this cache unboundedly, causing memory exhaustion (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e510b43-5c9e-4bdf-8ea4-b260532a7a2f",
+    "timestamp": "2025-12-23 12:52:23.793524",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [SQL Injection via Array] Lines 74-76 construct SQL with arrMissingParentUnits.map() - if arrMissingParentUnits contains specially crafted unit hashes (despite being escaped), can the resulting SQL exceed query length limits or cause performance degradation (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3f1eec4-7daa-4415-ba1b-e01a92d02257",
+    "timestamp": "2025-12-23 12:52:44.990316",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [JSON Serialization Failure] At line 79, JSON.stringify(objJoint) may fail or produce excessively large strings for maliciously crafted joints - is there size validation before insertion, or can this cause database bloat or insertion failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb9d93d0-0fe2-49ac-90fd-3982cbd7173a",
+    "timestamp": "2025-12-23 12:53:07.965681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [Dependency Explosion] If arrMissingParentUnits contains hundreds or thousands of entries, the INSERT at lines 74-76 creates that many dependency rows - can attackers flood dependencies table to cause query performance degradation when readDependentJointsThatAreReady() executes (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9ff6038-2a34-43c7-9586-56fc5492e058",
+    "timestamp": "2025-12-23 12:53:31.799402",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [Duplicate Insertion] The INSERT uses conn.getIgnore() (lines 79-80) to ignore duplicates, but what if the same unit is saved with different peer values - can this create multiple unhandled_joints rows for the same unit causing processing duplication?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a641120-7fda-4c59-b907-3afbd3ffda61",
+    "timestamp": "2025-12-23 12:53:56.277847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: saveUnhandledJointAndDependencies()] [Cache-Database Mismatch] If the database transaction COMMIT (line 81) fails but assocUnhandledUnits[unit]=true (line 72) already succeeded, will subsequent calls to checkIfNewUnit() incorrectly think the unit is unhandled when it's actually not in the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7cdfd313-3833-43a7-9d1b-4fc090f16fbc",
+    "timestamp": "2025-12-23 12:54:22.062246",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Lock Inconsistency] At lines 97-98, lock is conditionally set to either mutex.lock or mutex.lockOrSkip based on unit parameter - if unit is null and lockOrSkip returns immediately without acquiring lock, can concurrent executions corrupt the dependency query results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78156fa5-78f5-4d5a-b816-00db0cd1ea26",
+    "timestamp": "2025-12-23 12:54:48.930120",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Query Performance DoS] The query at lines 99-108 performs multiple JOINs and GROUP BY without LIMIT - if an attacker creates a deep dependency chain, can this query take minutes to execute, blocking the mutex lock and preventing other units from being processed (Medium: network delay ≥1 hour)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_910c9a1e-648a-483c-803d-c29e3c172ff9",
+    "timestamp": "2025-12-23 12:55:15.644014",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Callback Flood] Lines 112-118 call handleDependentJoint for each ready unit without rate limiting - if 10,000+ joints become ready simultaneously, can the callback flood exhaust memory or CPU (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49440b16-4e9d-4318-b094-de0e7efede2d",
+    "timestamp": "2025-12-23 12:55:44.163804",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Unlocked Processing] The unlock() at line 119 releases the mutex before all handleDependentJoint callbacks complete (they're queued via db.query at line 113) - can this allow other threads to modify dependencies while callbacks are still processing, causing race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f628985c-7ba3-4ecf-a138-3ef3bb0e1a41",
+    "timestamp": "2025-12-23 12:56:13.551278",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [JSON Parse Attack] At line 115, JSON.parse(internal_row.json) deserializes user-controlled joint data without validation - can a malicious joint with deeply nested structures cause stack overflow or exponential parsing time (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9ecca7e-b1f2-4837-bee7-fad945bee498",
+    "timestamp": "2025-12-23 12:56:43.900811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Timestamp Integer Overflow] Line 115 uses parseInt(internal_row.creation_ts) - if creation_ts is a very large number or NaN, can this cause incorrect timestamp handling in downstream processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d16d9e7e-ae81-4472-b191-bd2b7a2ae2de",
+    "timestamp": "2025-12-23 12:57:14.780138",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: readDependentJointsThatAreReady()] [Missing Parent Race] Between the GROUP BY query completing (line 107) and callbacks executing (lines 112-118), if a parent unit is deleted or marked as bad, will the dependent joints still be processed despite no longer having valid parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0dadefb6-23ca-4d47-ac57-764bce45bbcf",
+    "timestamp": "2025-12-23 12:57:46.485609",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: findLostJoints()] [Lock Skip Vulnerability] Line 127 uses lockOrSkip - if the lock is already held, findLostJoints() returns immediately without searching for lost joints - can this cause some lost joints to never be detected if timing is adversarial (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_11647365-d3b0-4e11-8074-c867514c4412",
+    "timestamp": "2025-12-23 12:58:18.488413",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: findLostJoints()] [Time-Based Bypass] The query at line 133 only finds dependencies older than 8 seconds - can an attacker coordinate to repeatedly create and resolve dependencies just under 8 seconds to evade lost joint detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed5524cc-b220-4371-be50-b5cd5abbacd2",
+    "timestamp": "2025-12-23 12:58:48.605848",
+    "report_generated": false
   }
 ]
