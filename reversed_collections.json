@@ -3898,5 +3898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_673b6970-0a1e-4312-9690-ef9229c99e33",
     "timestamp": "2025-12-23 07:18:41.369634",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Empty proof arrays] If arrUnstableMcJoints is empty array [], does the for loop at lines 168-193 skip entirely, leaving arrFoundWitnesses empty and failing at line 194-195? But if arrWitnessChangeAndDefinitionJoints is also empty, should this be considered valid proof of no changes, or invalid proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1b10bd8-fc8e-416b-8d57-774ab75b07a7",
+    "timestamp": "2025-12-23 07:19:57.933913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Empty arrWitnesses] If arrWitnesses is empty array [], does ValidationUtils.isValidAddress check at line 18 pass (empty.every() returns true in JavaScript), and subsequent witness counting at line 36-37 always fail to reach MAJORITY_OF_WITNESSES, causing all proof generation to fail with 'too few witness authored units'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8fc6418-96f7-4ce1-8c04-9a8136883213",
+    "timestamp": "2025-12-23 07:20:10.805655",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [MCI boundary cases] At line 86, start_mci is calculated as findLastBallMciOfMci(findLastBallMciOfMci(main_chain_index)) - double nesting of findLastBallMciOfMci - what if main_chain_index is 0 or 1? Does findLastBallMciOfMci return -1 or null for genesis, causing SQL query with negative start_mci to return wrong results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d712804-ea53-4282-9c83-8656db12114a",
+    "timestamp": "2025-12-23 07:20:23.528564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Joint array mutation] At line 334, arrWitnessJoints.reverse() mutates the input array in-place - if caller reuses arrWitnessJoints after processWitnessProof() returns, will it be in reversed order causing bugs? Should this be arrWitnessJoints.slice().reverse() to avoid mutating caller's data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6d674ea-7e56-47df-8fcf-9701af246980",
+    "timestamp": "2025-12-23 07:20:36.801481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Memory exhaustion on deep unstable chain] At lines 26-48, ALL unstable MC units are loaded into arrUnstableMcJoints - if last stable MCI is very old (e.g., 1 million units ago due to witness inactivity), can this load gigabytes of units into memory, causing OOM crash and preventing any proofs from being generated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51f7c85a-ec71-4c7b-9eb1-072023dd869f",
+    "timestamp": "2025-12-23 07:20:50.831792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Memory exhaustion on large witness change history] At lines 138-148, ALL witness definition change units since last_stable_mci are loaded into arrWitnessChangeAndDefinitionJoints via async.eachSeries with no limit - if a witness has changed definitions thousands of times (malicious or legitimate), can this exhaust memory or take hours to process, causing DoS where proof generation never completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d91bc248-27a0-4ba1-9fba-9dc96e784849",
+    "timestamp": "2025-12-23 07:21:06.150633",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Witness list compatibility] The code finds witness-authored units but never verifies that the witness list arrWitnesses is compatible with witness lists in the DAG - can two nodes using incompatible witness lists (sharing <1 witness) generate and validate proofs that reference different stability points, causing permanent network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4f58d7b-5c56-4bf2-a056-091c37850d11",
+    "timestamp": "2025-12-23 07:21:22.745560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Witness list not persisted] The arrWitnesses parameter is used throughout validation but never checked against any stored witness list for the receiving node - can attacker send proof with completely different witness set than node expects, causing validation to pass but node to be unable to use the proof for chain advancement due to witness incompatibility?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9c6c602-f717-4913-854d-e2b32dcbdbf0",
+    "timestamp": "2025-12-23 07:21:40.439645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Witness list off-chain validation] At line 79, if no last balls found in current unstable range, code looks for witness_list_unit matching arrWitnesses - but if attacker provides arrWitnesses that no units on MC use (completely custom witness list), does this cause 'witness list might be too much off' errors at lines 78, 81, 84, 98, permanently preventing proof generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7c51860-7b23-41bd-9d36-f0d1dd2de4ee",
+    "timestamp": "2025-12-23 07:21:59.754147",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [No reference check in validation] In processWitnessProof(), there's no equivalent call to determineIfWitnessAddressDefinitionsHaveReferences() - if attacker sends proof with witnesses that have references in definitions, does validation accept it since check is missing, allowing light clients to accept proofs that full nodes would reject?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c45bd5f1-d1b0-4d9b-a92d-7f079cc159ab",
+    "timestamp": "2025-12-23 07:22:18.288815",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Reference check incomplete] The reference check at line 61-63 only checks current witness definitions, but definition change units collected at lines 105-151 may contain new definitions WITH references - are these new definitions also checked for references, or can witness upgrade to definition-with-references bypass the reference prohibition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f08052d9-2092-4e50-891e-0faf9c5f3f33",
+    "timestamp": "2025-12-23 07:22:39.433583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Definition reference check bypass] At lines 61-63, storage.determineIfWitnessAddressDefinitionsHaveReferences() is called and errors if witnesses have references in definitions - but what if this check is performed at time T1, then during async execution until line 155, a witness changes their definition to one WITH references? Does stale check result allow invalid proof to be created?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7ad3c80-7c9c-48bb-9a58-aec78675b5bf",
+    "timestamp": "2025-12-23 07:23:00.038432",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Callback vs throw inconsistency] At line 199, arrLastBallUnits.length === 0 causes throw Error, but at line 194-195, arrFoundWitnesses.length < MAJORITY_OF_WITNESSES causes handleResult() callback with error string - why different error handling patterns? Can caller handle both, or does throw bypass handleResult causing uncaught exception?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1132f3d-8f73-4645-bc59-d5745402aba9",
+    "timestamp": "2025-12-23 07:23:20.951492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [ifNotFound callback] At lines 140-142, storage.readJoint() has ifNotFound callback that throws Error - this synchronous throw inside async callback breaks error handling. Does this crash the process, or is there a try-catch somewhere catching it? Can attacker cause missing joints to DoS node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eea776f4-d133-43fd-bd85-27a2162042bb",
+    "timestamp": "2025-12-23 07:23:43.467651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Async.eachSeries error propagation] At lines 226-285, validateUnit() uses nested async.eachSeries for authors (line 226) with callback cb3, but if one author fails validation, does cb3 error propagate correctly to cb2 (line 278-283), or can partial validation succeed leaving some authors unvalidated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15454a2a-a83a-4104-9293-a0ce2b54d867",
+    "timestamp": "2025-12-23 07:24:07.377693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Error string consistency] At lines 62, 78, 81, 84, 98, error messages are returned as strings like 'some witnesses have references in their addresses' - are these exact error strings checked by callers in network.js or light.js? If yes, any typo or rewording breaks error handling. If no, can attacker distinguish between real errors and attack-induced errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41d18427-25ff-49f5-8c4b-bb3a1ee16a94",
+    "timestamp": "2025-12-23 07:24:31.483319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Early return in series] At lines 75-76 and 77-78, the async.series step returns cb() early if conditions are met, but at line 106-107, after_last_stable_mci_cond is constructed using last_stable_mci - if cb() was called early at line 76, does execution skip to final handler at line 152 leaving arrWitnessChangeAndDefinitionJoints uninitialized, causing processWitnessProof to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec1890aa-3743-40d4-b2da-3433ade5e4f8",
+    "timestamp": "2025-12-23 07:24:56.886810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: storage.findWitnessListUnit()] [Witness list unit lookup] At line 79, storage.findWitnessListUnit() is called with 2^31-1 as parameter (MAX_INT), but if this function doesn't exist in storage.js or has different signature, does this cause undefined function error that crashes proof generation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b7840059-2912-4fd1-812f-282284f974e4",
+    "timestamp": "2025-12-23 07:25:23.095464",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [UNION query result ordering] At lines 120-135, three SELECT queries are UNIONed and ordered by level, but SQL UNION may eliminate duplicates - if the same unit appears in multiple SELECTs (e.g., witness initially defines address AND later changes it), does deduplication cause definition change ordering to be wrong, validating signatures out of sequence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de013096-95d2-47cf-8fb5-f9245f89f928",
+    "timestamp": "2025-12-23 07:25:49.787767",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Database check during validation] At lines 323-327, when bFromCurrent=true, the code queries DB to check if unit is already stable before validating - can this DB roundtrip be exploited for timing attacks where attacker sends many proofs causing DB query flooding, or does DB state change between check and validation causing race condition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6c17bac-b7ef-494e-92ce-b95f3c26548c",
+    "timestamp": "2025-12-23 07:26:17.448843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Index hint bypass] At line 121, db.forceIndex('byDefinitionChash') forces specific index usage, but if this index is corrupt, missing, or has different definition in sqlite vs mysql schema, does the query fail silently returning empty results, causing witness definition changes to be invisible and signatures to fail validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_350af58a-7a35-4d46-998d-af21a6953ec4",
+    "timestamp": "2025-12-23 07:26:46.141843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Database query order dependence] At line 82, the ORDER BY clause uses different columns for sqlite (rowid) vs mysql (creation_date) - if these don't produce same ordering, can nodes using different databases generate different witness proofs for identical chain state, causing light client consensus split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9eff308-7c72-42ab-ba4c-9784856a8aa3",
+    "timestamp": "2025-12-23 07:27:13.088634",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Multiple last ball units] At lines 55-56 and 66-72, arrLastBallUnits can contain multiple different last_ball_unit values from different unstable MC units, but at lines 99-103 only ONE is selected as THE last_ball_unit for the proof - does this mean proofs are non-deterministic if multiple valid last ball units exist at same time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da158fec-98a4-484c-8bfa-0380dcd3f36f",
+    "timestamp": "2025-12-23 07:27:42.008238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Last ball units empty check] At lines 198-199, the code throws Error if arrLastBallUnits.length === 0, but this is throw not callback error - does this crash propagate to caller breaking all proof validation, or is it caught somewhere? Can attacker trigger this by sending proof with insufficient witnesses to DoS light client sync?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0b345d8-3ea6-489a-bd55-586989eead34",
+    "timestamp": "2025-12-23 07:28:11.157823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Genesis last_ball_unit handling] At lines 40-42, the code checks objJoint.unit.last_ball_unit exists with comment '(genesis lacks last_ball_unit)' - if genesis IS in the unstable set (edge case during initial sync), does missing last_ball_unit cause arrLastBallUnits to remain empty, failing proof generation with 'too few witness authored units' at line 98?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_385388c5-428e-47f6-a5fe-a9febfb6668e",
+    "timestamp": "2025-12-23 07:28:40.462984",
+    "report_generated": false
   }
 ]
