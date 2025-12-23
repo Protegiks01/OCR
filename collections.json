@@ -5998,5 +5998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2288745e-3329-497e-ba5e-1a6da409d51f",
     "timestamp": "2025-12-23 08:09:14.306141",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 56-58: MAX_CAP vs MAX_UNIT_LENGTH] [Asset Issuance Size Attack] If an asset with MAX_CAP=9e15 is issued in a unit approaching MAX_UNIT_LENGTH=5MB, can the large unit size cause processing delays while still being considered valid, creating a DoS vector through oversized issuance units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c9dcf69-f298-46a7-a3ad-bea6ece46c37",
+    "timestamp": "2025-12-23 08:10:36.483819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 57 & 66: MAX_COMPLEXITY vs MAX_OPS] [Formula Complexity Dual-Limit Bypass] Are MAX_COMPLEXITY=100 and MAX_OPS=2000 enforced independently? Can an attacker craft a formula with complexity=99 but 1999 operations, each being expensive (e.g., crypto functions), to bypass both limits individually while causing excessive execution time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf3fa7c8-f90c-4a46-b2bc-ffcf6bad2ca1",
+    "timestamp": "2025-12-23 08:10:49.190156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 63-65: MAX_AA_STRING_LENGTH vs MAX_STATE_VAR_VALUE_LENGTH] [AA State String Size Mismatch] If AA formulas can create 4096-byte strings but state variables are limited to 1024 bytes, what happens when an AA tries to store an oversized string? Does it silently truncate, throw an error causing a bounce, or corrupt state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0dbf378-ff92-45db-983f-fd477bb8b249",
+    "timestamp": "2025-12-23 08:11:02.701256",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 16 & 113: MAJORITY_OF_WITNESSES recalculation in devnet] [Devnet Majority Calculation Override Risk] In devnet mode, MAJORITY_OF_WITNESSES is recalculated after COUNT_WITNESSES is set to 1 - if this recalculation is missed or incorrect, can the majority threshold be wrong, breaking consensus even in dev environments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_94bbcc00-dd81-4b25-9add-ee75fd808b1e",
+    "timestamp": "2025-12-23 08:11:16.138949",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 11: Number.MAX_SAFE_INTEGER polyfill] [Safe Integer Polyfill Failure] If the JavaScript environment doesn't define Number.MAX_SAFE_INTEGER and the polyfill sets it to 9007199254740991, but the actual environment's integer precision is lower (e.g., 32-bit systems), can this cause silent integer truncation bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd16e0ec-f9e3-402f-af67-7710f41393d9",
+    "timestamp": "2025-12-23 08:11:31.257906",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 35-36: Genesis unit and blackbytes asset conditional assignment] [Genesis Configuration Race Condition] If both testnet and devnet flags are set simultaneously, which genesis unit takes precedence? Can this ambiguity cause nodes to initialize with mismatched genesis configurations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6bd2fb48-4711-484d-9b58-63fc454e0c40",
+    "timestamp": "2025-12-23 08:11:46.744132",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 109-110: Devnet genesis changes with version/alt changes] [Devnet Genesis Instability] The comment 'THIS CHANGES WITH EVERY UNIT VERSION / ALT CHANGE!!!' suggests devnet genesis is unstable - can this cause devnet nodes to fork repeatedly as version strings change during development?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_19ddb03c-dc43-4f8e-bc36-f159c61e51b0",
+    "timestamp": "2025-12-23 08:12:03.666860",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 147: lightHistoryTooLargeErrorMessage] [Error Message Information Leak] The error message 'your history is too large, consider switching to a full client' - does this reveal information about user transaction history size that could be exploited for privacy attacks or targeted DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9ceb57f-fa64-449d-9f96-f8be5e1b1007",
+    "timestamp": "2025-12-23 08:12:22.956126",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 80-97: Testnet upgrade MCIs significantly lower than mainnet] [Testnet Upgrade Testing Inadequacy] Testnet upgrade MCIs (e.g., 684000 for witnessedLevelMustNotRetreatUpgradeMci) are much lower than mainnet (1400000) - does this mean testnet may not adequately test upgrade timing issues that manifest at higher MCI values due to state accumulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0648cad0-1e7c-4ff3-9bfd-59f3030313f9",
+    "timestamp": "2025-12-23 08:12:41.783685",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 27-31: Testnet version suffixes] [Version Suffix Parsing Ambiguity] Testnet versions end in 't' (e.g., '4.0t') - can this cause string comparison issues where version checks fail to properly distinguish between '4.0' and '4.0t', potentially allowing cross-network unit replay?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_266369e1-9c83-4ad2-8d33-ac444dd64350",
+    "timestamp": "2025-12-23 08:13:02.130437",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 15: TOTAL_WHITEBYTES=1e15] [Total Supply Near JavaScript Integer Limit] With TOTAL_WHITEBYTES=1e15 close to MAX_SAFE_INTEGER=9007199254740991, can operations involving total supply (e.g., balance aggregations) overflow when combined with other large numbers like asset caps or fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32c787c0-74fb-4689-97fb-15b2ee2b0a68",
+    "timestamp": "2025-12-23 08:13:23.267879",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 18: EMERGENCY_OP_LIST_CHANGE_TIMEOUT=3*24*3600] [Emergency Timeout Calculation Overflow] The timeout is calculated as 3*24*3600 (3 days in seconds) - if this calculation is performed in a context where integers are 32-bit, can it overflow and produce a negative or wrapped timeout value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc65b380-4959-4a5a-9b28-0878a2b7ba79",
+    "timestamp": "2025-12-23 08:13:44.642127",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 19: EMERGENCY_COUNT_MIN_VOTE_AGE=3600] [Vote Age Race Condition] If vote age is exactly 3600 seconds (1 hour), can attackers exploit clock skew between nodes to submit votes that are valid on some nodes (clock ahead) but rejected on others (clock behind), causing vote counting disagreement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2056aa5-fa85-4958-968e-564ca3a0d40c",
+    "timestamp": "2025-12-23 08:14:07.246054",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 56-58: MAX_CAP vs MAX_UNIT_LENGTH] [Asset Issuance Size Attack] If an asset with MAX_CAP=9e15 is issued in a unit approaching MAX_UNIT_LENGTH=5MB, can the large unit size cause processing delays while still being considered valid, creating a DoS vector through oversized issuance units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b242b92-d49d-4cd4-938f-4207dba66c43",
+    "timestamp": "2025-12-23 08:14:30.936773",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 57 & 66: MAX_COMPLEXITY vs MAX_OPS] [Formula Complexity Dual-Limit Bypass] Are MAX_COMPLEXITY=100 and MAX_OPS=2000 enforced independently? Can an attacker craft a formula with complexity=99 but 1999 operations, each being expensive (e.g., crypto functions), to bypass both limits individually while causing excessive execution time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4abe323f-3150-4488-95ac-59cc67de54b9",
+    "timestamp": "2025-12-23 08:14:55.945525",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 63-65: MAX_AA_STRING_LENGTH vs MAX_STATE_VAR_VALUE_LENGTH] [AA State String Size Mismatch] If AA formulas can create 4096-byte strings but state variables are limited to 1024 bytes, what happens when an AA tries to store an oversized string? Does it silently truncate, throw an error causing a bounce, or corrupt state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d8dcab5-6fe2-4189-b59f-f16c0a670047",
+    "timestamp": "2025-12-23 08:15:22.436523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 16 & 113: MAJORITY_OF_WITNESSES recalculation in devnet] [Devnet Majority Calculation Override Risk] In devnet mode, MAJORITY_OF_WITNESSES is recalculated after COUNT_WITNESSES is set to 1 - if this recalculation is missed or incorrect, can the majority threshold be wrong, breaking consensus even in dev environments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3681c667-a561-4c70-81b5-884756afe72d",
+    "timestamp": "2025-12-23 08:15:49.019485",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 11: Number.MAX_SAFE_INTEGER polyfill] [Safe Integer Polyfill Failure] If the JavaScript environment doesn't define Number.MAX_SAFE_INTEGER and the polyfill sets it to 9007199254740991, but the actual environment's integer precision is lower (e.g., 32-bit systems), can this cause silent integer truncation bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5aa72ce9-b41a-410f-b51b-15cbd8491966",
+    "timestamp": "2025-12-23 08:16:15.316693",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 35-36: Genesis unit and blackbytes asset conditional assignment] [Genesis Configuration Race Condition] If both testnet and devnet flags are set simultaneously, which genesis unit takes precedence? Can this ambiguity cause nodes to initialize with mismatched genesis configurations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3612c8d4-7023-43d5-b41c-b42b38bdf26e",
+    "timestamp": "2025-12-23 08:16:42.630944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 109-110: Devnet genesis changes with version/alt changes] [Devnet Genesis Instability] The comment 'THIS CHANGES WITH EVERY UNIT VERSION / ALT CHANGE!!!' suggests devnet genesis is unstable - can this cause devnet nodes to fork repeatedly as version strings change during development?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f44368d-12c1-4005-87ed-05f1ebda0755",
+    "timestamp": "2025-12-23 08:17:09.972986",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 147: lightHistoryTooLargeErrorMessage] [Error Message Information Leak] The error message 'your history is too large, consider switching to a full client' - does this reveal information about user transaction history size that could be exploited for privacy attacks or targeted DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67cba9f5-346a-4fd5-ab2e-80403f2ec255",
+    "timestamp": "2025-12-23 08:17:37.550144",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 80-97: Testnet upgrade MCIs significantly lower than mainnet] [Testnet Upgrade Testing Inadequacy] Testnet upgrade MCIs (e.g., 684000 for witnessedLevelMustNotRetreatUpgradeMci) are much lower than mainnet (1400000) - does this mean testnet may not adequately test upgrade timing issues that manifest at higher MCI values due to state accumulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61e40f01-14da-4ada-9bd6-f86d5a8cf4d2",
+    "timestamp": "2025-12-23 08:18:05.455327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 27-31: Testnet version suffixes] [Version Suffix Parsing Ambiguity] Testnet versions end in 't' (e.g., '4.0t') - can this cause string comparison issues where version checks fail to properly distinguish between '4.0' and '4.0t', potentially allowing cross-network unit replay?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58130f28-71b4-4321-b689-3e0ba57cef38",
+    "timestamp": "2025-12-23 08:18:30.974840",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 15: TOTAL_WHITEBYTES=1e15] [Total Supply Near JavaScript Integer Limit] With TOTAL_WHITEBYTES=1e15 close to MAX_SAFE_INTEGER=9007199254740991, can operations involving total supply (e.g., balance aggregations) overflow when combined with other large numbers like asset caps or fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ddb9070-5d38-42d9-b228-b79a6b9c9c43",
+    "timestamp": "2025-12-23 08:18:57.173837",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 18: EMERGENCY_OP_LIST_CHANGE_TIMEOUT=3*24*3600] [Emergency Timeout Calculation Overflow] The timeout is calculated as 3*24*3600 (3 days in seconds) - if this calculation is performed in a context where integers are 32-bit, can it overflow and produce a negative or wrapped timeout value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce80e988-68a4-4325-926a-8427dc3c5791",
+    "timestamp": "2025-12-23 08:19:23.792100",
+    "report_generated": false
   }
 ]
