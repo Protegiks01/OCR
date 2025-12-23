@@ -7648,5 +7648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f0ced12-03f1-4c2a-a3c0-3bcd81ae0922",
     "timestamp": "2025-12-23 12:45:54.288510",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query delimiter injection] At lines 236-237, the delimiter defaults to '&' but can be overridden. Can an attacker exploit delimiter confusion by submitting URIs with mixed delimiters (e.g., 'param1=val1&param2=val2;param3=val3') that get parsed inconsistently, bypassing validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a97c5a73-3eae-4756-ad79-77f98ea7f4a7",
+    "timestamp": "2025-12-23 12:47:04.006508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset return type confusion] The function returns either {error: ...} or {additional_assets: ...} or {}. Can downstream code incorrectly check for errors (e.g., only checking if result is truthy), causing error objects to be treated as valid additional_assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b35661e8-84db-4e45-8847-8e21707ceb0e",
+    "timestamp": "2025-12-23 12:47:16.652855",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset main_asset bypass] The main_asset parameter is passed but only used for duplicate checking (line 227). Can an attacker submit main_asset = 'X', amount2 for asset 'X', bypassing the duplicate check because main_asset isn't added to the assets array until line 217?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8cc9cf5-6911-4aaa-876e-01a1927ef6ae",
+    "timestamp": "2025-12-23 12:47:29.793139",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset default to base] At line 224, if asset is missing, it defaults to 'base'. Can an attacker intentionally omit asset2, asset3, etc. to create multiple base asset entries, then exploit how composer.js handles multiple base outputs to cause amount miscalculations or double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2903b891-638a-40c8-80dc-433f28c80c52",
+    "timestamp": "2025-12-23 12:47:43.244644",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset infinite loop] The loop at line 218 continues while 'amount' + i exists in assocParams. Can an attacker submit URIs with amount2, amount3, ..., amount99999999 that cause extremely long loop iterations, exhausting CPU and causing network DoS (1+ hour delay - Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_224e5c31-8022-41c1-91ab-20660a816e85",
+    "timestamp": "2025-12-23 12:47:58.022027",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset duplicate detection bypass] At lines 227-228, duplicate assets are detected with indexOf(). Can an attacker submit asset IDs that are bytewise identical but represent different assets due to encoding issues (e.g., UTF-8 vs. Latin1), bypassing duplicate checks and causing double-counting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf44f4ec-2fa1-4053-9db2-f78f36a83faa",
+    "timestamp": "2025-12-23 12:48:13.685262",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset amount overflow] At line 219, additional_amount is parsed with parseInt() and validated at lines 220-222. Can an attacker submit amounts exceeding 2^53-1 that overflow in different ways across JavaScript implementations, causing balance inconsistencies and fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4047816a-f7d0-4c54-8d7f-52d2138211e7",
+    "timestamp": "2025-12-23 12:48:29.868539",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset index injection] At line 218, the loop iterates using 'amount' + i where i starts at 2. Can an attacker submit non-sequential indexes (e.g., amount3, amount5, amount999) that bypass the loop iteration but still exist in assocParams, causing some assets to be processed incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_139e93b5-b6d7-43ad-9a4f-7714942d093b",
+    "timestamp": "2025-12-23 12:48:48.048714",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Asset auto-assignment bypass] At lines 180-181, if amount is set but asset is missing, asset defaults to 'base'. Can an attacker exploit race conditions where this auto-assignment happens inconsistently across nodes, causing some nodes to process as base payment and others to reject, leading to chain split (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fe59f07-993f-49d1-87e3-a7643e91db4e",
+    "timestamp": "2025-12-23 12:49:06.744506",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Asset 'base' string injection] The special string 'base' is compared at line 176 for the native asset. Can an attacker submit variations like 'BASE', 'base\\\\x00', or 'base ' (with trailing space) that bypass the comparison but are treated as 'base' downstream, exploiting case sensitivity or whitespace handling differences?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d700886f-4d12-43fe-8bbf-6efbc209d052",
+    "timestamp": "2025-12-23 12:49:27.280760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Asset base64 validation bypass] At line 176, assets are validated with ValidationUtils.isValidBase64(asset, constants.HASH_LENGTH). Can an attacker submit base64 strings with padding errors, invalid characters, or length mismatches that pass validation but reference non-existent assets, locking funds permanently (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69ef2ab4-142b-4ad8-a45a-956c4b6d19cc",
+    "timestamp": "2025-12-23 12:49:48.405374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Amount zero value attack] If amount is 0, does ValidationUtils.isPositiveInteger() reject it (line 170)? If 0 amounts are allowed, can an attacker flood the network with zero-value payments to exhaust UTXO set or cause DoS (1+ hour delay - Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cffd108-ba89-428f-9e82-fc6ee8851366",
+    "timestamp": "2025-12-23 12:50:09.859640",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Amount negative value bypass] ValidationUtils.isPositiveInteger() is called at line 170, but can an attacker exploit integer underflow by submitting very large negative numbers that wrap to positive values in two's complement arithmetic, minting unlimited assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_002cb138-878c-44e6-a490-3ab5187e20e6",
+    "timestamp": "2025-12-23 12:50:31.752312",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Amount integer overflow] At line 167, parseInt(strAmount) is used without bounds checking. Can an attacker submit amounts exceeding Number.MAX_SAFE_INTEGER (9007199254740991) that overflow to incorrect values, potentially allowing creation of unlimited bytes and direct fund theft (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74cdb6d9-53fa-4bf9-88fd-c54a7b13f224",
+    "timestamp": "2025-12-23 12:50:54.378138",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Amount string-to-integer conversion] At lines 167-172, amounts are parsed with parseInt() and validated with string comparison 'amount + '' !== strAmount'. Can an attacker submit amounts like '1.0', '1e10', or '+1' that pass parseInt() but fail string equality, causing validation bypass or amount discrepancies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37467185-447d-4f9c-be3c-f7d8f7c31c8b",
+    "timestamp": "2025-12-23 12:51:18.503707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Address phone number spoofing] Phone numbers matching /^\\\\+\\\\d{9,14}$/ at line 159 are allowed as addresses. Can an attacker use this to spoof caller ID, exploit SMS-based authentication, or send funds to premium-rate numbers controlled by the attacker?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90142f12-af03-4b61-ae37-c9ae20eafb03",
+    "timestamp": "2025-12-23 12:51:42.676562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Address email validation spoofing] Email addresses are validated with ValidationUtils.isValidEmail() at line 159. Can an attacker exploit RFC-valid but unusual email formats (e.g., 'admin@[127.0.0.1]', 'user+exploit@domain.com') to bypass email verification or exploit downstream email processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f7a9a5d-934b-4701-879b-a9dc43fc9049",
+    "timestamp": "2025-12-23 12:52:07.339807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Address validation bypass - social accounts] At line 159, addresses matching patterns like 'steem/', 'reddit/', '@username' are allowed without ValidationUtils checks. Can an attacker inject malicious payloads into these social identifiers that exploit downstream attestation or profile services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a79eb49-dd34-489e-a1f0-f7e6b255ebfe",
+    "timestamp": "2025-12-23 12:52:33.136014",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [System vote numeric overflow] At lines 151-152, non-op_list system vote values must match /^[\\\\d.]+$/. Can an attacker submit extremely large numbers (e.g., '9e99999999999') that pass regex but overflow when parsed to number by downstream code, corrupting system parameters and causing network instability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b38108bf-5eff-4f6f-84e6-78701ed39fcf",
+    "timestamp": "2025-12-23 12:52:59.309530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [System vote address validation inconsistency] At line 148, OP addresses are validated with ValidationUtils.isValidAddress() using Array.every(). If one address validation is slow or buggy, can an attacker craft an address list that causes timeout or inconsistent validation across nodes, leading to chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4cf07d07-0f59-4bcc-a409-9cbff95e778a",
+    "timestamp": "2025-12-23 12:53:24.624775",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [System vote OP count mismatch] At lines 144-149, op_list must contain exactly COUNT_WITNESSES (12) OPs separated by newlines. Can an attacker submit an op_list with 12 lines but where some lines are empty strings, passing the count check but causing witness validation failures or consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_588639da-33a8-41e4-9dbd-8f0906ffa79c",
+    "timestamp": "2025-12-23 12:53:50.692914",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [System vote subject injection] At lines 138-153, system_vote subjects are validated against a whitelist ['op_list', 'threshold_size', etc.]. Can an attacker inject similar-looking subjects with Unicode characters, zero-width spaces, or homoglyphs that bypass the whitelist but corrupt system voting state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6748cc2b-5dfc-4ddd-bdff-8c0b65e61e94",
+    "timestamp": "2025-12-23 12:54:17.743589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Definition non-JSON response] After fetchUrl() returns at line 133, assocParams.definition is set to raw response text. If the response isn't valid JSON (required for AA definitions), does downstream validation catch this, or can it cause parser crashes or AA execution failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b4ad821-5784-4b6e-8ac7-c77ae6c8fb6c",
+    "timestamp": "2025-12-23 12:54:45.139560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Definition fetch race condition] The bDone flag at line 253 prevents multiple callbacks, but can an attacker exploit race conditions where both resp.on('end') and resp.on('aborted') fire simultaneously, causing cb() to be called twice with different data, leading to inconsistent definition processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a376a62-63b1-4e18-a719-bbb7af3aba05",
+    "timestamp": "2025-12-23 12:55:11.829267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Definition fetch DNS rebinding] Can an attacker control DNS to initially resolve a URL to a public IP (passing any IP allowlist), then rebind to a private IP (e.g., 127.0.0.1) during the fetch, exploiting SSRF to access internal services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7df12021-0d28-4c86-b2fd-d63ef9c602b9",
+    "timestamp": "2025-12-23 12:55:38.227702",
+    "report_generated": false
   }
 ]
