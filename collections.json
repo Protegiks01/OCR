@@ -10348,5 +10348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed5524cc-b220-4371-be50-b5cd5abbacd2",
     "timestamp": "2025-12-23 12:58:48.605848",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: findLostJoints()] [Callback with Unlocked State] handleLostJoints callback at line 139 is invoked after unlock() at line 136 - if handleLostJoints modifies dependencies, can concurrent findLostJoints() calls interfere with each other?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a19a6c5-a16f-44ab-bba6-c90d7aa9cad2",
+    "timestamp": "2025-12-23 12:59:57.812675",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: findLostJoints()] [Lost Joint Flood] If handleLostJoints requests all lost joints from peers simultaneously (potentially hundreds), can this overwhelm network bandwidth or peer processing capacity (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ea9eb75-0748-4e3a-b6c4-7f8c075e7b3c",
+    "timestamp": "2025-12-23 13:00:10.385866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeJointAndDependencies()] [Cache Pollution] Line 148 adds to assocKnownBadUnits without size limits - can repeated purging of different bad units cause unbounded memory growth in assocKnownBadUnits cache (Critical: memory exhaustion network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f542e2b-33f9-4cf2-a8a0-d9a186bfa1b3",
+    "timestamp": "2025-12-23 13:00:23.850523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeJointAndDependencies()] [Error Propagation Attack] The same error string is propagated to all dependent joints via collectQueriesToPurgeDependentJoints (line 155) - can an attacker create a deep dependency tree where one bad root unit causes thousands of descendants to be marked bad in a cascade, overwhelming database writes (Medium: network delay ≥1 day)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_349ab4ef-0227-4490-9906-fda05eef0426",
+    "timestamp": "2025-12-23 13:00:37.226275",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeJointAndDependencies()] [Transaction Size Limit] If collectQueriesToPurgeDependentJoints adds hundreds of INSERT/DELETE queries to arrQueries (line 155), can the total transaction size exceed database limits causing COMMIT failure and leaving partial purge state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ecc6e58-ccb3-40b2-bdb5-c8fd3b93bada",
+    "timestamp": "2025-12-23 13:00:51.251871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeJointAndDependencies()] [Callback Race] onPurgedDependentJoint is called for each purged unit (line 155), but if these callbacks try to access dependencies that are being deleted in the same transaction, can this cause read-after-delete inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9532404-e421-46f9-a180-442533ae3620",
+    "timestamp": "2025-12-23 13:01:06.625415",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeJointAndDependencies()] [Cache Deletion Order] Line 158 deletes from assocUnhandledUnits after COMMIT completes - if the process crashes between lines 157 and 158, will the cache incorrectly retain references to purged units, causing future lookups to return stale data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d708cfdf-9cc9-4cc8-b663-3ec634c28ccf",
+    "timestamp": "2025-12-23 13:01:23.125699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeDependencies()] [Missing Unit Insertion] Unlike purgeJointAndDependencies, this function doesn't insert the parent unit into known_bad_joints - can this cause the parent to be re-requested and re-validated repeatedly, wasting resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9127c5a-fcc6-4cef-a009-0c9ba671dd28",
+    "timestamp": "2025-12-23 13:01:40.781639",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeDependencies()] [Partial Cascade] If purgeDependencies fails mid-transaction, dependent joints may be partially purged - can this leave the dependency graph in an inconsistent state where some descendants are marked bad but others are not?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f8e9c48-9230-4dd0-8110-ec735e189371",
+    "timestamp": "2025-12-23 13:02:00.281100",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [Recursive Stack Overflow] The function recursively calls itself at line 203 for each dependent unit - if an attacker creates a dependency chain 1000+ units deep, can this cause stack overflow (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e4a2d79-c644-4261-b411-e52e28172aac",
+    "timestamp": "2025-12-23 13:02:20.290332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [Synchronous Recursion Lock] Line 198 uses async.eachSeries which processes dependencies sequentially - if each dependency has 100 children and there are 5 levels, can the O(100^5) operations take hours to complete while holding database connection (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa00f666-b5e7-474c-a09a-1fd32c7884c0",
+    "timestamp": "2025-12-23 13:02:41.121417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [Cache Update Race] Lines 190-193 update assocKnownBadUnits and assocUnhandledUnits synchronously, but the database queries (lines 194-197) execute later in async.series - can other threads see inconsistent state where caches are updated but database changes haven't committed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_81dddc21-f0a7-4cf3-bed9-5b98d9456fe6",
+    "timestamp": "2025-12-23 13:03:02.512751",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [IN Clause Limit] Line 195 uses WHERE unit IN(?) with arrUnits - if arrUnits contains 10,000+ units, can this exceed SQL IN clause limits or cause query planner performance degradation (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b5a2659-ec89-4ebf-8515-33fbb04305de",
+    "timestamp": "2025-12-23 13:03:24.679571",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [Unbounded Query Collection] arrQueries array grows with each recursive call but has no size limit - can a deeply branching dependency tree cause arrQueries to contain millions of queries, exhausting memory before COMMIT (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9438e43a-e830-46cf-ac36-75f7c1225914",
+    "timestamp": "2025-12-23 13:03:49.014032",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: collectQueriesToPurgeDependentJoints()] [Peer Notification Leak] onPurgedDependentJoint callback at line 202 receives row.peer but there's no validation - if peer is null or invalid, can downstream notification code crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de4e4a47-3032-472f-9132-f4eae69f2bd3",
+    "timestamp": "2025-12-23 13:04:14.156837",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJointsUnderLock()] [Nested Lock Deadlock] Lines 211-217 acquire two mutex locks sequentially (purge_uncovered, then handleJoint) - if another thread tries to acquire these locks in reverse order, can this cause deadlock freezing the network (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fa801b8-9772-4475-a43d-50977b6b17e7",
+    "timestamp": "2025-12-23 13:04:39.372707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJointsUnderLock()] [Lock Skip on Contention] Line 211 uses lockOrSkip - if lock is busy, purging is skipped entirely - can an attacker keep the lock busy to prevent purging indefinitely, causing uncovered bad units to accumulate (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5f7849e-bdc7-47ca-934b-1d1ed46b43ac",
+    "timestamp": "2025-12-23 13:05:06.892512",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Witness Count Bypass] Line 232 checks for witness units after the bad unit but the commented-out constants.MAJORITY_OF_WITNESSES-1 at line 239 suggests this validation was removed - can bad units be archived prematurely before sufficient witness confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30acb282-8c1f-4696-ab92-8ecc955194d4",
+    "timestamp": "2025-12-23 13:05:34.523979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Archive Timing Race] Lines 231-235 check if witnesses posted after the bad unit OR if it's >10 seconds old - can an attacker exploit the 10-second window to get bad units archived before witness validation occurs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2323bcc4-d6de-4f4f-9a6f-2dcb423941e0",
+    "timestamp": "2025-12-23 13:06:03.163923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Query Performance DoS] The complex query at lines 226-237 with multiple NOT EXISTS subqueries and JOINs - if executed on a database with millions of units, can this query take minutes to complete while holding the write mutex lock (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_390a5143-3b20-4334-a256-e6d8de4cbf65",
+    "timestamp": "2025-12-23 13:06:33.059016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Recursive Purge Loop] Line 280 recursively calls purgeUncoveredNonserialJoints - if bad units keep arriving faster than they're purged, can this create an infinite processing loop (Medium: network delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54ea83c8-1e79-45df-abb0-47fb30973bd9",
+    "timestamp": "2025-12-23 13:07:03.346875",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Write Lock Starvation] Lines 243-287 hold the write mutex for the entire archiving process which includes multiple database queries and kvstore deletions - can this block all other unit writes for extended periods (Critical: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc775e33-e729-4136-a477-86e41b120cb5",
+    "timestamp": "2025-12-23 13:07:34.896432",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [KVStore Deletion Failure] Line 260 deletes from kvstore but if this fails (disk full, permission error), the async.series continues to line 262-265 which forgets the unit from memory - can this cause desynchronization where SQL has unit but kvstore doesn't (Critical: permanent data inconsistency)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fdd8e27-83ce-4dde-ad16-2ae750c6ceeb",
+    "timestamp": "2025-12-23 13:08:02.947941",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Parent Units Access After Forget] Line 262 reads storage.assocUnstableUnits[row.unit].parent_units but line 263 calls storage.forgetUnit(row.unit) - is there a race condition if another thread modifies this structure between lines 262-263?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c16c8ed-342e-4383-affb-fa5bb7050ec3",
+    "timestamp": "2025-12-23 13:08:30.840552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/joint_storage.js] [Function: purgeUncoveredNonserialJoints()] [Non-Atomic Archive] The archiving process spans multiple steps (lines 254-268) - if the process crashes mid-archiving, can a unit be partially archived (removed from active tables but not fully in archived_joints), breaking referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a195e57-a564-4947-bbd2-2a3bff31e31c",
+    "timestamp": "2025-12-23 13:08:59.185347",
+    "report_generated": false
   }
 ]
