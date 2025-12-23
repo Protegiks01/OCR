@@ -5998,5 +5998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2ef8b7e-fedb-4e0b-8150-5a7acf58f8d2",
     "timestamp": "2025-12-23 09:38:37.077656",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [SQL injection via signing_path] Line 1056 uses SUBSTR(?, 1, LENGTH(signing_path)) with user-controlled signing_path - can special characters or SQL keywords in signing_path cause injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_754f1165-c65d-41eb-83f8-447921d80b29",
+    "timestamp": "2025-12-23 09:39:48.955447",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: findAddress()] [Infinite recursion] Lines 1027-1097 recursively call findAddress() for shared addresses at line 1070, but there's no cycle detection - can an attacker create circular shared address definitions causing stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_985d20d8-326c-45e0-b76e-96265dda7d8a",
+    "timestamp": "2025-12-23 09:40:01.442645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Forwarding flag bypass] Lines 808-817 check !body.forwarded before forwarding chains, but this flag is controlled by the sender - can a malicious forwarding node set forwarded=false to cause infinite forwarding loops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c343d834-8e88-46e6-8c9f-4c9a5c61bb26",
+    "timestamp": "2025-12-23 09:40:14.264153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Cache poisoning] Line 873 sets handledChainsCache[cache_key] = true after validation, but if validation partially succeeds then fails, the cache entry blocks future attempts - can an attacker poison the cache to prevent legitimate private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f571a373-2865-4249-974a-1dcf06c8f61e",
+    "timestamp": "2025-12-23 09:40:28.608829",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Error message leakage] Lines 838-843 log errors to console but return generic",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdcf88e5-9e0c-4f95-a6ab-b1e08270ecad",
+    "timestamp": "2025-12-23 09:40:42.863646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Event listener leak] Lines 834-863 create event listeners with eventBus.once() but if cb(error) is called before the event fires, listeners remain attached - can an attacker exhaust memory by sending many invalid private chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e154d290-b652-4a74-b657-c3afc1050c54",
+    "timestamp": "2025-12-23 09:40:58.842325",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Output index overflow] Line 827 sets output_index to -1 for divisible assets, but doesn't validate that objHeadPrivateElement.output_index is within valid range (0 to outputs.length-1) - can negative or huge indices cause array access violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e30c10e3-2315-48a2-8ce5-46d6a5d51c53",
+    "timestamp": "2025-12-23 09:41:15.896676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Validation bypass via denomination mismatch] Lines 825-826 check if payload.denomination presence matches output_index, but uses !== instead of checking type - can an attacker send denomination=0 (falsy) to bypass checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78c93b09-23c0-4773-8400-ca2676096b36",
+    "timestamp": "2025-12-23 09:41:34.064712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Race condition in checkIfAllValidated] Lines 799-819 check assocValidatedByKey without proper locking - if multiple validation events fire simultaneously, can the function execute multiple times leading to duplicate forwarding of private chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23a72279-f513-4611-9e5d-6d6057394dd4",
+    "timestamp": "2025-12-23 09:41:53.165498",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentChains()] [Cache key collision] Lines 774-783 use objectHash.getBase64Hash(arrChains) as cache key - if two different chain arrays produce the same hash (collision), can an attacker replay cached chains to double-spend private assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_246081be-15a3-4e78-98b8-1c8966c199ba",
+    "timestamp": "2025-12-23 09:42:13.410018",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'arbiter_dispute_request' case] [Light client history poisoning] Lines 674-675 request history for body.unit in light mode - can an attacker reference a fake unit that doesn't exist, causing the light client to request and store invalid history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77dfb37f-70ad-47fd-be87-bf48e2cab3db",
+    "timestamp": "2025-12-23 09:42:34.210471",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'arbiter_dispute_request' case] [Encrypted contract decryption] Line 671 decrypts contract using device.decryptPackage() without validating the decryption result format - can an attacker send malformed encrypted data that crashes the decryption routine or returns unexpected types?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6eed8eae-6cd4-44ab-9152-e17291bac57d",
+    "timestamp": "2025-12-23 09:42:56.009465",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'arbiter_contract_update' case] [Status transition race] Lines 618-639 check current status and new status compatibility, but the actual update at line 658 happens after the check - can concurrent updates cause invalid state transitions like pending->accepted->revoked simultaneously?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73678f0f-15d4-4e14-b122-5f7d4518bc85",
+    "timestamp": "2025-12-23 09:43:19.230257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'arbiter_contract_update' case] [Complex authorization logic] Lines 610-664 have intricate status transition rules checking from_cosigner, peer_device_address, and arbstore_device_address - can an attacker exploit edge cases in the state machine (e.g., rapid status changes) to bypass authorization checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3bfd97cf-5ec4-4c2f-8713-8d61ab2f4eb0",
+    "timestamp": "2025-12-23 09:43:42.464659",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'arbiter_contract_offer' case] [Contract hash manipulation after swap] Lines 554-575 swap peer/my fields and validate hash again, but line 574 uses throw Error() instead of returning callbacks.ifError() - can this cause the mutex to remain locked forever, blocking all future messages from hub?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2949b942-0b81-433d-802d-33e28b78bf4b",
+    "timestamp": "2025-12-23 09:44:07.571099",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_update' case] [Unauthorized contract modification] Lines 525-552 allow contract status/unit/shared_address updates, but only check if from_address matches peer_device_address - if a shared wallet has multiple cosigners, can non-owner cosigners modify contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f42ed5b-7601-438a-89a1-68ade6668783",
+    "timestamp": "2025-12-23 09:44:32.801698",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_response' case] [Time-of-check-time-of-use] Lines 495-499 check contract status and TTL separately, but between line 495 (status check) and line 500 (setField), another thread could modify the contract status - can this cause race conditions in contract state transitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cfb6098-51fa-4544-9596-5bb684b6c6d8",
+    "timestamp": "2025-12-23 09:44:58.436987",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_response' case] [SQL injection in definition update] Line 489 executes UPDATE with JSON.stringify(author.definition) - if author.definition contains SQL escape sequences, can this break out of the JSON string and inject arbitrary SQL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f6f1857-48ef-4656-a91a-4807e8c3e97d",
+    "timestamp": "2025-12-23 09:45:24.965022",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_response' case] [Signature bypass via authors manipulation] Lines 472-494 allow peer to send authors array and inject address definitions without full validation - can an attacker register fake definitions for victim addresses and later use them to forge signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0ae2bb6-2ea7-4ac4-b183-667b6d6b85a0",
+    "timestamp": "2025-12-23 09:45:52.542417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_offer' case] [Creation date manipulation] Line 427 validates creation_date format with regex but doesn't check if the date is in the future or unreasonably old - can an attacker set creation_date to year 9999 to make contracts never expire (line 498 TTL check)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52318d3b-9eea-43f3-aef7-8a96f1e9d1a0",
+    "timestamp": "2025-12-23 09:46:20.477888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'prosaic_contract_offer' case] [Hash collision attack] Line 422 validates contract hash using prosaic_contract.getHash(), but if an attacker finds a hash collision, can they substitute contract terms (title, text) while maintaining the same hash, tricking users into signing different contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15b52f3c-0180-43a7-b2a1-e7de99d719e7",
+    "timestamp": "2025-12-23 09:46:49.024455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'payment_notification' case] [Race condition on emitPn] Lines 396-402 use a bEmitted flag and eventBus.once(), but if storage.readJoint() at line 403 completes before eventBus.once() is registered, the event might fire before the listener is attached - can this cause payment notifications to be missed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a274ddfc-a3b9-4090-8cd9-7ae53bad1593",
+    "timestamp": "2025-12-23 09:47:16.273168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'payment_notification' case] [False payment notification] Lines 387-414 emit payment events for units that may not contain actual payments to the user - can an attacker spam payment_notification messages for random units to confuse wallet UIs or trigger incorrect balance displays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fd4ddfd-7d42-4206-912a-aadc6c9f370d",
+    "timestamp": "2025-12-23 09:47:45.792488",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'private_payments' case] [Private chain validation] Line 384 calls handlePrivatePaymentChains() which processes chains at lines 770-880, but if the chains array is extremely large, can an attacker cause memory exhaustion or timeout the mutex lock, blocking all other hub messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e92e6fdb-2370-4984-a694-7f9902023523",
+    "timestamp": "2025-12-23 09:48:14.230735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'signature' case] [Signature length bypass] Line 373 checks signature length equals constants.SIG_LENGTH OR signature === '[refused]', but doesn't validate signature format - can an attacker send exactly SIG_LENGTH bytes of garbage that passes validation but causes signature verification failures downstream?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f06b5a7-7c3b-4a9d-8e97-e45916c5ff26",
+    "timestamp": "2025-12-23 09:48:42.289749",
+    "report_generated": false
   }
 ]
