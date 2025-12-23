@@ -10648,5 +10648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f66f16cb-0779-4ea3-8c16-53d63db43cfc",
     "timestamp": "2025-12-23 16:05:58.368043",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Hash Validation] Does verify() validate that the hash parameter is exactly 32 bytes before calling ecdsaVerify(), or can an attacker pass a truncated or extended hash that causes non-deterministic verification results across nodes, leading to units being accepted by some nodes and rejected by others?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96c85e46-99f9-4945-8172-f6b6c22bfdc2",
+    "timestamp": "2025-12-23 16:07:12.895404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Signature Length] If b64_sig decodes to a buffer that is not exactly 64 bytes (32 bytes for r + 32 bytes for s), does secp256k1.ecdsaVerify() reject it deterministically, or could certain lengths (e.g., 63, 65 bytes) pass verification on some nodes but fail on others due to library version differences, causing a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5efd75d1-5664-4a20-8f85-e99bd6d5133e",
+    "timestamp": "2025-12-23 16:07:25.297652",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Public Key Validation] Does the verify() function validate that b64_pub_key decodes to a valid 33-byte compressed or 65-byte uncompressed secp256k1 public key before passing to ecdsaVerify(), or can an attacker supply a malformed public key that causes ecdsaVerify() to throw an exception, return true unexpectedly, or exhibit non-deterministic behavior across different Node.js versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec67026f-a7a9-4c37-98ee-2f88848ec0bb",
+    "timestamp": "2025-12-23 16:07:38.348391",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Base64 Decoding] If the b64_sig parameter contains whitespace, null bytes, or other non-standard base64 characters that Buffer.from() silently ignores during decoding, could two signatures with different string representations but identical decoded values both verify successfully, breaking the assumption that each signature string is unique and potentially enabling replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_273ee227-aadc-4dfe-b504-8bcf5c298bb4",
+    "timestamp": "2025-12-23 16:07:52.341713",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Signature Malleability] Does the ECDSA signature verification using secp256k1.ecdsaVerify() enforce low-S values to prevent signature malleability, and if not, could an attacker create multiple valid signatures for the same unit hash, potentially causing the same unit to be processed multiple times with different signatures, leading to consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03fa9370-a515-4c2d-b4e0-f8a8c48d0df6",
+    "timestamp": "2025-12-23 16:08:06.598003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Exception Handling] If Buffer.from(b64_sig, 'base64') fails to decode due to malformed base64 input, does the try-catch block guarantee that false is returned, or could an edge case in the secp256k1 library cause undefined behavior that bypasses signature checks in definition.js line 685?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f73180c-8340-4c8a-a0a3-0fbe6141151d",
+    "timestamp": "2025-12-23 16:08:21.761222",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Signature Verification Bypass] Can an attacker submit a unit with an invalid signature that causes the secp256k1.ecdsaVerify() call to throw an exception, which is caught and returns false, but if definition.js does not properly handle the false return in a multi-sig 'or' condition, could this allow unauthorized spending by exploiting short-circuit evaluation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_011da490-0753-4ec5-abd7-f6f9d29ba2e1",
+    "timestamp": "2025-12-23 16:08:38.230316",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond() → composeAuthorsAndMciForAddresses()] [MCI Manipulation] The respond() function includes authors with MCI information in the response. Can an attacker manipulate timing to include an outdated or incorrect MCI that causes the peer to accept a response based on stale main chain state, potentially enabling double-spending or timeline manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_199645d7-ae4f-4cdc-99e6-13b664f7d608",
+    "timestamp": "2025-12-23 16:08:57.743839",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [Validation Mismatch] The store() function is designed to be called after wallet.js validation, but accepts all contract fields without re-validating. If wallet.js validation logic has bugs or is bypassed, can malicious contracts with invalid hashes, mismatched addresses, or malformed dates be persisted to the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8fa12fa-913c-40ca-825d-8f93eb7ec7f8",
+    "timestamp": "2025-12-23 16:09:16.261062",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getByHash() + getAllByStatus()] [Expired Contract Query] Query functions return all contracts regardless of TTL expiration. Can an attacker exploit expired contracts by interacting with them through wallet.js, potentially causing the wallet to attempt operations on contracts that should have been automatically archived or deleted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_190143ca-6a95-4704-8d12-e6535b7fdc0f",
+    "timestamp": "2025-12-23 16:09:35.445118",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField() + respond()] [Expired Contract Modification] The prosaic_contract.js module stores TTL in the database but never enforces TTL expiration before allowing status changes or other updates. Can an attacker call setField() or respond() on contracts that expired weeks ago, modifying them long after they should have become immutable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_393deea0-5b17-418a-9a1b-567dc6baf10a",
+    "timestamp": "2025-12-23 16:09:56.174735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: share()] [Stale Data] The share() function retrieves a contract via getByHash() and immediately sends it, but doesn't use database transactions or locking. If the contract is modified between retrieval and sending, can the recipient receive outdated contract information (e.g., old status='pending' when it's actually 'accepted')?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_28466673-0c04-444a-bf09-0cd565109e8c",
+    "timestamp": "2025-12-23 16:10:17.473388",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [State Divergence] The createAndSend() function inserts a contract into the database with certain fields (hash, my_address, peer_address) but constructs objContract for device messaging with potentially different values due to field order or transformation. Can these two representations diverge, causing the stored contract to have different properties than what was sent to the peer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d88fbfdb-d4ae-40e1-800f-c595e4c408a3",
+    "timestamp": "2025-12-23 16:10:40.418307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [CSRF in Device Messages] The respond() function sends contract responses to peer_device_address without any anti-replay token or request-response matching. Can an attacker trick a victim into sending a response message by crafting a fake contract offer that appears legitimate, causing the victim to unknowingly accept a malicious contract?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03c20d61-710a-408f-b120-50654743f31e",
+    "timestamp": "2025-12-23 16:11:03.398596",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: decodeRow()] [Missing Cosigners Validation] The decodeRow() function parses row.cosigners only if it's truthy, but doesn't validate the parsed result is an array of valid addresses. Can an attacker store a contract with cosigners='[]' or cosigners='null' that causes wallet logic expecting a populated cosigners array to crash or malfunction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be2c50cc-875b-4c58-94ae-110e0b08d482",
+    "timestamp": "2025-12-23 16:11:27.361745",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Cosigners Type Confusion] The createAndSend() function calls JSON.stringify(cosigners) without verifying cosigners is an array or validating its contents. Can an attacker provide cosigners as a string, number, or object with malicious properties that cause unexpected behavior when decodeRow() later parses it back?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ee55d70-dbf9-4173-9152-ae7495a46856",
+    "timestamp": "2025-12-23 16:11:52.444755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Unit Replay] The setField() function doesn't prevent the same unit hash from being assigned to multiple contracts. Can an attacker reuse a single unit hash across multiple unrelated contracts, making it appear that one on-chain transaction fulfilled many off-chain contracts simultaneously, allowing the attacker to claim multiple payments for a single unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_720cf820-b825-4b71-8a75-6add3cdca984",
+    "timestamp": "2025-12-23 16:12:18.357973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Unit Validation Missing] The setField() function allows setting the unit field to any 44-character string without verifying it's a valid unit hash that exists in the DAG. Can an attacker set unit to a non-existent or malicious unit hash that causes wallet logic to incorrectly believe contract execution occurred, enabling fund theft or double-spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2a878d1-ca0a-43ba-8fe4-6dcf4f52f0cf",
+    "timestamp": "2025-12-23 16:12:44.442938",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getBySharedAddress()] [Address Collision] The getBySharedAddress() function assumes shared_address is unique across contracts, but the database schema doesn't enforce a UNIQUE constraint on this field. Can two unrelated contracts share the same shared_address, causing getBySharedAddress() to return the wrong contract and allowing attackers to impersonate or interfere with unrelated contract execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2daadb7a-66d0-4733-b91e-507e79a076f2",
+    "timestamp": "2025-12-23 16:13:12.273350",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Shared Address Hijacking] The setField() function allows setting shared_address to any value without verifying the address was jointly created by both contract parties. Can an attacker unilaterally set shared_address to an address they fully control, stealing any funds sent to what the victim believes is a multi-sig escrow address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2e8ca8b-9f8d-458d-ad8b-9785c8225e65",
+    "timestamp": "2025-12-23 16:13:40.856330",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Concurrent Status Changes] If two parties simultaneously call setField() to change a contract's status (e.g., one accepts, one declines), the final status depends on which UPDATE executes last. Can this race condition cause contracts to enter invalid states where both parties believe their action succeeded but only one status prevails, leading to disputes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_364eb4be-564a-4cc4-9836-e294ba67f844",
+    "timestamp": "2025-12-23 16:14:08.439475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Invalid Status Transition] The setField() function allows changing status to any value in the CHECK constraint (pending, revoked, accepted, declined) without validating the transition is legal (e.g., a contract can't go from 'revoked' back to 'pending'). Can an attacker exploit this to resurrect revoked contracts or downgrade accepted contracts back to pending, causing confusion in multi-party negotiations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03275983-4bae-45e9-9fff-0c2741641ff7",
+    "timestamp": "2025-12-23 16:14:37.097621",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store() → wallet.js validation] [Validation Bypass] The store() function is called by wallet.js after validation, but store() itself performs no validation. If an attacker can call store() directly (e.g., through a different code path or compromised module), can they insert contracts with invalid addresses, malformed fields, or malicious content that bypasses all wallet validation checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02126acf-d500-483e-a880-f4cf25eae077",
+    "timestamp": "2025-12-23 16:15:04.441706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond() → composer.composeAuthorsAndMciForAddresses()] [Composer Exploit] The respond() function passes objContract.my_address to composer.composeAuthorsAndMciForAddresses() without validating it's owned by the current wallet. Can an attacker craft a contract with my_address set to a victim's address, causing the composer to leak the victim's signing paths or attempt to create unauthorized signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0da47be9-b99a-4380-ae9e-78ecf1127385",
+    "timestamp": "2025-12-23 16:15:31.273596",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend() → device.sendMessageToDevice()] [Message Injection] The createAndSend() function constructs objContract with user-controlled fields (title, text, peer_address) and sends it via device messaging. Can an attacker inject special characters or escape sequences in these fields that break the device message protocol or allow message spoofing when the peer parses the contract?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_774f2f4c-543e-46b8-abab-e8075fc42910",
+    "timestamp": "2025-12-23 16:15:58.011632",
+    "report_generated": false
   }
 ]
