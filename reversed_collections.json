@@ -10498,5 +10498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0c16174-98d7-4342-97dc-8bdf797533a2",
     "timestamp": "2025-12-23 15:55:59.652916",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Return Type Validation] Does verify.verify() always return a strict boolean true/false, or could it return truthy/falsy values that get misinterpreted when returned at line 29/33, causing formula/evaluation.js line 1606 to incorrectly evaluate the result?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_240e09dc-1e94-4053-afaa-d42fca602106",
+    "timestamp": "2025-12-23 15:57:18.520537",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Non-Deterministic Verification] If the crypto.verify() implementation in different Node.js versions or OpenSSL builds produces different results for the same message/signature/key triple (e.g., due to different curve implementations), could nodes running different versions reach different consensus on whether an AA is_valid_sig check passes, causing a permanent chain split where half the network accepts a unit and half rejects it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf243418-a73d-4476-9d38-f2c5a1010503",
+    "timestamp": "2025-12-23 15:57:31.379989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Exception Logging] Lines 35, 39 log exceptions to console - if these logs contain parts of the pem_key or signature that were malformed, could sensitive cryptographic material be exposed in logs, allowing an attacker who gains read access to logs to extract private keys or forge signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c85eb6ec-2fcf-4c68-af12-ce41bf410974",
+    "timestamp": "2025-12-23 15:57:44.232584",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Signature Length] Formula/evaluation.js validates signature length ≤ 1024 bytes at line 1595, but verifyMessageWithPemPubKey() has no such check - if a future code change removes the upstream check, could an attacker supply an extremely large signature that causes crypto.verify() to consume excessive memory or CPU, creating a DoS attack that delays unit processing for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_318fcd44-d491-4a77-9df8-dcb614d87b32",
+    "timestamp": "2025-12-23 15:57:58.822232",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Message Encoding] The function calls verify.update(message) at line 25 without specifying encoding - does crypto.createVerify() treat message as UTF-8 string or raw bytes, and if formula/evaluation.js passes a binary message that gets mangled by string encoding, could valid signatures be rejected, freezing funds in AAs that use is_valid_sig for authorization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9247f41c-de76-4e5d-855f-03c8ce6f4774",
+    "timestamp": "2025-12-23 15:58:13.041706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [TypeError Handling] At line 32, the code specifically checks for TypeError to switch API styles - but if the first verify.verify() call throws a different error type (e.g., RangeError, SecurityError) due to malformed pem_key, this error won't be caught by the second try-catch and will propagate, potentially crashing the AA evaluation in formula/evaluation.js and causing the entire unit validation to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e03da8e-2b41-4c3b-ad49-901c806a7495",
+    "timestamp": "2025-12-23 15:58:27.995661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Node.js API Compatibility] Lines 29-42 attempt two different crypto.verify() call signatures to handle Node.js version differences - if a node runs on an unsupported Node.js version where both signatures fail, could the double try-catch return false for all signatures (even valid ones), causing all AA is_valid_sig checks to fail and freezing any funds controlled by AAs that use PEM signature verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91e02c9e-5b46-47b4-b6c1-aaa666b3fbe3",
+    "timestamp": "2025-12-23 15:58:44.346843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Encoding Detection] At line 27, encoding is determined by ValidationUtils.isValidHexadecimal(signature) - if the signature string is valid hex but was intended to be base64 (or vice versa), could the wrong encoding be selected, causing verify.verify() to fail silently and return false when the signature is actually valid, breaking AA is_valid_sig operations that should succeed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7923f05a-f155-4663-bd1d-797f1017d089",
+    "timestamp": "2025-12-23 15:59:02.662053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Type Confusion] If objSupportedPemTypes contains a maliciously added entry (through prototype pollution or other means) that maps an identifier to algo: 'ECDSA' but with RSA key structure, could validateAndFormatPemPubKey() accept the key as ECDSA, then have verifyMessageWithPemPubKey() process it as RSA, causing signature verification to succeed incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53bed2af-160d-4be0-b1ea-dc68adc9c664",
+    "timestamp": "2025-12-23 15:59:21.445154",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Second Sequence Check] Lines 114, 119, 124 check that buffer[2], buffer[3], or buffer[4] equals 0x30 (second sequence marker) depending on length encoding - if an attacker provides a PEM key where these checks pass but the actual sequence is malformed, could subsequent crypto operations using this key cause undefined behavior in the Node.js crypto module, potentially accepting invalid signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e69bf6b-0d7c-4d73-a79e-72a55e68a7de",
+    "timestamp": "2025-12-23 15:59:42.050410",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Base64 Validation Bypass] At line 104, the function calls ValidationUtils.isValidBase64() - if this validation can be bypassed by base64 strings with non-standard characters that Buffer.from() at line 107 silently ignores, could an attacker create a PEM key that passes string validation but decodes to unexpected bytes, causing buffer[0] != 0x30 check at line 109 to fail intermittently depending on how Buffer.from() handles the invalid input?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_698f8b30-b235-47bb-9a64-d750078a35f4",
+    "timestamp": "2025-12-23 16:00:02.749612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Whitespace Normalization] Lines 99 removes all whitespace using .replace(/\\\\s/g, '') - if this regex fails to match certain Unicode whitespace characters (e.g., zero-width spaces, non-breaking spaces), could two PEM keys that are identical except for exotic whitespace both pass validation but produce different formatted_pem_key outputs, causing non-deterministic is_valid_sig results in AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_085e1f97-4a57-4872-a3ec-47fc43e8dbf9",
+    "timestamp": "2025-12-23 16:00:23.761671",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Identifier Length Validation] At line 133, identifiersLength is checked against fixed values (13, 16, 19, 20), but the error message at line 134 includes the actual identifiersLength value - could an attacker use different malformed lengths to fingerprint the exact OpenSSL version or Node.js build on a target node, then craft exploits specific to that version's bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec6f01fa-7a4b-4289-8b86-791fe20bc857",
+    "timestamp": "2025-12-23 16:00:45.915832",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Key Length Validation] At line 150, ECDSA keys are validated to have correct hex_pub_key_length, but RSA keys (line 346-349) have no length validation - could an attacker supply a malformed RSA key with arbitrary length that passes validation but causes verifyMessageWithPemPubKey() to exhibit non-deterministic behavior across different OpenSSL versions, breaking AA execution consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8903309f-876d-4f6d-abc9-df23b2cc7e80",
+    "timestamp": "2025-12-23 16:01:07.877523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Algo Parameter Bypass] Lines 143-148 check if algo parameter is 'ECDSA' or 'RSA' and reject mismatches - but if algo is set to 'any', the function accepts any key type in objSupportedPemTypes - could an attacker exploit formula/evaluation.js by providing an RSA key where an ECDSA key was intended (or vice versa), causing is_valid_sig operations to succeed with incompatible key types and break AA logic assumptions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cba26a67-5a4c-4926-b68f-2d1c4991a58d",
+    "timestamp": "2025-12-23 16:01:30.769887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Curve Identifier Spoofing] The function extracts typeIdentifiersHex at line 138 and validates it against objSupportedPemTypes at line 140 - but if an attacker crafts a PEM key with valid ASN.1 structure but typeIdentifiersHex that matches a weak or deprecated curve (e.g., secp112r1, sect113r1 with only 56-bit security), could AAs using is_valid_sig accept signatures from keys that can be brute-forced, allowing attackers to forge oracle data or authorization proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e206746d-33cd-490f-a2d5-e10412d6d3b9",
+    "timestamp": "2025-12-23 16:01:54.727935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [ASN.1 Parsing Vulnerability] Lines 113-130 manually parse ASN.1 sequence length tags (0x7F, 0x81, 0x82) without validating that identifiersStart and identifiersLength stay within buffer bounds - could an attacker craft a malformed PEM key where identifiersLength is larger than the remaining buffer, causing out-of-bounds reads at line 138 that leak memory contents or crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_381cf57e-a2d9-46c4-8978-5a1d2b74a05f",
+    "timestamp": "2025-12-23 16:02:19.387972",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Length Bypass] At line 101, the function checks if contentAloneB64.length > 736 to reject oversized keys - can an attacker craft a PEM key with exactly 736 base64 characters that decodes to a buffer large enough to cause memory exhaustion or buffer overflow in subsequent crypto operations when used in formula/evaluation.js line 1605?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfcb6a09-0367-43cb-b582-2cb57a66dd73",
+    "timestamp": "2025-12-23 16:02:45.109131",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: sign()] [Error Handling] If secp256k1.ecdsaSign() throws an exception (e.g., due to invalid private key), sign() does not have a try-catch block and will propagate the exception - could this cause wallet.js or composer.js to crash mid-transaction, potentially creating partially signed units that corrupt the local database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_212b0e8f-ad8a-4fdc-953d-eab66ce566fb",
+    "timestamp": "2025-12-23 16:03:11.466136",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: sign()] [Signature Encoding] The function converts the signature to base64 at line 9 - if the resulting base64 string contains characters that are later mishandled during URL encoding, database storage, or JSON serialization in other modules, could this cause signature verification to fail intermittently, freezing funds in addresses that require these signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_738225d2-3aa6-4bfe-be63-3d2fc1c1dd0b",
+    "timestamp": "2025-12-23 16:03:38.557807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: sign()] [Signature Determinism] Does secp256k1.ecdsaSign() use deterministic ECDSA (RFC 6979) to ensure the same hash+privkey always produces the same signature, or could non-deterministic k-values cause different nodes to generate different signatures for the same unit, breaking unit hash consistency and causing consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9d363a8-1240-4d2d-869c-b95afb3c9771",
+    "timestamp": "2025-12-23 16:04:06.635732",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: sign()] [Private Key Exposure] Does the sign() function validate that priv_key is a 32-byte buffer before passing to secp256k1.ecdsaSign(), or could an attacker cause an exception by passing malformed private key data that gets logged in error messages, potentially exposing key material?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5699bed6-6222-4e36-a6b2-ab982052f76d",
+    "timestamp": "2025-12-23 16:04:33.694883",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Concurrent Modification] If multiple threads or callbacks simultaneously call verify() with the same b64_sig or b64_pub_key strings while Buffer.from() is executing, could race conditions in Buffer allocation or the secp256k1 library's internal state cause non-deterministic verification results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e198b573-e194-473b-9081-c4fa3bb78abd",
+    "timestamp": "2025-12-23 16:05:02.060337",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Return Value Ambiguity] If ecdsaVerify() returns a value other than true/false (e.g., undefined, null, 1, 0) due to a library bug or version mismatch, does the verify() function explicitly coerce the return value to boolean, or could definition.js line 685 misinterpret truthy/falsy values and accept invalid signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b6ea912-6456-4896-ad5f-b89acd9dcdef",
+    "timestamp": "2025-12-23 16:05:30.413617",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Exception Logging Side Channel] The catch block logs 'signature verification exception: '+e.toString() to console at line 18, potentially exposing timing information about which types of malformed inputs cause exceptions versus normal rejection - could an attacker use this timing side channel to fingerprint node implementations or craft signatures that exploit specific exception paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f66f16cb-0779-4ea3-8c16-53d63db43cfc",
+    "timestamp": "2025-12-23 16:05:58.368043",
+    "report_generated": false
   }
 ]
