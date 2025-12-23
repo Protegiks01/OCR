@@ -13198,5 +13198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5dbc3c2-dacf-404d-8206-4dc17a24a685",
     "timestamp": "2025-12-23 16:09:50.606057",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Version-specific deletion] When objJoint.unit.version === constants.versionWithoutTimestamp, the timestamp is deleted from the migrated data. If a unit somehow has an incorrect version field in SQL, could deleting the timestamp from a unit that actually requires it cause consensus divergence when other nodes read this unit from KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf8771ec-0645-422c-bb09-66e7e09984a8",
+    "timestamp": "2025-12-23 16:11:10.787619",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [MCI deletion] The code unconditionally deletes main_chain_index from units during migration. If other code paths expect MCI to be present in the joint object read from KV store, could this deletion cause null reference errors or incorrect MC calculations that prevent unit validation and halt network consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a227338-39bb-4a19-ae08-bc736e5069af",
+    "timestamp": "2025-12-23 16:11:23.574287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [JSON serialization inconsistency] When storing joints as JSON.stringify(objJoint), if the JavaScript JSON serializer produces different field ordering or whitespace compared to the original storage format, could this cause hash mismatches or create non-deterministic data that diverges across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_497361ba-79f1-4e8a-b404-5aa233d5ef3d",
+    "timestamp": "2025-12-23 16:11:36.838185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Concurrent reads during migration] While migrate() is running and reading units from SQL with bSql=true, if another process is simultaneously writing new units to the SQL database, can newly written units be skipped by the migration query's rowid-based pagination, leaving them unmigrated and inaccessible after migration completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_904dfaab-be0d-4354-b29f-d3060953345b",
+    "timestamp": "2025-12-23 16:11:51.269281",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Database connection reuse] The migration uses the same conn object passed from sqlite_migrations.js. If the migration takes hours and the SQL connection times out or is closed by another process, does the migration crash with a connection error that leaves the database in partial migration state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4efd9f8-16ed-4b20-9a07-f9ea1821d4a2",
+    "timestamp": "2025-12-23 16:12:05.521328",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Data feed consistency] If oracle addresses post new data feeds while migrateDataFeeds() is executing, and these new feeds have rowid values within the range being processed but are inserted after the query executes, can these feeds be skipped during migration, causing AAs that depend on them to malfunction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b525c74d-4397-44d7-8c58-2035eb3c7883",
+    "timestamp": "2025-12-23 16:12:20.848633",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: commitBatch()] [Batch write failure handling] If batch.write() fails with an error (e.g., disk full, permission denied), the code throws an Error that aborts migration. Does this leave the KV store in an inconsistent state with some batches committed and others not, potentially causing the node to have incomplete unit history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec959bfc-6f0a-49c8-9e37-3cfb28787a22",
+    "timestamp": "2025-12-23 16:12:37.775182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Memory exhaustion attack] With CHUNK_SIZE=10000 and PRAGMA cache_size=-400000 (400MB), if an attacker fills the database with extremely large units (maximum message payload), can the migration consume excessive memory when loading 10,000 large units simultaneously, causing OOM crashes that prevent migration completion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1363499a-6386-4691-a280-021b97bd08ad",
+    "timestamp": "2025-12-23 16:12:55.951969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Key format collision] Units are stored with key 'j\\\\n'+unit in the KV store. If a unit hash somehow contains a newline character or null byte due to a bug in object_hash.js, could this create key collisions where multiple units map to the same KV key, causing units to overwrite each other?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53787736-eee6-4b1d-9d6b-1516853db36c",
+    "timestamp": "2025-12-23 16:13:14.961923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Data feed key collision] Data feeds use composite keys like 'df\\\\n'+address+'\\\\n'+feed_name+'\\\\ns\\\\n'+strValue+'\\\\n'+strMci. If any component (address, feed_name, value) contains newline characters, could this cause key parsing ambiguity where different feeds map to the same key and overwrite each other?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_148c98a1-836d-4fd5-a16b-26736a1a7e92",
+    "timestamp": "2025-12-23 16:13:34.802461",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Duplicate feed overwrite] The code comment states 'duplicates will be overwritten, that's ok for data feed search'. However, if two data feeds have the same address+feed_name+value+MCI but different units, does overwriting one with the other cause loss of historical data that AAs might need for auditing or time-weighted calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_968dc4ae-1034-4930-a3ca-e0f7d1665fbc",
+    "timestamp": "2025-12-23 16:13:55.724638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed value encoding collision] When encoding float values with string_utils.encodeDoubleInLexicograpicOrder(), if two different float values produce the same encoded string due to precision loss, do they collide in the KV store, causing queries for one value to incorrectly return data for a different value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf38fa4b-7307-403a-a6c7-dde62626f8d8",
+    "timestamp": "2025-12-23 16:14:17.470312",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [MCI encoding issues] Using string_utils.encodeMci(row.main_chain_index) to encode MCI as part of the key. If encodeMci() produces non-unique encodings for different MCI values, or if it's not lexicographically sortable as intended, could this break range queries on data feeds by MCI?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_07981e1b-b33f-4041-b932-eba9cc63b106",
+    "timestamp": "2025-12-23 16:14:40.633635",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [MySQL rejection] The code throws Error('only sqlite migration supported') if conf.storage !== 'sqlite'. However, if a node was previously running on MySQL and attempts to migrate, does this error leave the node unable to start, causing permanent exclusion from the network and reducing decentralization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_beefc94a-7009-43e6-b617-e40c9c4ba765",
+    "timestamp": "2025-12-23 16:15:05.132240",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Cordova special path] Cordova builds use INSERT INTO joints table instead of KV batch writes. If the joints table schema differs between Cordova and non-Cordova builds, or if the INSERT uses getIgnore() incorrectly, can this cause Cordova nodes to store malformed joint data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_922424da-15b7-48e5-ae29-42ff5b0e0791",
+    "timestamp": "2025-12-23 16:15:29.872979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Cordova data divergence] Since Cordova nodes write to SQL joints table while non-Cordova nodes write to RocksDB, do Cordova and non-Cordova nodes effectively use different storage formats, and can this cause them to diverge when reading joints, leading to consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ad0ed3f-9c01-49b7-9b83-02c654941e20",
+    "timestamp": "2025-12-23 16:15:55.616031",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Cordova feed migration skip] The code returns early with onDone() if bCordova is true, skipping data feed migration entirely for Cordova builds. Does this mean Cordova nodes cannot query data feeds from KV store, breaking any AAs that rely on oracle data and making Cordova builds incompatible with full nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6975b9ed-be3e-4efc-89c1-e95b621b9725",
+    "timestamp": "2025-12-23 16:16:22.400312",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Light node special handling] The code checks conf.bLight and skips certain data deletions. If a light node migrates its partial database and then switches to full node mode, does the migrated data have incorrect schema (missing or extra fields) that causes validation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f35157c3-6ddc-4d0c-b6a9-8cbad0259d4f",
+    "timestamp": "2025-12-23 16:16:49.776094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [IfNotFound error handling] When storage.readJoint() calls ifNotFound callback, the code throws Error('not found: '+unit). If this occurs for a unit that exists in the units table but whose messages were corrupted or deleted, does this crash abort the entire migration, leaving the database permanently unmigrated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d15f8c8e-a92e-4852-9a0e-58749c9dfb14",
+    "timestamp": "2025-12-23 16:17:17.749409",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: commitBatch()] [Batch write error] If batch.write() encounters a non-fatal error (e.g., temporary disk full that resolves), the code still throws Error and aborts migration. Should the migration retry the batch write instead of permanently failing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68ce85fe-9909-434c-b5f7-c06aa78873e4",
+    "timestamp": "2025-12-23 16:17:46.826291",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Async error propagation] The async.forever loop catches errors in the final callback, but if an exception is thrown inside the readJoint() ifFound callback, does it get properly caught, or does it crash the process without triggering the error callback?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe7c9c6f-31b4-47b7-8a55-b75ca4db1acb",
+    "timestamp": "2025-12-23 16:18:16.354343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed query failure] If the complex JOIN query selecting from data_feeds+units+unit_authors fails due to missing indexes or corrupted foreign keys, does the migration fail silently by returning 0 rows, or does it throw an error that halts migration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_077bc182-ca7e-493c-b9f0-19e28652999f",
+    "timestamp": "2025-12-23 16:18:46.926471",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Initialization failure] If storage.initializeMinRetrievableMci() fails or takes too long, does the migration timeout, and if so, what happens to partially initialized state in the KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40ff90c7-6a75-4778-826a-13aa218a02c8",
+    "timestamp": "2025-12-23 16:19:18.198885",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Query performance DoS] The query 'SELECT unit FROM units WHERE rowid>=? AND rowid<?' relies on rowid index. If the SQLite database has millions of units and rowid index is missing or corrupted, can this query cause full table scans that take hours per chunk, effectively DoSing the migration indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b74ffe3-2638-470d-8756-a48e6e10f133",
+    "timestamp": "2025-12-23 16:19:47.321827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [PRAGMA cache_size memory bomb] Setting PRAGMA cache_size=-400000 allocates 400MB of cache for SQLite. If a node has limited RAM (e.g., 1GB), can this cache allocation combined with loading large units cause OOM killer to terminate the migration process repeatedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db2c1c71-b7d7-4eb7-a9e7-13f92fc22e25",
+    "timestamp": "2025-12-23 16:20:15.329134",
+    "report_generated": false
   }
 ]
