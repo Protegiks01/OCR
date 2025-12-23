@@ -12148,5 +12148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00058373-8444-4004-9784-641ba5cb61a1",
     "timestamp": "2025-12-23 17:45:33.524345",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Units not on main chain] At line 504, the query includes units where 'main_chain_index IS NULL OR main_chain_index > max_parent_limci'. Can including non-MC units as replacement parents cause consensus issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e65af715-879d-4fba-be0c-6c2592b52f09",
+    "timestamp": "2025-12-23 17:46:52.561916",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Replacement parent query] At lines 501-506, the query finds parent units of excluded parents. Can this query return duplicate parents if multiple excluded parents share the same parent, and does this cause issues in subsequent logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c25110e-3408-4a6f-9d4a-c6204082be3a",
+    "timestamp": "2025-12-23 17:47:05.198263",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Other parents calculation] At line 511, other_parents is calculated by concatenating filtered_prows units and remaining replacement parents. Can this array become very large if many replacements exist, causing memory issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e861cfb2-836f-44ef-a41a-a402189d2e0e",
+    "timestamp": "2025-12-23 17:47:18.367539",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Inclusion check loop] At lines 509-518, for each replacement parent, graph.determineIfIncludedOrEqual is called. Can this loop be exploited to cause O(n²) complexity if many replacement parents exist, causing DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbeac651-0d2b-4bca-92b0-cb31f859333a",
+    "timestamp": "2025-12-23 17:47:31.640913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Max parent LIMCI calculation] At line 500, max_parent_limci is calculated from filtered_prows or defaults to -1. Can this -1 default value cause the subsequent query to return all units in the database, leading to performance issues or incorrect replacement parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_873d298d-20e6-4b14-b66c-a3e48c1057bd",
+    "timestamp": "2025-12-23 17:47:45.934439",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsWithOlderOpListAndReplace()] [Recursive replacement] At lines 490-492, if new parents are added, the function recursively calls itself. Can an attacker create conditions where this recursion continues indefinitely?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:48:01.225373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsWithOlderOpListAndReplace()] [All parents have top OP list] At lines 494-495, if filtered_prows.length === 0, an error is thrown. Can a scenario where all parents have the new OP list cause legitimate transactions to fail?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:48:16.653902",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsWithOlderOpListAndReplace()] [From addresses bypass] At lines 479-482, units from arrFromAddresses are included even if their OP list equals top_ops. Can an attacker exploit this by controlling addresses in arrFromAddresses?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:48:32.027840",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsWithOlderOpListAndReplace()] [OP list comparison] At line 474, the OP list is compared with top_ops. If storage.getOpList returns different results on different nodes, can this cause different parent filtering and chain split?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:48:47.647228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsWithOlderOpListAndReplace()] [AA response skipping] At lines 470-473, AA responses are skipped in this filter. Can this cause all parents to be excluded if the free unit pool is dominated by AA responses, leading to transaction failure?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:49:03.024526",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [getCurrentTpsFee timing] At line 426, storage.getCurrentTpsFee() is called. If this function returns different values on different nodes due to timing or state differences, can it cause different parent filtering results?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:49:18.024379",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [Min parentable multiplier] At lines 427-428, min_parentable_tps_fee_multiplier defaults to 3 if not configured. Can nodes with different multiplier configurations select different parent sets, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:49:34.032254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [AA response exemption] At lines 433-436, AA responses are automatically included without TPS fee checks. Can an attacker create many AA responses to flood the parent pool and bypass TPS fee requirements?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:49:49.423800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [TPS fee calculation race] At lines 437-440, paid_tps_fee and count_units are read from storage. Can concurrent updates to TPS fee state cause different nodes to calculate different paid_tps_fee_per_unit values, leading to different parent filtering decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e9ca875-b8a4-43d4-8e76-1aab317fb408",
+    "timestamp": "2025-12-23 17:50:04.869808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [All parents underpay] At lines 459-460, if filtered_prows.length === 0, an error is thrown. Can an attacker ensure all potential parents underpay TPS fees, preventing legitimate transactions from finding valid parents?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:50:20.751497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [Recursive filtering loop] At lines 456-457, if new parents are added by replaceParents, the function recursively calls itself. Can an attacker create a DAG structure where this recursion never terminates, causing stack overflow?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:50:36.086306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [TPS fee bypass via from addresses] At lines 444-447, if a low-fee parent is authored by one of arrFromAddresses, it's included anyway. Can an attacker monitor arrFromAddresses and create units from those addresses to bypass TPS fee requirements?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:50:51.163897",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [LIMIT MAX_PARENTS_PER_UNIT] At line 372, the query is limited to MAX_PARENTS_PER_UNIT candidates. If many units have the same last_ball_mci, which ones are selected, and can this cause non-deterministic parent selection?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:51:06.270512",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [ORDER BY last_ball_mci DESC] At line 369, results are ordered by last_ball_mci DESC. Can an attacker manipulate last_ball_mci values to control which units are selected as parents?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:51:21.130769",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [AA response timestamp filter] At line 368, AA responses created within the last 30 seconds are excluded. Can attackers exploit this timing window to create many recent AA responses that prevent valid parent selection?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:51:37.544643",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [Older OP list filtering] At lines 414-416, filterParentsWithOlderOpListAndReplace is called to find parents with older OP lists. Can this cause all nodes to revert to older parents simultaneously, slowing network confirmation times (Medium severity: 1+ hour delay)?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:51:52.196684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [OP list unchanged] At lines 410-412, if prev_ops equals top_ops (OP list didn't change), an error is returned. Can an attacker prevent OP list changes to make this condition always true, blocking all transactions?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:52:06.395650",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [Empty uniform prows] At lines 399-400, if uniform_prows.length === 0, an error is thrown. Can this occur in legitimate scenarios where OP lists change frequently, causing transaction failures?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:52:20.300078",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [OP list comparison] At lines 391-398, uniform_prows are selected based on having the same OP list as the top parent. Can nodes with different cached OP lists (storage.getOpList) select different parent sets, causing chain split?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:52:34.579071",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [Last ball info failure] At lines 386-388, if lb (last ball info) is null after getLastBallInfo, the function tries a subset of parents. Can this fallback logic cause different nodes to select different parent subsets based on timing?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 17:52:49.491134",
+    "report_generated": false
   }
 ]
