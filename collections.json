@@ -7048,5 +7048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b6258bf-4100-4805-8f55-1302f116a3a0",
     "timestamp": "2025-12-23 09:19:24.138723",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'age' case] [Age Query SQL Injection] At line 1013, the SQL query concatenates objValidationState.last_ball_mci - age and relation directly into the query string; if relation comes from untrusted input (which it doesn't in normal flow, but could due to bugs), can an attacker inject SQL to manipulate the age check result?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9a84762-7b76-461c-86ed-7e2d28383a58",
+    "timestamp": "2025-12-23 09:20:37.155157",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - augmentMessagesAndContinue()] [Age Evaluation Without Augmentation] At lines 992-1021, the 'age' operator requires augmentMessagesAndContinue to populate input addresses, but if augmentation fails or is skipped due to race conditions, the code at line 1009 checks if arrSrcUnits.length === 0 and returns false; can this cause legitimate age-locked definitions to fail validation non-deterministically?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_43b0e6f8-f7f1-40aa-bf7b-7ce18c30afca",
+    "timestamp": "2025-12-23 09:20:49.637553",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'seen address' case] [Seen Address MCI Window] At lines 751-758, the query checks for address in unit_authors with main_chain_index <= last_ball_mci and is_stable=1, but if an address was used in an unstable unit that becomes stable right after objValidationState.last_ball_mci is captured, can different nodes see different 'seen address' results, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc73af91-fe23-43ac-a101-40f6af18b8c3",
+    "timestamp": "2025-12-23 09:21:02.605070",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'seen definition change' case] [Definition Change 'any' Wildcard] At line 770, if new_definition_chash === 'any', the SQL where clause is empty string, matching all definition changes for the address; can an attacker exploit this by creating a definition that checks 'seen definition change' with 'any' and then immediately changing their own definition in the same unit, making the condition trivially true?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f47e634d-362b-4084-a34c-5c1e016a8a63",
+    "timestamp": "2025-12-23 09:21:16.406046",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'attested' case] [Attestation Oracle Trust] At lines 827-837, the code calls storage.filterAttestedAddresses to check if attested_address is attested by any of arrAttestors, but if the attestation system has vulnerabilities (e.g., attestations can be revoked but are still counted), can an attacker use expired/revoked attestations to bypass attestation requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b67727a7-1072-4d6b-886e-5756a3f91440",
+    "timestamp": "2025-12-23 09:21:30.721497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'seen address' case] [Address Validation Only] At lines 316-321, 'seen address' only validates that args is a valid address, but doesn't check if the address was actually seen; can an attacker create a definition with 'seen address' for an address that never existed, and would this definition pass validation but fail during authentication, permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da205bd4-8b6b-4759-bc8f-e6f991ed71b7",
+    "timestamp": "2025-12-23 09:21:46.588114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'attested' case] [Attestor Count Limit] At lines 352-356, the code validates that each address in arrAttestors is valid, but there's no limit on arrAttestors.length; can an attacker specify thousands of attestor addresses to cause DoS through excessive database queries when storage.filterAttestedAddresses is called?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e2497e04-dff9-4b23-9c23-87e6dfe43acc",
+    "timestamp": "2025-12-23 09:22:03.057279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'cosigned by' case] [Author Address Lookup Race] At lines 843-845, the code checks if cosigner_address is in objUnit.authors, but if objUnit.authors is modified concurrently (e.g., by another validation thread), can the indexOf check see an inconsistent state, causing non-deterministic cosigner verification results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffd9acb0-b3e8-41e1-b765-66fe0af505a0",
+    "timestamp": "2025-12-23 09:22:20.966917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'cosigned by' case] [Negation Not Prevented] At line 362, the code checks if bInNegation is true and returns an error for 'cosigned by', but this check is inconsistent with other operators like 'hash' which also can't be negated; can an attacker nest 'cosigned by' in a 'not' at a higher level to bypass the restriction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_664900a4-d09c-4c02-b752-03816d75a8ae",
+    "timestamp": "2025-12-23 09:22:40.133560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'cosigned by' case] [Cosigner Definition Validation] When a cosigner_address is found in objUnit.authors, is the cosigner's own definition validated to ensure the cosigner authorized this unit? If the cosigner is a multi-sig address and only some signers signed, does this count as cosigning, or does the full cosigner definition need to be satisfied?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c8af03a-91bf-45a5-b02a-b0938d363936",
+    "timestamp": "2025-12-23 09:22:59.958291",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'not' case] [Fatal Error Propagation in Negation] At line 851, 'not' inverts the result of evaluate(args), but if evaluate(args) sets fatal_error, does cb2(!not_res) propagate this fatal_error correctly, or does the negation logic mask signature/hash verification failures, allowing invalid signatures to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_649b44f8-68e7-41ca-b2e5-ae3aa8a3dd75",
+    "timestamp": "2025-12-23 09:23:21.024930",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'not' case] [Double Negation Complexity] At line 369, 'not' calls evaluate(args, path, true, cb) with bInNegation=true, but if args itself contains another 'not', does bInNegation get set back to false, and does this double-negation consume double complexity? Can an attacker nest many 'not' operators to multiply complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac11bc4d-f67d-4139-9db0-943d8055d1f8",
+    "timestamp": "2025-12-23 09:23:42.971163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Negation Path Prefix] Throughout evaluate(), bInNegation is passed recursively but only checked for specific operators (sig, hash, address, in merkle, cosigned by); are there other operators that should not be negatable? Can an attacker negate 'formula' or 'definition template' operators to cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_174617f0-55d2-4e01-b77d-9db1c7eef8c2",
+    "timestamp": "2025-12-23 09:24:05.667310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'or'/'and' case] [Signature Count Logic] At lines 124-125, the code counts options_with_sig, and for 'or' returns true only if all options have signatures, while for 'and' returns true if at least one option has signature; but in validateAuthentifiers' evaluate(), 'or' at line 594 returns true if any option is true, while 'and' at line 614 requires all to be true; is this asymmetry between validation and authentication correct, or can it cause definitions that pass validation but always fail authentication?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b377a4d5-0bd6-4197-9c25-62fe4659b5ff",
+    "timestamp": "2025-12-23 09:24:29.404173",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'or' case] [Short-Circuit Evaluation Prevention] At lines 596-608, the code uses async.eachSeries to evaluate all 'or' options even after one returns true (res = res || arg_res), but the comment at line 603 says 'check all members even if required minimum already found'; is this to prevent timing attacks or signature verification bypass? Can an attacker exploit the fact that all branches are checked to cause DoS via expensive operations in unneeded branches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4cb6f77-7bfc-40aa-83ed-d8e0cde1c7c7",
+    "timestamp": "2025-12-23 09:24:54.343529",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'r of set' case] [Required vs Set Length Edge Case] At lines 146-147, required must be <= set.length, but there's a commented-out check at lines 148-151 preventing required === set.length; if required === set.length, doesn't this make 'r of set' equivalent to 'and'? Can an attacker use this to bypass complexity checks that might treat 'and' differently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e32624f5-3292-4808-80ed-6154693eef97",
+    "timestamp": "2025-12-23 09:25:19.887758",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'r of set' case] [Required Count Exact Matching] At lines 634-649, the code counts how many set options return true and checks count >= args.required, but validateDefinition at lines 169-170 checks if args.required > count_options_without_sig; if required equals count_options_without_sig + 1, can this create an edge case where validation passes but authentication always fails because not enough options have signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a767c92b-360c-4113-94b4-5389fa86c7cf",
+    "timestamp": "2025-12-23 09:25:46.632657",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'weighted and' case] [Weight Overflow] At line 195, total_weight accumulates arg.weight for each set element, but if an attacker provides many elements with weight close to Number.MAX_SAFE_INTEGER, can total_weight overflow, causing the check at line 207 (args.required > total_weight) to incorrectly pass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e88d7fef-4d1d-4f6d-8228-ab55fee34434",
+    "timestamp": "2025-12-23 09:26:14.640476",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'weighted and' case] [Weight Accumulation Race] At lines 655-670, weight is accumulated across async operations, and multiple branches may increment weight concurrently; if JavaScript's number addition is not atomic (which it should be, but implementation bugs could exist), can race conditions cause weight to be computed incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f6c35a7-04ff-4a46-affa-306f5eca3f58",
+    "timestamp": "2025-12-23 09:26:43.535792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'formula' case] [Formula MCI Gate] At line 553, formulas are not allowed before constants.formulaUpgradeMci, but if objValidationState.last_ball_mci is exactly equal to formulaUpgradeMci, are formulas allowed? Can an attacker exploit an off-by-one error in this comparison to use formulas before they should be activated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c16759bf-8045-4ab6-8ede-d89dac4f1bbb",
+    "timestamp": "2025-12-23 09:27:12.069039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'formula' case] [Formula Trigger Data Selection] At lines 1101-1103, the code uses the first 'data' message as trigger.data and ignores subsequent ones, but if an attacker includes multiple data messages in different orders in their unit, can they cause different nodes to pick different data messages if message iteration order is not deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b80d5656-7caf-4a94-ac9c-d478af83de38",
+    "timestamp": "2025-12-23 09:27:40.433859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'formula' case] [Formula Result Type Coercion] At lines 1116-1124, the formula result is coerced to boolean using various checks (typeof === 'boolean', !!result for string, !result.eq(0) for Decimal), but what if the formula returns an object, array, or undefined? Would line 1123 return cb2(false), and is this the correct behavior, or should these be treated as errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63a62b23-424c-4178-8b68-6a69f1452e38",
+    "timestamp": "2025-12-23 09:28:09.913377",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'formula' case] [Formula Message Augmentation Decision] At lines 1131-1138, augmentMessagesOrIgnore decides whether to augment based on whether the formula contains 'input' (tested via regex /input/.test(formula)), but if the formula is an object or array, does .test() work correctly? Can an attacker craft a formula that uses inputs without triggering augmentation, causing incorrect formula evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4e9e91c-5605-47cd-8729-6be512631c26",
+    "timestamp": "2025-12-23 09:28:39.662747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'formula' case] [Formula Address Parameter] At line 1111, the address parameter is passed to formulaParser.evaluate, but in nested address definitions, does 'address' refer to the correct (inner or outer) address? Can an attacker exploit address context confusion in formula evaluation to bypass restrictions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53eee28c-644e-4e1c-b385-a2bc52fbf529",
+    "timestamp": "2025-12-23 09:29:07.691921",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has definition change' case] [Definition Change Message Lookup] At lines 1085-1094, the code searches objUnit.messages for 'address_definition_change' messages, but if message.payload is null or undefined, does line 1088 cause an exception? Can an attacker include malformed definition_change messages to crash validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01c28070-8cc7-40d9-a38d-e728a6f2e74a",
+    "timestamp": "2025-12-23 09:29:35.556281",
+    "report_generated": false
   }
 ]
