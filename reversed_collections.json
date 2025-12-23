@@ -4198,5 +4198,305 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed4acf44-7aae-4c26-93f7-409d467626b7",
     "timestamp": "2025-12-23 07:38:58.576648",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Race on assocDefinitions cache] At lines 220-221, assocDefinitions and assocDefinitionChashes are shared mutable state across all validateUnit() calls - if multiple proofs are processed concurrently (no mutex protection visible), can cache poisoning cause one proof's definitions to bleed into another, validating signatures against wrong definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a169e23d-a621-43a5-9fc3-665382d0c94c",
+    "timestamp": "2025-12-23 07:40:08.962310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Concurrent definition updates] At lines 258-260, assocDefinitionChashes[address] is updated within validateUnit() which is called in async.eachSeries - if two units contain definition_chg for the same address, can out-of-order execution cause the wrong definition to be cached, allowing later signatures to validate against incorrect definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_457eef97-91fa-4941-b93f-8d1c5bb60deb",
+    "timestamp": "2025-12-23 07:40:21.403455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [TOCTOU on last_stable_mci] The last_stable_mci parameter is validated at line 16 but used throughout async operations until line 155 - if the actual last_stable_mci in the database advances during execution, can the proof contain units with MCI <= last_stable_mci that should be excluded, breaking light client validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce8ac41a-367f-47ed-bae2-f7be877d05ff",
+    "timestamp": "2025-12-23 07:40:34.925558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Race condition on arrUnstableMcJoints] At lines 66-72, arrUnstableMcJoints is conditionally assigned based on _arrLastBallUnits.length > 0, but if units stabilize between this check and final proof assembly at line 155, can the proof contain stale unstable units that are actually stable, causing light clients to reject the proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_212b7b34-416c-46ff-8052-e85fd6aca7a1",
+    "timestamp": "2025-12-23 07:40:48.263171",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Race condition on ball deletion] At line 32, the code deletes objJoint.ball after reading it with 'the unit might get stabilized while we were reading other units' - if multiple concurrent prepareWitnessProof() calls race on the same units during stabilization, can this cause some proofs to include balls while others don't, creating non-deterministic proofs that split light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d765a2c4-a997-49b9-95b0-fe777e773949",
+    "timestamp": "2025-12-23 07:41:02.326864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection in ORDER BY] At line 82, the query uses conf.storage to dynamically select ORDER BY column (rowid vs creation_date) - if conf.storage is somehow corrupted or injected with malicious value, can this cause SQL injection or incorrect ordering that breaks witness proof consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68042a2f-803e-4c22-93bb-5c29c2693e54",
+    "timestamp": "2025-12-23 07:41:17.662321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection via witness addresses] At lines 107-136, the arrWitnesses array is directly interpolated into three SQL UNION queries - if ValidationUtils.isValidAddress() has a bypass allowing malicious strings, can attacker inject SQL to return arbitrary units as witness definition changes, tricking light clients into accepting fake proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5e82048-e533-4d77-ae49-7cfbad9b082a",
+    "timestamp": "2025-12-23 07:41:34.138331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [SQL injection] At line 25, the and_end_mci variable directly concatenates end_mci into SQL query string without parameterization - if end_mci is passed as malicious string from a compromised caller, can attacker inject SQL to extract private data, modify database state, or cause denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7e3096e-9b50-4a47-80cd-23d2410d8ae0",
+    "timestamp": "2025-12-23 07:41:51.698008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Integer bounds] If last_stable_mci is MAX_SAFE_INTEGER or exceeds database integer limits, does the comparison at line 102 (last_stable_mci >= last_ball_mci) produce incorrect boolean result due to integer overflow, causing proof generation to skip current state when it should update?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7f20ed2-e5de-402b-8a52-9e35e3482707",
+    "timestamp": "2025-12-23 07:42:10.194666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Array mutation] Since arrWitnesses is not cloned before use, can an attacker mutate the array from calling context during async execution between lines 18-156, causing witness list to change mid-flight and producing inconsistent proof that references different witness sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_039c6c38-4bd2-4501-83df-4101ae298a08",
+    "timestamp": "2025-12-23 07:42:30.263765",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Input validation bypass] Can an attacker pass arrWitnesses containing strings that pass ValidationUtils.isValidAddress() but are not actual witness addresses (e.g., valid base32 strings that don't correspond to real units), causing the function to build invalid proofs that nodes accept as valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00604557-b4eb-4c27-8da9-8acaea65c5ff",
+    "timestamp": "2025-12-23 07:42:50.821186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Type confusion] If last_stable_mci is passed as a numeric string like '1000' instead of integer 1000, does the typeof check at line 16 incorrectly throw an error while the SQL query at line 27 still executes with string interpolation, potentially causing SQL injection or incorrect MCI comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41a71bcf-53fb-471e-9ca8-14a6a57e9d5b",
+    "timestamp": "2025-12-23 07:43:12.846570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Race on assocDefinitions cache] At lines 220-221, assocDefinitions and assocDefinitionChashes are shared mutable state across all validateUnit() calls - if multiple proofs are processed concurrently (no mutex protection visible), can cache poisoning cause one proof's definitions to bleed into another, validating signatures against wrong definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a7740f5-17a3-4dde-8fb2-31891f76d4a6",
+    "timestamp": "2025-12-23 07:43:34.611660",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Concurrent definition updates] At lines 258-260, assocDefinitionChashes[address] is updated within validateUnit() which is called in async.eachSeries - if two units contain definition_chg for the same address, can out-of-order execution cause the wrong definition to be cached, allowing later signatures to validate against incorrect definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f516e14c-22cc-457c-ac0e-a1e8000ddc1c",
+    "timestamp": "2025-12-23 07:43:57.926700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [TOCTOU on last_stable_mci] The last_stable_mci parameter is validated at line 16 but used throughout async operations until line 155 - if the actual last_stable_mci in the database advances during execution, can the proof contain units with MCI <= last_stable_mci that should be excluded, breaking light client validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d49757ee-f050-48ba-8805-c8b92f22e3e0",
+    "timestamp": "2025-12-23 07:44:22.853168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Race condition on arrUnstableMcJoints] At lines 66-72, arrUnstableMcJoints is conditionally assigned based on _arrLastBallUnits.length > 0, but if units stabilize between this check and final proof assembly at line 155, can the proof contain stale unstable units that are actually stable, causing light clients to reject the proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39de8a06-0122-44cd-a612-fc4ea4e4df71",
+    "timestamp": "2025-12-23 07:44:48.506865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Race condition on ball deletion] At line 32, the code deletes objJoint.ball after reading it with 'the unit might get stabilized while we were reading other units' - if multiple concurrent prepareWitnessProof() calls race on the same units during stabilization, can this cause some proofs to include balls while others don't, creating non-deterministic proofs that split light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83abe688-2670-49bc-9d8c-69d407defaea",
+    "timestamp": "2025-12-23 07:45:15.187825",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection in ORDER BY] At line 82, the query uses conf.storage to dynamically select ORDER BY column (rowid vs creation_date) - if conf.storage is somehow corrupted or injected with malicious value, can this cause SQL injection or incorrect ordering that breaks witness proof consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6e4a5b0-140a-483d-b007-05abb8041427",
+    "timestamp": "2025-12-23 07:45:43.025160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection via witness addresses] At lines 107-136, the arrWitnesses array is directly interpolated into three SQL UNION queries - if ValidationUtils.isValidAddress() has a bypass allowing malicious strings, can attacker inject SQL to return arbitrary units as witness definition changes, tricking light clients into accepting fake proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31b9bf9f-8396-4e31-8e2e-f8cbb985c8f7",
+    "timestamp": "2025-12-23 07:46:10.743933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [SQL injection] At line 25, the and_end_mci variable directly concatenates end_mci into SQL query string without parameterization - if end_mci is passed as malicious string from a compromised caller, can attacker inject SQL to extract private data, modify database state, or cause denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5785e61-64dd-4b15-a7a0-38fc8b963e39",
+    "timestamp": "2025-12-23 07:46:38.595216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Integer bounds] If last_stable_mci is MAX_SAFE_INTEGER or exceeds database integer limits, does the comparison at line 102 (last_stable_mci >= last_ball_mci) produce incorrect boolean result due to integer overflow, causing proof generation to skip current state when it should update?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b1744bd-b256-41fd-813f-de00edfc6b7b",
+    "timestamp": "2025-12-23 07:47:08.248436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Array mutation] Since arrWitnesses is not cloned before use, can an attacker mutate the array from calling context during async execution between lines 18-156, causing witness list to change mid-flight and producing inconsistent proof that references different witness sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d09477d-377f-477e-b6bb-58f9e8ae01bc",
+    "timestamp": "2025-12-23 07:47:35.548703",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Input validation bypass] Can an attacker pass arrWitnesses containing strings that pass ValidationUtils.isValidAddress() but are not actual witness addresses (e.g., valid base32 strings that don't correspond to real units), causing the function to build invalid proofs that nodes accept as valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fddb3f4-8965-47e1-a3ff-80f571c875af",
+    "timestamp": "2025-12-23 07:48:02.875523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Type confusion] If last_stable_mci is passed as a numeric string like '1000' instead of integer 1000, does the typeof check at line 16 incorrectly throw an error while the SQL query at line 27 still executes with string interpolation, potentially causing SQL injection or incorrect MCI comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd219997-cbf6-40cc-9876-935f822d2517",
+    "timestamp": "2025-12-23 07:48:29.939785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Cross-function race: createWallet + deleteWallet] If createWallet() and deleteWallet() execute concurrently for the same wallet ID, can the delete remove extended_pubkeys records after createWallet's addWallet() inserts them but before full_approval_date is set, leaving orphaned wallet in limbo state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2cc31ec-28b4-4fd0-b9d6-89a3abdcc580",
+    "timestamp": "2025-12-23 07:48:56.750562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [bForwarded parameter missing] This function calls forwardPrivateChainsToDevices with bForwarded=true hardcoded (line 851) - but forwardPrivateChainsToOtherMembersOfWallets() accepts bForwarded as parameter. Can this inconsistency cause chains to be marked as forwarded when they shouldn't be?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83ade788-0f4d-45f5-908a-74064387cfa2",
+    "timestamp": "2025-12-23 07:50:14.177324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readDeviceAddressesControllingPaymentAddresses()] [Address ownership ambiguity] The function queries my_addresses joined with extended_pubkeys - can addresses controlled by multiple wallets (shouldn't happen, but possible with bugs) return duplicate device addresses, causing chains to be forwarded multiple times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef9c5205-6dad-492e-90a6-c9208f1fd440",
+    "timestamp": "2025-12-23 07:50:26.758083",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readDeviceAddressesControllingPaymentAddresses()] [Empty address array handling] The function returns early if arrAddresses.length === 0 (line 835) - but what if arrAddresses is undefined or null? Can this cause the query to execute with undefined parameter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_887f3ed1-783f-4c11-a700-9f485240ae7e",
+    "timestamp": "2025-12-23 07:50:39.544888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Connection parameter injection] The function accepts optional conn parameter (line 822) - if attacker can inject a malicious connection object, can this redirect private chains to attacker's database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0d8039c-6abb-4b7f-b424-fb11e372f408",
+    "timestamp": "2025-12-23 07:50:53.561304",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Self-exclusion bypass] The function excludes device.getMyDeviceAddress() from recipients (line 825) - but what if device address changes during query execution? Can the node forward chains to itself, causing infinite loops?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87f4ff53-e7b4-4d30-9b3a-6a222cbd1741",
+    "timestamp": "2025-12-23 07:51:07.930553",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: forwardPrivateChainsToOtherMembersOfWallets()] [Wallet array validation] The function passes arrWallets directly to SQL IN clause (line 824) - if arrWallets contains non-string elements or is empty, can this cause SQL syntax errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a22199a3-005a-482b-a92c-2b72289c72ca",
+    "timestamp": "2025-12-23 07:51:23.366688",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Left join null handling] The function uses LEFT JOIN with correspondents (line 396) - if correspondent records are deleted concurrently, can row.name be null for non-self devices, causing incorrect error messages?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f78e1285-5604-4f36-ac9d-89f157d70fc6",
+    "timestamp": "2025-12-23 07:51:39.734852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Missing correspondent detection] The function throws Error if cosigner not found in correspondents (line 406) - but this check is AFTER setting row.me flag. Can race conditions cause the error to reference wrong device address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c78b04cf-c343-435f-97e6-6f0ba2741834",
+    "timestamp": "2025-12-23 07:51:57.501935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readCosigners()] [Self-identification logic] The function checks if device_address === device.getMyDeviceAddress() to identify self (line 400) - if device module state is corrupted, can the node fail to identify itself, or incorrectly identify another device as self?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c563bc2-755b-4657-824d-631c1b1f39ec",
+    "timestamp": "2025-12-23 07:52:16.285375",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Silent verification success] The function only logs 'addresses match' via breadcrumbs (line 760) - if addresses don't match, no breadcrumb is added. Can this make debugging address corruption difficult?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f198712-fd59-4ee0-a35d-dea9b316d82b",
+    "timestamp": "2025-12-23 07:52:36.807681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Mismatch error handling] The function throws Error on pubkey or address mismatch (lines 757, 759) - are these errors caught by calling code, or do they crash the node? Can attackers trigger these errors to cause DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ad1a887-5ea5-4b24-b15a-88498f5f8071",
+    "timestamp": "2025-12-23 07:52:57.345227",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Pubkey extraction from definition] The function extracts pubkey using JSON.parse(definition)[1].pubkey (line 755) - can malformed definitions with different structure cause array access errors or extract wrong pubkey?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a0efa35-70ab-4b55-8d61-9af0faea871f",
+    "timestamp": "2025-12-23 07:53:19.297857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: checkAddress()] [Single wallet assumption] The function expects exactly 1 row from query (line 742) but only checks for === 0 or > 1 - what if account is used across multiple wallets? Does the function silently skip verification in this case?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff1f0a35-99a2-4e11-a5c4-d77eaacdd767",
+    "timestamp": "2025-12-23 07:53:41.634796",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAllAddresses()] [Memory exhaustion] The function selects ALL addresses for a wallet with no limit (line 806) - can wallets with millions of addresses cause memory exhaustion when this function loads them all into an array?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_681e1b54-f18f-4be8-8642-212a036490c5",
+    "timestamp": "2025-12-23 07:54:04.896420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAddresses()] [Limit parameter overflow] If opts.limit is set to MAX_INT32 or larger (line 775), can this cause database memory exhaustion or integer overflow in query processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c92a0849-7f4b-4943-9b3b-04cda20909b9",
+    "timestamp": "2025-12-23 07:54:29.235812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readAddresses()] [SQL injection via opts] The function constructs SQL by concatenating opts.is_change, opts.reverse, opts.limit (lines 769-775) - if these fields come from user input, can attackers inject SQL commands?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa452f56-8d15-4667-acc7-20c544822ff2",
+    "timestamp": "2025-12-23 07:54:54.895690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [App name as address index] The function passes app_name directly as address_index to issueAddress() (line 734) - can special app names like '__proto__', 'constructor', or '0' cause property pollution or type confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b00d45ab-ff3e-4952-8f00-2a9963932c7b",
+    "timestamp": "2025-12-23 07:55:21.705750",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [Multiple address error] The function throws Error if rows.length > 1 (line 731) - but this is after database query completes. Can race conditions cause multiple app addresses to be inserted concurrently, with only one execution detecting the error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fc7603c-c9fb-4457-aab5-a674a689f408",
+    "timestamp": "2025-12-23 07:55:48.981946",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: issueOrSelectAddressForApp()] [App name SQL injection] The app_name parameter is used in WHERE clause (line 729) - if app_name contains SQL metacharacters, can this cause SQL injection despite parameterized queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f15d7af9-e2a0-4b43-b33a-c199202b7b86",
+    "timestamp": "2025-12-23 07:56:15.568342",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Event emission timing] The function emits 'maybe_new_transactions' after gap filling (line 719) - but are all addresses guaranteed to be committed to database, or can event handlers query for addresses that aren't yet visible?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f9ccfad-2480-490f-acba-6dc3e3ed1bb6",
+    "timestamp": "2025-12-23 07:56:42.062724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Sequential address issuance DoS] The function issues all missing addresses sequentially with async.eachSeries (line 716) - can this take hours or days for wallets with large gaps, effectively DoS'ing the node during gap filling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_933762e3-40ae-4990-857f-f266193ffaa3",
+    "timestamp": "2025-12-23 07:57:09.770344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Missing address array memory] The function builds arrMissingAddressInfos array (lines 699-700, 703-704) which could contain thousands of entries if massive gaps exist - can attackers create wallets with address indices 0 and 1000000, causing memory exhaustion when scanForGaps tries to fill all intermediate indices?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d7483b3-6a4d-48fb-b8ea-dc1bbfdc8954",
+    "timestamp": "2025-12-23 07:57:37.133812",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Gap detection algorithm] The function identifies gaps by checking if address_index !== prev_address_index + 1 (line 698) - but what if addresses are inserted out of order in the database? Can this cause false positives where no actual gaps exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a7fa2cd-92ae-49dc-9001-ac8654c03d93",
+    "timestamp": "2025-12-23 07:58:04.493423",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: scanForGaps()] [Multisig wallet detection] The function identifies multisig wallets by COUNT(*) > 1 in wallet_signing_paths (line 684) - can single-sig wallets with duplicate signing path entries (database corruption) be incorrectly treated as multisig?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89046ad4-5351-431b-936b-9d2026b38205",
+    "timestamp": "2025-12-23 07:58:31.880978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readLastUsedAddressIndex()] [Join with outputs table] The function joins my_addresses with outputs table (line 522) - can this be exploited by creating fake outputs in the database that point to non-existent addresses, causing incorrect last_used_index calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83770ed0-1ce9-406a-b5d7-bac4f73c03e6",
+    "timestamp": "2025-12-23 07:59:01.021491",
+    "report_generated": false
   }
 ]
