@@ -12298,5 +12298,155 @@
     "url": "https://deepwiki.com/search/not-found",
     "timestamp": "2025-12-23 17:52:49.491134",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [TPS fee filtering] At line 383, filterParentsByTpsFeeAndReplace is called asynchronously. Can this async operation complete in different orders on different nodes, causing non-deterministic parent selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8db4d82b-28ae-4850-a898-84051f9b80e1",
+    "timestamp": "2025-12-23 17:53:59.154040",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [v4 upgrade boundary] At lines 381-382, if max_parent_last_ball_mci < constants.v4UpgradeMci, the old parent selection logic is used. Can nodes with different cached values of v4UpgradeMci select parents using different algorithms, causing chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03bce808-6c48-4731-847f-28699cdba189",
+    "timestamp": "2025-12-23 17:54:11.650988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [All AA responses] At lines 378-379, if all free units are AA responses, the error 'no usable non-AA free units' is returned. Can an attacker trigger many AA responses to fill the free unit pool, preventing normal users from creating transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18eebf12-a6c5-4d40-8a66-e9eb4ac63452",
+    "timestamp": "2025-12-23 17:54:24.559266",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [No usable free units] At lines 376-377, if prows.length === 0, the error 'no usable free units' is returned. Can an attacker flood the database with archived or invalid units, causing this condition to always be true and preventing all new transactions (Critical severity: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_975fddc0-abee-40e3-a8c2-36d83cc0f63c",
+    "timestamp": "2025-12-23 17:54:38.843722",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [Promise wrapper race condition] At lines 354-362, if onDone is not provided, a Promise wrapper is created. Can concurrent calls with and without callbacks cause race conditions in the shared database connection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3166502a-a696-460f-90da-75c1843c396d",
+    "timestamp": "2025-12-23 17:54:53.392361",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Nested function call chain] This function calls findLastStableMcBall → adjustLastStableMcBallAndParents → trimParentList → findWitnessListUnit → determineIfHasWitnessListMutationsAlongMc. Can errors in any of these nested calls propagate incorrectly, causing transaction failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c5073b2-2519-41c2-b8d5-83a10c287c15",
+    "timestamp": "2025-12-23 17:55:09.029410",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Witness list mutations error] At lines 340-342, if determineIfHasWitnessListMutationsAlongMc returns an error, it's propagated. Can an attacker craft a DAG topology where witness list mutations are detected incorrectly, causing valid transactions to be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7203e79-0091-43ab-8b80-208724837bb9",
+    "timestamp": "2025-12-23 17:55:25.499306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Version constant] At line 336, constants.version3 is hardcoded. If nodes are running different versions and use different version constants, can this cause different witness list mutation checking results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ffb3c9d-ce21-44f2-8130-80f0df995714",
+    "timestamp": "2025-12-23 17:55:43.592999",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Fake unit construction] At lines 336-338, a fake unit objFakeUnit is constructed with parent_units and optional witness_list_unit. Can this fake unit fail validation in storage.determineIfHasWitnessListMutationsAlongMc if the constructed object doesn't match real unit structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_737850af-5c56-4172-8960-ebaec53e5ae4",
+    "timestamp": "2025-12-23 17:56:02.034735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Witness list unit determination] At line 335, storage.findWitnessListUnit is called to determine the witness_list_unit. Can this function return different results on different nodes due to timing, causing objFakeUnit to have different witness_list_unit values and leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc0225ee-dbf7-4d6c-9800-4e84e3d74726",
+    "timestamp": "2025-12-23 17:56:21.736555",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Secondary pickParentsDeeper] At lines 317-318, a secondary call to pickParentsDeeper can occur if the first deep parent selection fails. Can an attacker create conditions where this secondary call always fails, causing legitimate transactions to never find suitable parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0df214f-cb8d-4af4-84da-9fb3da2620d7",
+    "timestamp": "2025-12-23 17:56:42.302594",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Nested callback race condition] The function uses nested callbacks at lines 296-306 and 312-322. Can concurrent calls to this function with overlapping parent selections cause race conditions in the shared depth counter or database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1956a03-fc36-43d4-88c7-08f36c12d192",
+    "timestamp": "2025-12-23 17:57:03.713710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [findLastBallAndAdjust error handling] At lines 300-302, if findLastBallAndAdjust returns an error, pickParentsDeeper is called. Can this error condition be triggered repeatedly, causing the function to dig deeper indefinitely until MAX_PARENT_DEPTH is reached?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d7c49a1-125f-4372-b836-7033cc84f625",
+    "timestamp": "2025-12-23 17:57:26.140448",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Infinite depth loop] At lines 309-311, if depth > conf.MAX_PARENT_DEPTH, an error is returned. Can conf.MAX_PARENT_DEPTH be set to undefined or Infinity, allowing infinite recursion in pickParentsDeeper and causing a DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e42c4ada-38c3-4890-a21f-3852c9bb63c2",
+    "timestamp": "2025-12-23 17:57:50.082597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Limit enforcement] At line 286, results are limited to MAX_PARENTS_PER_UNIT. If this constant is changed mid-operation, can different nodes trim to different parent counts, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68f084f8-9e7d-45e3-af1a-64a3cc05b71b",
+    "timestamp": "2025-12-23 17:58:14.772739",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [SQL escaping] At line 283, arrParentUnits is mapped through db.escape. If any parent unit hash contains SQL metacharacters, can this cause query errors or inconsistent trimming results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be5a58ce-1524-47fd-aeb8-3c375bea3e83",
+    "timestamp": "2025-12-23 17:58:40.133247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Witness address priority] At line 285, units authored by addresses in arrWitnesses are prioritized. Can an attacker who controls a witness address ensure their units are always included in the parent set, potentially manipulating confirmation times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5425eea-9dbb-4ad4-abd2-95cc02da59ef",
+    "timestamp": "2025-12-23 17:59:06.868742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Random ordering] At line 285, db.getRandom() is used for random ordering. If different database implementations return different random values for the same seed, can this cause non-deterministic parent trimming across nodes with different DB engines (SQLite vs MySQL)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c46d9d4f-6837-4523-a593-f512edeeb85b",
+    "timestamp": "2025-12-23 17:59:33.906498",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [AA address filtering] At lines 282-284, AA addresses with latest_included_mc_index > last_stable_mci are excluded from trimming. Can an attacker create many AA addresses to prevent certain parents from being trimmed, manipulating the final parent set?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0587bab4-5b44-4031-a606-3269d928ee77",
+    "timestamp": "2025-12-23 18:00:02.010932",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Single parent bypass] At lines 276-277, if arrParentUnits.length === 1, the function returns immediately without trimming. Can an attacker force all transactions to have single parents by manipulating the parent selection logic earlier, breaking DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fad7d85a-8a6e-4dce-aacc-05084a68dff8",
+    "timestamp": "2025-12-23 18:00:31.817591",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Commented out single parent selection] At lines 242-249, there's commented-out code for selecting only one parent. If this code is uncommented in production, can it break multi-parent DAG structure and cause consensus issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_461dfb33-8270-4a00-9e3c-c88334dea30f",
+    "timestamp": "2025-12-23 18:01:00.522066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Parent last ball unit ordering] At lines 258-268, the function queries for the parent unit with the highest last_ball_unit main_chain_index. Can multiple parents have the same main_chain_index, causing non-deterministic next_last_ball_unit selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c187f14b-e866-4be5-943c-0a87a3cf36ed",
+    "timestamp": "2025-12-23 18:01:28.919280",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Graph inclusion check] At line 254, graph.determineIfIncluded checks if next_last_ball_unit is included in arrParentUnits. If this function has a bug or race condition, can it return incorrect results, causing the adjustment logic to diverge across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5cae08da-b552-4088-8e4a-c73adc3f8e26",
+    "timestamp": "2025-12-23 18:01:58.883309",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Best parent not found] At lines 251-252, if objUnitProps.best_parent_unit is null, an error is thrown. Can legitimate genesis units or units with special properties lack a best parent, causing this function to fail for valid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfb200f5-41c3-4bf3-81e9-6d66695e2bc2",
+    "timestamp": "2025-12-23 18:02:28.638730",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Recursive adjustment infinite loop] At line 256, the function recursively calls itself with next_last_ball_unit. Can an attacker craft a DAG where this recursion never terminates, causing stack overflow or infinite loop (Critical severity: network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_936d158b-1b08-41b6-b24e-bc5a9dac873e",
+    "timestamp": "2025-12-23 18:02:58.858663",
+    "report_generated": false
   }
 ]
