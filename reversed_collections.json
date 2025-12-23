@@ -4648,5 +4648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51a090a7-2e93-424f-aa0d-08ce124bcf75",
     "timestamp": "2025-12-23 08:08:34.038638",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: derivePubkey()] [Bitcore exception handling] The function creates Bitcore.HDPublicKey and calls derive() (lines 532-533) without try-catch - can invalid xPubKey or path cause uncaught exceptions that crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57219cc4-23bb-4c16-8229-57219b12cbcb",
+    "timestamp": "2025-12-23 08:09:49.589467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deleteWallet()] [Event emission before commit] The function emits 'wallet_declined' event (line 351) inside the async.series callback - but are all deletions guaranteed to be committed before the event is emitted, or can listeners observe inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c04e5e6-7de8-4edf-a16d-23e85fe5344c",
+    "timestamp": "2025-12-23 08:10:02.207351",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deleteWallet()] [Indirect correspondent deletion timing] The function deletes unused indirect correspondents (lines 343-349) - but what if those correspondents are being added to another wallet concurrently? Can the EXISTS subquery miss the concurrent insertion, incorrectly deleting correspondents that are still needed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_329ce3a0-7cb9-450c-aa7a-a6059cb0f48f",
+    "timestamp": "2025-12-23 08:10:15.000291",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: deleteWallet()] [Authorization check bypass] The function checks if rejector_device_address approved the wallet (line 334-335) - but what if the rejector approved the wallet, then the approval_date field is corrupted or deleted, allowing them to reject it anyway?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90e8f1b0-90a7-4245-9ade-22b6fcd04f6f",
+    "timestamp": "2025-12-23 08:10:28.387665",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: cancelWallet()] [Cascading delete without transaction] The function deletes from extended_pubkeys and wallet_signing_paths in separate queries (lines 323-325) - if a failure occurs between deletions, can this leave orphaned records that corrupt wallet state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d16017e-2334-40d9-a31a-13d86e8cae9a",
+    "timestamp": "2025-12-23 08:10:43.435391",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: cancelWallet()] [Hub message security] The function uses device.sendMessageToHub() directly with attacker-influenced cosigner.hub and cosigner.pubkey (line 321) - can this enable message injection or routing attacks if the hub field contains malicious URLs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0235f814-2d13-408d-b338-71ae5fff5186",
+    "timestamp": "2025-12-23 08:10:58.467983",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: cancelWallet()] [Initiator identification logic] The function computes initiator as the device NOT in arrOtherCosigners (lines 311-315) - can an attacker manipulate arrOtherCosigners to incorrectly identify the initiator, sending cancellation to the wrong device?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac563696-22aa-4a62-8859-a5eb6cea8f49",
+    "timestamp": "2025-12-23 08:11:14.644463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readNextAccount()] [Empty result handling] When rows.length === 0, the function returns account = 0 (line 115) - but what if the query fails due to database errors, returning empty rows unintentionally? Can this cause duplicate account 0 assignments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0697a4c-4c64-43ef-bf4b-b33e6dceda04",
+    "timestamp": "2025-12-23 08:11:32.186479",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: readNextAccount()] [Account number overflow] The function computes account as max_account + 1 (line 115) - if max_account is close to MAX_INT32, can this overflow and wrap to negative numbers, causing account numbering to restart and potentially collide with existing wallets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8db8caf-1f97-4bd6-b52b-cce701269d8c",
+    "timestamp": "2025-12-23 08:11:50.484184",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addWallet()] [Parallel execution callback timing] The function calls onDone() at line 227 regardless of whether single-sig or multi-sig path is taken - but the multi-sig path calls checkAndFullyApproveWallet() which is asynchronous. Can this cause race conditions where onDone() is called before wallet approval completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8ededc0-a23e-4d72-a925-a5d1d811de55",
+    "timestamp": "2025-12-23 08:12:10.353499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addWallet()] [Signing path insertion without validation] The function inserts signing paths without validating their format (line 215) - can an attacker who controls the wallet definition template inject arbitrary signing_path values that corrupt the database or cause errors during signature verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5de01a73-b16b-4035-8ab4-47a07851d8c2",
+    "timestamp": "2025-12-23 08:12:31.178425",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addWallet()] [Device address insertion race] The function inserts device addresses using INSERT IGNORE (line 200) - if multiple wallets are being created simultaneously with overlapping device sets, can race conditions cause device records to be associated with wrong wallets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10a5a659-d025-496c-b78e-ed875e267503",
+    "timestamp": "2025-12-23 08:12:52.627344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addWallet()] [Definition template serialization] The function serializes arrWalletDefinitionTemplate with JSON.stringify() (line 178) - can circular references, large nested objects, or prototype pollution in the template cause JSON serialization to fail or produce corrupted data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_851e520c-aa73-4cbd-84ce-a8bbbad2d668",
+    "timestamp": "2025-12-23 08:13:14.981238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addWallet()] [Single-sig timestamp injection] For single-sig wallets, the function uses db.getNow() for full_approval_date and ready_date (line 176) - if db.getNow() is exploitable (SQL injection, time manipulation), can attacker create backdated or future-dated wallets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1929b401-5d88-49c6-84f7-83eb445d8bf4",
+    "timestamp": "2025-12-23 08:13:38.844836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addNewAddress()] [Wallet existence TOCTOU] The function checks wallet existence at line 417, but the wallet could be deleted before deriveAddress() is called - can this lead to deriving addresses for non-existent wallets that later cause orphaned records?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90dd5619-ca2e-4cb0-80fd-5b7784063a3b",
+    "timestamp": "2025-12-23 08:14:02.566366",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addNewAddress()] [Address derivation mismatch] The function compares derived address with provided address (line 420-421) - but what if the comparison is case-sensitive and the provided address uses different case, causing legitimate addresses to be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7165f2eb-05a6-4c05-ab8e-aa048cc404ae",
+    "timestamp": "2025-12-23 08:14:28.420435",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleNotificationThatWalletFullyApproved()] [Premature wallet finalization] The function sets member_ready_date without checking if the wallet was actually fully approved by the notifying device (line 383) - can an attacker send fake notifications to prematurely finalize wallets before all members have approved?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b486c85e-30ba-45d8-be4d-493be92eb738",
+    "timestamp": "2025-12-23 08:14:55.209205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addDeviceXPubKey()] [Approval date manipulation] The function sets approval_date to db.getNow() (line 365) - if the database time is manipulated or significantly skewed from real time, can this allow bypassing time-based restrictions in wallet approval logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01cbdfbb-859f-47f0-a95f-d02e3a62647b",
+    "timestamp": "2025-12-23 08:15:22.095322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: addDeviceXPubKey()] [XPubKey replacement attack] The function updates extended_pubkey without checking if one already exists (line 365) - can an attacker repeatedly send my_xpubkey messages to replace a legitimate cosigner's xPubKey with their own, effectively stealing control of the wallet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4eba5214-0fc3-47a4-851f-33e64733e6e4",
+    "timestamp": "2025-12-23 08:15:48.878925",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Event bus injection] The function emits 'create_new_wallet' event with attacker-controlled body fields (line 106) - if event handlers don't sanitize this data, can this lead to code injection or privilege escalation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e0341e8-a5a0-4f82-b5b2-7f11a70c6fd0",
+    "timestamp": "2025-12-23 08:16:16.149465",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Hub URL validation] The function checks cosigner.hub.length but doesn't validate the URL format (line 103) - can attackers specify 'javascript:', 'file:', or other dangerous protocols that get executed in contexts expecting HTTPS URLs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc06b6e3-09a7-4ab6-8306-d5305f285f3b",
+    "timestamp": "2025-12-23 08:16:45.102283",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Cosigner name length exhaustion] The function checks cosigner.name.length > 100 (line 98) - but with 100 characters per cosigner and potentially many cosigners, can an attacker cause memory exhaustion by sending hundreds of cosigners with maximum-length names?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d99a639a-80e0-408f-9f4d-470b431b57a0",
+    "timestamp": "2025-12-23 08:17:11.686526",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Device address verification bypass] The function verifies cosigner.device_address === objectHash.getDeviceAddress(cosigner.pubkey) at line 94 - but what if objectHash.getDeviceAddress() is deterministic and an attacker can find a pubkey that hashes to a target device address (pre-image attack)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5da48a7f-7abe-4a2a-a301-d90a91352007",
+    "timestamp": "2025-12-23 08:17:37.054991",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Cosigner array length manipulation] The function checks other_cosigners.length === arrDeviceAddresses.length - 1 (line 84) - can an attacker exploit integer overflow if arrDeviceAddresses.length is 0, making the comparison 'otherLength === -1' which might match a very large array due to underflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c19bebd9-714b-4e5b-a1e5-40db256b7c03",
+    "timestamp": "2025-12-23 08:18:02.061638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Function: handleOfferToCreateNewWallet()] [Definition template type confusion] The function checks ValidationUtils.isArrayOfLength(body.wallet_definition_template, 2) at line 75 - but does this prevent passing an array-like object (with length property) that isn't actually an array, potentially causing type errors in downstream processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0fb5e34c-6b8b-40e5-8d86-82a649949a41",
+    "timestamp": "2025-12-23 08:18:26.485018",
+    "report_generated": false
   }
 ]
