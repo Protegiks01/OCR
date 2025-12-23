@@ -6898,5 +6898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4083301-d26f-42d1-a85b-f9be846581d5",
     "timestamp": "2025-12-23 11:54:23.710027",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [System Vote OP List] For system_vote with subject='op_list', can an attacker include AAs in the OP list that pass checkNotAAs at line 1673 initially but become AAs later, corrupting the OP list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77d7cde7-765b-4843-8df7-23d42d87a37c",
+    "timestamp": "2025-12-23 11:55:38.024755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Vote Unit Not Serial] Can an attacker submit votes for poll units that are not serial yet (checked at line 1638), exploiting timing of sequence determination to vote on polls that will be invalidated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5eea1aab-1a71-4cfb-aef3-cc90c4efe903",
+    "timestamp": "2025-12-23 11:55:50.482894",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Poll Choice Count] Can an attacker submit polls with MAX_CHOICES_PER_POLL choices (checked at line 1608), each with MAX_CHOICE_LENGTH characters, to create extremely large poll units that slow down validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0ab49b9-cea4-4a2a-95e5-81035fb233bc",
+    "timestamp": "2025-12-23 11:56:03.920211",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Parameterized AA Base Not Found] Can an attacker reference a non-existent base_aa at line 1584, exploiting the check at line 1585 to create parameterized AAs that will fail at runtime but pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c89e76f-b3e9-4eeb-a6a3-44a64602d373",
+    "timestamp": "2025-12-23 11:56:17.292156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [AA Definition Validation Race] When calling aa_validation.validateAADefinition at line 1577, can an attacker exploit the async readGetterProps callback to modify state before validation completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03f6f90e-f84a-4133-9400-58ab6f0ce65f",
+    "timestamp": "2025-12-23 11:56:31.643718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Definition Chash Mismatch] For 'definition' app, can an attacker submit payload where objectHash.getChash160(payload.definition) doesn't match payload.address due to hash collision, bypassing the check at line 1566?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2661f32f-23fc-4e73-81e5-5568a83bfddd",
+    "timestamp": "2025-12-23 11:56:47.106088",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkForDoublespends()] [Private Write Mutex] Can an attacker submit many conflicting private payment units to create lock contention on mutex.lock(['private_write']) at line 2051, causing DoS of private payment validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03e36fdf-a25e-4af4-bd8c-a222ea7188ca",
+    "timestamp": "2025-12-23 11:57:03.483314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkForDoublespends()] [Ununique Update Race] When executing UPDATE inputs SET is_unique=NULL at line 2044, can another transaction read the same inputs as unique, causing both transactions to accept conflicting spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75a2b7f1-851b-4cd6-bff5-b81feda6964d",
+    "timestamp": "2025-12-23 11:57:21.587540",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkForDoublespends()] [Light Client Bypass] For light clients (checked at line 1468), can an attacker resubmit private payments that were already spent, exploiting the lack of graph.determineIfIncludedOrEqual checking to double-spend?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6115219e-9562-489b-8b0b-18cc0382e46e",
+    "timestamp": "2025-12-23 11:57:41.048558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkForDoublespends()] [Final-Bad Reuse] Can an attacker reuse outputs from final-bad units (allowed at line 1483) that are marked final-bad due to other addresses being nonserial, spending outputs that shouldn't be spendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54029d9b-602b-46bd-83fa-360afcd19257",
+    "timestamp": "2025-12-23 11:58:00.554161",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: checkForDoublespends()] [Included Doublespend Race] When checking if conflicting unit is included via graph.determineIfIncludedOrEqual at line 1470, can an attacker exploit timing where the unit becomes included after this check but before storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fbfc4b8-038d-4a1b-b86c-43473861c891",
+    "timestamp": "2025-12-23 11:58:21.088207",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessage()] [Private Payment Spend Proof] For private payments with payload_location='none', can an attacker omit spend_proofs (checked at line 1417) by exploiting race conditions in the validation flow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fef38c1-fcf6-457f-bcbf-d2bc3c9d2302",
+    "timestamp": "2025-12-23 11:58:42.955169",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessage()] [Payload URI Length] Can an attacker submit payload_uri longer than 500 chars (checked at line 1404) with encoded characters that expand when decoded, causing buffer overflows in URI handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af2e2561-a004-448a-854c-8079deb4fd85",
+    "timestamp": "2025-12-23 11:59:05.438192",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessage()] [Payload Hash Collision] Can an attacker exploit objectHash.getBase64Hash() to find payloads with identical payload_hash but different content, bypassing validation that relies on payload_hash matching?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca3d42b6-5f0e-484e-801d-b8ecb48f20cb",
+    "timestamp": "2025-12-23 11:59:29.476651",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessage()] [Spend Proof Address Mismatch] For multi-authored units, can an attacker include spend_proofs with address field pointing to authors but the actual spend_proof belonging to non-authors, bypassing the check at line 1374?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_812fbd53-56d3-4160-bebf-a2ee98bd32ce",
+    "timestamp": "2025-12-23 11:59:54.513463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessage()] [Spend Proof Reuse] Can an attacker use the same spend_proof across multiple messages in different units, exploiting the check at line 1379 that only prevents reuse within a single unit, allowing cross-unit spend proof reuse?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fcc0c7ec-fdd2-4203-bf61-5acdc568043e",
+    "timestamp": "2025-12-23 12:00:20.352072",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessages()] [No Base Payment] Can an attacker submit a unit with only non-payment messages, failing the check at line 1328 but having already consumed validation resources, enabling a DoS attack?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_374a045e-d47b-404a-bc2d-775dbb53f330",
+    "timestamp": "2025-12-23 12:00:46.128375",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateMessages()] [Message Count DoS] Can an attacker submit MAX_MESSAGES_PER_UNIT messages (checked at line 133), each requiring full validation, to exponentially slow down validation through nested complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_119e7d0a-9f33-4117-a9fd-1dea4417f6f8",
+    "timestamp": "2025-12-23 12:01:12.832016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Temp-Bad Sequence Propagation] When objValidationState.sequence is set to 'temp-bad' at line 1153, can an attacker exploit the UPDATE query at line 1164 that affects unstable conflicting units to mark good units as temp-bad?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d0be5c8-555b-48a7-9043-41c428f242f1",
+    "timestamp": "2025-12-23 12:01:39.917583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Unstable Initial Definition MCI] At line 1044, can an attacker exploit the unstableInitialDefinitionUpgradeMci threshold to submit definitions that are treated differently by nodes at different MCIs, causing validation divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_430bcdd2-e4e2-4eec-aee7-dd0d430c1b1f",
+    "timestamp": "2025-12-23 12:02:08.027115",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Content Hash Bypass] When objUnit.content_hash is present, validation sets sequence to 'final-bad' at line 1018 and returns, can an attacker exploit this to submit stripped units without proper signature validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac1d2b63-984d-47a5-9554-06a63d9ccab1",
+    "timestamp": "2025-12-23 12:02:37.090565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Authentifier Length Attack] Can an attacker submit authentifiers longer than MAX_AUTHENTIFIER_LENGTH (checked at line 990) using multibyte characters that count as fewer characters in JavaScript string length but more in storage, causing overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e28d010-85b7-4a3b-9788-b7628580fedc",
+    "timestamp": "2025-12-23 12:03:07.112374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Duplicate Definition] Can an attacker exploit handleDuplicateAddressDefinition() at line 1306 by submitting a nonserial unit with the same definition_chash but different definition content, exploiting the check at line 1311 to accept mismatched definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2def38df-b184-491b-b932-4a62527914d2",
+    "timestamp": "2025-12-23 12:03:36.592850",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Pending Definition Race] Can an attacker exploit the pending definition check at line 1213 by including a definition in parent units but not in last_ball_mci, causing validation to pass but the definition to be removed later when parents become bad?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ada6d44-1c32-4eaf-b28a-6a8962f115d9",
+    "timestamp": "2025-12-23 12:04:09.150257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Definition Change Pending] Can an attacker submit a unit while they have an unstable definition_chash change pending (checked at line 1176), exploiting the forked path check at line 1182 to use old and new definitions simultaneously?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76361039-f605-49cf-83ef-bffa12821cd9",
+    "timestamp": "2025-12-23 12:04:40.270091",
+    "report_generated": false
   }
 ]
