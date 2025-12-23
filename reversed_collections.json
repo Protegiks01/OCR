@@ -3148,5 +3148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51e60081-0cfc-427e-9e94-290ffdfcb06f",
     "timestamp": "2025-12-22 23:01:14.250619",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: local_var_assignment] [Reassignment Race] At lines 1154-1156, reassignment is forbidden unless selectors are present - but if two assignments to the same var happen in parallel async operations (via nested function calls), can both pass the hasOwnProperty() check before either completes, allowing double assignment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f1d5945-0ebf-4421-bf7e-3822ca36aebe",
+    "timestamp": "2025-12-23 06:29:10.581702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: join] [Non-Scalar Elements] At lines 2033-2035, join checks that all elements are scalars (string, number, boolean) - but if an element is a Decimal that's not finite, it passes the typeof check but toString() might return 'Infinity', causing the joined string to contain non-reproducible values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a928fc0-014e-4f85-8701-2423766e67af",
+    "timestamp": "2025-12-23 06:29:23.562111",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: split] [Limit Bypass] At lines 2015-2027, limit parameter is validated as nonnegative integer - but if limit=0, does res.split(separator, 0) return [] or [res]? Non-determinism here could cause nodes to store different array lengths in state variables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79ee4ab7-8c64-492a-bc3a-52f51d97e66c",
+    "timestamp": "2025-12-23 06:29:36.484255",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: has_only] [Regex Injection] At lines 1884-1887, the sub parameter is sanitized by replacing ']' with '\\\\]' and checking for '\\\\]' at end - but can an attacker inject other regex metacharacters like '^', '$', '*', '+' that cause RegExp to behave unexpectedly or hang in catastrophic backtracking?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fd3d204-6ac0-4610-8aa1-4a7044b56b95",
+    "timestamp": "2025-12-23 06:29:50.085234",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: replace] [Replacement Length] At lines 1980-1984, after replace operation, new_str length is checked - but if search_str is empty string '', does split('') create an array of length str.length+1 that, when joined with long replacement, causes exponential memory usage before the length check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_161e1e20-69dc-4cc1-bc50-95186511b51b",
+    "timestamp": "2025-12-23 06:30:04.435417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: substring] [Negative Index] At lines 1910-1929, start and length parameters are validated as integers but not checked for negativity - does substr() with negative start behave consistently across JavaScript engines, or can it cause non-deterministic string extraction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc60326f-f5af-4573-9529-db9e0686315a",
+    "timestamp": "2025-12-23 06:30:20.006644",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: concat case] [Object Type Confusion] At lines 2584-2593, concat handles wrappedObject+wrappedObject by checking Array vs Object - but if obj0 has Array.prototype but is actually an object with numeric keys {'0':'a', '1':'b'}, does Array.isArray() return false causing incorrect 'trying to concat object and array' error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2ed9980-0aa4-43cf-8512-2ae55903e22d",
+    "timestamp": "2025-12-23 06:30:36.696949",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: concat case] [Length Bypass] At lines 971-974, concat returns error if result.length > MAX_AA_STRING_LENGTH (line 972), but the check happens AFTER concatenation - can an attacker concatenate two strings each of length MAX_AA_STRING_LENGTH/2 + 1 to temporarily create an oversized string in memory that causes OOM before the check triggers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66d64a4d-d777-4f66-a5ab-fe151bd67329",
+    "timestamp": "2025-12-23 06:30:54.608720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: attestation case] [Attestor Address Bypass] At lines 843-847, arrAttestorAddresses is split by ':' and validated - but can an attacker provide a single valid address, and then later in the same AA execution, modify the attestors parameter to add more addresses via state variable manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_efd5dca9-c7ff-423f-9a14-790244bbd529",
+    "timestamp": "2025-12-23 06:31:14.264380",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: attestation case] [ifnone Type Preservation] At line 937, params.ifnone.value is returned 'even if no field' - if field was false (lines 867-879) indicating 'just fact of attestation', returning ifnone value breaks the boolean semantics and can cause type confusion in subsequent operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_107df6d4-6bff-44a8-8669-ce1e63159d3a",
+    "timestamp": "2025-12-23 06:31:33.992918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: attestation case] [Count Overflow] At line 889 (count_rows), if the attacker triggers the same attestation query simultaneously from multiple formulas in the same unit, can count_rows be incremented incorrectly, causing 'several attestations found' error when there's actually only one?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_230bbb1a-6eba-4833-8b28-777ce37b071f",
+    "timestamp": "2025-12-23 06:31:54.147013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: attestation case] [Race Condition] At lines 904-942, attestations are queried first from unstable units (MCI>mci or NULL), then stable units (MCI≤mci) - can an attacker exploit the time gap between these two queries to cause non-determinism if an unstable unit becomes stable mid-query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_738efb31-59be-4cb3-959e-6f61f796e642",
+    "timestamp": "2025-12-23 06:32:16.425277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: attestation case] [SQL Injection] At line 886, the field parameter is directly inserted into SQL with conn.escape(field) - but if field contains SQL escape sequences or Unicode characters that conn.escape() doesn't handle properly, can an attacker inject SQL to read arbitrary attested_fields values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60df8c0c-794b-415f-b068-fdcef1904f34",
+    "timestamp": "2025-12-23 06:32:40.515507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: findOutputOrInputAndReturnName()] [Amount Operator Injection] At lines 727-741, amount comparison operators are checked in switch statement - but if objParams.amount.operator contains an unexpected value like '===' or 'IN', does it throw Error (line 741) that gets caught improperly, or does it silently proceed with undefined behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c064a2ce-dad7-402a-8985-59cf36cf3b98",
+    "timestamp": "2025-12-23 06:33:03.950051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: findOutputOrInputAndReturnName()] [Asset Comparison] At lines 704-708, asset filtering uses operator='=' or '!=' - if payload_asset is 'base' and filter asset is null/undefined, does the comparison asset === 'base' incorrectly include/exclude base asset outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff8886a1-8c73-4569-a744-75fbc218d306",
+    "timestamp": "2025-12-23 06:33:28.452367",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: findOutputOrInputAndReturnName()] [Ambiguity Handling] At lines 745-747, when multiple matching inputs/outputs are found, an empty string '' is returned - but this is indistinguishable from 'not found' case at line 751, so can an attacker craft a unit with 2 matching outputs to make the formula return false instead of error, bypassing intended validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e1029f0-f2ce-4b46-a11e-ba712b5d22ae",
+    "timestamp": "2025-12-23 06:33:52.743995",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: in_data_feed()] [Relation Operator Bypass] At line 676, the relation parameter from feed_value.operator is passed to dataFeedExists() without validation - can an attacker inject operators like '>=' or '<=' that aren't properly handled, causing incorrect boolean results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea55fac4-485e-4397-8b32-e40df60b4584",
+    "timestamp": "2025-12-23 06:34:18.771730",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: getDataFeed()] [ifseveral Abort Inconsistency] At lines 569-572 and 591-592, ifseveral='abort' returns error if multiple values found - but this check happens after reading from database, so timing-dependent oracle posts could cause one node to see 1 value (proceeds) while another sees 2 values (aborts), causing permanent divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_437593b6-281c-4996-8e07-5a7313f1f0b5",
+    "timestamp": "2025-12-23 06:34:46.189059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: getDataFeed()] [Type Confusion] At lines 596-598, data feed values are returned as strings or Decimals depending on 'type' parameter - if an attacker switches from type='auto' to type='string' for the same feed between triggers, can this cause state variables to store different types for the same semantic value, breaking comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5505ced0-8edb-4b2d-ab8d-989716eb7423",
+    "timestamp": "2025-12-23 06:35:13.955877",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: getDataFeed()] [Min MCI Bypass] At lines 562-566, min_mci is validated as nonnegative integer - but if attacker passes a Decimal like 0.9 that gets parsed as '0' string and then parseInt() to 0, can they bypass intended min_mci restrictions to access older/invalid oracle data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0097c8b9-8a25-49a7-802e-07a27942f128",
+    "timestamp": "2025-12-23 06:35:41.732279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: getDataFeed()] [Race Condition] At line 588, dataFeeds.readDataFeedValue() is called asynchronously - if the same AA is triggered by two units simultaneously reading the same data feed 'last' value, can they see different values if a new oracle post arrives between the two reads, causing non-deterministic execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a06b691-b1ce-466f-9149-e51d25542b75",
+    "timestamp": "2025-12-23 06:36:08.762031",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: getDataFeed()] [Oracle Address Injection] At lines 547-549, oracle addresses are split by ':' delimiter without sanitization - can an attacker inject a malformed address containing ':' characters to bypass the isValidAddress() check and query data from unintended oracles?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9068a8ef-d7d5-474a-b8e3-f805522dc9ca",
+    "timestamp": "2025-12-23 06:36:35.233608",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() comparison] [Object Equality] At lines 424-426, objects are compared using _.isEqual() - can an attacker craft two wrappedObjects with properties in different orders that _.isEqual() considers equal, but JSON.stringify() would serialize differently, causing non-determinism when these objects are stored as state variables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14f1b1e9-d4b1-4c35-a091-e9a2b82285d4",
+    "timestamp": "2025-12-23 06:37:02.425944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() and/or] [Early Abort Logic] At lines 366-367 and 394-395, 'and' and 'or' operators use early abort with cb('done') - can an attacker craft a formula where the early abort prevents necessary side effects (like state variable updates in later operands) from executing, causing state inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82a79100-4cdc-4382-a37a-3fc18cbc6de7",
+    "timestamp": "2025-12-23 06:37:30.016847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() comparison] [Type Coercion Race] At lines 473-477, when comparing string with Decimal, strings are toString()-ed - if val2 is a Decimal like 1.000000000000000001, does toString() produce different string representations on different platforms, causing comparison operators to yield non-deterministic results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dcd53dde-ad28-4f5b-ace0-4d117d2ffd55",
+    "timestamp": "2025-12-23 06:37:57.674480",
+    "report_generated": false
   }
 ]
