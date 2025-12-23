@@ -13048,5 +13048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f876bced-cd36-4b23-9126-96913b5b699b",
     "timestamp": "2025-12-23 15:59:53.354981",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Inconsistent validation] formula/evaluation.js checks proof length < 1024 before calling deserializeMerkleProof() (line 1662-1663), but definition.js has no such check (line 936-937) - can an attacker submit arbitrarily large proofs in address definitions that cause memory exhaustion or DoS when deserializeMerkleProof() processes them, freezing all transactions from addresses using 'in merkle' operator?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5582589b-10e8-4856-b02b-65131cb0f555",
+    "timestamp": "2025-12-23 16:01:06.960603",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Hash algorithm mismatch] merkle.js uses crypto.createHash('sha256') while object_hash.js may use different hashing - if oracle data feeds are hashed using object_hash for storage but merkle.js hashes for verification, could the hash algorithm mismatch cause all Merkle proofs to fail verification, permanently breaking 'in merkle' address definitions and freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b88ae14-fe45-414f-819c-52089ba3d296",
+    "timestamp": "2025-12-23 16:01:19.439824",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Element encoding mismatch] formula/evaluation.js coerces elements to strings (line 1652) but definition.js passes element directly from args[2] (line 934) - if definition evaluation expects binary data but formula evaluation uses string encoding, could this create inconsistencies where the same proof validates in one context but not another, causing non-deterministic AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f84768b-95e1-4a6e-a669-ac93be58ff9f",
+    "timestamp": "2025-12-23 16:01:32.370043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Quadratic complexity] For an array of size N, getMerkleRoot() performs ~N hashing operations at first level, N/2 at second, N/4 at third, etc., totaling ~2N operations - however, if an attacker can control element content to maximize hash computation time (e.g., very long strings), could this create quadratic or worse complexity that DoS nodes processing large oracle feeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_decab15a-e443-4d3a-a44b-fef928e2b8cc",
+    "timestamp": "2025-12-23 16:01:46.732535",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Crypto exhaustion] hash() creates a new crypto.createHash() object for every call (line 6) - if an attacker triggers Merkle operations on massive trees with millions of elements, could the repeated crypto object creation exhaust system resources (file descriptors, memory), causing node crashes and network-wide transaction processing delays exceeding 24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1751aa2f-6e3a-48c6-ad39-4b5260cb63f4",
+    "timestamp": "2025-12-23 16:02:00.883036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Verification DoS] For deeply nested proofs (many siblings), verifyMerkleProof() performs repeated hash concatenations and hash computations (lines 90-92) - can an attacker submit maximum-depth proofs (e.g., from a tree with 2^30 elements) that cause verification to take seconds or minutes per proof, allowing them to flood the network with expensive verification operations that delay transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32a8a49c-c58b-4d30-b2e3-8e68aca4dd4d",
+    "timestamp": "2025-12-23 16:02:16.045214",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Sibling selection logic] getMerkleProof() chooses siblings based on whether index matches i or hash2_index (lines 33-40) - if index equals hash2_index (occurs when i+1 >= arrHashes.length), both conditions could theoretically match - does this create ambiguity in sibling selection that could be exploited to generate multiple valid proofs for the same element, allowing proof replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a66244c-5f7c-4c75-8332-17b252b56791",
+    "timestamp": "2025-12-23 16:02:32.844741",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Path reconstruction] verifyMerkleProof() reconstructs the Merkle path using index % 2 to determine concatenation order (lines 89-92) - for malformed proofs where siblings are incorrectly ordered, could the verification still succeed due to hash collisions in the wrong order, allowing attackers to use proofs from unrelated trees to validate elements in oracle data feeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_018abab1-55f5-4939-9fdb-194a3b14049c",
+    "timestamp": "2025-12-23 16:02:50.595917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot() vs getMerkleProof()] [Tree construction inconsistency] getMerkleRoot() and getMerkleProof() both implement tree construction logic (lines 11-18 vs 28-47) - are these implementations guaranteed to produce identical tree structures? Could subtle differences allow an attacker to generate a proof against a slightly different tree structure that still verifies against the legitimate root?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c951d572-2114-4629-82b6-e25ef8a202e0",
+    "timestamp": "2025-12-23 16:03:09.519310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Integer division precision] verifyMerkleProof() line 93 uses Math.floor(index/2) - for extremely large index values approaching JavaScript's MAX_SAFE_INTEGER (2^53-1), could precision loss in the division operation cause incorrect path reconstruction, allowing proofs with wrong indices to verify and bypass oracle validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5c5daec-4e6d-4792-aa08-978d1ab1e0da",
+    "timestamp": "2025-12-23 16:03:28.218913",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof()] [Array index precision] getMerkleProof() uses integer arithmetic for array indexing (lines 31-32) - if arrElements.length approaches MAX_SAFE_INTEGER, could overflow in i+1 or i/2 calculations cause incorrect array access, generating corrupt proofs that claim to prove membership of wrong elements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8262e679-2c2c-4a2c-b825-d1f68a72a1f8",
+    "timestamp": "2025-12-23 16:03:48.453139",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Oracle feed substitution] Since verifyMerkleProof() only validates proof against proof.root without verifying which oracle posted the root, can an attacker use a valid proof from Oracle A's data feed to impersonate membership in Oracle B's feed (by substituting proof.root), bypassing oracle-specific authorization in AA formulas and gaining unauthorized fund access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4024b2b9-f887-4e61-b3c0-65e6782a70ba",
+    "timestamp": "2025-12-23 16:04:10.040789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleRoot()] [Feed timing attack] If an oracle posts multiple data feeds with different Merkle roots over time, and getMerkleRoot() produces deterministic roots, can an attacker predict future roots based on past patterns and precompute valid proofs for non-existent future data, allowing them to front-run AA executions that depend on oracle updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc43f013-ced3-4a7f-839a-2d87103ff8e5",
+    "timestamp": "2025-12-23 16:04:32.215648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: deserializeMerkleProof()] [Prototype pollution] deserializeMerkleProof() creates a new object with proof.root, proof.index, proof.siblings (lines 77-81) - if an attacker controls serialized_proof content to include strings like '__proto__' or 'constructor' in the split result, could this cause prototype pollution that affects subsequent verifyMerkleProof() calls and allows global bypass of Merkle validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0dd0155-21f3-44c7-8a1a-880b221e4d76",
+    "timestamp": "2025-12-23 16:04:55.769132",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: serializeMerkleProof()] [Delimiter injection] If proof.siblings array contains base64 strings with '+' that look like multiple elements when split on '-', and serializeMerkleProof() doesn't escape delimiters (line 70), could this cause deserialization to produce more siblings than originally existed, creating invalid proofs that might still verify due to tree structure manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ea7e92f-45b1-4d13-a6be-83d9909338d8",
+    "timestamp": "2025-12-23 16:05:20.304120",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: getMerkleProof() + verifyMerkleProof()] [Proof incompleteness] getMerkleProof() does not include the element itself in the proof object, only index/siblings/root (lines 50-54) - if verifyMerkleProof() is called with wrong element than originally proved, will it incorrectly validate, allowing attackers to substitute elements in oracle feeds while reusing the same proof structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9c1dd5a-6d60-4a19-b76c-964c009ab022",
+    "timestamp": "2025-12-23 16:05:45.336584",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: hash()] [Output encoding] hash() returns base64-encoded output (line 6) - if other parts of Obyte expect hex encoding for hash comparison, could encoding mismatches cause valid Merkle proofs to always fail verification, creating a permanent DoS for all 'in merkle' address definitions and freezing funds indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6bed533-636d-46f7-9c0a-59349209caa1",
+    "timestamp": "2025-12-23 16:06:10.727895",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/merkle.js] [Function: verifyMerkleProof()] [Root validation absence] verifyMerkleProof() does not validate that proof.root actually came from a trusted oracle or matches expected format - can an attacker submit proofs with arbitrary roots that verify correctly but don't correspond to any legitimate oracle data feed, bypassing the security assumption that roots come from trusted sources and manipulating AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc84504f-7fc7-4e83-bc25-11f388b5a863",
+    "timestamp": "2025-12-23 16:06:36.712109",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Migration atomicity] If the migrate() function is interrupted after migrateUnits() completes but before migrateDataFeeds() finishes, does the system enter an inconsistent state where units exist in KV store but data feeds remain in SQL only, causing oracle queries to fail and potentially breaking AA execution that depends on data feeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_815a4f54-cdc8-4ff5-b5ff-70566d4e2de8",
+    "timestamp": "2025-12-23 16:07:03.984797",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Race condition] Can two nodes simultaneously execute migrate() on the same database, causing both to write conflicting data to the KV store and resulting in corrupted joint data or duplicate key writes that diverge node states and create a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72efc33d-9698-4306-b2c5-5fe277ed1f21",
+    "timestamp": "2025-12-23 16:07:32.217142",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Rollback mechanism] If migration fails midway through processing 500,000 units, is there any rollback mechanism to restore the database to pre-migration state, or does partial migration leave the node in an unusable state requiring manual intervention and potentially causing network partition if other nodes completed migration successfully?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cced1ac5-a0c0-40b9-bf9c-c0eda2c0afe6",
+    "timestamp": "2025-12-23 16:08:01.079302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Transaction boundaries] Since migrateUnits() commits data in CHUNK_SIZE batches of 10,000 units, if a crash occurs after batch N is committed but before batch N+1, does the migration resume from the correct offset or does it restart from offset 0, potentially creating duplicate entries in the KV store with conflicting data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b19f1a1-eea7-4481-8b37-c455c1ada4e0",
+    "timestamp": "2025-12-23 16:08:28.597396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Offset overflow] Can an attacker with a database containing more than 2^31 units cause integer overflow when offset += CHUNK_SIZE is executed repeatedly, making offset wrap to negative values and causing the migration to re-process earlier units, potentially overwriting correct data with stale data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf6999e9-2125-4d24-9426-87329399e50b",
+    "timestamp": "2025-12-23 16:08:55.255426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Unit hash validation bypass] When migrating units, readJoint() is called with bSql=true parameter, which bypasses the normal hash verification in storage.js. Can this allow corrupted units with invalid hashes in the SQL database to be migrated into the KV store, permanently cementing invalid data that would normally be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_51b566b0-e7f8-44ae-9844-50e2b9c4c7da",
+    "timestamp": "2025-12-23 16:09:23.218101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Data modification during migration] The code deletes objJoint.unit.timestamp and objJoint.unit.main_chain_index for certain unit versions. If the migration modifies unit data differently than the original storage logic, can this cause hash mismatches when the unit is later read from KV store and compared against the unit hash, breaking unit validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5dbc3c2-dacf-404d-8206-4dc17a24a685",
+    "timestamp": "2025-12-23 16:09:50.606057",
+    "report_generated": false
   }
 ]
