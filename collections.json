@@ -10948,5 +10948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e178349-154d-4620-b0a1-48a84562d6a6",
     "timestamp": "2025-12-23 13:40:02.220949",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [New Unit Insertion Without Full Validation] At line 329, writer.saveJoint() is called for new units but may not perform full validation expected for units received over the network. Can an attacker exploit this to inject invalid units through the light client history API that wouldn't pass normal validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2451358c-2154-4453-9f0e-6dc97a0992aa",
+    "timestamp": "2025-12-23 13:41:33.441221",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Is_spent Flag Fixing Race Condition] At line 338, fixIsSpentFlagAndInputAddress() is called after saving units. Can outputs be spent in transactions received between unit save and is_spent flag fix, causing the flag to incorrectly mark spent outputs as unspent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c4b4655-94bd-487a-ab52-67a9d471bd65",
+    "timestamp": "2025-12-23 13:41:45.828949",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Event Emission Timing Attack] At line 340, emitNewMyTransactions() is called before processProvenUnits(). Can an attacker trigger events for unstable transactions that later become proven as final-bad, causing wallet UI to show balance increases that are later voided?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afd3e63a-b6e3-422f-b15a-d6d330438618",
+    "timestamp": "2025-12-23 13:41:58.736875",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Proven Units Update Atomicity] At lines 279-280, inputs and units tables are updated separately with is_unique=1 and is_stable=1. Can a crash or error between these updates leave database in inconsistent state where inputs are marked unique but units are not stable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b50d9a78-e566-4bdd-9ad7-9479718cadda",
+    "timestamp": "2025-12-23 13:42:12.688864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Stability Event Emission Logic Error] At lines 284-286, emitStability() returns bEmitted and cb(!bEmitted). If no stability events are emitted (bEmitted=false), does this incorrectly signal success (cb(true)) when it should indicate no updates occurred?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2035c92e-13b5-4312-b1b7-875d977dfef2",
+    "timestamp": "2025-12-23 13:42:26.632915",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processAAResponses()] [INSERT IGNORE Race Condition] At line 364, INSERT with db.getIgnore() is used. Can two concurrent calls insert the same aa_response, with one being ignored but both emitting events at lines 378-383, causing duplicate event handling and incorrect wallet state updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0298354-1c12-4db4-8e54-20f106900345",
+    "timestamp": "2025-12-23 13:42:42.926769",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processAAResponses()] [Response JSON Re-parsing] At line 371, objAAResponse.response is JSON.parse()'d again after being a string. Can this cause issues if the response field contains malformed JSON that was stored but now fails parsing, causing crashes during event emission?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_726e7d58-dbfa-451d-9ea1-897c58db8f96",
+    "timestamp": "2025-12-23 13:42:58.876541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processAAResponses()] [Event Emission Without Validation] At lines 378-383, multiple events are emitted without re-validating the AA response data. Can stale or corrupted data from the database trigger events that cause incorrect wallet behavior, such as showing fake incoming payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab2b2883-ba27-4985-9d28-df4cf518e1b6",
+    "timestamp": "2025-12-23 13:43:17.005760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processAAResponses()] [Creation_date Timestamp Manipulation] At line 365, creation_date is stored without validation. Can an attacker provide AA responses with manipulated creation_date values that cause events to be processed in incorrect chronological order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e61507cf-926d-4da9-bb9a-e2a5f09753a9",
+    "timestamp": "2025-12-23 13:43:35.937561",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processAAResponses()] [AffectedRows Check Bypass] At line 367, affectedRows===0 is used to avoid re-emitting events. Can database errors or constraints cause affectedRows to be 0 even for new responses, preventing legitimate events from being emitted and causing missing transaction notifications?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b506e761-49f3-4d8f-a80d-df5b69d3f228",
+    "timestamp": "2025-12-23 13:43:55.643516",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: enrichAAResponses()] [Response Unit Not Found Handling] At lines 402-407, if response_unit is not found in light client mode, only a console.log is issued and processing continues. Can this cause incomplete AA response data to be emitted in events, leading to incorrect display of AA execution results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85e09401-c497-44ad-9092-2b29a78bb7ce",
+    "timestamp": "2025-12-23 13:44:16.485133",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: enrichAAResponses()] [Response String vs Object Inconsistency] At lines 394-395, response is conditionally parsed if it's a string. Can inconsistent data types in the database cause some responses to be parsed multiple times or not at all, corrupting the response data structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_847c38dc-d12f-48be-aef8-714ea4f10767",
+    "timestamp": "2025-12-23 13:44:38.375082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: enrichAAResponses()] [SetImmediate Stack Interruption] At lines 397-399, setImmediate/setTimeout is used to interrupt the call stack. Can this delay processing in a way that allows race conditions with concurrent database operations on the same AA responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_86b80e56-2511-44f9-8003-d24dea5e5198",
+    "timestamp": "2025-12-23 13:45:00.691647",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: enrichAAResponses()] [Response Unit Read Race] At line 401, storage.readJoint() is called without locking. Can the response_unit be deleted or modified between the read attempt and callback, causing objResponseUnit to reference stale or invalid data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a75da476-2eb9-4aaf-8ca8-1012b31e0253",
+    "timestamp": "2025-12-23 13:45:24.329269",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixIsSpentFlag()] [Double-spend Window] At lines 424-428, the query identifies outputs that should be marked spent. Between query execution and update execution (line 436), can another transaction spend these outputs again, causing a race condition that allows double-spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ce3aee4-0a7c-4f5d-aeea-2d70e7568709",
+    "timestamp": "2025-12-23 13:45:48.082321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixIsSpentFlag()] [Partial Update Failure] At lines 433-438, updates are performed in series via async.series(). If some updates succeed and others fail, can the database be left in an inconsistent state with some spent outputs still marked as unspent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af84e4da-e80e-4da9-8416-d13af0d64950",
+    "timestamp": "2025-12-23 13:46:13.249395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixIsSpentFlag()] [Type Filter Limitation] At line 427, only type='transfer' outputs are considered. Can other output types (e.g., headers_commission, witnessing) remain incorrectly marked as unspent, causing balance calculation errors or allowing invalid spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_29ace544-7194-4feb-a010-acaa27536dfc",
+    "timestamp": "2025-12-23 13:46:38.918746",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixIsSpentFlag()] [New Units Array Manipulation] The arrNewUnits parameter comes from processHistory(). Can an attacker manipulate this array to exclude certain units, preventing their spent outputs from being fixed and maintaining spendable outputs that should be marked spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ddd922cc-9827-4bbb-945b-4ab19ca5ebfd",
+    "timestamp": "2025-12-23 13:47:06.780854",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixInputAddress()] [Address Validation Missing] At lines 444-448, the query retrieves output addresses and uses them to update inputs. Can corrupted or invalid addresses in the outputs table propagate to inputs table, causing address-based queries to return incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b75a07ef-1f2c-4d19-9b58-aafb6c104f1a",
+    "timestamp": "2025-12-23 13:47:33.818747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixInputAddress()] [Atomic Update Failure] Similar to fixIsSpentFlag(), async.series() is used for updates. Can partial failures leave some inputs without addresses while others are updated, breaking address-based balance queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e10db59-7de8-4cee-aa32-46c043e32b9c",
+    "timestamp": "2025-12-23 13:48:01.917810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixInputAddress()] [Type Filter Limitation] Only type='transfer' is filtered. Can non-transfer inputs remain without addresses, causing incomplete transaction history for addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6c5f832-7101-4fab-bb82-7c3793df0d86",
+    "timestamp": "2025-12-23 13:48:30.910666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: fixInputAddress()] [Missing NULL Address Validation] The query filters inputs.address IS NULL but doesn't validate that outputs.address is NOT NULL. Can NULL addresses from outputs be copied to inputs, creating invalid database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cba293cc-0780-4459-a0b9-f580a2973367",
+    "timestamp": "2025-12-23 13:49:00.880972",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: determineIfHaveUnstableJoints()] [Empty Address Array Handling] At lines 472-473, empty array returns false immediately. Can this cause incorrect assumptions about wallet state when addresses are legitimately empty, potentially skipping important sync operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a5b6272-7be0-452f-b769-52be8800975f",
+    "timestamp": "2025-12-23 13:49:28.392841",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: determineIfHaveUnstableJoints()] [LIMIT 1 Optimization Risk] At line 480, LIMIT 1 is used for performance. Can this miss edge cases where multiple unstable joints exist with different stability states, causing incomplete sync detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f68577d8-25fc-407f-81eb-14f761e38fb3",
+    "timestamp": "2025-12-23 13:49:57.276755",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: determineIfHaveUnstableJoints()] [Sequence Filter Logic] At lines 476-479, only sequence='good' is checked. Can temp-bad or final-bad units that need reprocessing be missed by this check, causing wallets to appear synced when they're not?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b404ef68-e56f-47db-9cfb-b0cdb7aa9295",
+    "timestamp": "2025-12-23 13:50:25.989698",
+    "report_generated": false
   }
 ]
