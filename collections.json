@@ -11548,5 +11548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d34ece49-5af7-44bb-ac9f-e0f65fec74e0",
     "timestamp": "2025-12-23 14:21:03.662639",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: setLightVendorHost()] [Domain Replacement Attack] At line 19, the function replaces 'byteball.org/' with 'obyte.org/' in the host string - can an attacker register addresses or send units with data fields containing 'byteball.org/' followed by malicious JavaScript that gets executed when this replacement is applied to data fields instead of just the vendor host?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa6651d0-f855-4def-bb42-8df8007841d8",
+    "timestamp": "2025-12-23 14:22:28.365914",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: setLightVendorHost()] [Downgrade Attack - WS_PROTOCOL] At line 20, the light_vendor_url is constructed using conf.WS_PROTOCOL without validation - if conf.WS_PROTOCOL is set to 'ws://' instead of 'wss://', can an attacker perform MITM on the unencrypted connection to inject malicious history responses that replace stable units with fake ones, allowing theft of user funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0bf2e6b7-cded-43d9-97e5-3a84a047b55a",
+    "timestamp": "2025-12-23 14:22:40.942894",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: reconnectToLightVendor()] [Vendor Impersonation] At line 29, the function calls network.findOutboundPeerOrConnect() but doesn't verify the peer's identity or certificate - can an attacker perform DNS poisoning or BGP hijacking to redirect connections to a malicious light vendor that returns fake history showing the attacker owns all user addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d99f176-b7a4-4152-9cf7-ad5403cceff0",
+    "timestamp": "2025-12-23 14:22:54.148201",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Light Vendor Response Validation] At lines 190-195, the function receives response from light vendor and checks response.error, but what if the vendor returns response.error = null but with a massive history object exceeding memory limits - can this cause memory exhaustion DoS that crashes the light client, preventing users from accessing funds until they connect to a different vendor?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6237588-abab-45d0-a93e-60953fd357ce",
+    "timestamp": "2025-12-23 14:23:07.485287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Malicious History - Unit Flooding] At line 199, light.processHistory() is called with the response from light vendor - if the vendor returns millions of fake unstable units all referencing user addresses, can the processing cause database bloat, CPU exhaustion, and permanent slowdown that prevents the light client from confirming new transactions for >24 hours (Critical: network shutdown)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76cd47e6-c5d3-4f0b-a5f9-717b86f30244",
+    "timestamp": "2025-12-23 14:23:21.737918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Witness List Tampering] At line 199, objRequest.witnesses is passed to light.processHistory() - if the light vendor has an old cached version of user's witness list and returns history based on incompatible witnesses, can this cause the light client to accept units that are invalid according to its current witness list, leading to a permanent chain split when the client tries to compose new transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a7c57d7-d3ef-4a62-a505-5b34debae14b",
+    "timestamp": "2025-12-23 14:23:36.754238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Light Vendor History Omission] At lines 228-235, the function requests joints from light vendor and archives units if joint_not_found - can a malicious light vendor claim joint_not_found=true for units that DO exist but contain evidence of the vendor's own double-spend attempts, causing the client to archive valid units and miss fraud detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b63a885b-267f-4f00-bea1-5677cbee1291",
+    "timestamp": "2025-12-23 14:23:52.742054",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Selective History Withholding] At lines 186-188, if objRequest is null (no addresses or unstable units), refresh is skipped - can an attacker who compromises witness list management cause prepareRequestForHistory() to return null by ensuring myWitnesses returns empty array, preventing the client from ever receiving history and permanently freezing all funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16f5c3ce-e556-40e7-a713-b7c9c9fda393",
+    "timestamp": "2025-12-23 14:24:10.539345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Network Layer] [Vendor Connection Monopoly] At lines 23-24, reconnection happens on both timer and 'connected' event - if light_vendor_url is set to a malicious vendor, can that vendor monopolize all connections by disconnecting and reconnecting in a loop, preventing the client from ever connecting to honest peers who could provide correct history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d86732b0-098c-4d90-8ec8-49e752e9d062",
+    "timestamp": "2025-12-23 14:24:28.801764",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: readListOfUnstableUnits()] [Double-Spend Window] At line 41, the query selects units WHERE is_stable=0 without any time-based filtering - if an attacker creates a double-spend with one branch having unstable units from 6 months ago and another branch confirmed today, can the history refresh at line 65 request all old unstable units, causing the vendor to return the attacker's preferred branch and hide the valid branch that already spent the user's funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3007bd2d-8721-43fc-9faa-a6b99810b78c",
+    "timestamp": "2025-12-23 14:24:48.026725",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Premature Archiving] At line 224, units unstable for >1 day are selected for archiving - but if network congestion or witness downtime legitimately delays confirmation beyond 1 day, can honest user transactions be incorrectly archived at line 233, causing the user to lose track of their own pending transactions and enabling an attacker to double-spend those outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_466325f7-763f-400c-935d-092937f313a6",
+    "timestamp": "2025-12-23 14:25:08.022590",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Archival Bypass] At lines 228-235, archival only happens if light vendor returns joint_not_found, but the function doesn't verify the vendor's claim - can a compromised light vendor always return the joint (even for double-spends) to prevent archiving, keeping both branches of a double-spend active in the database and allowing the attacker to alternate between them when composing transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3c037b3-3d32-4c17-b3d4-5201e55f5af4",
+    "timestamp": "2025-12-23 14:25:29.707686",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [Descendant Archival] At line 233, storage.archiveJointAndDescendantsIfExists() is called - if this archives not just the double-spend but also all descendant units, can an attacker create a double-spend that descendants from valid user transactions depend on, causing those valid transactions to be archived and the user to lose funds permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbd5ea51-d33f-497f-8faa-e92f507b04e8",
+    "timestamp": "2025-12-23 14:25:52.110133",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_my_transactions] [Asset Proof Race] At lines 244-249, when new transactions arrive, the code requests proofs for assets, but this happens AFTER the transactions are already considered confirmed - if the light vendor provides fake asset proofs showing the assets don't exist, can this retroactively invalidate the transaction and cause the user's balance calculations to become permanently corrupted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9674b5a-5449-4d34-8c08-ddb183bf1dcd",
+    "timestamp": "2025-12-23 14:26:15.485632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Known Stable Units Manipulation] At line 79, known_stable_units are set based on current database state - if an attacker poisons the database with fake stable units (e.g., via SQL injection or vendor compromise), can the history request tell the vendor 'I already have these stable units', causing the vendor to omit them and the client to miss detection of double-spends that invalidate those units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90d48087-e88b-44f3-83f4-7f385b993263",
+    "timestamp": "2025-12-23 14:26:39.879015",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Unstable Unit Request Injection] At lines 63-65, unstable units are added to requested_joints - if an attacker can inject unit hashes into the units table with is_stable=0 (via SQL injection or compromised light.processHistory()), can they cause the client to request attacker-controlled fake units that the vendor provides, corrupting the client's DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01db8b32-fe81-40b9-9f67-d3a856a379a2",
+    "timestamp": "2025-12-23 14:27:04.372177",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global State] [bRefreshHistoryOnNewAddress bypass] At lines 102-105 and 107-117, exports.bRefreshHistoryOnNewAddress controls whether history is refreshed on new addresses - can an attacker who gains code execution disable this by setting exports.bRefreshHistoryOnNewAddress=false, then register addresses that receive payments but never sync history, causing the user to be unaware of received funds that the attacker later steals using a different client?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_954b42df-8bbf-435f-8a8e-e733f4ae0e0a",
+    "timestamp": "2025-12-23 14:27:30.498551",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global State] [bRefreshFullHistory disable attack] At line 103, exports.bRefreshFullHistory can be set to false - if an attacker disables this before the first history refresh completes at line 152, can this cause the light client to never sync its full history, leaving it in a state where all previous transactions are unknown and the user appears to have zero balance despite owning funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd45f0c8-cbf8-4ede-83fa-f0b6ec512427",
+    "timestamp": "2025-12-23 14:27:56.884641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global State] [bRefreshHistory disable attack] At line 104, exports.bRefreshHistory can be set to false - if this is disabled after bFirstHistoryReceived is set but before subsequent refreshes, can the client miss new transactions and witness proofs, causing its view of the main chain to diverge from the network and all future transactions to be rejected as invalid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebc910b8-d56b-4ed8-86d7-19046d6ac558",
+    "timestamp": "2025-12-23 14:28:24.066143",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Event emission ordering] At lines 155, 169, 211, the function emits events 'refresh_light_started', 'refresh_light_done', 'first_history_received' - if event handlers for these events modify state that affects concurrent refreshes, can this create race conditions where address registration during refresh causes the refresh to be restarted mid-processing, corrupting the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_379ee61a-6eb4-4eb7-9640-6e467e8dfb64",
+    "timestamp": "2025-12-23 14:28:52.463680",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: isFirstHistoryReceived()] [State Query Race] At line 253-255, this function returns bFirstHistoryReceived without any locking - if transaction composition in wallet.js checks this value, decides to proceed, but then bFirstHistoryReceived changes before the transaction is submitted, can the transaction be composed with incomplete history data that causes it to reference already-spent outputs, leading to transaction rejection and fee loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d96bf51a-a8e0-4ac2-9cfe-f86796fb73f6",
+    "timestamp": "2025-12-23 14:29:19.632468",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [min_mci Manipulation] At lines 80-81 and 89, min_mci is set from conf.refreshHistoryOnlyAboveMci - if an attacker modifies this config value to a very high MCI, can the history request skip all existing units, causing the client to think it has zero transaction history and compose invalid transactions that double-spend already-used outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8025142-1230-4e8d-817c-0697d7a4db8d",
+    "timestamp": "2025-12-23 14:29:47.522039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Witness List Empty State] At lines 49-51, if arrWitnesses.length === 0, the function returns null and skips history refresh - can an attacker delete all entries from the my_witnesses table (via SQL injection or direct database access), causing all future history refreshes to be skipped and the client to never learn about incoming payments or outgoing double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27332b37-b5ca-4488-b0c9-1fc084f550fe",
+    "timestamp": "2025-12-23 14:30:15.967393",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Error Handler - throw vs callback] At line 148, if handle callback exists, errors throw instead of being passed to callback - can this cause unhandled promise rejections that crash the Node.js process when refreshLightClientHistory() is called with a callback during startup, leading to DoS where the light client cannot start at all?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92ddb917-c771-4a5b-bb31-5e639fc23642",
+    "timestamp": "2025-12-23 14:30:44.472198",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Error Handler - bRefreshingHistory cleanup] At lines 161-170, the finish() callback clears ws.bRefreshingHistory at line 165, but if an exception occurs before finish() is called (e.g., in prepareRequestForHistory()), can bRefreshingHistory remain true permanently, blocking all future history refreshes and freezing user funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c214488-ff0a-4078-b431-b9570cbc8ff0",
+    "timestamp": "2025-12-23 14:31:14.194957",
+    "report_generated": false
   }
 ]
