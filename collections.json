@@ -13948,5 +13948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9c93fde-a06f-4cee-a5db-9da4bea4846e",
     "timestamp": "2025-12-23 17:00:38.975716",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Validation] [Address Format] ValidationUtils.isValidAddress checks for uppercase 32-character chash (validation_utils.js lines 60-62) - does this ensure the address is a valid Ed25519 public key hash, or can specially crafted addresses that pass chash validation but correspond to no actual private key be inserted, creating unspendable witness positions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc26afbd-1a53-456b-96c2-b77437946eed",
+    "timestamp": "2025-12-23 17:02:02.989614",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Validation] [Address Existence] Neither replaceWitness() nor insertWitnesses() verify that witness addresses have ever posted units to the DAG or even exist in the units table - can this allow insertion of completely fictional addresses, causing main chain progression to wait indefinitely for witness votes that will never come?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b79c1fb-ecbb-45d2-81b1-285e7f80d900",
+    "timestamp": "2025-12-23 17:02:15.828687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Validation] [Address Definition Complexity] Since the removed validation (lines 60-62) previously checked for definition references, can witness addresses now have arbitrarily complex multi-sig or contract-based definitions, causing witness signature validation to become computationally expensive and creating DoS vectors in main chain processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4282672d-ffeb-4b33-bc63-12caef0201d5",
+    "timestamp": "2025-12-23 17:02:29.109325",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Validation] [Case Sensitivity] ValidationUtils.isValidAddress requires uppercase (validation_utils.js line 61) - if a lowercase witness address is provided to replaceWitness() or insertWitnesses(), does the validation reject it, or can mixed-case addresses be inserted, causing comparison failures when matching against network-provided witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f7a0da6-71f9-423e-aeef-1914f4f84abd",
+    "timestamp": "2025-12-23 17:02:43.322486",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Exception Handling - Network Halt] When the query wrapper throws an exception on database errors (line 47), does this unhandled exception crash the entire node process, causing a total network halt if a critical query fails during unit validation or storage operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74c912c4-11d1-4e34-ad8e-c0415708c8f8",
+    "timestamp": "2025-12-23 17:02:57.472228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Race Condition - Double Spend] If two concurrent queries attempt to spend the same output and both read the unspent state before either commits, can the lack of database-level locking in the query wrapper allow both transactions to commit successfully, enabling a double-spend attack?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1b7e687-8e29-4d78-824e-2c70e2cc943c",
+    "timestamp": "2025-12-23 17:03:12.263004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Promise Resolution - Fund Loss] In the Promise-based query interface (lines 28-31), if the original callback is never invoked due to a database connection failure, does the Promise remain unresolved indefinitely, potentially freezing fund transfers or unit confirmations that depend on this query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a338e874-e534-4b59-8534-1ac51dd21f44",
+    "timestamp": "2025-12-23 17:03:28.575564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Buffer Conversion - Data Corruption] When converting VARBINARY fields from Buffer to string (lines 52-54), does this conversion handle multi-byte UTF-8 characters and binary data correctly, or can malformed unit hashes or witness signatures stored as VARBINARY be corrupted, breaking DAG structure validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c327275-1ba7-4a3e-8d77-d54dc60e085f",
+    "timestamp": "2025-12-23 17:03:46.634207",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: cquery()] [Configuration Bypass - Validation Skip] When conf.bFaster is true (line 71), the cquery function skips query execution entirely and immediately invokes the callback - can an attacker modify configuration to enable bFaster during critical validation queries, bypassing double-spend checks and allowing invalid units to be stored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0be7015-b795-48fe-b714-03ca9dda108f",
+    "timestamp": "2025-12-23 17:04:05.706819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Deadlock Handling - Transaction Delay] The commented-out deadlock retry logic (lines 39-46) suggests deadlocks were encountered - without automatic retry, can an attacker craft units that systematically trigger database deadlocks during main chain updates, delaying transaction processing for over 1 hour and meeting Medium severity impact criteria?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12aeb169-daa3-484a-bb77-3660f18e29a9",
+    "timestamp": "2025-12-23 17:04:26.083624",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Connection Exhaustion - Network Halt] If the connection pool is exhausted and getConnection blocks indefinitely (line 109), can an attacker flood the network with units requiring expensive queries, exhausting all connections and preventing legitimate units from being validated or stored, causing a total network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4851f99-6359-4384-bef2-65611473b320",
+    "timestamp": "2025-12-23 17:04:47.097916",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Error Propagation - Inconsistent State] When a query throws an exception (line 47), does the error propagate before any in-flight database transactions are rolled back, potentially leaving partial state committed (e.g., unit stored but balances not updated), violating transaction atomicity invariants?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65c32c19-fdad-4121-9886-cf183f7ff8c3",
+    "timestamp": "2025-12-23 17:05:08.876823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addQuery()] [Callback Ordering - Non-determinism] In the addQuery function's callback wrapping logic (lines 92-97), if the mysql callback and async.series callback execute in different orders across nodes due to timing variations, can this cause non-deterministic query execution sequences during main chain selection, leading to permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa859805-26e5-44ad-85fa-a53c78eefdfe",
+    "timestamp": "2025-12-23 17:05:31.898164",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: escape()] [SQL Injection - Unit Storage] If the escape function wrapper (lines 76-78) fails to properly sanitize user-controlled data in unit messages or AA trigger parameters, can an attacker inject malicious SQL to manipulate the units table, inserting fake units or modifying witness lists to corrupt consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e19f8d2-93a6-4ff3-a9fc-800848c5ccf5",
+    "timestamp": "2025-12-23 17:05:54.554526",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Memory Leak - Connection Pool] When queries with no callback are converted to Promises (lines 27-31) but the Promise is never awaited, does the connection remain locked and never released back to the pool, eventually exhausting all connections and causing network paralysis?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c7ebaf0-0099-4c0e-a1a7-614e2db1d09a",
+    "timestamp": "2025-12-23 17:06:18.765471",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Timing Attack - Witness Identification] The query timing log (lines 57-59) reveals which queries take >25ms - can an attacker analyze these logs to identify expensive witness validation queries, then craft units specifically designed to trigger these slow paths and delay block confirmation times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b35435c8-c130-430b-a662-80dc077c7aae",
+    "timestamp": "2025-12-23 17:06:44.395091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: getCountUsedConnections()] [Resource Monitoring - DoS] The function directly accesses internal pool properties _allConnections and _freeConnections (line 118) - if these properties are undefined or have been modified by a malicious npm package in the dependency chain, does this cause crashes during connection monitoring, preventing nodes from detecting pool exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_215cc6de-b814-450f-bc82-899ddf6d632d",
+    "timestamp": "2025-12-23 17:07:11.332029",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Result Mutation - State Corruption] The query wrapper mutates results by converting Buffers and using Object.assign (lines 49-56) - if the original result set is shared across multiple query callbacks (possible with connection pooling), can concurrent modifications lead to corrupted data being read during AA state variable updates, causing state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d72f2446-1361-49a0-8916-ca9ccf2f1cb5",
+    "timestamp": "2025-12-23 17:07:38.404950",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: addTime()] [SQL Injection via Interval] The addTime function (lines 125-127) directly concatenates the interval parameter into SQL without validation - can an attacker pass malicious SQL fragments as interval values (e.g., via AA formula parameters) to inject arbitrary SQL commands during timestamp calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ce0b112-4e5f-4c86-a5e9-6b0fd163dcd4",
+    "timestamp": "2025-12-23 17:08:06.767457",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: forceIndex()] [SQL Injection via Index Name] The forceIndex function (line 142) concatenates the index parameter directly into SQL - can an attacker control index names through configuration or AA parameters to inject SQL that bypasses query optimization or manipulates query results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b86f2e2c-9279-4f25-9f9d-04fddbed4675",
+    "timestamp": "2025-12-23 17:08:36.604052",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: dropTemporaryTable()] [SQL Injection via Table Name] The dropTemporaryTable function (line 146) concatenates table names without validation - can an attacker inject malicious table names (e.g., containing semicolons and additional SQL commands) to drop permanent tables containing unit or balance data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b16b9d5-9cc6-46d0-8e9b-341e3162fc19",
+    "timestamp": "2025-12-23 17:09:07.215857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Promise Chain Deadlock] When a query returns a Promise (lines 28-31) and that Promise is awaited while holding a database connection, can nested query calls within the same connection context cause self-deadlock, blocking critical validation or storage operations indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0418bde7-b2dd-4ec6-bbae-0197345eed4c",
+    "timestamp": "2025-12-23 17:09:37.925638",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: takeConnectionFromPool()] [Recursive Wrapping - Memory Exhaustion] The function recursively wraps connections (line 113) - if a connection is taken from the pool, used, released, and taken again multiple times, does each wrap add another layer of wrapper functions, eventually causing stack overflow or memory exhaustion during high-volume transaction periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_407d9aec-2fd1-45b2-9cce-ac92569adeeb",
+    "timestamp": "2025-12-23 17:10:08.959709",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: query()] [Unhandled Promise Rejection] When query() returns a Promise and that Promise's rejection is not handled by the caller, does Node.js 15+ crash the process on unhandled rejection, causing network-wide node failures if any database query fails during AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82c5c844-84a2-43d5-a899-2739dbf9c804",
+    "timestamp": "2025-12-23 17:10:41.354552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mysql_pool.js] [Function: cquery()] [Conditional Query Skip - Balance Verification] If conf.bFaster is enabled and cquery is used for balance verification queries before spending outputs, can an attacker exploit the query skip (line 72) to bypass balance checks and spend non-existent funds, creating inflation in the asset supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76416bd5-53c1-433a-860a-7acee2518514",
+    "timestamp": "2025-12-23 17:11:11.923207",
+    "report_generated": false
   }
 ]
