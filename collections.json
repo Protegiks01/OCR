@@ -10048,5 +10048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71bfe599-29d6-4b4a-80e9-8d27fe7e0d1d",
     "timestamp": "2025-12-23 12:38:26.128514",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [OP List Order Dependency] The arrOPs arrays on lines 40, 42-43 have specific address ordering - does the order matter for vote counting or OP selection in other parts of the codebase? If an attacker can somehow reorder the array elements, can it affect which OPs are selected or vote counting results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e19105bc-232c-4008-977f-05f312b5d21d",
+    "timestamp": "2025-12-23 12:39:44.193091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Network Type Detection Attack] If an attacker running a mainnet node can set environment variable testnet=1 to make constants.bTestnet true, will their node initialize with testnet preloaded voters and OP list, causing them to fork permanently from mainnet? Can this be used to DoS attack the network by confusing nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cda1131-29a8-458f-8ec1-4848f214445f",
+    "timestamp": "2025-12-23 12:39:56.954588",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Devnet Security Model] Devnet has a single OP on line 40 and a deterministic voter on line 47 - this means devnet has no security and anyone can control governance - but what if devnet code accidentally runs on testnet or mainnet due to configuration error? Can this completely compromise the network's governance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fdc1ddb-68a2-4248-857b-76f95cc7b8f1",
+    "timestamp": "2025-12-23 12:40:09.942156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Hard Fork Risk from Bug Fix] The testnet bug fix on lines 9-29 only executes if constants.bTestnet is true - if this bug affected mainnet too but wasn't fixed there, or if the fix is applied incorrectly, can testnet and mainnet diverge in their system_vars history, preventing cross-network testing and potential mainnet hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_367c0b57-e74c-48f7-8ba5-48237a69ab38",
+    "timestamp": "2025-12-23 12:40:23.336011",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Initial Voter Centralization] On mainnet, only 5 preloaded voters control initial system parameters (line 50) - if these 5 addresses are controlled by a single entity or collude, can they manipulate fee parameters, OP lists, and threshold_size to make the network unusable or extract excessive fees before other addresses gain voting power?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89c7c5fe-1439-4b17-9c31-c2b561d34bad",
+    "timestamp": "2025-12-23 12:40:37.599857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [OP Address Verification] The OP addresses in arrOPs are hard-coded strings - is there any verification that these addresses actually exist on the network, have posted units, or are controlled by legitimate operators? Can attackers who control these addresses (if keys are leaked) manipulate consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bdb1b64-4b71-438f-b5fb-b2b9c450f33b",
+    "timestamp": "2025-12-23 12:40:52.924636",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Fee Manipulation Attack Vector] The initial base_tps_fee=10 and tps_fee_multiplier=10 on lines 36, 38 - if these values are set too low, can an attacker spam the network with high-TPS attacks before governance can vote to increase fees, causing network delay (Medium severity) or database bloat?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d03d9d31-9c6d-4abc-b32a-6cc72e32e768",
+    "timestamp": "2025-12-23 12:41:09.193537",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Table Existence Assumption] The function assumes system_votes, op_votes, numerical_votes, and system_vars tables exist - if database migrations in sqlite_migrations.js haven't run yet (version < 46), will these INSERT queries fail with 'table does not exist' errors, preventing node startup?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c436ace-c8bd-4a86-8b36-702b548cdf16",
+    "timestamp": "2025-12-23 12:41:26.700400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Schema Version Mismatch] If the database schema changes in the future (e.g., new columns added to system_vars), but this initialization code isn't updated, can the INSERT statements fail due to missing required columns, breaking new node bootstrapping?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f19b7258-e6d7-41f0-bf97-055ec1c8f1c5",
+    "timestamp": "2025-12-23 12:41:45.139818",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [SQLite vs MySQL Differences] The code uses `INSERT OR IGNORE` syntax on lines 54, 62, 64, 72 - this is SQLite-specific syntax - does MySQL support this? If not, can MySQL nodes fail to initialize properly, causing mainnet (which might use MySQL for hubs) to have different governance state than light clients (which use SQLite)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca9dc7a5-dad1-40e7-a088-5ec5a0b68862",
+    "timestamp": "2025-12-23 12:42:04.449752",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Module Export Timing] The file exports initSystemVarVotes on line 84, and db.js calls it immediately on line 43 with `initial_votes.initSystemVarVotes(module.exports)` - but db.js itself is still loading - can circular dependency issues or undefined exports cause the function to receive an incomplete db module, leading to errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_925fffed-6376-44fd-aeac-7fef45360051",
+    "timestamp": "2025-12-23 12:42:25.169769",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Constants.js Load Order] Line 3 requires constants.js - but constants.js loads environment variables and configuration - if environment variables change after initial_votes.js loads but before initSystemVarVotes() executes, can nodes end up with mismatched network types?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff1ccc8b-bb3e-4d01-8788-fbd759106e2a",
+    "timestamp": "2025-12-23 12:42:46.932522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Chash.js Dependency] Line 47 dynamically requires './chash.js' inside the arrPreloadedVoters initialization - if chash.js has any side effects or depends on database being initialized, can this cause a deadlock or initialization failure on devnet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8374a6c7-d48a-4f3c-a054-d3f599c75a3d",
+    "timestamp": "2025-12-23 12:43:09.588806",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Bug Fix Specificity] The bug fix on lines 21-28 checks for extremely specific conditions: vote_count_mci === 3547796 AND value equals a 12-element JSON array - this seems to target one historical event - but what if similar bugs occur at different MCIs? The fix won't detect them, and governance could remain corrupted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b51ebe47-eba7-422d-9c4e-129fe3ab71ff",
+    "timestamp": "2025-12-23 12:43:32.684578",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [13th OP Attack Vector] The bug fix deletes a 13th OP with address '2FF7PSL7FYXVU5UIQHCVDTTPUOOG75GX' on line 18 - but this same address is then included in the 'buggy' op_list on line 27 - can an attacker exploit confusion around whether this address should be included to cause nodes to have inconsistent OP lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3b7930d-795b-4635-9124-ea8959770938",
+    "timestamp": "2025-12-23 12:43:56.733741",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Vote Count MCI Correlation] The bug fix updates system_vars WHERE vote_count_mci=3547796 on line 27 - but does it also update corresponding entries in system_votes, op_votes, or numerical_votes tables? If not, can the vote history and final system_vars become inconsistent, breaking vote auditing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_feef5246-0bc9-492b-ba8e-4c53d6977dae",
+    "timestamp": "2025-12-23 12:44:22.231373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Bug Fix Race Condition] The bug fix reads op_votes on line 10, checks conditions, and deletes on line 18 without holding any locks - if another process inserts a new vote for the same address between the read and delete, can the deletion target the wrong rows or leave the database in unexpected state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e51d8d32-1087-4562-af39-bf0e47d6e04b",
+    "timestamp": "2025-12-23 12:44:48.501135",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Integer Overflow] The numerical parameters threshold_size=10000, base_tps_fee=10, tps_interval, tps_fee_multiplier=10 are inserted as integers - are there any checks that these values don't exceed database integer limits (INT/BIGINT max values)? Can extremely large values cause overflow in fee calculation formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3aff4793-e3d9-4a84-bace-07cc5265981f",
+    "timestamp": "2025-12-23 12:45:15.198341",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Negative Value Injection] Can an attacker modify constants.js or exploit numerical parameter logic to insert negative values for threshold_size, base_tps_fee, or tps_fee_multiplier? If storage.js:getSystemVar() returns negative values, can it cause underflow in fee calculations, making fees negative and enabling free transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8568c92-ba9a-4802-88ce-fc314f64eadd",
+    "timestamp": "2025-12-23 12:45:42.515302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Zero TPS Interval] Line 37 sets tps_interval to 1 or 2 - what if this is accidentally set to 0? Division by zero in TPS fee calculations could crash nodes or cause incorrect fee assessment, leading to network halt (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e304545c-0638-42e4-8aff-298140196464",
+    "timestamp": "2025-12-23 12:46:09.582577",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Large OP List] The op_list is JSON stringified and stored in TEXT column on line 45 - what's the maximum size limit? Can an attacker craft an arrOPs array with millions of addresses, causing JSON.stringify() to consume excessive memory or create multi-GB TEXT values that DoS the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c80e9fc4-1ead-4ddf-a8f8-3c45fcf3f2da",
+    "timestamp": "2025-12-23 12:46:36.771518",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [INSERT Statement Size] Line 62 builds a large INSERT with `values.join(', ')` where values can be up to 12 * number_of_preloaded_voters elements - for mainnet with 5 voters * 12 OPs = 60 value tuples - can this exceed MySQL's max_allowed_packet or SQLite's SQLITE_MAX_SQL_LENGTH, causing the query to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46dd310c-12a3-4173-8e03-3f348cef1fa8",
+    "timestamp": "2025-12-23 12:47:05.065212",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Connection Pool Starvation] The function takes a connection from pool on line 6 and holds it through entire initialization (potentially including bug fix queries) - if initialization hangs or takes very long, can this starve the connection pool and prevent other critical operations from executing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc53b615-509f-4031-ac74-2d58970d03db",
+    "timestamp": "2025-12-23 12:47:33.140846",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [OP List Order Dependency] The arrOPs arrays on lines 40, 42-43 have specific address ordering - does the order matter for vote counting or OP selection in other parts of the codebase? If an attacker can somehow reorder the array elements, can it affect which OPs are selected or vote counting results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db8a79b2-cb51-477a-87c1-4428dadcb4d3",
+    "timestamp": "2025-12-23 12:48:01.767696",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/initial_votes.js] [Function: initSystemVarVotes()] [Network Type Detection Attack] If an attacker running a mainnet node can set environment variable testnet=1 to make constants.bTestnet true, will their node initialize with testnet preloaded voters and OP list, causing them to fork permanently from mainnet? Can this be used to DoS attack the network by confusing nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0ceb9d8-29db-4fdf-b3ba-7a28029f4616",
+    "timestamp": "2025-12-23 12:48:28.648937",
+    "report_generated": false
   }
 ]
