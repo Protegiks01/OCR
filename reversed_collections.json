@@ -3298,5 +3298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dcd53dde-ad28-4f5b-ace0-4d117d2ffd55",
     "timestamp": "2025-12-23 06:37:57.674480",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() arithmetic] [Non-deterministic Conversion] At lines 173-177, strings are converted to numbers only after testnetStringToNumberInArithmeticUpgradeMci - can an attacker exploit the bLimitedPrecision parameter in string_utils.toNumber() to cause different nodes (with different precision settings) to parse '1.23e100' differently, causing state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ef30d5a-512b-4b10-9ec0-762384741240",
+    "timestamp": "2025-12-23 06:39:15.815067",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() hypot] [Catastrophic Cancellation] At line 333, Decimal.hypot() computes sqrt(a²+b²+...) - for very large numbers close in magnitude, can precision loss from squaring cause incorrect results that differ across nodes running different Decimal.js versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0f51c20-5124-4e35-af5f-c6c70d23f14a",
+    "timestamp": "2025-12-23 06:39:28.567159",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() round/ceil/floor] [Decimal Places Overflow] At lines 267-268, the dp (decimal places) parameter is validated to be ≤15, but can an attacker pass a Decimal that equals exactly 15.9999999 which gets converted to 15.toNumber() but internally stores fractional part, causing non-deterministic rounding behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8a980b3-59a5-4f6c-b2e4-9223f73e3607",
+    "timestamp": "2025-12-23 06:39:41.481833",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() sqrt/ln] [Negative Input] At lines 240-241, sqrt and ln operations check res.isNegative() and return error - but if res is exactly -0 (negative zero), does isNegative() return false, allowing sqrt(-0) to proceed and potentially produce NaN that bypasses finite checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7672f66e-843b-4b0c-813e-dabac103886a",
+    "timestamp": "2025-12-23 06:39:55.998251",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() modulo] [Negative Modulo] At line 158 (op='%'), can an attacker exploit non-deterministic modulo behavior when operands are negative, where different JavaScript engines might produce different results for (-5) % 3, causing nodes to diverge on state variable updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8153d95-5134-41ab-b030-d40c9eebb59e",
+    "timestamp": "2025-12-23 06:40:10.462103",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() division] [Division by Zero] When division operation (op='/') is evaluated at lines 154-156, if the divisor evaluates to exactly zero after toDoubleRange(), does the Decimal.div() throw an error that gets caught and causes bounce, or does it produce Infinity that passes through the isFiniteDecimal() check at line 216?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f2dbe03-a4bf-48f8-bb59-1f93718dd6f3",
+    "timestamp": "2025-12-23 06:40:25.495720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() pow operation] [DoS] At line 189, the check res.abs().gte(Number.MAX_SAFE_INTEGER) only applies to integer exponents - can an attacker use a fractional exponent like 0.5 with extremely large magnitude to cause exponentially expensive exp() computation that freezes the node for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85fbc640-2a0e-45c7-8003-7f46f3b4b74b",
+    "timestamp": "2025-12-23 06:40:41.418166",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() pow operation] [Overflow] At lines 183-204, when computing fractional powers using ln().times(res).exp(), can an attacker provide extreme base and exponent values that cause intermediate ln() results to overflow Double.MAX_VALUE, bypassing the finite check and corrupting state calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_592c854d-6598-4fa4-9829-844d5d8c9b64",
+    "timestamp": "2025-12-23 06:40:59.169176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/evaluation.js] [Function: evaluate() arithmetic ops] [Precision Loss] Can an attacker craft a formula with deeply nested decimal operations that accumulates rounding errors through toDoubleRange() calls at lines 179, 202, 218, causing state variable values to diverge across nodes and leading to permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b395d757-be50-4818-8c3b-fd13b0a0be9f",
+    "timestamp": "2025-12-23 06:41:19.207285",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Limit Line 5] [Hardcoded cache limit] The cacheLimit is hardcoded to 100. If the network grows to have thousands of active AAs, will this limit become a bottleneck? Can an attacker exploit the low limit by deploying 101 frequently-used AAs, ensuring that the most popular community AAs (like DeFi protocols) constantly miss cache, causing network-wide slowdowns?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_250c45c6-5b16-407d-b7a6-7c1da7b4056f",
+    "timestamp": "2025-12-23 06:41:39.116229",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Line 1] [Decimal.js library vulnerability] The entire formula engine depends on the Decimal.js library. If a security vulnerability is discovered in Decimal.js (e.g., in parsing, arithmetic, or conversion functions), can it be exploited through AA formulas to cause incorrect calculations or consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_931e35ac-6ac9-4308-8cb8-b76b7ace9cf7",
+    "timestamp": "2025-12-23 06:41:59.682720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Lines 2-3] [Dependency imports] The file imports ../constants and ../validation_utils. If either of these modules is compromised or contains bugs, can it affect all AA formula evaluations? For example, if constants.TOTAL_WHITEBYTES is incorrect, will objBaseAssetInfo.cap be wrong, and can AAs exploit this?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb49572b-384a-4326-a1be-c9ce576f84c8",
+    "timestamp": "2025-12-23 06:42:21.701892",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: clearObject() Lines 52-56] [Getter/setter triggers] If obj has getters/setters defined via Object.defineProperty, will deleting those properties trigger the setter one last time with undefined? Can an attacker define malicious setters that execute code during clearObject, potentially causing reentrancy-like issues where AA state is accessed mid-clear?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a31cc60a-4a2f-42bc-bb88-aae33d02780f",
+    "timestamp": "2025-12-23 06:42:44.667601",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: assignField() Lines 64-71] [Enumerable property attack] By forcing enumerable:true, can an attacker exploit this to make properties visible to Object.keys() or for...in loops that should be hidden? For example, if AA state variables are supposed to be non-enumerable to prevent iteration attacks, but assignField makes them enumerable, can this expose internal state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35eeea3c-5dad-4826-bd65-4da3a7cddc41",
+    "timestamp": "2025-12-23 06:43:07.996258",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 27] [issued_by_definer_only flag] This is set to true for the base asset, meaning only the definer can issue more. But the base asset's total supply is fixed at genesis. Does this flag create confusion where code checks this flag and incorrectly believes the definer can mint new base bytes, potentially creating logic errors in DeFi protocols?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62d409d6-cc4f-4a93-924a-9e8f913034c4",
+    "timestamp": "2025-12-23 06:43:32.272730",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 16-17] [Exponential notation ambiguity] The toExpNeg and toExpPos settings determine when toString() uses exponential notation. If an AA writes a state variable with value 1e-7 (right at the boundary), will it be stored as '0.0000001' or '1e-7'? If different nodes make different choices due to implementation differences, can this cause state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69c0bc84-36b0-4466-ad6d-c5d4e5310c0e",
+    "timestamp": "2025-12-23 06:43:57.412418",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toOscriptPrecision() Lines 49] [toString() locale dependency] The .toString() method on Decimal might respect system locale in some configurations (e.g., comma vs period as decimal separator). If two nodes have different locales, could Decimal.toString() produce '1,5' on one node and '1.5' on another, causing consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d8d7902-df75-4322-b5ee-e4a762980ee9",
+    "timestamp": "2025-12-23 06:44:23.324809",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 96] [Unicode normalization] The replace() operations look for exact ASCII strings 'elsevar', 'elseresponse', 'elsebounce'. If an attacker uses Unicode equivalents or combining characters that visually appear the same but differ in byte representation, can they bypass the fix and deploy broken formulas on testnet addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa55d688-134e-4c1c-b4be-573a834f800f",
+    "timestamp": "2025-12-23 06:44:49.927661",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 80-81] [String type coercion] The function checks 'typeof str !== 'string''. In JavaScript, this means str could be a String object (new String('...')). Will the indexing operations str[0] and str[str.length-1] work correctly on String objects, or could this cause subtle bugs if an AA passes a String object instead of a string primitive?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48f89378-ffcc-418e-9ca5-8290b4322982",
+    "timestamp": "2025-12-23 06:45:17.190698",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [isFiniteDecimal Usage in validation.js Lines 30, 90] [Finite validation bypass] If validation.js checks isFiniteDecimal on formula parameters but evaluation.js doesn't recheck it during execution, can an attacker exploit a timing attack where they pass finite values during validation but somehow inject infinite values during execution (e.g., via datafeed manipulation)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_403af024-85c8-430b-884f-d01cff775752",
+    "timestamp": "2025-12-23 06:45:43.646310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [toDoubleRange Usage in validation.js Lines 32, 92] [Validation-execution mismatch] During formula validation, toDoubleRange is used to convert Decimal values to double range before comparison. If a formula is validated with certain input values that fall within double range, but executed later with slightly different inputs that underflow, will the execution result differ from what validation predicted, potentially allowing bounces to occur unexpectedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6753a29b-e9cd-4f79-a68f-5c8024e2859a",
+    "timestamp": "2025-12-23 06:46:12.323889",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [isValidValue Usage in validation.js] [Validation escape] If formula/validation.js uses isValidValue to check formula outputs before writing to state, but formula/evaluation.js doesn't use it consistently, can an AA exploit the gap by producing outputs during evaluation that wouldn't pass validation, but get written to state anyway because evaluation doesn't validate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d043a75a-614e-444b-a74c-162001dd1a38",
+    "timestamp": "2025-12-23 06:46:41.692954",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Usage in evaluation.js] [Precision propagation] When evaluation.js uses createDecimal() to convert user inputs, and those Decimals are then used in complex arithmetic formulas, can accumulated rounding errors cause significant divergence from the expected result? For example, if an AA computes a 10-step calculation with 15-digit precision at each step, could the final result differ from what a user calculated with full precision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d05e713-e21c-4414-a378-3e993a7b0feb",
+    "timestamp": "2025-12-23 06:47:11.432803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Usage in evaluation.js Lines 88-99] [Cache invalidation vulnerability] When a formula is added to cache, there's no mechanism to invalidate it if the formula is later found to be malicious or buggy. If an AA is deployed, cached, and then discovered to have a critical vulnerability, will all nodes continue executing the cached (vulnerable) version until they restart, allowing the attacker to exploit it before patches are applied?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56a59676-296b-4bb6-a4f6-0d8906db338c",
+    "timestamp": "2025-12-23 06:47:40.772740",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [fixFormula Usage in evaluation.js Line 60] [Formula preprocessing order] In formula/evaluation.js, fixFormula is called before parsing. If an attacker can influence the order of formula preprocessing (e.g., by nesting multiple layers of formula definitions), can they cause fixFormula to be applied multiple times, potentially creating 'else else var' or other malformed syntax that crashes the parser?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22105dd6-b795-4402-810a-2b4a98408a4c",
+    "timestamp": "2025-12-23 06:48:09.997068",
+    "report_generated": false
   }
 ]
