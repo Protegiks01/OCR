@@ -5848,5 +5848,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_47df3a5a-13aa-4301-ae9d-3ddd1df225c3",
     "timestamp": "2025-12-23 07:59:15.163234",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 72: SYSTEM_VOTE_MIN_SHARE=0.1] [Vote Share Calculation Precision Loss] With MIN_SHARE=0.1 (10%), are vote share calculations using floating-point arithmetic vulnerable to precision loss that allows votes with slightly under 10% share to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed4789de-2cf1-4fb2-af4e-df8d2ebef88e",
+    "timestamp": "2025-12-23 08:00:30.256122",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 73: TEMP_DATA_PURGE_TIMEOUT=24*3600] [Temporary Data Race Condition] If temporary data is purged after exactly 24 hours, can an attacker exploit timing races where data is accessed during the purge window, causing read-after-delete errors or stale data to be used in validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63280af6-43f5-4628-a3da-e4d95d12d94d",
+    "timestamp": "2025-12-23 08:00:42.864186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 74: TEMP_DATA_PRICE=0.5] [Fractional Fee Calculation Exploit] With temporary data costing 0.5 bytes per byte, can attackers exploit rounding in fee calculations to store data at effectively lower cost than intended (e.g., storing 1 byte costs 0 after rounding down)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bbc6cf5e-49bc-4cbb-ad66-0152e2b7c7f9",
+    "timestamp": "2025-12-23 08:00:56.122374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 139-144: Textcoin fee calculations] [Textcoin Fee Calculation Dependency on Version Length] The formulas like `772 + (exports.version.length - 3)` depend on version string length - if version string is manipulated to abnormal length, can this cause fee calculations to become negative or overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09a932fa-fb35-4eba-b245-63bb018df2c8",
+    "timestamp": "2025-12-23 08:01:10.093758",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 143: TEXTCOIN_ASSET_CLAIM_BASE_MSG_FEE calculation] [Compound Fee Addition Overflow] The fee `157 + 101 + 1` is calculated at runtime - if these constants are modified through environment variables or code manipulation, can their sum overflow and wrap to negative values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_585faa30-c101-474d-882b-2cf7977c3612",
+    "timestamp": "2025-12-23 08:01:24.916362",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 76-78: minCoreVersion constants] [Version String Comparison Vulnerability] Are version strings like '0.4.0' compared as strings or parsed as semver? Can an attacker run version '0.4.0a' or '0.4.00' to bypass minimum version checks through string comparison quirks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b9c18d1-0c93-4548-b4dc-ce8ccffce4a5",
+    "timestamp": "2025-12-23 08:01:40.079455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 80: lastBallStableInParentsUpgradeMci] [Upgrade MCI Boundary Race] At MCI=1300000 on mainnet (or 0 on testnet), does the last ball stability rule change? Can units submitted exactly at this MCI boundary be validated differently by nodes that have/haven't crossed the threshold, causing temporary consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4dee5f0-22ed-428a-a7b5-16a9f052e5d4",
+    "timestamp": "2025-12-23 08:01:56.117893",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 81: witnessedLevelMustNotRetreatUpgradeMci] [Witnessed Level Validation Fork] At MCI=1400000, witnessed level retreat validation changes - can an attacker submit units with retreating witnessed levels just before/after this boundary, exploiting the upgrade timing to cause chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_47f55188-3b68-4ef5-b3f2-735afe87c839",
+    "timestamp": "2025-12-23 08:02:13.345674",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 82: skipEvaluationOfUnusedNestedAddressUpgradeMci] [Definition Evaluation Optimization Attack] After MCI=1400000, unused nested addresses are skipped during evaluation - can an attacker craft address definitions that behave differently under the old vs new evaluation rules, causing validation divergence during the upgrade window?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3ef8ac8-fca0-4a17-9b96-7068cc57f5cc",
+    "timestamp": "2025-12-23 08:02:31.591935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 83: spendUnconfirmedUpgradeMci] [Unconfirmed Output Spending Race] The MCI=2909000 upgrade allows spending unconfirmed outputs - can an attacker exploit the upgrade boundary by double-spending unconfirmed outputs where some nodes allow it (post-upgrade) while others reject it (pre-upgrade)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9843bf96-22ef-44c4-9bea-15029bc4b2c0",
+    "timestamp": "2025-12-23 08:02:50.799779",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 84: branchedMinMcWlUpgradeMci] [Branched Main Chain Witness Level Attack] At MCI=2909000, branched MC witness level calculation changes - can this cause disagreement on which branch is the main chain during the upgrade, potentially causing temporary chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ac02685-8b60-450c-930f-029427c52e30",
+    "timestamp": "2025-12-23 08:03:10.682065",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 85: otherAddressInDefinitionUpgradeMci] [Address Definition Reference Attack] After MCI=2909000, address definitions can reference other addresses - can an attacker create circular address definition references that cause infinite loops or stack overflows during definition evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa363c91-e92a-419d-9b7f-5b21c3cbcc48",
+    "timestamp": "2025-12-23 08:03:32.226788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 86: attestedInDefinitionUpgradeMci] [Attestation Validation Upgrade Fork] At MCI=2909000, attestation-based address definitions are enabled - can an attacker exploit this by creating units with attested definitions that are valid post-upgrade but were submitted pre-upgrade, causing validation inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0635c13-2443-47f4-9bf9-5e3414233648",
+    "timestamp": "2025-12-23 08:03:54.124831",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 87: altBranchByBestParentUpgradeMci] [Alternative Branch Selection Fork] At MCI=3009824, the alternative branch selection algorithm changes - can units submitted during this transition be assigned to different branches by different nodes, causing main chain disagreement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8f79086-8510-420d-8057-a9218bd03657",
+    "timestamp": "2025-12-23 08:04:17.125632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 88: anyDefinitionChangeUpgradeMci] [Definition Change Validation Relaxation] After MCI=4229100, any definition change is allowed - does this remove restrictions that previously prevented malicious definition changes, potentially allowing attackers to brick addresses or steal funds through definition manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0a30e5a4-eb79-4acf-8ec5-7304d17a4088",
+    "timestamp": "2025-12-23 08:04:40.700552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 89: formulaUpgradeMci] [AA Formula Feature Activation] At MCI=5210000, AA formulas are enabled - can attackers who pre-deployed AA definitions before this MCI exploit timing to trigger formulas before validators are ready, causing incorrect execution or state corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65c60e93-c34b-457c-802d-88a76354f810",
+    "timestamp": "2025-12-23 08:05:06.108201",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 90: witnessedLevelMustNotRetreatFromAllParentsUpgradeMci] [Witness Level Retreat Multi-Parent Check] At MCI=5210000, witness level must not retreat from ANY parent (not just one) - can this stricter rule cause previously valid units to become invalid, potentially orphaning branches of the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f5ded01-15d2-416e-b945-72d33bb47c9f",
+    "timestamp": "2025-12-23 08:05:32.291430",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 91: timestampUpgradeMci] [Timestamp Validation Rule Change] At MCI=5210000, timestamp validation changes - can attackers exploit differences in timestamp acceptance windows to create units with timestamps that are valid pre-upgrade but invalid post-upgrade, causing validation divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1af5e50-7a23-4aa1-a08e-0a4fb48fa79d",
+    "timestamp": "2025-12-23 08:05:58.630206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 92: aaStorageSizeUpgradeMci] [AA Storage Size Limit Enforcement] At MCI=5210000, AA storage size limits are enforced - do existing AAs with oversized state get grandfathered in, or can this cause previously valid state updates to fail, potentially locking funds in AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff56ee49-07b9-43de-a740-fd2ec42cc8ac",
+    "timestamp": "2025-12-23 08:06:25.032375",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 93: aa2UpgradeMci] [AA Version 2 Compatibility] At MCI=5494000, AA version 2 features activate - are AAs explicitly versioned, or can formulas written for v1 behave differently under v2 semantics, causing non-deterministic execution across the upgrade boundary?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a16e593-8621-47e3-9d13-1b1b36c9e3f4",
+    "timestamp": "2025-12-23 08:06:52.076365",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 94: unstableInitialDefinitionUpgradeMci] [Initial Definition Stability Attack] At MCI=5494000, initial definitions can be unstable - can an attacker create an address with an unstable definition, spend from it before stabilization, then cause the definition to change, effectively allowing unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ae3de34-89a6-45a9-8c72-de771b3f3e51",
+    "timestamp": "2025-12-23 08:07:19.498123",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 95: includeKeySizesUpgradeMci] [Key Size Inclusion Validation Fork] At MCI=5530000, key sizes are included in validation - does this change unit hash calculation? Can units with identical content produce different hashes pre/post upgrade, causing hash-based lookups to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3c5e3c6-986a-4b4f-b40b-0151b6f752a0",
+    "timestamp": "2025-12-23 08:07:47.613532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 96: aa3UpgradeMci] [AA Version 3 Breaking Changes] At MCI=7810000, AA version 3 activates - what breaking changes are introduced? Can formulas that worked in v2 fail or behave differently in v3, causing state divergence for AAs that transition during the upgrade?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab9b8bc2-3559-4969-a416-21ffb8b74d67",
+    "timestamp": "2025-12-23 08:08:15.319478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 97: v4UpgradeMci] [Protocol Version 4 Comprehensive Fork] At MCI=10968000, protocol v4 activates - as a major version upgrade, can this introduce multiple simultaneous validation changes that compound to cause consensus failures if nodes upgrade asynchronously?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7978c59b-2666-4f7a-9c52-bfc6e1b770d9",
+    "timestamp": "2025-12-23 08:08:44.730167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Lines 43-48: MAX_AUTHORS × MAX_MESSAGES × MAX_INPUTS/OUTPUTS] [Validation Complexity Amplification Attack] Can an attacker craft a unit with 16 authors, 128 messages, and 128 inputs per message (16×128×128 = 262,144 total inputs) to cause O(n²) or O(n³) validation complexity that freezes the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2288745e-3329-497e-ba5e-1a6da409d51f",
+    "timestamp": "2025-12-23 08:09:14.306141",
+    "report_generated": false
   }
 ]
