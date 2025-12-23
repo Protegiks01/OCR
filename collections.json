@@ -15148,5 +15148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c544ae55-101f-4c06-8849-c9ebb1020adf",
     "timestamp": "2025-12-23 18:22:43.031493",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Version handling: getStrippedUnit()] [Timestamp Inclusion Logic] Line 80 includes timestamp for version 2+, but what happens if objUnit.timestamp is undefined in a v2 unit - does the stripped unit include 'timestamp: undefined' or omit the field, and can this cause hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4eaa7e8-9e26-47f2-a4be-ac8bd5d5efb3",
+    "timestamp": "2025-12-23 18:24:01.373848",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Version upgrade path] [Cross-Version Hash Compatibility] When the protocol upgrades from version 1.0 to 2.0+, nodes running different versions will hash units differently (with/without timestamp) - can an attacker exploit the upgrade window to create units that validate on old nodes but not new nodes or vice versa, causing temporary chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ac876a8-bef2-4db5-bdea-b8602eb0c06e",
+    "timestamp": "2025-12-23 18:24:14.141680",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Encoding: getSourceString() vs getJsonSourceString()] [Key Ordering Differences] getSourceString() (from string_utils.js) uses Object.keys().sort() while getJsonSourceString() also sorts - but if JavaScript sorting is locale-dependent or handles Unicode differently, can key ordering differ across nodes, causing permanent hash mismatches and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f370ec5b-a5f4-4c32-999e-bf899fcb881f",
+    "timestamp": "2025-12-23 18:24:26.993235",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Encoding: getJsonSourceString()] [Empty Array/Object Handling] string_utils.js getJsonSourceString() throws on empty arrays/objects by default (line 204-210 in string_utils.js) unless bAllowEmpty is true - but object_hash.js calls it without bAllowEmpty parameter - can units with empty arrays cause crashes during hashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64153d7f-7392-4460-b2b1-c3fe97e6906d",
+    "timestamp": "2025-12-23 18:24:40.507332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Encoding: getSourceString()] [Null Value Errors] string_utils.js getSourceString() throws Error on null values (line 15 in string_utils.js) - but object_hash.js doesn't sanitize inputs - can an attacker submit units with null fields to crash all nodes during hash computation, causing network-wide DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1666e496-9649-467a-9f24-28f4581c559b",
+    "timestamp": "2025-12-23 18:24:54.588858",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Encoding: getJsonSourceString()] [Well-formed JSON Stringify] string_utils.js uses toWellFormedJsonStringify() (line 187) to escape lone surrogates - if an attacker includes lone Unicode surrogates in unit fields, can different JavaScript engines handle them inconsistently, causing hash mismatches across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4cc56b1-4eaa-44ab-aae6-43651b57cf7b",
+    "timestamp": "2025-12-23 18:25:10.416682",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Encoding: UTF-8] All hash functions use 'utf8' encoding (lines 20, 25, 90, 98, 116, 149) - if input strings contain invalid UTF-8 sequences or NULL bytes, does Node.js crypto module handle them consistently across platforms (Linux, Windows, Mac), or can platform differences cause hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_34ec68d4-7996-40eb-abb5-f2ca020808ae",
+    "timestamp": "2025-12-23 18:25:28.232599",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Empty unit] If objUnit is an empty object {}, getNakedUnit() will return {} after deletions - does getSourceString({}) throw an error for empty objects, or return a consistent hash that could collide with other empty structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdda886c-d846-4292-91dd-460f09d17dcf",
+    "timestamp": "2025-12-23 18:25:46.641852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Undefined version] If objUnit.version is explicitly set to undefined (not missing), does the version check (line 38) correctly handle it, or does typeof undefined === 'string' cause unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42261dc1-f499-4b4e-867f-81efddc1f2df",
+    "timestamp": "2025-12-23 18:26:05.032827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Authors array mutation] getStrippedUnit() maps authors to {address} objects (line 69) - if the original authors array is modified concurrently during this operation, can the resulting stripped unit have inconsistent author lists, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc1d657f-c06c-4cde-869d-c0e80a483f43",
+    "timestamp": "2025-12-23 18:26:25.207761",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Large numbers] If unit fields contain numbers exceeding Number.MAX_SAFE_INTEGER or include BigInt values, does getSourceString() handle them consistently, or can precision loss cause hash differences across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42749419-8049-48c2-93de-60d76df466ff",
+    "timestamp": "2025-12-23 18:26:45.922630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: NaN and Infinity] If objUnit contains NaN or Infinity in numeric fields, does getSourceString() throw an error (line 22 in string_utils.js checks !isFinite), and can an attacker cause DoS by submitting units with invalid numbers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1467f48c-a26d-4435-8b3f-e5aa3c6111ac",
+    "timestamp": "2025-12-23 18:27:07.953105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Sparse arrays] If objUnit.messages is a sparse array with undefined holes, does the iteration (line 42) handle them correctly, or can gaps in the array cause some messages to skip payload deletion, breaking content hash calculation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd718b62-88b1-4891-b8f1-03e4dbbb2a62",
+    "timestamp": "2025-12-23 18:27:29.873417",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Frozen objects] If objUnit is a frozen object (Object.freeze()), can _.cloneDeep() in getNakedUnit() properly clone it, or will the clone also be frozen, preventing field deletions and causing hash calculation to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ad7c35c-1912-4a4f-b9f8-6b5bf6a896d7",
+    "timestamp": "2025-12-23 18:27:52.913595",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Symbolic properties] If objUnit has Symbol-keyed properties, do they get included in hashing via Object.keys() or getOwnPropertySymbols(), and can different handling cause hash mismatches across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b07794e-1eed-4b59-8148-c6a66d6227ff",
+    "timestamp": "2025-12-23 18:28:17.488026",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Getter properties] If objUnit.messages has a getter that returns different values on each call, will getNakedUnit() and getStrippedUnit() produce consistent hashes, or can dynamic getters cause non-deterministic hashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e3fc9f1-afaa-4881-9dce-86515f4e35cd",
+    "timestamp": "2025-12-23 18:28:42.098983",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Edge case: Proxy objects] If objUnit is wrapped in a Proxy that intercepts property access, can the proxy return different values during cloning vs hashing, bypassing validation and enabling signature forgery?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_864073bb-4bfb-4c36-a523-cb28d3262f25",
+    "timestamp": "2025-12-23 18:29:08.571973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [DoS: Deep recursion in cleanNullsDeep()] If an attacker crafts a device message with 10,000 levels of nesting, will cleanNullsDeep() (lines 126-132) exhaust the call stack and crash the node, or does JavaScript have tail call optimization that prevents this?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09315c99-966b-4757-89d2-726372294795",
+    "timestamp": "2025-12-23 18:29:35.991156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [DoS: Large object cloning] If objUnit is extremely large (approaching MAX_UNIT_LENGTH of 5MB), does _.cloneDeep() in getNakedUnit() consume excessive memory or CPU, and can an attacker DoS nodes by flooding with maximum-size units that require full cloning before hashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bcddd103-5d97-4154-ad00-8a017ddb9817",
+    "timestamp": "2025-12-23 18:30:05.759881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [DoS: SHA256 collision attacks] While SHA256 preimage resistance is strong, if an attacker finds near-collisions or uses birthday attacks, can they create units with identical hashes that differ in content, enabling double-spend attacks through hash collision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3f007cf-c274-415a-8dcc-378800e47c47",
+    "timestamp": "2025-12-23 18:30:35.554590",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [DoS: JSON.stringify bomb] In getJointHash() (line 116), if objJoint contains circular references or deeply nested structures, can JSON.stringify() crash with 'converting circular structure' error, and can an attacker DoS nodes by broadcasting malicious joints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76b61106-d384-4805-ad71-9398055f7995",
+    "timestamp": "2025-12-23 18:31:06.747748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [DoS: String concatenation in getSourceString()] string_utils.js builds the source string by concatenating array elements (line 55) - if objUnit has thousands of fields, can repeated string concatenation cause O(n²) performance and DoS nodes during validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f71f99d-be25-4d74-a9a4-66f52e101859",
+    "timestamp": "2025-12-23 18:31:38.088789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Crypto: SHA256 parameter mismatch] All functions use crypto.createHash('sha256') - if the Node.js crypto module is compromised or uses weak PRNG for salts (though SHA256 has no salt), can hash predictability enable preimage attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3e02fde-7dd6-4e4a-addb-a47655de5990",
+    "timestamp": "2025-12-23 18:32:08.288181",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Crypto: Buffer encoding] getUnitHashToSign() returns raw Buffer digest (line 90) while getBase64Hash() returns base64 string (line 25) - if signature verification code mismatches the expected format, can valid signatures be rejected or invalid signatures accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf4b9e61-e995-4340-864d-40408dc22d52",
+    "timestamp": "2025-12-23 18:32:38.567159",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/object_hash.js] [Consensus: Hash uniqueness] Does the protocol guarantee that unit hashes are globally unique, or can different units with different content legitimately produce the same hash (e.g., genesis units, witness heartbeat units), and can this be exploited for replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f5dd381-4146-4010-8158-a28b02f36c4f",
+    "timestamp": "2025-12-23 18:33:06.912704",
+    "report_generated": false
   }
 ]
