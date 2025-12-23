@@ -6298,5 +6298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_123aa87f-12ea-40d6-bd00-71fd0d41a4d6",
     "timestamp": "2025-12-23 08:29:42.113356",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Iteration order non-determinism] Line 26 iterates 'for (var unit in storage.assocUnstableMessages)' - if JavaScript object key iteration order is non-deterministic across Node.js versions, can different nodes evaluate data feed existence in different order and get different bFound results when multiple conflicting feeds exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26ced302-a041-4728-916b-1dfe4f8ca9aa",
+    "timestamp": "2025-12-23 08:30:54.347818",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Precision mode boundary race] Lines 14, 106, 190, 268 check 'max_mci < constants.aa2UpgradeMci' to determine bLimitedPrecision - if an AA executes exactly at the upgrade MCI boundary, can different nodes use different precision modes based on whether they've marked that MCI as stable yet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f22b670-4453-465a-add7-fa810e0856e6",
+    "timestamp": "2025-12-23 08:31:06.757492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Float comparison non-determinism] Line 54 uses relationSatisfied() for numeric comparisons - if float values are subject to rounding errors (e.g., 0.1 + 0.2 !== 0.3), can identical oracle feeds compare differently across nodes with different CPU architectures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffb271ee-46df-49bf-945f-fb7f096a968e",
+    "timestamp": "2025-12-23 08:31:19.523523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Oracle count bypass] Line 330 checks 'if (oracles.length > 10)' but allows exactly 10 oracles - can an attacker craft an AA that queries 10 malicious oracles simultaneously, each posting millions of feed values, to DoS nodes during query execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3ca05269-2c20-4a39-959a-53d544fbea6b",
+    "timestamp": "2025-12-23 08:31:32.991797",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Feed name validation bypass] Lines 332-334 check feed_name is non-empty string but don't validate contents - can an attacker use feed_name with special characters like newlines, null bytes, or extremely long strings to break KV store key construction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bac57048-fff3-41f2-8350-d7d84a0a100c",
+    "timestamp": "2025-12-23 08:31:47.112697",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Min_mci negative value] Line 344 validates min_mci is non-negative integer but doesn't check upper bound - can setting min_mci=0xFFFFFFFF cause MCI encoding (line 121) to produce '00000000', making the query range invalid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_955bf4de-d76b-40fd-8712-ac3b8714d089",
+    "timestamp": "2025-12-23 08:32:02.062081",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Feed_value validation gap] Lines 336-340 validate feed_value with isValidValue() but this only checks basic types (line 384-386) - can an attacker pass an object or array as feed_value that bypasses validation but causes errors during KV query construction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59bc944e-4a8c-4c3f-b3c0-f0c1907a021d",
+    "timestamp": "2025-12-23 08:32:18.117438",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Ifnone parameter type confusion] Lines 365-366 validate ifnone with isValidValue() but line 378 returns params.ifnone directly preserving its type - can an attacker set ifnone=false to make an AA interpret missing feeds as boolean false instead of aborting, breaking conditional logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22d296f2-2aae-480c-9830-3f001169f942",
+    "timestamp": "2025-12-23 08:32:35.595753",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: isValidValue()] [Incomplete type validation] Lines 384-386 accept string, boolean, or number but don't check for null, undefined, NaN, or Infinity - can these special values bypass validation and cause errors in downstream feed processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bedf0725-ef1f-49ca-bce0-d2bb41b7e24f",
+    "timestamp": "2025-12-23 08:32:54.663303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [MCI range off-by-one] Lines 32-33 check 'latest_included_mc_index < min_mci || latest_included_mc_index > max_mci' using strict inequalities - can an oracle posting at exactly min_mci or max_mci be incorrectly excluded from queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6006741-bbb4-4140-9416-8485b41576f4",
+    "timestamp": "2025-12-23 08:33:13.893389",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Reversed MCI encoding confusion] Lines 121-122 encode MCIs in reverse order (0xFFFFFFFF - mci) for efficient sorting - can min_mci > max_mci in the encoded form cause queries to return empty results even when valid feeds exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42a488f1-beb5-41f8-a729-23e984b8dac6",
+    "timestamp": "2025-12-23 08:33:34.567036",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [MCI boundary race condition] When checking 'if (mci >= min_mci && mci <= max_mci)' (line 165) after reading from KV store, if the unit's actual MCI is later corrected by main chain reorg, can stale MCI values in KV store cause incorrect feed inclusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20dea17c-b17b-45f3-b949-bca09a608f3e",
+    "timestamp": "2025-12-23 08:33:55.930659",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Latest_included_mc_index manipulation] Lines 203-204 filter unstable units by 'objUnit.latest_included_mc_index < min_mci || latest_included_mc_index > max_mci' - if an attacker posts an unstable AA unit with manipulated latest_included_mc_index, can it bypass MCI filtering before being rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5954133b-041d-453e-9053-dcf005e90f13",
+    "timestamp": "2025-12-23 08:34:18.315180",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Upgrade MCI boundary precision attack] Line 14 checks 'max_mci < constants.aa2UpgradeMci' to determine precision mode - if an attacker queries with max_mci exactly equal to aa2UpgradeMci-1, can they force limited precision mode and make string '1.234567890123456789' truncate differently than queries with max_mci=aa2UpgradeMci?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b2332b8-81c8-4680-9c4d-b350cb677acd",
+    "timestamp": "2025-12-23 08:34:41.815095",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Author address intersection bypass] Line 34 checks '_.intersection(arrAddresses, objUnit.author_addresses).length === 0' to filter by oracle - if an unstable unit has multiple authors including both legitimate oracle and attacker, can the intersection match and allow attacker to inject fake feed data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a716d76e-3ee4-46a8-a1e3-35af11028d0f",
+    "timestamp": "2025-12-23 08:35:05.909438",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Multiple oracle address spoofing] Lines 205-206 use same intersection check - if an AA queries oracles=['alice', 'bob'] and attacker creates unit co-authored by alice and attacker, can attacker's feed values be treated as if posted by alice alone?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc283df6-3c66-43c1-b428-e72fd5457ae4",
+    "timestamp": "2025-12-23 08:35:31.395821",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Oracle address validation timing] Lines 328-329 validate oracle addresses but after accepting the array - can an attacker pass a very large array of addresses (e.g., 1 million entries before the length check on line 330) to cause memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_208029a7-ee0d-4099-8df4-13aca4463dee",
+    "timestamp": "2025-12-23 08:35:57.076066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Empty arrAddresses handling] If arrAddresses is empty array [], line 34's intersection will always be empty (length 0) causing all units to be skipped - can this cause all data feed queries to return false even when feeds exist, breaking AA logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_beb7c8fd-a262-4549-a073-b8641fe27e85",
+    "timestamp": "2025-12-23 08:36:24.143239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Missing payload validation] Lines 37-42 access message.payload[feed_name] without validating payload structure - if an oracle posts malformed data_feed message with payload=null or payload=undefined, can accessing payload[feed_name] throw and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0dd17953-71ee-410a-9467-baed02c73d0c",
+    "timestamp": "2025-12-23 08:36:51.779566",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Feed value type inconsistency] Lines 214-216 check value equality but don't validate feed_value type matches expected type - can an oracle post feed_name='price' with boolean value true that matches query for value=1 due to type coercion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b22022c7-b8d3-4ff3-aae7-34b3ba7960db",
+    "timestamp": "2025-12-23 08:37:19.175510",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [HasOwnProperty bypass] Lines 40, 211 use ValidationUtils.hasOwnProperty(payload, feed_name) - if payload is constructed with Object.create(null), can __proto__ poisoning allow attacker to inject arbitrary feed values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9bbe4f3-633b-4be5-8b55-d236af4d4c61",
+    "timestamp": "2025-12-23 08:37:47.469176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Data value extraction from KV] Line 305 parses 'arrParts[0]' from data.value.split('\\\\n') without validating array length - if KV store is corrupted and data.value has no newlines, can arrParts[0] be undefined and cause errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46cf61d6-87de-431b-90d9-5c5332d27a42",
+    "timestamp": "2025-12-23 08:38:17.099141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [Value decoding from key] Line 300 calls string_utils.getValueFromDataFeedKey(data.key) - if the key format is corrupted, can decoding throw errors that crash the stream handler?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38d868ab-8488-46c5-ad14-2c6c3f2f2515",
+    "timestamp": "2025-12-23 08:38:46.756850",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Early return bypassing DB query] Lines 80-81 return early if bFound=true from unstable messages without querying stable DB feeds - can an attacker post unstable AA unit with fake feed that causes AA to execute incorrectly before the unstable unit is rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e68294e5-8c70-4ea1-ac84-a5b4b4c80068",
+    "timestamp": "2025-12-23 08:39:17.648114",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Callback double invocation] If both stream.destroy() (line 168) and stream 'end' event (line 182) trigger onEnd(), the bOnEndCalled check (line 175) throws Error - can this Error propagate to async.eachSeries and cause the entire data feed query to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a2c9b9d-2de5-4893-9e33-802c166f701c",
+    "timestamp": "2025-12-23 08:39:46.845847",
+    "report_generated": false
   }
 ]
