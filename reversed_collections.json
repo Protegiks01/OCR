@@ -12598,5 +12598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc4d3ac4-1a0c-4f41-b201-30e906692c88",
     "timestamp": "2025-12-23 18:13:23.792163",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Empty result set] At lines 128-129, if rows.length === 0, pickDeepParentUnits is called. Can an attacker create a scenario where no free units exist under max_wl but deep parent selection also fails, causing an infinite recursion or transaction failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55a1db6e-af6e-4c66-9c73-04a76644dd82",
+    "timestamp": "2025-12-23 18:14:42.987920",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Witnessed level boundary] At line 119, units with witnessed_level < max_wl are selected. Can an attacker create units with witnessed_level exactly equal to max_wl - 1 and flood the database, causing this query to return attacker-controlled parents exclusively?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bff1c033-a18c-4c9d-a240-8df976848fa1",
+    "timestamp": "2025-12-23 18:14:55.876686",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Timestamp bypass] At lines 114-115, the timestamp condition is only applied if storage.getMinRetrievableMci() >= constants.timestampUpgradeMci. Can units with future timestamps be selected as parents before this upgrade, allowing attackers to manipulate parent selection timing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_737dba4f-875b-4ce2-9e68-83f82a64692a",
+    "timestamp": "2025-12-23 18:15:08.729202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Concurrent modification] At line 60, arrExcludedUnits is concatenated with arrNewExcludedUnits. If multiple threads/processes call this function concurrently with overlapping parent sets, can arrExcludedUnits become corrupted, leading to incorrect parent replacement decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8265a02-a0d4-47b5-9120-f68547353d1c",
+    "timestamp": "2025-12-23 18:15:22.389030",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [SQL string escaping] At line 67, arrExcludedUnits is mapped through db.escape and joined. If db.escape has a bug or doesn't handle certain edge cases, can malicious unit hashes in arrExcludedUnits cause SQL injection or query errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f89eb48b-cf80-43e0-a144-9f3b0c415cf8",
+    "timestamp": "2025-12-23 18:15:36.738566",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Witnessed level retreat detection] At lines 93-95, the function checks if child_witnessed_level >= max_parent_wl. If this condition passes but best_parent_unit is null, does the function return successfully with inconsistent state, potentially allowing witnessed level retreat?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bdb7a44-def9-45f1-b8e0-6c9f929e3bb4",
+    "timestamp": "2025-12-23 18:15:52.048811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Best parent manipulation] At lines 93-101, if arrCurrentParentUnits.length <= MAX_PARENTS_PER_UNIT, parents are returned immediately. Otherwise, best_parent_unit is moved to position 0 and the list is sliced. Can an attacker craft parents where the best_parent_unit changes between determineWitnessedLevels calls, causing non-deterministic parent ordering across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc984837-a464-4e03-bc0b-c7d71d0ffb06",
+    "timestamp": "2025-12-23 18:16:09.500541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Parent replacement consistency] At lines 62-82, when replacing an excluded parent with its parents, the logic excludes candidates that have other children. Can an attacker create a specific DAG topology where this exclusion logic removes all valid replacement candidates, causing the function to throw an error and halt transaction creation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f21f1b7e-ac17-4907-8570-02856d100531",
+    "timestamp": "2025-12-23 18:16:28.375762",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [replaceExcludedParent() race condition] At lines 54-83, replaceExcludedParent performs multiple database queries. If units are being added/removed from the database concurrently, can this cause arrCandidateReplacements or arrReplacementParents to include invalid units, leading to consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e50cb1d-136e-4d34-82a3-e48a06daaa9f",
+    "timestamp": "2025-12-23 18:16:47.561640",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Empty parent set error] At lines 77-78, if arrNewParents.length === 0, the function throws an error. Can this occur in legitimate scenarios where all parents must be excluded, causing valid transactions to fail permanently and potentially freezing funds if no alternative parent set exists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5466943-8468-48f1-ae5a-8ec7bf66a743",
+    "timestamp": "2025-12-23 18:17:08.447228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [MAX_PARENT_DEPTH bypass] At lines 89-90, if iterations >= conf.MAX_PARENT_DEPTH, an error is returned. Can an attacker set conf.MAX_PARENT_DEPTH to an extremely high value or null through configuration manipulation, allowing infinite loops that halt transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac42661d-25c1-43a8-a79f-e0d2b2732d5d",
+    "timestamp": "2025-12-23 18:17:29.116335",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Infinite loop] At lines 87-88, if arrExcludedUnits.length === 0 after iterations > 0, an error is thrown to prevent infinite cycles. However, can an attacker craft a DAG structure where arrExcludedUnits never becomes empty but the function keeps iterating indefinitely, causing a DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b74a0716-3047-473d-b443-ae6a2c818ca0",
+    "timestamp": "2025-12-23 18:17:50.656615",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Index hint manipulation] At line 29, the query uses 'INDEXED BY byFree' for SQLite. If this index is corrupted or missing, does the query fail silently or return incorrect results, causing nodes to select invalid parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f82b366-e0cc-4e34-9a71-415b12a96672",
+    "timestamp": "2025-12-23 18:18:14.019836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [SQL injection via witness list] At line 33, arrWitnesses is passed directly to the SQL query. If arrWitnesses contains maliciously crafted address strings (e.g., with SQL metacharacters), can this cause SQL injection or query errors that prevent parent selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8313b584-8ca2-4846-926b-afba5eae8305",
+    "timestamp": "2025-12-23 18:18:37.932263",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Race condition in witness counting] The subquery at lines 25-27 counts matching witnesses. If witness_list_unit is being modified concurrently for a unit, can this cause non-deterministic witness counts across different nodes, leading to different parent selection decisions and a chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5664e63-b616-4c14-b254-700a2a6082fc",
+    "timestamp": "2025-12-23 18:19:02.442050",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Empty parent set] At lines 39-40, if all free units have count_matching_witnesses < count_required_matches, the function calls pickDeepParentUnits. Can an attacker deliberately create many incompatible free units to force all nodes to pick deep parents simultaneously, causing a network-wide slowdown (Medium severity: 1+ day delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c096a8bd-49a4-4e1e-8f6c-0340a9df56ad",
+    "timestamp": "2025-12-23 18:19:28.152645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Archived joint bypass] At line 30, archived joints are excluded with 'archived_joints.unit IS NULL'. If an attacker can cause a unit to be archived and then received again without proper cleanup, can this unit be selected as a parent despite being archived, potentially causing consensus issues when other nodes reject it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64f64c36-83d3-448d-b082-f24354d5d746",
+    "timestamp": "2025-12-23 18:19:54.608451",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Timestamp manipulation] At lines 20-21, the timestamp condition 'timestamp<=' is only applied when storage.getMinRetrievableMci() >= constants.timestampUpgradeMci. Can an attacker submit units with future timestamps before this upgrade point to bypass timestamp checks and cause units to reference parents that shouldn't be reachable, breaking temporal ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_136b87b0-5ff3-4373-b9f5-07471a245be7",
+    "timestamp": "2025-12-23 18:20:21.209411",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Version/alt network attack] At lines 35-36, if an attacker manages to get a unit with unsupported version or wrong alt value stored in the database with sequence='good' and is_free=1, does the 'wrong network' error cause all subsequent parent selection attempts to fail, leading to network-wide transaction halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffb78cfa-497b-4ae2-9fdb-deacfddb0ae3",
+    "timestamp": "2025-12-23 18:20:48.816630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Witness compatibility bypass] In the query at line 22-31 that selects free units with matching witnesses, can an attacker flood the network with units that have exactly COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses but are on incompatible witness lists, causing legitimate transactions to select incompatible parents and create a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f2ffc55-99f1-4acb-b06f-b4bf43f7cb71",
+    "timestamp": "2025-12-23 18:21:18.071265",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Witness eligibility timing] If a witness address becomes disqualified between when buildPaidWitnesses() queries descendants (line 235) and when payments are calculated (line 162), can ineligible witnesses still receive payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35db650a-5a12-44d5-a118-58dde9585885",
+    "timestamp": "2025-12-23 18:21:48.111487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Double payment risk] If count_paid_witnesses in balls table is set but witnessing_outputs insert fails (e.g., constraint violation), can the unit be reprocessed, causing witnesses to be paid twice for the same unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20b7e857-9e0c-4f27-9e46-48830570c904",
+    "timestamp": "2025-12-23 18:22:18.857131",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Equal distribution fairness] When count_paid_witnesses === 0 (lines 268-271), all witnesses get paid equally regardless of their actual network contribution - can attackers deliberately create units with no witness descendants to manipulate payment distribution unfairly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60ebe268-1bc7-49f7-95b8-0f43a6fd64f5",
+    "timestamp": "2025-12-23 18:22:49.313535",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Payload_commission overflow] If payload_commission values are near Number.MAX_SAFE_INTEGER, can the division at line 162 lose precision, causing incorrect payment amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_885b9cbb-ffaa-4a53-9cc5-9376b343d5c4",
+    "timestamp": "2025-12-23 18:23:19.309859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Count_paid_witnesses overflow] If count_paid_witnesses becomes very large (e.g., database corruption), can the division at line 162 produce near-zero or zero amounts, effectively stealing witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e31b82db-a0b9-45f8-b0de-ab30e5814421",
+    "timestamp": "2025-12-23 18:23:48.766380",
+    "report_generated": false
   }
 ]
