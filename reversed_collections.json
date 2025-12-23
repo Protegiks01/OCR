@@ -10198,5 +10198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8dc9bb6-22f0-4e8c-8b21-ed4dc9b6004b",
     "timestamp": "2025-12-23 15:36:47.765322",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Message Modification] Between verify.update(message) at line 25 and verify.verify() at line 29/33, if the message variable is mutated (though this shouldn't happen with proper scoping), could the verification check a different message than was hashed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b215b25e-8ab1-4fc2-bd07-991fb6e5b32f",
+    "timestamp": "2025-12-23 15:38:00.899983",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [PEM Key Modification] After contentAloneBuffer is created at line 107, multiple checks access different parts of the buffer (lines 109, 113-126, 137) - if the buffer is modified between these checks (though Buffer should be immutable), could later validation steps pass even if earlier steps should have rejected the key?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66c6c616-e05c-4c1e-aaee-b9addc83dc50",
+    "timestamp": "2025-12-23 15:38:13.935003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Buffer Modification] After Buffer.from(b64_sig, 'base64') decodes the signature at line 14, but before ecdsaVerify() uses it at line 15, if another thread or callback modifies the signature buffer contents, could this cause the verification to check a different signature than what was intended, leading to incorrect authentication?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_728eea75-c34b-40f3-81a7-b2cdf28b3e35",
+    "timestamp": "2025-12-23 15:38:26.786660",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Module-Level State] Does signature.js maintain any module-level state that persists across function calls, and if multiple parts of the code import this module simultaneously, could they interfere with each other's operations, causing non-deterministic verification results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1db33d2e-87c5-469e-86ea-71019e6cf556",
+    "timestamp": "2025-12-23 15:38:40.142663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [objSupportedPemTypes Mutation] If any code mutates the objSupportedPemTypes object at runtime (lines 160-350) by adding/removing entries or modifying properties, could this cause validateAndFormatPemPubKey() to reject previously valid keys or accept previously invalid keys, breaking existing AAs that rely on specific curve support?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61c80cda-d5be-42cf-9eeb-2bc08c31aa41",
+    "timestamp": "2025-12-23 15:38:54.721404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [crypto Module State] Does crypto.createVerify() maintain state between calls, and if verify.verify() is called multiple times on the same verify object (which shouldn't happen given the code structure), could this produce incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64892b42-b396-482d-8982-c55849906b25",
+    "timestamp": "2025-12-23 15:39:09.886037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [secp256k1 Library State] Does the secp256k1 library maintain any global state between verify() calls, and if so, could concurrent calls from multiple units being validated simultaneously corrupt this state, leading to incorrect verification results for some signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b56660cb-8ddd-4b98-a639-673738b77d66",
+    "timestamp": "2025-12-23 15:39:25.779633",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Base64 Padding Malleability] Base64 encoding can have optional padding ('=' characters) - if the same signature encodes to 'ABC=' and 'ABC' (with/without padding), and both decode to the same bytes, could an attacker create units with slightly different signature strings that are all considered valid but appear to be different signatures in tracking systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_607799ad-7a44-468f-a799-9d8c672c1c8a",
+    "timestamp": "2025-12-23 15:39:43.360887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [RSA Signature Padding] Does crypto.createVerify() enforce a specific RSA padding scheme (e.g., PKCS#1 v1.5 vs PSS), and if an attacker can create signatures with different padding that both verify successfully, could they replay signatures across different contexts or exploit padding oracle attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0196d6dd-3cf1-44e7-98fc-d55b99ec4253",
+    "timestamp": "2025-12-23 15:40:02.037204",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Public Key Malleability] ECDSA public keys can be represented in compressed (33 bytes) or uncompressed (65 bytes) format - if b64_pub_key in a 'sig' definition uses uncompressed format, can an attacker create an equivalent compressed pubkey that produces different address definitions but validates the same signatures, potentially bypassing access controls?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2b9be52-ed76-4419-8893-10a17e595ced",
+    "timestamp": "2025-12-23 15:40:21.999800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [ECDSA Malleability] For any valid ECDSA signature (r, s), the signature (r, -s mod n) is also valid - does secp256k1.ecdsaVerify() enforce canonical s values (s <= n/2), or could an attacker create two different signature strings for the same unit_hash_to_sign, allowing the same unit to be published twice with different signatures, potentially confusing unit tracking or replay detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df11318c-1972-4580-8b7c-579ebecbb2d4",
+    "timestamp": "2025-12-23 15:40:42.267160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Callback Error Handling] If the handle callback function throws an exception when called with an error at lines 93, 102, etc., does this crash the validation process, or is there error handling in the caller (formula/evaluation.js) that catches these exceptions and safely rejects the AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c51ba761-107d-43b2-be15-da5852bf2ed6",
+    "timestamp": "2025-12-23 15:41:03.079712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [TypeError Specificity] Line 32 checks 'if (e1 instanceof TypeError)' to distinguish between API version differences and actual errors - but if a malformed pem_key causes TypeError for a different reason (e.g., accessing undefined property), could the code incorrectly attempt the second API call, masking the real error and returning false for all signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40bf80f7-27e2-4596-921c-85023f60ae08",
+    "timestamp": "2025-12-23 15:41:24.912229",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Early Return Errors] If any validation check fails (lines 93, 102, 105, 110, 129, 134, 141, 145, 147, 151), handle() is called with an error - but if the callback accidentally calls handle(null, value) after handle(error), could this cause double-callback bugs in formula/evaluation.js that lead to undefined behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca882863-7cfd-49b9-8146-6d9eff5d564e",
+    "timestamp": "2025-12-23 15:41:46.776771",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: signMessage()] [Exception Propagation] If crypto.createSign() throws an exception before the try-catch at lines 78-86 (e.g., if 'SHA256' algorithm is not available), the exception propagates uncaught - could this crash composer.js or wallet.js during transaction creation, leaving a partially composed unit in the database that corrupts future operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd3b0bfb-17a2-4609-b009-9692534d8c16",
+    "timestamp": "2025-12-23 15:42:09.796511",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Uncaught Exceptions] If secp256k1.ecdsaVerify() throws an exception type not caught by the generic catch block (e.g., OutOfMemoryError, StackOverflowError in edge cases), could this crash the validation process in definition.js, causing the unit to be neither accepted nor rejected and leaving it in limbo, freezing any inputs spent in that unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9681768-bc5b-4fc0-a0c8-4234b9ed196c",
+    "timestamp": "2025-12-23 15:42:33.734958",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Parameter Type Confusion] Does verify() validate that hash is a Buffer and b64_sig/b64_pub_key are strings, or if an attacker passes objects/arrays/functions as parameters, could type coercion in Buffer.from() or ecdsaVerify() cause unexpected behavior, crashes, or security bypasses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8fb4953-ab98-4d40-8a73-f826bb7458c5",
+    "timestamp": "2025-12-23 15:42:58.025825",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Message Encoding Injection] If the message parameter contains UTF-8 characters that crypto.createVerify() normalizes differently than the AA formula's string handling (e.g., different Unicode normalization forms NFC vs NFD), could an attacker create signatures that verify in the AA but fail when replayed, or vice versa?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea0bd987-e8b5-492c-a312-87f5452d276d",
+    "timestamp": "2025-12-23 15:43:23.943496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [ASN.1 Integer Overflow] When computing identifiersStart + identifiersLength at line 138, if identifiersLength is 255 (maximum value for a single byte) and identifiersStart is near the buffer length, could integer overflow cause the slice operation to read from before the start of the buffer, potentially leaking memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5916e9a6-0c54-4fa6-9d61-38f8e3dca89b",
+    "timestamp": "2025-12-23 15:43:50.309206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Header/Footer Injection] Lines 96 removes PEM headers using simple string replace - if an attacker provides a PEM key with multiple headers or nested headers (e.g., '-----BEGIN PUBLIC KEY----------BEGIN PUBLIC KEY-----'), could the replace() only remove the first occurrence, leaving malicious content that passes validation but fails during crypto operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db046ceb-eeec-44ab-962a-bb83a934f00f",
+    "timestamp": "2025-12-23 15:44:15.883973",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Regex Injection] The whitespace removal at line 99 uses /\\\\s/g - if an attacker can influence the regex through prototype pollution (e.g., by setting String.prototype.replace), could they cause the regex to match unexpected characters or behave maliciously, allowing malformed PEM keys to pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dcd6d3fb-b0eb-45e7-9913-f60b48d828dd",
+    "timestamp": "2025-12-23 15:44:40.359186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Memory Allocation] Buffer.from(contentAloneB64, 'base64') at line 107 allocates a buffer that could be up to ~552 bytes - if an attacker creates thousands of AAs each using is_valid_sig with maximum-size PEM keys, and sends many trigger units simultaneously, could the memory allocation for validating all these keys cause nodes to run out of memory and crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e8cad7f-89ba-44c9-a3c6-dfb9595daaea",
+    "timestamp": "2025-12-23 15:45:04.118052",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verifyMessageWithPemPubKey()] [Exception Spam] Lines 35, 39 log every exception to console - could an attacker flood the network with units containing malformed PEM signatures that trigger these logs thousands of times per second, filling up disk with log files and causing node crashes due to out-of-disk-space errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e7c33d94-9c4b-42ac-92eb-0ca257b12db6",
+    "timestamp": "2025-12-23 15:45:28.879896",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: verify()] [Signature Verification Cost] Each verify() call invokes secp256k1.ecdsaVerify() which requires elliptic curve point multiplication - if a unit has many authors each with 'sig' definitions, and each author's address requires multiple signature verifications through nested 'or'/'and' operators, could the total verification time exceed acceptable limits, causing such units to be rejected and freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c0bcbcc-cc04-44b0-aab1-967d0c5b8c4f",
+    "timestamp": "2025-12-23 15:45:55.359747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signature.js] [Function: validateAndFormatPemPubKey()] [Quadratic Parsing] Lines 138 uses string.slice() on contentAloneHex which requires copying the substring - if an attacker provides many PEM keys near the 736-character limit, could the repeated string operations cause quadratic time complexity, slowing down unit validation and delaying transaction confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3a4e552-3615-4c47-8237-fedf5157da78",
+    "timestamp": "2025-12-23 15:46:21.937775",
+    "report_generated": false
   }
 ]
