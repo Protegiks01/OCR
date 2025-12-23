@@ -4948,5 +4948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60bfcafb-653e-4623-9207-59edf170fbb0",
     "timestamp": "2025-12-23 08:28:24.045641",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getPeerAddressesFromSigners()] [Device Address Spoofing] At lines 574-583, the function extracts addresses where device_address !== getMyDeviceAddress() - if an attacker can temporarily modify what getMyDeviceAddress() returns (e.g., through race conditions or message injection), can this cause the function to misclassify which addresses are peers vs. self-controlled?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e307ae2e-0029-4d6c-9b2f-e6a148956fbc",
+    "timestamp": "2025-12-23 08:29:41.008096",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressPeers()] [Empty Peers Allowed] The comment at lines 562-564 notes",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_06ba4d92-d596-4203-a2d3-c692524bcea6",
+    "timestamp": "2025-12-23 08:29:53.419446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressPeers()] [Name Spoofing] At lines 565-568, the function maps addresses to names from correspondent_devices, using 'unknown peer' as fallback - if an attacker can manipulate correspondent_devices.name, can they impersonate legitimate cosigners by using the same name, causing users to send signatures or funds to the wrong party?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f32b80cc-f61a-4e2b-ac9f-90b291089ddb",
+    "timestamp": "2025-12-23 08:30:06.200864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressPeers()] [Authorization Bypass] At lines 557-561, the function queries for addresses WHERE device_address != getMyDeviceAddress() and LEFT JOINs correspondent_devices - but it doesn't verify that these addresses are actually part of the shared address definition - can this return arbitrary addresses that happen to be in shared_address_signing_paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b4aedc4-d308-4834-8272-316ce0f2603f",
+    "timestamp": "2025-12-23 08:30:19.688490",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressCosigners()] [Missing Correspondent Handling] The LEFT JOIN at line 537 allows rows with NULL names - if a cosigner device is not in correspondent_devices, what name is returned? Can this cause UI display issues or make it impossible to identify which devices need to sign?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e09aaeff-e777-4fef-9961-76b73d69df04",
+    "timestamp": "2025-12-23 08:30:34.520705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressCosigners()] [Information Disclosure] At lines 534-538, the query joins correspondent_devices to get cosigner names - if correspondent_devices.name contains sensitive information or if an attacker can manipulate this table, can this leak information or display misleading cosigner identities to users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffee1063-757f-4db8-b000-5b9e64c75dfa",
+    "timestamp": "2025-12-23 08:30:49.800696",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressCosigners()] [Exception on Missing Cosigners] At line 542, if rows.length === 0, the function throws Error - is it possible for a valid shared address to legitimately have no other cosigners (e.g., if it only includes the current device)? Can this error handling cause crashes for single-device addresses or merkle-based definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c53d2161-4f42-419e-987e-33898b243c69",
+    "timestamp": "2025-12-23 08:31:06.326425",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressDefinition()] [Timestamp Manipulation] At line 520, the query retrieves creation_ts using db.getUnixTimestamp() - if the system clock is manipulated or the database contains incorrect timestamps, can this cause time-based validation logic to fail or allow unauthorized operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b978b784-6061-4c9a-958f-af455b371e03",
+    "timestamp": "2025-12-23 08:31:23.821821",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressDefinition()] [JSON Parsing Vulnerability] At line 525, JSON.parse(rows[0].definition) is called without validation - if the stored definition is malformed JSON, contains circular references, or excessively deep nesting, can this cause parse errors, memory exhaustion, or denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5fd8d5a-5607-43ee-a103-23467fdd2fdf",
+    "timestamp": "2025-12-23 08:31:42.640759",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readSharedAddressDefinition()] [Exception on Missing Address] At line 524, if rows.length !== 1, the function throws Error - is this error caught by callers, or can a request for a non-existent shared address crash the node or leave it in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c35b76be-eb30-46e2-b414-40591082384b",
+    "timestamp": "2025-12-23 08:32:02.855279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readAllControlAddresses()] [Union Correctness] At line 497, the function uses _.union() to merge address/device arrays - if the same address or device appears at different levels of the recursion, can duplicate entries in the result cause incorrect signature counting or redundant signing requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3f8cd2d-5000-4b34-a0ab-81f901309e27",
+    "timestamp": "2025-12-23 08:32:22.907344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readAllControlAddresses()] [Correspondent Filter] At line 489, the query filters for have_correspondent IS NOT NULL at line 488 - can this cause the function to miss control device addresses that are actually valid signers but not currently in the correspondent_devices table, potentially preventing signature collection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e92d63bb-3867-4178-912c-5d8618ecf703",
+    "timestamp": "2025-12-23 08:32:44.587418",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readAllControlAddresses()] [Empty Address Array] At lines 492-493, if rows.length === 0, the function returns empty arrays [] [] - but if arrAddresses was non-empty initially, does this indicate an error condition (no control addresses found) or a legitimate state? Can callers distinguish between these cases?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_104fa97d-7668-4d27-9412-c184e58e2499",
+    "timestamp": "2025-12-23 08:33:06.604286",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readAllControlAddresses()] [SQL Injection] At lines 487-490, the query uses IN(?) twice with arrAddresses - if arrAddresses is manipulated or contains SQL metacharacters, can this cause injection attacks or incorrect results that leak information about unrelated control addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68d75bab-e6b0-4094-b83e-9a1ad93ba76f",
+    "timestamp": "2025-12-23 08:33:30.406788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: readAllControlAddresses()] [Infinite Recursion] At line 496, the function recursively calls itself with arrControlAddresses - if the shared address dependency graph has cycles (e.g., address A controls B, B controls C, C controls A), can this cause infinite recursion, stack overflow, or denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be00e299-cf93-40cf-8990-235371688c4f",
+    "timestamp": "2025-12-23 08:33:54.310194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [Connection Parameter] The function accepts optional 'conn' parameter at line 472 and uses conn || db - if a caller provides a malicious conn object that implements a database-like interface, can this cause private chains to be forwarded to attacker-controlled destinations or logged for later exfiltration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dea1b6dd-878d-47ba-83d0-5a8401707ac7",
+    "timestamp": "2025-12-23 08:34:18.412955",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [SQL Injection] At line 474, the query uses IN(?) with arrAddresses array - if arrAddresses contains maliciously crafted address values or special characters, can this cause SQL injection or return incorrect device addresses that should not receive private chain data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30beb25d-d626-41fc-9f2f-b7986c0a6ece",
+    "timestamp": "2025-12-23 08:34:44.381076",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [Privacy Leak] The function forwards arrChains to all members of the shared addresses at line 480 - if a member is later removed or the shared address definition changes, do previously forwarded private chains remain accessible to former members who should no longer have access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04864fde-89b7-4eac-9ffd-026987c82293",
+    "timestamp": "2025-12-23 08:35:09.935808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardPrivateChainsToOtherMembersOfAddresses()] [Authorization Bypass] At lines 473-476, the function queries shared_address_signing_paths and forwards private chains to all device_addresses except self - but does it verify that these devices are still active correspondents with valid pairing? Can this forward private payment data to abandoned/compromised devices?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c69db7bd-8ace-4b0b-9888-fc0d201ba7c3",
+    "timestamp": "2025-12-23 08:35:35.414707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinition()] [Validation Bypass] The function only checks for err at line 464 but does not inspect what specific validation rules were applied - can an attacker craft a definition that passes validation here due to the fake context but fails in real usage, creating addresses where funds can be sent but never spent?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a60857c2-a0b6-4259-9362-9634e998881e",
+    "timestamp": "2025-12-23 08:36:02.108877",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinition()] [Empty Authors Array] At line 461, objFakeUnit.authors is set to an empty array [] - does Definition.validateDefinition() properly handle validation when there are no authors, or can this cause it to skip critical author-dependent validation checks that would catch malicious definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_815c9cfd-2a51-41cc-8739-8acc65c44ea3",
+    "timestamp": "2025-12-23 08:36:29.031469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinition()] [Unresolved Inner Definitions] At line 462, objFakeValidationState.bAllowUnresolvedInnerDefinitions is set to true - does this allow attackers to create shared addresses with inner definitions that reference non-existent or malicious addresses, which only fail validation when actually used for signing, effectively locking funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89d305e5-356c-4b32-8ce3-e6bf71b4c664",
+    "timestamp": "2025-12-23 08:36:56.865121",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [MAX_INT32 Manipulation] At line 450, last_ball_mci is set to MAX_INT32 (2^31 - 1) defined at line 20 - if the protocol ever reaches this MCI value in production, can this cause integer overflow, incorrect validation comparisons, or bypass of MCI-dependent rules in Definition.validateDefinition()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5558ed59-94c2-4996-945b-25443de6150e",
+    "timestamp": "2025-12-23 08:37:24.038113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [Validation Context Mismatch] At lines 449-451, the fake validation uses objFakeUnit with a simple sig definition and objFakeValidationState with last_ball_mci set to MAX_INT32 - does this artificial context properly test all validation rules that would apply to real addresses, or can malicious definitions pass validation here but fail in production?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ccd9df5f-a145-4fea-b9e6-42c21a3cc7d4",
+    "timestamp": "2025-12-23 08:37:52.150690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [Template Replacement Vulnerability] At line 444, Definition.replaceInTemplate() is wrapped in try-catch to handle exceptions - but what specific exceptions can occur? If replaceInTemplate throws due to prototype pollution, can an attacker use this to corrupt the global prototype chain and affect other address validations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4b53c5c-911c-4a17-b87f-f2c157b9d453",
+    "timestamp": "2025-12-23 08:38:18.471688",
+    "report_generated": false
   }
 ]
