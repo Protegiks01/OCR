@@ -7198,5 +7198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01c28070-8cc7-40d9-a38d-e728a6f2e74a",
     "timestamp": "2025-12-23 09:29:35.556281",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has definition change' case] [Default Address for Definition Change] At line 1092, if message.payload.address is not specified, it defaults to objUnit.authors[0].address, but what if objUnit.authors is empty or authors[0] is undefined? Can this cause an exception or incorrect address comparison?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da64f7d9-c441-4d1d-9626-e23ee7f83461",
+    "timestamp": "2025-12-23 09:30:51.553487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has definition change' case] [This Address Resolution Timing] At lines 1081-1084, 'this address' is resolved to the address parameter, but if this evaluation happens inside a nested 'address' operator where address has changed, can the wrong address be used for comparison, causing 'has definition change' to return incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f9ca658-0453-4745-adbe-3a988abaeed1",
+    "timestamp": "2025-12-23 09:31:04.139262",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'seen' case] [Seen Input Type Validation] At line 786, the code checks filter.what is 'input' or 'output', but if it's neither (due to validation bypass), line 787 would use an invalid table name in SQL query; is there proper error handling, or would this cause a database exception that crashes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80d4022c-7508-4dc7-a5bc-2d8191e46fab",
+    "timestamp": "2025-12-23 09:31:17.263163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has definition change' case] [Default Address for Definition Change] At line 1092, if message.payload.address is not specified, it defaults to objUnit.authors[0].address, but what if objUnit.authors is empty or authors[0] is undefined? Can this cause an exception or incorrect address comparison?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0fe133fb-c5ee-44ab-9086-c9111ec7dc84",
+    "timestamp": "2025-12-23 09:31:30.632746",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has definition change' case] [This Address Resolution Timing] At lines 1081-1084, 'this address' is resolved to the address parameter, but if this evaluation happens inside a nested 'address' operator where address has changed, can the wrong address be used for comparison, causing 'has definition change' to return incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_457cfb71-9968-4d0f-ae3c-9d6b7254d584",
+    "timestamp": "2025-12-23 09:31:44.833262",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'seen' case] [Seen Input Type Validation] At line 786, the code checks filter.what is 'input' or 'output', but if it's neither (due to validation bypass), line 787 would use an invalid table name in SQL query; is there proper error handling, or would this cause a database exception that crashes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c8a4e52-1a98-4d92-bb82-27c7a491c5d3",
+    "timestamp": "2025-12-23 09:32:00.148297",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Platform Spoofing] Can an attacker manipulate process.platform to return an unexpected value (e.g., through environment variable injection in Node.js forks or child processes), causing the function to throw an 'unknown platform' error and preventing the application from initializing, resulting in a denial of service that blocks all wallet operations and transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b857edd9-22fd-4b2a-9c4c-43704ff2f532",
+    "timestamp": "2025-12-23 09:32:16.799543",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Environment Variable Manipulation] If an attacker can control the APPDATA environment variable on Windows systems (e.g., through a malicious installer or privilege escalation), can they redirect the application data directory to an attacker-controlled location, allowing them to replace wallet files, private keys, or database files with malicious versions that could lead to direct theft of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9821442-6e58-4123-9aa8-585d0f0a8037",
+    "timestamp": "2025-12-23 09:32:34.855869",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Environment Variable Injection - Linux] On Linux systems, if process.env.HOME is undefined, contains null bytes, or points to a non-existent directory, does the function properly validate this before concatenating '/.config', or could this cause undefined behavior when other modules attempt to access the data directory, potentially preventing wallet.js from loading user wallets and causing permanent freezing of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0d229a6-1165-476c-abe7-d4d5037e6125",
+    "timestamp": "2025-12-23 09:32:53.590139",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Path Traversal via Environment] Can an attacker set HOME='/tmp/../../../root' or APPDATA='C:\\\\..\\\\..\\\\Windows\\\\System32' to cause path traversal, allowing the application to read/write files outside the intended user directory, potentially overwriting critical system files or accessing other users' wallet data in multi-user systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_348335e1-068e-489a-bd89-903482b74866",
+    "timestamp": "2025-12-23 09:33:14.576297",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Symbolic Link Attack] If an attacker creates a symbolic link at the expected APPDATA or HOME/.config location pointing to a sensitive system directory before the application starts, will the application follow the symlink and potentially corrupt system files or expose sensitive data, causing system-wide instability that could halt the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6214c72-1ac1-4438-b117-19468c7bfcd4",
+    "timestamp": "2025-12-23 09:33:36.020626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [macOS Library Path Injection] On macOS, if process.env.HOME contains special characters, whitespace, or path traversal sequences like '../', does the concatenation with '/Library/Application Support' properly sanitize these inputs, or could this result in writing wallet databases to unintended locations where they could be accessed by other users or processes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ed97441-5256-4934-9c7e-d0b73dc8a19b",
+    "timestamp": "2025-12-23 09:33:57.941778",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Null Byte Injection] If process.env.APPDATA or process.env.HOME contains null bytes (\\\\x00), could this truncate the path string in the underlying filesystem operations, causing the application to write data to an unexpected location (e.g., 'C:\\\\Users\\\\Victim\\\\AppData' becomes 'C:\\\\Users\\\\Victim'), potentially exposing sensitive wallet data to all processes running under that user?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54df77e9-80e5-497c-a2a6-591385c8c166",
+    "timestamp": "2025-12-23 09:34:20.624816",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppsDataDir()] [Windows Path Length Limit] On Windows systems with APPDATA paths exceeding 260 characters (MAX_PATH), does the function handle this gracefully, or could this cause file system operations in storage.js, sqlite_pool.js, or wallet.js to fail silently, resulting in users being unable to access their wallets and causing permanent freezing of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74ebab67-38a4-461a-bca8-366ef6f005c8",
+    "timestamp": "2025-12-23 09:34:43.788199",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Infinite Recursion DoS] If the function is called with a start_dir on a deeply nested filesystem path (e.g., 1000+ directories deep) where no package.json exists, will the recursive calls exhaust the call stack, causing a stack overflow that crashes the Node.js process and results in a total network shutdown for that node, preventing it from confirming new transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_907eb0bb-a322-4669-99b2-80154b7c5412",
+    "timestamp": "2025-12-23 09:35:08.592004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Race Condition in fs.accessSync] Between the fs.accessSync() check at line 19 and the return of start_dir at line 20, can an attacker delete or modify the package.json file (e.g., in a multi-process environment or through filesystem race conditions), causing subsequent require() calls in getAppName() to fail or load malicious JSON, potentially allowing code execution through crafted package.json content?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ae37aeb6-8ef6-4373-a5e4-4eff440eed53",
+    "timestamp": "2025-12-23 09:35:34.229031",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Symbolic Link Directory Traversal] If an attacker places a symbolic link in the directory hierarchy that points to a sensitive system directory (e.g., /etc or C:\\\\Windows\\\\System32), will path.dirname() follow the symlink during recursive traversal, potentially causing the function to return a system directory as the 'app root', leading to conf.js loading configuration from attacker-controlled locations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1719bd4-434f-4660-ba34-1be5c5cbd747",
+    "timestamp": "2025-12-23 09:36:00.661532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Root Directory Detection Bypass] On Windows systems with UNC paths (\\\\\\\\server\\\\share) or mounted network drives, does the root detection logic at line 24 correctly handle these paths, or could an attacker craft a path that bypasses the '/' and '\\\\w:[/\\\\]$' checks, causing infinite recursion that exhausts system resources and prevents the node from processing any transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6034973-a26e-41af-9318-a6547c92c3f1",
+    "timestamp": "2025-12-23 09:36:26.875625",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [TOCTOU Vulnerability] The function uses fs.accessSync() to check file existence, then later getAppName() uses require() to load the same file. Is there proper locking or atomic operations to prevent a Time-of-Check-Time-of-Use (TOCTOU) attack where an attacker swaps package.json between the check and the require(), potentially injecting malicious configuration that could redirect database paths or modify protocol constants?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61bf72cf-7386-4eb4-ad32-85f5cb5601b9",
+    "timestamp": "2025-12-23 09:36:52.194117",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Error Message Information Disclosure] When the function throws 'no package.json found' at line 25, does this error propagate to user-facing interfaces or logs that could expose the complete directory structure being traversed, potentially leaking sensitive information about the system layout to attackers monitoring error logs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b79ae1c-8093-4d0e-8c82-7d93ce0e1c62",
+    "timestamp": "2025-12-23 09:37:19.509716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Windows Drive Letter Case Sensitivity] The Windows root detection regex at line 24 uses '\\\\w' which matches alphanumeric characters, but does it properly handle edge cases like '\\\\' separators vs '/' separators in mixed paths, or could an attacker craft a path like 'C:/some/path' (forward slash on Windows) that bypasses the root check and causes infinite recursion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_200e399f-68d2-4f4b-adeb-ccba162bf26e",
+    "timestamp": "2025-12-23 09:37:47.579663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getPackageJsonDir()] [Exception Handling During Recursion] If fs.accessSync() throws an exception for reasons other than ENOENT (e.g., EPERM due to permission issues, ELOOP due to symlink loops, or ENAMETOOLONG), the catch block at line 22 treats all exceptions equally. Could this cause the function to incorrectly traverse into restricted directories or miss legitimate package.json files, leading to incorrect app root detection that breaks database initialization in db.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b7b7c18-8547-41a5-9013-2f15bce19b8f",
+    "timestamp": "2025-12-23 09:38:14.318270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [process.mainModule Undefined] In certain Node.js execution contexts (e.g., REPL, eval(), or when loaded as a library), process.mainModule can be undefined. The function checks for this at line 35 but falls back to __dirname-based logic. Could an attacker deliberately run the application in a context where process.mainModule is undefined and __dirname is inside a deeply nested node_modules, causing the fallback logic to return an incorrect app root that breaks configuration loading in conf.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3954559b-c216-4feb-ba04-d06b97a6ccd5",
+    "timestamp": "2025-12-23 09:38:40.298194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [mainModule.paths Manipulation] At line 36, the function accesses process.mainModule.paths[0]. If an attacker can manipulate Node.js module resolution paths (e.g., through NODE_PATH environment variable or require() monkey-patching), could they cause paths[0] to point to an attacker-controlled directory, leading to malicious package.json being loaded and potentially allowing code execution through crafted configuration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afaf3fe5-6f41-4649-9b88-55457ecbc9f6",
+    "timestamp": "2025-12-23 09:39:05.963165",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Function: getAppRootDir()] [node_modules Path Splitting Vulnerability] The fallback logic at line 40 splits __dirname by 'node_modules' path separator. On Windows systems, could an attacker create a directory structure like 'C:\\\\malicious\\\\node_modules\\\\subdir\\\\node_modules\\\\ocore' to confuse the split logic, causing arrParts.length to be > 1 and returning 'C:\\\\malicious' as the app root, which might contain malicious configuration files?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b2f0e85-7804-4a4c-a900-e109f543a436",
+    "timestamp": "2025-12-23 09:39:31.730242",
+    "report_generated": false
   }
 ]
