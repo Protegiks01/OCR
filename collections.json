@@ -13648,5 +13648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b2c2841-d510-47ad-82c3-097465ac5abf",
     "timestamp": "2025-12-23 16:40:22.838940",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Race Condition] If multiple concurrent calls to readMyWitnesses() execute simultaneously while witnesses are being deleted (lines 13-19 old witness reset), can some calls receive the empty array before insertion while others receive the old invalid list, causing different nodes to compose units with incompatible witness lists and triggering a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_746012ca-f3b1-4b94-9fce-a228d4a7f646",
+    "timestamp": "2025-12-23 16:41:40.743753",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Race Condition] When actionIfEmpty='wait' triggers a 1-second retry loop (lines 23-29), if insertWitnesses() is called during this waiting period, can the callback be invoked multiple times with different witness arrays, causing composer.js to start multiple conflicting unit composition operations with different witness sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5a7feed-6649-4504-8473-c49bc116db79",
+    "timestamp": "2025-12-23 16:41:53.381216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Database Consistency] If the database query 'SELECT address FROM my_witnesses ORDER BY address' (line 10) returns witnesses mid-transaction while another process is executing DELETE FROM my_witnesses (line 17), can the read return a partial witness list (e.g., 5 out of 12 witnesses), bypassing the COUNT_WITNESSES validation and causing units to be composed with invalid witness arrays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b78a23b-01c8-48d2-bd86-e37b17b8b34e",
+    "timestamp": "2025-12-23 16:42:06.386789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Consensus Failure] If the old witness reset logic (lines 13-19) triggers on one node but not others due to timing differences in reading constants.alt or constants.versionWithoutTimestamp, can this cause some nodes to delete their witnesses while others retain them, leading to different witness lists across the network and permanent consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62369b90-385c-4d32-a7c1-9244a8da4f55",
+    "timestamp": "2025-12-23 16:42:20.052810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Network Halt] If all nodes simultaneously hit the actionIfEmpty='wait' retry loop (lines 23-29) due to coordinated witness list deletion, and no process ever calls insertWitnesses() (e.g., due to a crash or bug in initialization), can the entire network enter an infinite wait state where no units can be composed, causing total network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e22a3fb1-8a22-433b-a0ce-ab7dbef51249",
+    "timestamp": "2025-12-23 16:42:34.416754",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Validation Bypass] Does the witness count check (lines 31-32) only throw an Error without preventing the handleWitnesses callback from being invoked, potentially allowing composer.js to receive an invalid witness array (e.g., 11 or 13 witnesses) before the error is thrown, causing invalid units to be composed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02e1a890-b385-47fd-8a9d-9e14b113c5cc",
+    "timestamp": "2025-12-23 16:42:50.302548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [DoS Attack] Can a malicious actor repeatedly trigger the old witness reset condition (lines 13-19) by manipulating constants or injecting old witness addresses, causing continuous deletion and re-insertion of witness lists, creating a DoS condition where nodes spend excessive time in witness management instead of processing transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5cd18a99-b061-436c-adb6-e709eb9d61e6",
+    "timestamp": "2025-12-23 16:43:07.203138",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [State Corruption] If the witness reset logic (line 17) executes DELETE FROM my_witnesses but the process crashes before new witnesses are inserted, can nodes permanently remain in an empty witness state, preventing all unit composition and causing permanent network participation failure for affected nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9d7b0228-9ef4-4ebd-bc95-8fc4b8db2199",
+    "timestamp": "2025-12-23 16:43:25.202782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Callback Timing] When actionIfEmpty='ignore' returns an empty array immediately (line 22), can network.js or composer.js mishandle this empty array (e.g., not checking length before use), causing null pointer exceptions or array access errors that crash the node daemon and halt transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74cd1544-b65c-4be9-b687-174ca0a02a1b",
+    "timestamp": "2025-12-23 16:43:44.380971",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: readMyWitnesses()] [Infinite Loop] If actionIfEmpty='wait' enters the retry loop (lines 25-27) but the database connection is lost or locked, can the setTimeout recursion continue indefinitely without bound, causing memory exhaustion from accumulated timeout handlers and eventually crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5123ffef-a9a0-4db8-851a-a5a85dfc8986",
+    "timestamp": "2025-12-23 16:44:04.042686",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Validation Bypass] Does the ValidationUtils.isValidAddress check (line 39) only verify the address format (32-char uppercase chash) but not check if the new witness has ever posted any units to the network, allowing replacement with completely inactive or non-existent addresses that will never post witness units, causing main chain progression to stall and network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63fe79da-dccb-4bd4-9001-d44136bf1035",
+    "timestamp": "2025-12-23 16:44:25.072828",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Race Condition] If two concurrent calls to replaceWitness() attempt to replace different old witnesses with the same new witness address, can both pass the 'new witness already present' check (line 44) simultaneously before either UPDATE executes, resulting in duplicate witness addresses in my_witnesses table and breaking the COUNT_WITNESSES invariant?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8941e030-24ca-45e6-bb80-b020dec351ac",
+    "timestamp": "2025-12-23 16:44:47.038032",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Database Atomicity] When the UPDATE query executes (line 47), if another process is simultaneously reading via readMyWitnesses(), can the read occur mid-transaction and return a witness list with both old_witness and new_witness present (13 total), causing validation errors in unit composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_446720ff-8a03-4101-8c28-8dd92a40abc7",
+    "timestamp": "2025-12-23 16:45:10.586589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Authorization Bypass] Does replaceWitness() lack any authorization checks to verify the caller is the node owner or an authorized admin, allowing any process (including potentially compromised plugins or malicious code) to arbitrarily change witness lists and partition the node from the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14ca7882-e603-4207-b489-d31cd33d6c6a",
+    "timestamp": "2025-12-23 16:45:34.850022",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Consensus Attack] Can a malicious actor who gains access to the node's witness replacement mechanism (via compromised admin credentials or API exploit) systematically replace all 12 witnesses with attacker-controlled addresses, causing the node to diverge from the main network and accept a shadow DAG controlled by the attacker?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fb653139-8ed3-481a-aed8-e789e5cea7c7",
+    "timestamp": "2025-12-23 16:45:59.785309",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Removed Validation] The commented-out code (lines 54-66) previously checked for stable messages from the new witness and verified no references in address definitions - since these checks are now disabled (comment: 'no longer required in v4'), can an attacker replace witnesses with addresses that have complex definitions with time-locks or oracle dependencies, causing future witness voting to fail when those definitions become unsatisfiable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1dea42d-7d71-491c-aabe-62dcad3a7dbe",
+    "timestamp": "2025-12-23 16:46:25.662741",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Light Client Risk] The comment 'if (conf.bLight)' and 'absent the full database, there is nothing else to check' (line 51) suggests light clients skip additional validation - can this allow light clients to accept witness replacements that full nodes would reject, causing light clients to diverge from the main chain when they compose units with incompatible witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4567b636-8c97-4c59-8a01-8e7115520840",
+    "timestamp": "2025-12-23 16:46:53.591301",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Historical Attack] Since the removed validation (lines 54-66) checked 'sequence=good' and 'is_stable=1' for new witnesses, without these checks can an attacker replace witnesses with addresses that authored units on orphaned branches or bad sequences, potentially causing instability calculations to reference invalid witness paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6f4746a-5272-454b-98df-3c8d19e865e5",
+    "timestamp": "2025-12-23 16:47:21.802123",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Definition References] The removed code checked 'determineIfWitnessAddressDefinitionsHaveReferences' (line 60) - without this check, can witnesses have definitions that reference other addresses or contracts, creating circular dependencies that could deadlock witness voting or make witness stability non-deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32785f73-6b11-4634-af7a-a96acd28d6da",
+    "timestamp": "2025-12-23 16:47:50.630211",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Error Propagation] When handleResult() is called with error strings (lines 40, 43, 45), does the calling code in network.js properly handle these errors, or can they be silently ignored, allowing witness replacement to fail without notification while the node believes it has updated its witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8322f07f-871e-4885-a60a-47f97e167845",
+    "timestamp": "2025-12-23 16:48:18.250138",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Partial Update] If the UPDATE query (line 47) affects 0 rows (because old_witness was already replaced by another concurrent call), does the function incorrectly call handleResult() with success (no error), causing the caller to believe the replacement succeeded when it actually failed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a1aa190-adbc-46f4-af10-b2af013c2d0c",
+    "timestamp": "2025-12-23 16:48:45.214403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: replaceWitness()] [Network Synchronization] When network.js calls replaceWitness() during OP list updates (network.js lines 1914-1917), if the replacement fails but the error is not properly propagated, can the node continue operating with an outdated witness list that differs from the network consensus OP list, causing all future units to be rejected by peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1842c7bd-89d3-4b0e-ad1e-16d7879008a4",
+    "timestamp": "2025-12-23 16:49:12.991692",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [Validation Gap] Does insertWitnesses() only validate the witness count (line 71) but not validate individual witness addresses using ValidationUtils.isValidAddress, allowing insertion of malformed addresses (non-uppercase, wrong length, invalid chash) that would later cause validation failures in unit composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97005017-73bd-4f32-ad5d-c0302585e86f",
+    "timestamp": "2025-12-23 16:49:41.630066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [Duplicate Detection] Does insertWitnesses() check for duplicate addresses within the arrWitnesses array before insertion, or can a caller provide an array with repeated addresses (e.g., same witness appearing 3 times), bypassing the unique witness requirement and corrupting the witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79ae214e-20ad-4191-a16b-76c574cde1d0",
+    "timestamp": "2025-12-23 16:50:11.639066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [Database Constraint] If my_witnesses table lacks a UNIQUE constraint on the address column, can insertWitnesses() successfully insert duplicate witness addresses, causing readMyWitnesses() to return arrays with >12 witnesses and breaking all witness count validations throughout the codebase?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf7cfd6a-3c37-42fe-9cb5-865a2f8bb805",
+    "timestamp": "2025-12-23 16:50:41.723330",
+    "report_generated": false
   }
 ]
