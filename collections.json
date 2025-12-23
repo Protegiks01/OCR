@@ -7948,5 +7948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b6922ed-80c4-4da0-bd08-9e975b6245cf",
     "timestamp": "2025-12-23 10:19:05.103827",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Multiple asset payments failure handling] At line 280, if any asset payment in arrAssetPayments fails (returns err), onDone(err) is called at line 282. But if some messages were already added to the messages array before the error, does composer.composeJoint at line 211 discard these partially-constructed messages, or can they leak into the final unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8543cdf-d16c-430f-a0df-16439496dec0",
+    "timestamp": "2025-12-23 10:20:16.402178",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeAndSaveDivisibleAssetPaymentJoint()] [compose_only flag inconsistency] At line 400, if params.compose_only is true, getNonsavingCallbacks is used instead of getSavingCallbacks. Can an attacker set compose_only=false initially, then modify it to true after validation but before saving, causing the unit to skip saving but still consume UTXOs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f777244c-310c-47e0-93ff-62f634255a48",
+    "timestamp": "2025-12-23 10:20:29.122830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeMinimalDivisibleAssetPaymentJoint()] [Empty available_fee_paying_addresses after filtering] At line 421, if all addresses in available_fee_paying_addresses are unfunded, the callback at lines 422-423 returns an error. But what if the error callback itself throws an exception? Can this cause the entire composition operation to crash without cleaning up locked resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc9d43aa-5ce6-4b63-8815-1e3e7f5d1285",
+    "timestamp": "2025-12-23 10:20:42.300573",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [objJoint mutation between validation and saving] Between validation.validate at line 314 and writer.saveJoint at line 378, objJoint is passed to multiple functions. If any of these functions mutate objJoint (e.g., adding timestamps, modifying witnesses), can the saved unit differ from the validated unit, causing hash mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f51fc424-f479-474b-9457-8239fe5030b6",
+    "timestamp": "2025-12-23 10:20:56.587055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [is_transferrable change output bypass] At lines 234-235, the code checks that for non-transferrable assets, either to_address is the definer or definer is in paying addresses. But the change output at line 251 goes to params.change_address without checking if it equals definer_address. Can an attacker transfer non-transferrable assets to themselves via change outputs, bypassing transferability restrictions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbfa07e3-1cd3-4f89-8e8d-73e542724b55",
+    "timestamp": "2025-12-23 10:21:11.468069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [cosigned_by_definer signing_addresses undefined] At line 236, if params.signing_addresses is undefined (not provided), the check arrPayingAddresses.concat(params.signing_addresses || []) effectively only checks arrPayingAddresses. Can an attacker compose a payment without providing signing_addresses, causing the definer cosigning requirement to be under-enforced?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9613922a-59f1-4ad3-bdba-ac9e21606180",
+    "timestamp": "2025-12-23 10:21:26.998612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [spender_attested light client bypass] At lines 238-239, the attestation check only runs when !conf.bLight. Can a malicious light client compose and broadcast payments of attested-spender assets without having any attested authors, causing full nodes to reject these units and creating a network split between light and full nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0503d148-33bc-4212-9197-69ed2d927e45",
+    "timestamp": "2025-12-23 10:21:44.723209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Asset property caching] The objAsset loaded at line 228 is used for validation at lines 231-239. If the asset definition changes between load and validation (e.g., definer changes is_transferrable via protocol upgrade), can stale objAsset properties cause validation to use outdated rules, accepting payments that should be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eb12be90-7fd6-4ab2-ba74-1cb445c78820",
+    "timestamp": "2025-12-23 10:22:01.440852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Private asset output visibility] For private assets, outputs are inserted into the outputs table at lines 32-38, but the output.address and output.amount are stored in cleartext. Can observers query the database to deanonymize private payment recipients and amounts, defeating the privacy guarantees of private assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c18aecdd-87ad-4b12-811d-f635b33ae7f3",
+    "timestamp": "2025-12-23 10:22:20.408976",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [parseInt silent truncation] At line 36, output.amount is parsed with parseInt() without a radix parameter. If output.amount is a string like '1e10' or '0x1000', can parseInt parse it incorrectly (as decimal 1 or hexadecimal 4096), creating outputs with amounts that don't match the intended transfer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c2c795c-e6fe-4560-aaa6-8c5425a85802",
+    "timestamp": "2025-12-23 10:22:40.136615",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Accumulator overflow in reduce] At line 241, payment.outputs.reduce starts with accumulator:0 and adds output.amount. If output.amount values are near MAX_SAFE_INTEGER and there are multiple outputs, can the accumulator overflow MAX_SAFE_INTEGER without detection, causing target_amount to wrap around and become small, making pickDivisibleCoinsForAmount return insufficient inputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_150ad439-b10c-4a9a-b9d2-2c8efbf7a27f",
+    "timestamp": "2025-12-23 10:22:59.943589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Negative change exploitation] At line 249, change = total_input - target_amount. If target_amount > total_input due to bugs in pickDivisibleCoinsForAmount or target_amount calculation, change becomes negative. Does the check at line 250 (change > 0) prevent negative changes from being added as outputs, or can negative values pass through and cause integer underflow in the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03258f98-3d59-484b-a3c0-aee7c9dff5fd",
+    "timestamp": "2025-12-23 10:23:21.151213",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Change amount bounds] If change at line 249 is exactly 1 (smallest divisible unit), does this create a valid change output at line 251, or are there minimum output thresholds that cause 1-byte outputs to be rejected, permanently burning the remaining change?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6cebbd25-9ec2-45c2-8667-2c304bd74dae",
+    "timestamp": "2025-12-23 10:23:42.860864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [Mutex unlock before validation complete] At lines 335-337, if objValidationState.sequence !== 'good', validation_unlock() is called at line 335 before combined_unlock() at line 336. If validation_unlock() allows other threads to start validating while combined_unlock() is still in progress, can this cause overlapping validation of dependent units, leading to inconsistent validation states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b52a307f-fe44-4d15-8347-2ac95789301b",
+    "timestamp": "2025-12-23 10:24:05.890134",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [TOCTOU in output spending] At lines 66-70, the code checks if type === 'transfer' and then marks outputs as spent. If another transaction spending the same output executes between the check and the UPDATE, can both transactions mark the output as spent, causing a double-spend that both see as valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc43e356-a5a4-4e0d-802a-b9c5634fb6b6",
+    "timestamp": "2025-12-23 10:24:28.973563",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Global variable tampering] Can an attacker delete or modify `global._bOcoreLoaded` before the singleton check executes, allowing multiple ocore instances to load and potentially causing state divergence in critical modules like event_bus.js, conf.js, or mutex.js, leading to consensus failures or network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b63ed440-b681-4cc7-bcfc-c486d8e21fd1",
+    "timestamp": "2025-12-23 10:24:53.047963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Race condition during module loading] If two separate Node.js threads or worker processes simultaneously require ocore modules before line 7 executes, can both pass the check at line 4 before either sets `global._bOcoreLoaded = true`, resulting in multiple ocore instances that could cause non-deterministic AA execution or main chain calculation divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e8b6ed6-4bea-4268-8205-b09bac85bb58",
+    "timestamp": "2025-12-23 10:25:17.640678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Error handling DoS] If an attacker triggers the Error thrown at line 5 during critical operations (e.g., during unit validation or network sync), will the uncaught exception crash the entire node process, causing network-wide transaction delays exceeding 1 hour or enabling a DoS attack against witness nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a72add06-2e40-46da-b2bb-cf73bd1d8630",
+    "timestamp": "2025-12-23 10:25:43.255206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Module cache poisoning] Can an attacker manipulate Node.js's `require.cache` to delete or replace the enforce_singleton.js module after initial load, then re-require ocore modules to bypass the singleton check and load duplicate instances that diverge in state (e.g., different witness lists or MC calculations)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_823b3528-3601-4e2d-9107-c19a9274dfcc",
+    "timestamp": "2025-12-23 10:26:09.070487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [VM context bypass] If ocore is loaded in multiple Node.js VM contexts (vm.runInNewContext), each context has its own `global` object - does this allow an attacker to instantiate multiple isolated ocore instances that could process the same units differently, causing chain splits when nodes disagree on unit validity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9eaa19b-8ab0-4154-896d-962fcd51300d",
+    "timestamp": "2025-12-23 10:26:34.194149",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Worker thread isolation] In Node.js worker_threads, each worker has a separate `global` object - can an attacker exploit this by loading ocore in multiple workers, causing each worker to maintain divergent DAG state, witness proofs, or AA state variables, leading to inconsistent validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46a34991-7875-43e1-b8ee-9ff498e863a1",
+    "timestamp": "2025-12-23 10:27:02.699054",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Cluster fork safety] When using Node.js cluster module, each forked process has its own memory space - does the singleton check prevent accidental ocore duplication within a single process but fail to protect against cross-process state divergence if multiple cluster workers validate the same unit differently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc597306-58dc-470e-a461-662551cc0e42",
+    "timestamp": "2025-12-23 10:27:31.715998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Property descriptor attack] Can an attacker use Object.defineProperty to make `global._bOcoreLoaded` non-configurable or read-only before line 7 executes, then attempt to load ocore again, causing the assignment at line 7 to silently fail in strict mode or throw an error in newer Node.js versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d7a6b9b-e295-4f1b-9106-006fea335afc",
+    "timestamp": "2025-12-23 10:28:01.033814",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Prototype pollution] If an attacker pollutes Object.prototype or global's prototype chain with a `_bOcoreLoaded` property set to false, could this cause the check at line 4 to pass even after legitimate ocore load, allowing duplicate loading that breaks mutex.js lock tracking or event_bus.js listener consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8de36775-fdd3-4cf7-aa7c-1a4d5850245b",
+    "timestamp": "2025-12-23 10:28:30.173324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Delete operator bypass] After ocore loads, can an attacker execute `delete global._bOcoreLoaded` to reset the singleton flag, then re-require any ocore module, successfully loading a second instance that could have different configuration (conf.js) or event listeners (event_bus.js), causing undefined behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e4a5ef9-2032-4126-ba87-b29fc7a174bd",
+    "timestamp": "2025-12-23 10:28:59.377871",
+    "report_generated": false
   }
 ]
