@@ -10798,5 +10798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bcec578c-3a5e-4f07-9554-1313acaf288a",
     "timestamp": "2025-12-23 13:29:34.930142",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [SQL Injection] In the SQL query construction at lines 73-93, can an attacker inject malicious SQL through specially crafted addresses in arrAddresses that bypass db.escape() sanitization, potentially exposing sensitive database contents or causing database corruption leading to network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3230199d-e4c7-428a-a1af-e3a8bb099d01",
+    "timestamp": "2025-12-23 13:31:02.400901",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Input Validation Bypass] At lines 39-44, if arrAddresses contains addresses that pass ValidationUtils.isValidAddress() but are crafted to exploit downstream SQL query logic, can an attacker retrieve transaction history for addresses they don't own, leaking private financial information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b1f8e68-fd3c-4575-bafe-81937f8affe2",
+    "timestamp": "2025-12-23 13:31:14.995454",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [DoS via MAX_HISTORY_ITEMS] At lines 99-100, if a light client requests history for addresses with exactly MAX_HISTORY_ITEMS (2000) units repeatedly, can an attacker force the hub to lock the 'prepareHistory' mutex for extended periods (line 103), causing denial of service for other light clients by delaying history requests for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_779aa4f0-6104-45af-96bf-8ef213b23b99",
+    "timestamp": "2025-12-23 13:31:28.320780",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Race Condition with last_aa_response_id] At line 101, the code captures storage.last_aa_response_id before acquiring mutex lock at line 103. Can a race condition occur where new AA responses are created between reading last_aa_response_id and building the response, causing light clients to miss critical AA response data and potentially make incorrect transaction decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_073f12de-b988-4e08-91d9-4eee0388f711",
+    "timestamp": "2025-12-23 13:31:41.896515",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Known Units Filter Bypass] At line 96, the code filters out units in assocKnownStableUnits. If an attacker provides a large array of fake known_stable_units (passing validation at lines 57-65), can they force the server to process and validate these fake units, causing excessive CPU usage and delaying history preparation for >1 day?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de96fb8e-059e-4714-952f-cd9de58611e6",
+    "timestamp": "2025-12-23 13:31:56.102541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Witness Proof Manipulation] At lines 105-111, if witnessProof.prepareWitnessProof() returns manipulated arrUnstableMcJoints that appear valid but contain incorrect MCI values, can a light client be tricked into accepting an alternate chain fork, causing permanent chain split requiring hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f41799dd-23ef-4a5b-98f5-2114f1d6a7e3",
+    "timestamp": "2025-12-23 13:32:11.706141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Incomplete Proofchain] At lines 144-145, if objResponse.proofchain_balls is empty and gets deleted, but the joints require proofs for validation, can light clients incorrectly mark units as stable without proper verification, leading to acceptance of double-spend transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c18a0ecf-cd43-4492-97d0-ebe75edd105a",
+    "timestamp": "2025-12-23 13:32:28.431176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [AA Response Timestamp Manipulation] At line 149, the query includes timestamp and creation_date from aa_responses. If these timestamps are manipulated or inconsistent with unit timestamps, can light clients make incorrect time-based decisions in AA formulas, causing unintended AA behavior without direct fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a9e0c71-0a6a-4d70-986f-7ceeaae41282",
+    "timestamp": "2025-12-23 13:32:46.360592",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Unit Not Found Error Handling] At lines 125-127, if storage.readJoint() throws an error for a unit that should exist, does the error propagate correctly through the async.eachSeries() callback, or could it cause the mutex to remain locked indefinitely, freezing all subsequent history requests and causing network delay ≥1 day?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c969441b-92b0-47ae-902a-8e54e3593f4d",
+    "timestamp": "2025-12-23 13:33:05.859051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: prepareHistory()] [Proofchain Build Failure] At lines 134-137, if proofChain.buildProofChain() fails silently or returns incomplete proofs, can stable units be returned without valid proofs, allowing light clients to accept forged stable units and causing direct loss of funds through acceptance of invalid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2d54240-06e6-4466-9293-016c9e81b544",
+    "timestamp": "2025-12-23 13:33:25.398790",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Witness Proof Validation Bypass] At lines 183-188, if witnessProof.processWitnessProof() returns success with manipulated assocLastBallByLastBallUnit mapping that doesn't match actual last balls, can an attacker trick light clients into accepting an invalid stability point, causing permanent chain split requiring hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_338335bf-dbd5-43f4-8585-156b64a789f6",
+    "timestamp": "2025-12-23 13:33:46.780782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Ball Hash Validation Bypass] At lines 200-201, the code validates ball hashes using objectHash.getBallHash(). If an attacker crafts a collision in ball hash computation (exploiting SHA256 weaknesses or implementation bugs), can they substitute malicious unit content while maintaining valid ball hashes, causing direct loss of funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_964ab405-688b-4fdb-ac38-ab594b177fed",
+    "timestamp": "2025-12-23 13:34:08.956153",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Parent Ball Reference Manipulation] At lines 205-207, parent_balls are added to assocKnownBalls without verifying they correspond to actual parent units. Can an attacker inject fake parent_ball references that point to non-existent or manipulated units, corrupting the light client's DAG view and accepting invalid transaction chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bb4bc60-0df9-4c04-857a-93fc80d93b9a",
+    "timestamp": "2025-12-23 13:34:32.172275",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Skiplist Ball Validation Failure] At lines 208-211, skiplist_balls are trusted without validation. Can an attacker provide fake skiplist_balls that skip over critical stability checkpoints, allowing light clients to accept units as stable when they're not, enabling double-spend attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56b00e82-45d3-4aae-8fbc-9a123c0a1fcc",
+    "timestamp": "2025-12-23 13:34:56.119235",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Joint Hash Validation Insufficient] At line 222, validation.hasValidHashes() is called but the function may not verify all critical fields. Can an attacker modify unit fields (like timestamp, witness list, or messages) after hash validation, causing light clients to store corrupted units and accept invalid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31399d2a-c2ea-4519-adef-1cb86908cbe1",
+    "timestamp": "2025-12-23 13:35:20.603508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Timestamp Validation Missing Range Check] At line 224, only ValidationUtils.isPositiveInteger() is checked for timestamp. Can an attacker provide timestamps far in the future or past that pass this check but violate protocol timestamp constraints, causing main chain ordering issues and potential chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36d23c3d-a9a7-492a-9ed8-be83b2916da0",
+    "timestamp": "2025-12-23 13:35:47.296480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [AA Response Validation Without Proof] At lines 231-258, AA responses are explicitly stated as 'trusted without proof'. Can a malicious hub inject fake AA responses that appear legitimate (passing validation checks) but never actually occurred, causing light clients to emit false events and trigger incorrect wallet behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03cf9faa-b0fe-4e8b-b606-236824866958",
+    "timestamp": "2025-12-23 13:36:13.489851",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [AA Response MCI Manipulation] At line 237, aa_response.mci is validated as positive integer but not checked against actual unit MCIs. Can an attacker provide AA responses with incorrect MCI values, causing light clients to process responses in wrong order and violating AA execution determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e714fa1e-11ef-4556-ab93-a8fc006a1d14",
+    "timestamp": "2025-12-23 13:36:40.309145",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Foreign Trigger Unit Validation Insufficient] At lines 255-256, the code checks if trigger_unit exists in objResponse.joints but not if the AA response actually corresponds to that trigger. Can an attacker associate a legitimate trigger_unit with a fake AA response, causing light clients to believe their transactions triggered responses they didn't?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_164a414a-d854-46c1-b910-f77eec17bc7b",
+    "timestamp": "2025-12-23 13:37:07.274119",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Response JSON Parsing Vulnerability] At lines 249-254, JSON.parse() is called on aa_response.response without sanitization. Can an attacker inject malicious JSON that exploits parsing vulnerabilities or contains unexpected data types, causing light client crashes or incorrect AA response handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1be13103-9962-460d-96c8-6316029ef1b2",
+    "timestamp": "2025-12-23 13:37:35.994305",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Mutex Lock Race Condition] At line 261, mutex.lock(['light_joints']) is acquired but the lock scope spans database queries and unit processing. Can two concurrent processHistory() calls race on database updates between lines 264-350, causing inconsistent is_stable flags or duplicate unit storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1dbb75ce-e41c-4b1a-ad2d-c2d98c594bee",
+    "timestamp": "2025-12-23 13:38:05.255574",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Existing Unit Detection Race] At lines 264-271, the code checks for existing units but doesn't lock them. Can an attacker send duplicate units in rapid succession that both pass the existence check at line 264, causing both to be processed and creating duplicate database entries that corrupt the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2cfdfad-5ca7-4b5a-908d-f9a37f1d5d1a",
+    "timestamp": "2025-12-23 13:38:34.679779",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Stable Unit Re-processing] At lines 296-299, units marked as stable are skipped with console.log. Can an attacker repeatedly send stable units to flood logs and waste processing time, causing CPU exhaustion and network delay ≥1 hour through log I/O bottleneck?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a959f5a-ad6c-4f5c-8209-d5f3f81eebb0",
+    "timestamp": "2025-12-23 13:39:04.343500",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Sequence Assignment Logic Error] At lines 301-302, sequence is determined by assocProvenUnitsNonserialness[unit]. If this mapping is incorrect or manipulated, can units be marked as 'good' when they should be 'final-bad', allowing double-spend transactions to appear valid in light client wallets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a78be67d-d32d-4d05-997a-5388bbbabc94",
+    "timestamp": "2025-12-23 13:39:33.426284",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processHistory()] [Final-Bad Voiding Failure] At lines 316-324, final-bad units are voided through archiving.generateQueriesToArchiveJoint(). If this process fails partially or the transaction doesn't commit atomically, can outputs from final-bad units remain spendable, enabling direct loss of funds through double-spend?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e178349-154d-4620-b0a1-48a84562d6a6",
+    "timestamp": "2025-12-23 13:40:02.220949",
+    "report_generated": false
   }
 ]
