@@ -7048,5 +7048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76361039-f605-49cf-83ef-bffa12821cd9",
     "timestamp": "2025-12-23 12:04:40.270091",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Serial Sequence Manipulation] Can an attacker exploit the bAllSerial optimization at line 1110 to skip graph.determineIfIncludedOrEqual checks for earlier units, submitting a nonserial unit that appears serial due to cached results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_070f9096-0118-4f56-8ba7-b1d559b349b6",
+    "timestamp": "2025-12-23 12:06:02.880935",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Conflicting Units Race] Can an attacker exploit findConflictingUnits() at line 1087 by submitting multiple units rapidly, where the query at line 1090 finds no conflicts initially but conflicts emerge before the unit is stored, allowing double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2671a03-8e94-4afb-a459-f6f781f5be6e",
+    "timestamp": "2025-12-23 12:06:15.792492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [AA Author Bypass] For AA responses (objValidationState.bAA), can an attacker craft objAuthor with fields other than 'address' (checked at line 980) to include authentifiers or definitions that bypass AA validation requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_455f3d5c-5158-44de-8c9d-426d90f264d2",
+    "timestamp": "2025-12-23 12:06:28.837490",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthor()] [Definition Timing Attack] Can an attacker submit a unit referencing an unstable initial definition (found via findUnstableInitialDefinition at line 1043), exploiting the included check at line 1060 to use a definition that will be invalidated later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9dd31c03-4d81-46aa-9a42-9e2b77c528f0",
+    "timestamp": "2025-12-23 12:06:42.476788",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthors()] [Author Sorting Attack] Can an attacker submit authors sorted by address but include duplicate addresses with different authentifiers, exploiting the sorting check at line 965 to include the same address twice?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31a96b00-7f04-41f5-9c6d-14bc295fa2e2",
+    "timestamp": "2025-12-23 12:06:57.015200",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthors()] [Unit Hash to Sign] Does objectHash.getUnitHashToSign() at line 970 deterministically include all unit fields? Can an attacker craft units where two different units produce the same unit_hash_to_sign, allowing signature reuse across units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7af2713f-dede-4b07-b38d-f913798dd2db",
+    "timestamp": "2025-12-23 12:07:13.114098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAuthors()] [Author Count DoS] Can an attacker submit a unit with MAX_AUTHORS_PER_UNIT authors (checked at line 959), each requiring expensive signature validation, to DoS validation by making each unit take excessive time to validate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4aa1038c-9700-4200-b818-53ee6ea4e368",
+    "timestamp": "2025-12-23 12:07:29.806792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHeadersCommissionRecipients()] [Recipient Sorting] Can an attacker exploit the address sorting check at line 943 to include duplicate addresses if they differ only in checksum case, causing double payment of headers commission to the same address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8825de70-b64b-49c2-9293-6a9beeb8956b",
+    "timestamp": "2025-12-23 12:07:47.825316",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateHeadersCommissionRecipients()] [Share Sum Overflow] Can an attacker craft earned_headers_commission_recipients where individual shares are valid but total_earned_headers_commission_share overflows before the check at line 950, resulting in sum ≠ 100 but passing validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d615690-e487-40ee-abe1-a5e975cc2b7d",
+    "timestamp": "2025-12-23 12:08:07.645279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateTpsFee()] [Ball Catchup Bypass] When objJoint.ball is true, min_acceptable_tps_fee_multiplier is 0 (line 906), can an attacker exploit catchup mode to submit units with zero tps_fee that would be rejected during normal operation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bdf3b7d2-6735-452f-90f5-d193ede333f7",
+    "timestamp": "2025-12-23 12:08:27.991009",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateTpsFee()] [Count Units Manipulation] Can an attacker manipulate storage.getCountUnitsPayingTpsFee() at line 900 by crafting parent_units to reduce count_units and thus reduce min_tps_fee at line 901, underpaying fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8b3143d-4e65-466d-b7ef-dd1e61ff64ca",
+    "timestamp": "2025-12-23 12:08:50.053749",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateTpsFee()] [TPS Fee Recipient Manipulation] Can an attacker craft earned_headers_commission_recipients to influence storage.getTpsFeeRecipients() at line 911, directing tps_fees to addresses they control with high balances to bypass fee requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9eeafa1e-3051-490a-b2db-db652c8f2e6d",
+    "timestamp": "2025-12-23 12:09:12.932238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateTpsFee()] [OP Exemption Abuse] Can an attacker get their addresses included in the OP list (checked via isFromOP at line 910) to bypass minimum acceptable tps_fee checks at line 919, submitting low-fee spam units that validators must accept?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1d9b82b-d682-47eb-9558-9759e3e9d26f",
+    "timestamp": "2025-12-23 12:09:35.517545",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateTpsFee()] [TPS Fee Balance Race] Can an attacker exploit the query at line 914 that reads tps_fees_balance at last_ball_mci to spend from a balance that will be depleted by another unit at the same MCI, causing both units to pass validation but one to overspend?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b8d744b-44f3-4c9b-ab88-88f951db802b",
+    "timestamp": "2025-12-23 12:09:59.100445",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAATrigger()] [Max AA Responses Field] Can an attacker include max_aa_responses field in non-v4 units (checked at line 841) or omit it when AA triggers exist (line 863), exploiting version checking inconsistencies to bypass AA response limits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb17dbf4-4f1e-4611-a0ff-b78a37ff12ee",
+    "timestamp": "2025-12-23 12:10:23.369270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateAATrigger()] [AA Count Mismatch] Can an attacker send payments to addresses that become AAs after last_ball_mci but before validation, causing count_primary_aa_triggers at line 867 to undercount triggers and result in insufficient tps_fee being charged?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6dba3912-55cd-47ba-9bf2-0da452b0cad6",
+    "timestamp": "2025-12-23 12:10:48.760833",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [OP List Migration] For units after v4UpgradeMci using storage.getOpList() at line 781, can an attacker exploit differences between witness lists and OP lists during the migration period to cause consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ddd884c-dc7f-4106-b75a-2730de3f681c",
+    "timestamp": "2025-12-23 12:11:14.711458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witness Not Good/Stable] Can an attacker exploit the checkWitnessesKnownAndGood() query at line 730 to include witnesses whose first appearance is not stable yet, causing validation to pass temporarily but fail when other nodes validate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab615b52-3797-457d-a117-b372a692e740",
+    "timestamp": "2025-12-23 12:11:42.567055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witness Order Attack] For inline witnesses, can an attacker submit witnesses that are ordered correctly by hash but some addresses are invalid (checked at line 815), exploiting chash validation weaknesses to include non-addresses in the witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74392870-14b7-4525-9824-ebb38fb517fb",
+    "timestamp": "2025-12-23 12:12:11.422556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witness List Unit Not Stable] Can an attacker reference a witness_list_unit that is not stable yet (checked at line 802), exploiting timing of stability determination to cause units to be rejected by some nodes but accepted by others?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65c80cc6-6706-43b4-8639-7298babee2fd",
+    "timestamp": "2025-12-23 12:12:41.378830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witness Address References] Can an attacker change a witness address definition to include references (checked at line 714), exploiting the fact that this check only runs for stable definitions to cause validation divergence when the definition becomes stable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f15991bc-bb9a-43a5-8ef1-6fffb3ae5471",
+    "timestamp": "2025-12-23 12:13:12.452694",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witnessed Level Retreat] Can an attacker craft a unit where witnessed_level < max_parent_wl (checked at line 771), exploiting the upgrade MCI thresholds at lines 766-770 to cause some nodes to accept and others to reject, creating a chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88626114-4f89-41be-b0bb-c37f087f69e5",
+    "timestamp": "2025-12-23 12:13:43.274188",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateWitnesses()] [Witness List Mutation] Can an attacker exploit storage.determineIfHasWitnessListMutationsAlongMc() at line 747 to submit units that change witness lists in ways that cause permanent chain splits, especially if last_ball_mci < 512000 where mutations aren't enforced?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99268236-90cd-42a0-a0e1-bb504d995935",
+    "timestamp": "2025-12-23 12:14:12.958900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Last Ball Not On MC] Can an attacker reference a last_ball_unit that is not on main chain (checked at line 594), exploiting incorrect MC determination or cached values to build units on invalid MC branches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82d2f3f0-b2d5-4f79-92cc-8c71d886baa3",
+    "timestamp": "2025-12-23 12:14:44.446404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateParents()] [Stability Advancement Race] When bAdvancedLastStableMci is true (line 666), can an attacker exploit the transient error 'last ball just advanced, try again' to repeatedly force re-validation and delay unit acceptance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62b8c77d-002c-4046-8a07-60463d5d797d",
+    "timestamp": "2025-12-23 12:15:16.368268",
+    "report_generated": false
   }
 ]
