@@ -13048,5 +13048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a280c3e-e681-4229-8ecb-363581cd8ddf",
     "timestamp": "2025-12-23 18:44:14.371635",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [strUnitsList SQL injection] Lines 239-240 construct strUnitsList by joining conn.escape(unit) - if arrUnits contains malicious strings that bypass escaping, can this enable SQL injection in the query at lines 242-250?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d536ee9-bc29-4abf-8b93-5f6e9aefcea1",
+    "timestamp": "2025-12-23 18:45:29.613077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Integer overflow in to_main_chain_index] Line 232 calculates 'objUnitProps.main_chain_index + constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING' - if main_chain_index is near MAX_SAFE_INTEGER, can this overflow, causing graph.readDescendantUnitsByAuthorsBeforeMcIndex() to query incorrect MCI ranges?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d26f5c6-2874-4a81-a201-59298f015162",
+    "timestamp": "2025-12-23 18:45:42.473859",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Unit hash validation missing] The objUnitProps.unit at line 231 is used directly in database queries without validating it's a proper 44-character base64 unit hash - can passing malformed unit values cause SQL errors or injection attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a0f492a-1982-4497-bae5-4b45ffca9363",
+    "timestamp": "2025-12-23 18:45:55.225405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [storage.readWitnessList() trust] Both code paths (lines 210 and 217) call storage.readWitnessList() without validating the returned witness array - can this function return invalid witness lists (wrong length, duplicate addresses, null values) that corrupt witness payment calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4de49bdf-c47e-4add-a8b7-5e80508c8be6",
+    "timestamp": "2025-12-23 18:46:08.640560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Multiple MC units] The query at line 211 expects exactly 1 row with is_on_main_chain=1 (check at line 212) - but if database corruption causes multiple rows, the throw at line 213 crashes the entire witness payment process - can this be triggered intentionally to DoS the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df62c00c-2fa1-4fa5-93e1-3baf072e70aa",
+    "timestamp": "2025-12-23 18:46:22.773229",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [RAM inconsistency not caught in bFaster] Lines 215-216 check witness_list_unit consistency between DB and RAM, throwing if different - but this check is skipped when conf.bFaster=true (line 209-210) - can bFaster mode allow RAM corruption to go undetected, causing incorrect witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d2afd4c-4717-427e-b5ad-061ba0d40238",
+    "timestamp": "2025-12-23 18:46:38.008504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Witness list unit selection] Lines 208-218 select witness_list_unit from MC, using the unit itself if witness_list_unit is NULL (line 214) - can an attacker craft units with manipulated witness_list_unit references pointing to units with favorable witness lists to redirect witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35a713fd-a4c4-43ac-8892-661c80c9c825",
+    "timestamp": "2025-12-23 18:46:54.359614",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [v4UpgradeMci boundary] At line 206, if main_chain_index >= constants.v4UpgradeMci, it uses storage.getOpList() which returns operators instead of witnesses - can units at exactly the v4UpgradeMci boundary be processed inconsistently across nodes that upgraded at slightly different times, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56c9fec4-d4da-4a9d-addc-13cdc51f2671",
+    "timestamp": "2025-12-23 18:47:12.294867",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Global variable mutation] Line 140 sets 'paidWitnessEvents = []' which is a module-level global (line 13) - if buildPaidWitnessesForMainChainIndex() is called concurrently, can race conditions on this shared array cause payments to be assigned to wrong MCIs or witnesses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e49f5f17-fd95-4197-b2f3-1b7035129fb7",
+    "timestamp": "2025-12-23 18:47:30.986882",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Async.eachSeries ordering] The async.eachSeries at lines 141-195 processes units sequentially - but if unit order in RAM differs from database order (lines 136-139), can this cause non-deterministic execution order, leading to different paidWitnessEvents arrays and consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd1c1297-536c-48c8-9366-b41572daffc9",
+    "timestamp": "2025-12-23 18:47:50.762579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [RAM cache poisoning] Lines 135-139 use storage.assocStableUnitsByMci[main_chain_index] - if an attacker can manipulate this RAM cache to add/remove units, can they cause different witness payment amounts to be calculated without detection (when conf.bFaster=true), leading to fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa7cdbd0-4fa5-4617-a997-78a873ec9145",
+    "timestamp": "2025-12-23 18:48:10.632748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Temporary table cleanup failure] Line 187 drops the temporary table paid_witness_events_tmp - if this DROP fails due to database lock or error, does the table persist and cause CREATE TABLE failure on next invocation, permanently breaking witness payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed358ea8-b9f4-4e38-9668-6df3c0921769",
+    "timestamp": "2025-12-23 18:48:31.920509",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Determinism failure] Lines 183-186 compare database results with RAM-calculated arrPaidAmounts2 - if they differ, throwError() is called - but does this properly handle floating-point precision differences that might occur legitimately, or can precision errors cause false positives that crash nodes unnecessarily?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f240970-9142-4d1d-8946-7cc626644e07",
+    "timestamp": "2025-12-23 18:48:54.058588",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [SQL injection in bFaster mode] At line 169, when conf.bFaster=true, the query is constructed by string concatenation with db.escape() - can escaping be bypassed if address contains special characters, allowing SQL injection to manipulate witnessing_outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e72869fc-ed79-4beb-8a11-750caf391eca",
+    "timestamp": "2025-12-23 18:49:16.535697",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Sequence filtering bypass] Line 161 checks 'objUnit.sequence == 'good'' - can an attacker craft units with sequence='temp-bad' or other non-'good' values that bypass this check due to loose equality (== vs ===), allowing bad sequence units to generate witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cb50d39-3f24-4597-9231-05fdf2769e23",
+    "timestamp": "2025-12-23 18:49:40.526025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Rounding error accumulation] Line 162 uses Math.round(objUnit.payload_commission / countPaidWitnesses[v.unit]) which can lose fractional bytes - if this rounding error accumulates across millions of units, can it create significant inflation or deflation in total witness payments compared to actual payload_commission amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0df26fe5-a8bc-4186-aef9-fd0c2ae317dc",
+    "timestamp": "2025-12-23 18:50:05.453014",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Division by zero in payment] At lines 156-164, payments are divided by countPaidWitnesses[v.unit] - if countPaidWitnesses is somehow 0 for a unit, does Math.round(objUnit.payload_commission / 0) return Infinity or NaN, corrupting the witnessing_outputs table with invalid amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfd820cf-bf6b-4ca6-bca5-837134bf9f46",
+    "timestamp": "2025-12-23 18:50:31.526677",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Witness list manipulation] Line 126 reads witnesses from MC unit via readMcUnitWitnesses() - can a malicious unit author manipulate their witness list on side chains to flip the witness list used for payment calculations, directing commissions to their own witnesses instead of the legitimate ones?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4235b74b-915b-463d-a43d-6a2bcc099319",
+    "timestamp": "2025-12-23 18:50:57.885353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Temporary table collision] The CREATE TEMPORARY TABLE at lines 128-130 doesn't use 'IF NOT EXISTS' - if buildPaidWitnessesForMainChainIndex() is called concurrently or if a previous execution didn't clean up, can the table creation fail, breaking witness payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad0f7c10-d2d0-448d-bdae-c97c454b5d35",
+    "timestamp": "2025-12-23 18:51:24.042705",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Stability assumption violation] Line 119 checks count_on_stable_mc === count, but what if units become unstable between the query and this check due to DAG reorganization? Can this throw at line 120 halt witness payment processing permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f5dba19-ad80-4516-a1fe-b12b46b906b2",
+    "timestamp": "2025-12-23 18:51:51.341368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [RAM vs DB inconsistency] Lines 109-123 compare countRAM from storage.assocStableUnits against database count - if they differ, throwError() is called at line 122 but only when !conf.bFaster - can an attacker manipulate RAM cache to cause inconsistencies that are not detected in bFaster mode, leading to incorrect witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_459b04a8-2c3c-4feb-b969-242873634e2b",
+    "timestamp": "2025-12-23 18:52:18.546422",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [COUNT constant mismatch] The validation at lines 115-116 requires exactly 'constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING+2' units - if this constant changes between nodes or after a protocol upgrade, can nodes disagree on whether a MCI is processable, causing permanent consensus divergence and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d7db7a4-d2fd-4b81-8de5-700279b222e5",
+    "timestamp": "2025-12-23 18:52:48.223239",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [Early termination bypass] The check at line 80-81 returns early if min_main_chain_index > to_main_chain_index - but what if min_main_chain_index is undefined/NULL? Does JavaScript coercion cause unexpected behavior allowing the function to proceed incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23410414-83e0-437b-9759-fc4fe27300bf",
+    "timestamp": "2025-12-23 18:53:18.498163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [MCI gap handling] If to_main_chain_index is much larger than min_main_chain_index (e.g., after long network downtime), can the sequential processing of thousands of MCIs cause this function to block for extended periods, freezing transaction confirmation for hours (Medium severity - temporary freeze ≥1 hour)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bce6afd5-cad2-4214-859d-031a54240f1f",
+    "timestamp": "2025-12-23 18:53:48.089474",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [Error handling suppression] The comment 'if (err) // impossible' at line 84 assumes errors cannot occur - but if buildPaidWitnessesForMainChainIndex() does return an error, the throw at line 85 crashes the entire process - can an attacker craft malicious units that trigger this throw, causing network-wide daemon crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cace7fb8-57a7-4072-b315-79fb099b266c",
+    "timestamp": "2025-12-23 18:54:17.257914",
+    "report_generated": false
   }
 ]
