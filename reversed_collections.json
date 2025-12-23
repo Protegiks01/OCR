@@ -4198,5 +4198,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed4acf44-7aae-4c26-93f7-409d467626b7",
     "timestamp": "2025-12-23 07:38:58.576648",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Race on assocDefinitions cache] At lines 220-221, assocDefinitions and assocDefinitionChashes are shared mutable state across all validateUnit() calls - if multiple proofs are processed concurrently (no mutex protection visible), can cache poisoning cause one proof's definitions to bleed into another, validating signatures against wrong definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a169e23d-a621-43a5-9fc3-665382d0c94c",
+    "timestamp": "2025-12-23 07:40:08.962310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Concurrent definition updates] At lines 258-260, assocDefinitionChashes[address] is updated within validateUnit() which is called in async.eachSeries - if two units contain definition_chg for the same address, can out-of-order execution cause the wrong definition to be cached, allowing later signatures to validate against incorrect definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_457eef97-91fa-4941-b93f-8d1c5bb60deb",
+    "timestamp": "2025-12-23 07:40:21.403455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [TOCTOU on last_stable_mci] The last_stable_mci parameter is validated at line 16 but used throughout async operations until line 155 - if the actual last_stable_mci in the database advances during execution, can the proof contain units with MCI <= last_stable_mci that should be excluded, breaking light client validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce8ac41a-367f-47ed-bae2-f7be877d05ff",
+    "timestamp": "2025-12-23 07:40:34.925558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Race condition on arrUnstableMcJoints] At lines 66-72, arrUnstableMcJoints is conditionally assigned based on _arrLastBallUnits.length > 0, but if units stabilize between this check and final proof assembly at line 155, can the proof contain stale unstable units that are actually stable, causing light clients to reject the proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_212b7b34-416c-46ff-8052-e85fd6aca7a1",
+    "timestamp": "2025-12-23 07:40:48.263171",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Race condition on ball deletion] At line 32, the code deletes objJoint.ball after reading it with 'the unit might get stabilized while we were reading other units' - if multiple concurrent prepareWitnessProof() calls race on the same units during stabilization, can this cause some proofs to include balls while others don't, creating non-deterministic proofs that split light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d765a2c4-a997-49b9-95b0-fe777e773949",
+    "timestamp": "2025-12-23 07:41:02.326864",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection in ORDER BY] At line 82, the query uses conf.storage to dynamically select ORDER BY column (rowid vs creation_date) - if conf.storage is somehow corrupted or injected with malicious value, can this cause SQL injection or incorrect ordering that breaks witness proof consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68042a2f-803e-4c22-93bb-5c29c2693e54",
+    "timestamp": "2025-12-23 07:41:17.662321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection via witness addresses] At lines 107-136, the arrWitnesses array is directly interpolated into three SQL UNION queries - if ValidationUtils.isValidAddress() has a bypass allowing malicious strings, can attacker inject SQL to return arbitrary units as witness definition changes, tricking light clients into accepting fake proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5e82048-e533-4d77-ae49-7cfbad9b082a",
+    "timestamp": "2025-12-23 07:41:34.138331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [SQL injection] At line 25, the and_end_mci variable directly concatenates end_mci into SQL query string without parameterization - if end_mci is passed as malicious string from a compromised caller, can attacker inject SQL to extract private data, modify database state, or cause denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7e3096e-9b50-4a47-80cd-23d2410d8ae0",
+    "timestamp": "2025-12-23 07:41:51.698008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Integer bounds] If last_stable_mci is MAX_SAFE_INTEGER or exceeds database integer limits, does the comparison at line 102 (last_stable_mci >= last_ball_mci) produce incorrect boolean result due to integer overflow, causing proof generation to skip current state when it should update?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7f20ed2-e5de-402b-8a52-9e35e3482707",
+    "timestamp": "2025-12-23 07:42:10.194666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Array mutation] Since arrWitnesses is not cloned before use, can an attacker mutate the array from calling context during async execution between lines 18-156, causing witness list to change mid-flight and producing inconsistent proof that references different witness sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_039c6c38-4bd2-4501-83df-4101ae298a08",
+    "timestamp": "2025-12-23 07:42:30.263765",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Input validation bypass] Can an attacker pass arrWitnesses containing strings that pass ValidationUtils.isValidAddress() but are not actual witness addresses (e.g., valid base32 strings that don't correspond to real units), causing the function to build invalid proofs that nodes accept as valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00604557-b4eb-4c27-8da9-8acaea65c5ff",
+    "timestamp": "2025-12-23 07:42:50.821186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Type confusion] If last_stable_mci is passed as a numeric string like '1000' instead of integer 1000, does the typeof check at line 16 incorrectly throw an error while the SQL query at line 27 still executes with string interpolation, potentially causing SQL injection or incorrect MCI comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41a71bcf-53fb-471e-9ca8-14a6a57e9d5b",
+    "timestamp": "2025-12-23 07:43:12.846570",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Race on assocDefinitions cache] At lines 220-221, assocDefinitions and assocDefinitionChashes are shared mutable state across all validateUnit() calls - if multiple proofs are processed concurrently (no mutex protection visible), can cache poisoning cause one proof's definitions to bleed into another, validating signatures against wrong definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a7740f5-17a3-4dde-8fb2-31891f76d4a6",
+    "timestamp": "2025-12-23 07:43:34.611660",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Concurrent definition updates] At lines 258-260, assocDefinitionChashes[address] is updated within validateUnit() which is called in async.eachSeries - if two units contain definition_chg for the same address, can out-of-order execution cause the wrong definition to be cached, allowing later signatures to validate against incorrect definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f516e14c-22cc-457c-ac0e-a1e8000ddc1c",
+    "timestamp": "2025-12-23 07:43:57.926700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [TOCTOU on last_stable_mci] The last_stable_mci parameter is validated at line 16 but used throughout async operations until line 155 - if the actual last_stable_mci in the database advances during execution, can the proof contain units with MCI <= last_stable_mci that should be excluded, breaking light client validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d49757ee-f050-48ba-8805-c8b92f22e3e0",
+    "timestamp": "2025-12-23 07:44:22.853168",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Race condition on arrUnstableMcJoints] At lines 66-72, arrUnstableMcJoints is conditionally assigned based on _arrLastBallUnits.length > 0, but if units stabilize between this check and final proof assembly at line 155, can the proof contain stale unstable units that are actually stable, causing light clients to reject the proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39de8a06-0122-44cd-a612-fc4ea4e4df71",
+    "timestamp": "2025-12-23 07:44:48.506865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Race condition on ball deletion] At line 32, the code deletes objJoint.ball after reading it with 'the unit might get stabilized while we were reading other units' - if multiple concurrent prepareWitnessProof() calls race on the same units during stabilization, can this cause some proofs to include balls while others don't, creating non-deterministic proofs that split light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83abe688-2670-49bc-9d8c-69d407defaea",
+    "timestamp": "2025-12-23 07:45:15.187825",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection in ORDER BY] At line 82, the query uses conf.storage to dynamically select ORDER BY column (rowid vs creation_date) - if conf.storage is somehow corrupted or injected with malicious value, can this cause SQL injection or incorrect ordering that breaks witness proof consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b6e4a5b0-140a-483d-b007-05abb8041427",
+    "timestamp": "2025-12-23 07:45:43.025160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [SQL injection via witness addresses] At lines 107-136, the arrWitnesses array is directly interpolated into three SQL UNION queries - if ValidationUtils.isValidAddress() has a bypass allowing malicious strings, can attacker inject SQL to return arbitrary units as witness definition changes, tricking light clients into accepting fake proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31b9bf9f-8396-4e31-8e2e-f8cbb985c8f7",
+    "timestamp": "2025-12-23 07:46:10.743933",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [SQL injection] At line 25, the and_end_mci variable directly concatenates end_mci into SQL query string without parameterization - if end_mci is passed as malicious string from a compromised caller, can attacker inject SQL to extract private data, modify database state, or cause denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5785e61-64dd-4b15-a7a0-38fc8b963e39",
+    "timestamp": "2025-12-23 07:46:38.595216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Integer bounds] If last_stable_mci is MAX_SAFE_INTEGER or exceeds database integer limits, does the comparison at line 102 (last_stable_mci >= last_ball_mci) produce incorrect boolean result due to integer overflow, causing proof generation to skip current state when it should update?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b1744bd-b256-41fd-813f-de00edfc6b7b",
+    "timestamp": "2025-12-23 07:47:08.248436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Array mutation] Since arrWitnesses is not cloned before use, can an attacker mutate the array from calling context during async execution between lines 18-156, causing witness list to change mid-flight and producing inconsistent proof that references different witness sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d09477d-377f-477e-b6bb-58f9e8ae01bc",
+    "timestamp": "2025-12-23 07:47:35.548703",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Input validation bypass] Can an attacker pass arrWitnesses containing strings that pass ValidationUtils.isValidAddress() but are not actual witness addresses (e.g., valid base32 strings that don't correspond to real units), causing the function to build invalid proofs that nodes accept as valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fddb3f4-8965-47e1-a3ff-80f571c875af",
+    "timestamp": "2025-12-23 07:48:02.875523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Type confusion] If last_stable_mci is passed as a numeric string like '1000' instead of integer 1000, does the typeof check at line 16 incorrectly throw an error while the SQL query at line 27 still executes with string interpolation, potentially causing SQL injection or incorrect MCI comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd219997-cbf6-40cc-9876-935f822d2517",
+    "timestamp": "2025-12-23 07:48:29.939785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_keys.js] [Cross-function race: createWallet + deleteWallet] If createWallet() and deleteWallet() execute concurrently for the same wallet ID, can the delete remove extended_pubkeys records after createWallet's addWallet() inserts them but before full_approval_date is set, leaving orphaned wallet in limbo state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2cc31ec-28b4-4fd0-b9d6-89a3abdcc580",
+    "timestamp": "2025-12-23 07:48:56.750562",
+    "report_generated": false
   }
 ]
