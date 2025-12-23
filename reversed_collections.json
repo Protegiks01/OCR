@@ -5398,5 +5398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_baf79edc-392b-4258-89af-07f8253e6bb9",
     "timestamp": "2025-12-23 08:58:01.668777",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Validation Bypass] Does validateAddressDefinitionTemplate() at line 107 check for excessively deep nesting or recursive 'definition template' references that could cause stack overflow when the template is later evaluated for actual address creation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_945237bd-5408-446a-a2e7-3bd48eb2a3de",
+    "timestamp": "2025-12-23 08:59:19.483540",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Database Integrity] The function inserts into pending_shared_address_signing_paths in a serial loop (lines 119-143) but does not use a database transaction - if insertion fails midway, can this leave partial pending address state that breaks subsequent approval attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c70e2ca-8b39-40dc-a263-78958bf74517",
+    "timestamp": "2025-12-23 08:59:32.079293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Authorization Bypass] At line 126, if device_address equals device.getMyDeviceAddress(), the address and approval are auto-filled - can an attacker spoof device.getMyDeviceAddress() through network message manipulation to auto-approve their own malicious address in the template?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e81c5d0-04d0-4abc-a4f3-8e5c5043bfea",
+    "timestamp": "2025-12-23 08:59:45.058322",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Race Condition] Between inserting into pending_shared_addresses at line 116 and inserting into pending_shared_address_signing_paths at line 131, if another transaction deletes the pending address or the node crashes, can this leave orphaned signing path records that corrupt the approval workflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc42f6b4-fde2-40f9-bde9-5c1cac596d04",
+    "timestamp": "2025-12-23 08:59:58.551512",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Hash Collision] At line 114, the address_definition_template_chash is computed using objectHash.getChash160() - if two different templates produce the same chash160 due to collision, can an attacker replace a legitimate pending shared address with a malicious one by exploiting database primary key constraints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd59e14c-f749-4082-b531-cddddb3db572",
+    "timestamp": "2025-12-23 09:00:12.723507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Template Injection] Can an attacker craft a malicious arrAddressDefinitionTemplate that when processed by getMemberDeviceAddressesBySigningPaths() causes code execution, infinite loops, or memory exhaustion through deeply nested 'or', 'and', or 'r of set' structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0eaa9ab9-ff39-4b16-a527-4e078e48f0c6",
+    "timestamp": "2025-12-23 09:00:27.907771",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Information Disclosure] Can an attacker who is not a member of a shared address but knows the shared_address value call this function through a compromised peer connection to exfiltrate the complete multi-sig configuration including all member addresses and device addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2fc08004-5da1-44c2-82bc-253d79ad1781",
+    "timestamp": "2025-12-23 09:00:44.491504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Data Integrity] If the definition retrieved at line 79 is malformed JSON or contains invalid address definition syntax, does the JSON.parse() throw an uncaught exception that crashes the node or leaves it in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57b8a36b-8049-456c-abfc-14bf1ca2e3f6",
+    "timestamp": "2025-12-23 09:01:02.709074",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Validation Bypass] At line 85, the function checks for 'less than 2 signing paths', but what if exactly 1 signing path exists? Does this allow creation of a degenerate single-signer 'shared' address that bypasses multi-sig security requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4255b85-4e53-4f60-a1bb-38f0fe634ef7",
+    "timestamp": "2025-12-23 09:01:21.800498",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Authorization Bypass] Does this function validate that the device_address parameter is actually a member/cosigner of the shared_address before sending the definition and signing paths, or can any device request and receive sensitive multi-sig configuration data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c3e288b-3439-4fc3-b744-7e6f4c089658",
+    "timestamp": "2025-12-23 09:01:41.930056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendToPeerAllSharedAddressesHavingUnspentOutputs()] [Race Condition] If outputs are being spent concurrently while this query executes at lines 54-56, can the function send stale shared address information that no longer has unspent outputs, potentially causing confusion or incorrect state at the receiving peer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d55e2df-051b-43db-afdc-1c142d8290ad",
+    "timestamp": "2025-12-23 09:02:02.039238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendToPeerAllSharedAddressesHavingUnspentOutputs()] [Information Disclosure] Can an attacker repeatedly call this function to enumerate all shared addresses with unspent outputs by trying different device_address values, thereby learning which addresses hold funds and their balance distribution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0332fb1e-e034-4500-8779-593882b24ccf",
+    "timestamp": "2025-12-23 09:02:24.360750",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendToPeerAllSharedAddressesHavingUnspentOutputs()] [Authorization Bypass] Does this function verify that the requesting device_address is actually a legitimate cosigner of the shared addresses before sending their definitions, or can any peer request and receive shared address definitions for addresses they are not authorized to access?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c1e24586-0503-4850-84da-189870e77735",
+    "timestamp": "2025-12-23 09:02:47.695350",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendToPeerAllSharedAddressesHavingUnspentOutputs()] [SQL Injection] Can an attacker provide a malicious 'asset' parameter that is not properly escaped in the asset_filter construction at line 53, allowing SQL injection to read arbitrary shared address definitions or private keys from the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_145eee35-a2df-4a88-821d-a2781303aeea",
+    "timestamp": "2025-12-23 09:03:11.702576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Validation Bypass] Does validateAddressDefinitionTemplate() at line 107 check for excessively deep nesting or recursive 'definition template' references that could cause stack overflow when the template is later evaluated for actual address creation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb57c626-d86c-4c12-a799-5c606a81ceae",
+    "timestamp": "2025-12-23 09:03:36.271481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Database Integrity] The function inserts into pending_shared_address_signing_paths in a serial loop (lines 119-143) but does not use a database transaction - if insertion fails midway, can this leave partial pending address state that breaks subsequent approval attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2800030c-72c4-4fe6-b63b-6acd3d8de580",
+    "timestamp": "2025-12-23 09:04:02.488676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Authorization Bypass] At line 126, if device_address equals device.getMyDeviceAddress(), the address and approval are auto-filled - can an attacker spoof device.getMyDeviceAddress() through network message manipulation to auto-approve their own malicious address in the template?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf5c4651-486a-4b8f-9218-9f4a7862ba6f",
+    "timestamp": "2025-12-23 09:04:28.221435",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Race Condition] Between inserting into pending_shared_addresses at line 116 and inserting into pending_shared_address_signing_paths at line 131, if another transaction deletes the pending address or the node crashes, can this leave orphaned signing path records that corrupt the approval workflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e61e97be-f34a-4a35-9d71-ca7793e78539",
+    "timestamp": "2025-12-23 09:04:54.037907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Hash Collision] At line 114, the address_definition_template_chash is computed using objectHash.getChash160() - if two different templates produce the same chash160 due to collision, can an attacker replace a legitimate pending shared address with a malicious one by exploiting database primary key constraints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_688eb639-a612-41f4-8c90-a41e1c9ac539",
+    "timestamp": "2025-12-23 09:05:20.544298",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddressByTemplate()] [Template Injection] Can an attacker craft a malicious arrAddressDefinitionTemplate that when processed by getMemberDeviceAddressesBySigningPaths() causes code execution, infinite loops, or memory exhaustion through deeply nested 'or', 'and', or 'r of set' structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d38889a3-cfc9-4f71-96ef-9adfa095692c",
+    "timestamp": "2025-12-23 09:05:47.706627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Information Disclosure] Can an attacker who is not a member of a shared address but knows the shared_address value call this function through a compromised peer connection to exfiltrate the complete multi-sig configuration including all member addresses and device addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fdb7a476-3543-43c5-80d5-9d1d03d1baf9",
+    "timestamp": "2025-12-23 09:06:14.020988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Data Integrity] If the definition retrieved at line 79 is malformed JSON or contains invalid address definition syntax, does the JSON.parse() throw an uncaught exception that crashes the node or leaves it in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca7c56d9-b302-4bec-a501-e164e61f3c55",
+    "timestamp": "2025-12-23 09:06:39.387011",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Validation Bypass] At line 85, the function checks for 'less than 2 signing paths', but what if exactly 1 signing path exists? Does this allow creation of a degenerate single-signer 'shared' address that bypasses multi-sig security requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db93239d-cd2a-4f83-ba44-467170b46f38",
+    "timestamp": "2025-12-23 09:07:04.255760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendSharedAddressToPeer()] [Authorization Bypass] Does this function validate that the device_address parameter is actually a member/cosigner of the shared_address before sending the definition and signing paths, or can any device request and receive sensitive multi-sig configuration data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79cd766f-aa69-4679-8d13-1ba4820dfd21",
+    "timestamp": "2025-12-23 09:07:30.639201",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: sendToPeerAllSharedAddressesHavingUnspentOutputs()] [Race Condition] If outputs are being spent concurrently while this query executes at lines 54-56, can the function send stale shared address information that no longer has unspent outputs, potentially causing confusion or incorrect state at the receiving peer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bc16987-a7ba-4abb-819a-cff73d45f5f9",
+    "timestamp": "2025-12-23 09:07:56.817174",
+    "report_generated": false
   }
 ]
