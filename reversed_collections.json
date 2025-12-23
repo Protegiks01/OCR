@@ -6148,5 +6148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8f06b5a7-7c3b-4a9d-8e97-e45916c5ff26",
     "timestamp": "2025-12-23 09:48:42.289749",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'signature' case] [Signature forgery] Lines 369-381 accept signatures without verifying them against the unit hash - can an attacker send arbitrary signatures that get accepted and propagated, potentially causing invalid units to be signed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ccd067c-202c-483b-ad60-90a99df9b1b5",
+    "timestamp": "2025-12-23 09:49:57.084389",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Looping signing proxy] Lines 337-354 forward signing requests to remote devices, but line 339 only checks if device_address === from_address - can an attacker create a signing loop where device A forwards to B, B to C, C back to A, causing infinite message forwarding and network DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4023468b-e088-4197-8582-6a4f3e3283c8",
+    "timestamp": "2025-12-23 09:50:09.553000",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Event listener memory leak] Line 321 uses eventBus.once() for validation, but if validation never completes (e.g., malformed unit), the listener remains attached - can an attacker flood with invalid signing requests to exhaust memory via accumulated event listeners?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da6a1c9b-b47e-4a1a-b499-29cd19fd308f",
+    "timestamp": "2025-12-23 09:50:23.328497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Infinite loop in signing] Lines 295-366 use findAddress() which can recursively call itself for shared addresses - if an attacker crafts a circular address definition where address A delegates to B which delegates back to A, can this cause infinite recursion and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b61f136a-a2d3-44c1-9005-6c7db4ff6dd2",
+    "timestamp": "2025-12-23 09:50:36.530125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Unit validation bypass] Lines 272-288 validate public payload hashes, but if objUnit.messages is manipulated after validation and before network.handleOnlineJoint() at line 334, can an attacker inject malicious messages that bypass signature checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13be49ea-6784-43ab-8152-031711d59565",
+    "timestamp": "2025-12-23 09:50:50.557125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Private payload hash collision] Lines 247-270 validate private payload hashes, but at line 264 it only checks payload_hash !== calculated_payload_hash - can an attacker exploit hash collision vulnerabilities (e.g., SHA256 near-collisions) to substitute private payloads and steal funds during indivisible asset transfers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e8f9e77-69f4-4c17-9d50-f026ed2840a4",
+    "timestamp": "2025-12-23 09:51:06.240086",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'sign' case] [Signature replay] Lines 227-367 handle signing requests, but the code at lines 241-244 replaces existing signatures with placeholders - if an attacker captures a signing request with legitimate signatures and replays it with modified outputs, can they trick cosigners into signing a different unit than intended?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_751a3032-7d64-4245-b5de-7cb1a3a85a5b",
+    "timestamp": "2025-12-23 09:51:22.754079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'my_xpubkey' case] [Injection attack] Line 144 checks my_xpubkey length >112 but doesn't validate format - can an attacker inject a crafted xpubkey containing SQL injection payloads that get stored in walletDefinedByKeys.addDeviceXPubKey() and later exploited during wallet operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d86a84f1-73ff-4a24-a873-ad96d4f6494f",
+    "timestamp": "2025-12-23 09:51:40.996359",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'removed_paired_device' case] [Authorization bypass] Lines 105-117 check determineIfDeviceCanBeRemoved() but if conf.bIgnoreUnpairRequests is true, it only sets is_blackhole=1 without actually removing the device - can a malicious cosigner abuse this to maintain signing access after being 'removed'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2394b40-7fc9-4782-9c28-c01ac8cba35a",
+    "timestamp": "2025-12-23 09:51:59.949408",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub() - 'text' case] [DoS via message flooding] Lines 82-88 increment message_counter without any rate limiting - can a malicious hub or correspondent flood the wallet with 'text' messages to overflow message_counter (JavaScript number limit 2^53-1) causing integer overflow and potential state corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44df4ee0-0afd-4d34-89e3-d60e37bdaca5",
+    "timestamp": "2025-12-23 09:52:19.390890",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub()] [Input validation bypass] At lines 71-72, the function checks for subject and body existence but doesn't validate body type deeply - can an attacker send a subject='sign' with body as a string instead of object to bypass subsequent validation and crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef0b4170-ae0b-47d0-a507-12216de617b3",
+    "timestamp": "2025-12-23 09:52:39.608290",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handleMessageFromHub()] [Race condition] The mutex lock at line 62 serializes messages from hub, but if two concurrent calls to handleMessageFromHub() occur before the first acquires the lock, could both process the same message type (e.g., 'sign' requests) leading to duplicate signature generation or double-spending attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33276f2a-9739-4215-95f5-619e764f4725",
+    "timestamp": "2025-12-23 09:53:00.714060",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [isValidEmail] [Regex engine differences] Can differences in JavaScript regex engines (V8 vs others) cause the email validation regex to accept/reject emails differently across nodes or platforms, leading to attestation units being valid on some nodes but invalid on others, causing consensus failure in attestation services and freezing funds in attestation-gated AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_595be906-6768-4ac0-bf01-82e2aa6c242e",
+    "timestamp": "2025-12-23 09:53:23.226564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [isValidBase64/isValidHexadecimal] [Buffer encoding differences] If Buffer.from() behavior for base64/hex encoding changed between Node.js versions (e.g., stricter validation in newer versions), can units created with older nodes fail validation on newer nodes, causing network partition where old and new nodes reject each other's units (permanent chain split requiring hard fork)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fce2125-c2db-4b3a-977d-dea1633c4f6e",
+    "timestamp": "2025-12-23 09:53:47.091157",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Multiple functions] [JavaScript version differences] Can differences in JavaScript implementation details across Node.js versions (e.g., changes in String.prototype methods, Number precision handling) cause validation_utils functions to return different results for the same inputs on nodes running different versions, triggering consensus divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb00cbb9-656c-43e7-8bed-d38298db494b",
+    "timestamp": "2025-12-23 09:54:11.984261",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with divisible_asset.js] [Asset amount precision] If divisible_asset.js uses isNonnegativeInteger() to validate asset amounts but the caller performs floating-point arithmetic before validation, can rounding errors cause amounts like 0.999999999999999 to round to 1 and pass validation, enabling attackers to steal fractional asset amounts through repeated rounding exploitation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69918e89-aec7-49c2-a34c-34c038f2f158",
+    "timestamp": "2025-12-23 09:54:37.151478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with indivisible_asset.js] [Serial number validation] When indivisible_asset.js validates NFT serial numbers using isPositiveInteger(), if the function doesn't enforce maximum serial values and serials can be arbitrarily large, can an attacker create NFTs with serials exceeding database integer limits, causing overflows when computing serial ranges and enabling duplicate NFT issuance (breaking serial uniqueness invariant)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_263c7ffa-71fb-473f-a114-801b6f440f40",
+    "timestamp": "2025-12-23 09:55:03.901307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with network.js] [Light client request validation] If network.js uses validation_utils functions to validate light client requests for address history but doesn't rate-limit requests with invalid addresses, can an attacker flood full nodes with malformed address requests that fail isValidAddress() check, causing CPU exhaustion in validation loop and network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c2b087d-de72-4019-a117-e98cf4239fc9",
+    "timestamp": "2025-12-23 09:55:31.453268",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with wallet.js] [Device address validation bypass] When wallet.js validates pairing codes using isValidDeviceAddress(), if the validation is only client-side and network.js doesn't revalidate, can an attacker pair with invalid device addresses, causing encrypted messages to be routed incorrectly and enabling interception of private payment information leading to fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdc657de-fd69-401d-88d4-cdc3d377e105",
+    "timestamp": "2025-12-23 09:55:59.864313",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with formula/evaluation.js] [State variable key validation] If formula/evaluation.js uses isNonemptyString() to validate AA state variable keys but doesn't enforce character restrictions, can an attacker create state keys with SQL wildcard characters (%, _) that corrupt state queries when formula reads 'var[%]', enabling state variable injection that steals funds from other AAs sharing storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69f29d83-70df-419d-9513-4724e6e1b9c3",
+    "timestamp": "2025-12-23 09:56:26.292739",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with aa_validation.js] [Formula string validation] When aa_validation.js validates AA formula strings using isNonemptyString(), if formulas contain only whitespace or comments that parse as empty, can these AAs be deployed but never execute, causing all trigger payments to be lost as AA fails to process them (permanent fund freezing in non-functional AAs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_940b8542-9059-469b-aff6-afb01837a4d1",
+    "timestamp": "2025-12-23 09:56:53.490719",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Integration with validation.js] [Address validation bypass] If validation.js uses isValidAddressAnyCase() for certain address fields but isValidAddress() for others without clear specification, can an attacker create units where recipient addresses in payment messages are lowercase but change addresses are uppercase, causing database queries to miss outputs and creating unspendable change (permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_052e21d7-4462-47cc-9580-5f4eba5ea82f",
+    "timestamp": "2025-12-23 09:57:20.550675",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Multiple functions] [Return value interpretation] If formula/evaluation.js interprets all validation function false returns as same error type without checking which validation failed, can this cause incorrect bounce messages in AA execution that don't specify the actual validation error, confusing users and causing them to lose funds by repeatedly submitting invalid triggers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_605fcf5d-b23a-427a-a22c-95415343ca98",
+    "timestamp": "2025-12-23 09:57:46.530336",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Multiple functions] [Inconsistent null handling] Since different functions handle null differently (e.g., isNonemptyObject returns false, isInteger returns false), if wallet.js expects consistent null rejection across all validation functions but some allow null to pass initial checks, can null values propagate into database causing foreign key violations and node crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64409f6f-9c99-4dc2-89b8-162dfd2abd42",
+    "timestamp": "2025-12-23 09:58:12.202323",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Multiple functions] [Type coercion in caller] If aa_composer.js performs type coercion (e.g., +value) before calling isPositiveInteger(), can the coercion convert non-numeric strings to numbers that pass validation but have different semantics than intended, causing AA responses to include incorrect payment amounts and enabling fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_700c1e49-2f26-4ba3-a354-91204d0c54b2",
+    "timestamp": "2025-12-23 09:58:38.067303",
+    "report_generated": false
   }
 ]
