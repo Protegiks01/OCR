@@ -9598,5 +9598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02d12d0b-89aa-4303-ab19-24fccfbae61c",
     "timestamp": "2025-12-23 12:08:34.184957",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Recipient Chain Filtering] At line 873, chains are filtered by output.address === to_address. Can an attacker provide multiple outputs with the same to_address to cause duplicate chains in arrRecipientChains, confusing downstream consumers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b48b3472-4f19-4b88-9f8e-f49f7efb0a66",
+    "timestamp": "2025-12-23 12:09:56.274101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Light Client Posting] At lines 904-914, light clients post to vendor before saving. If the vendor accepts but local saving fails, can this cause the unit to be broadcast to the network but not stored locally, causing wallet inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2eb55590-1e37-4533-957b-6322c0e291b2",
+    "timestamp": "2025-12-23 12:10:08.921142",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [PreCommitCb Injection] At line 918, if callbacks.preCommitCb is provided, it's called with conn, objJoint, and chains. Can an attacker inject a malicious callback that modifies the connection or joint data before final commit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dffcf61a-28d1-4f86-8a33-90e7eed007ad",
+    "timestamp": "2025-12-23 12:10:22.528047",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Validation Unlock Timing] At line 936, validation_unlock is called after writer.saveJoint. If saveJoint takes a very long time (database bottleneck), can this hold the validation lock preventing other units from being validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bdb88d86-d51f-4c62-90e3-91460b873eee",
+    "timestamp": "2025-12-23 12:10:35.962182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Denomination Mismatch] At lines 989-990, the function checks denomination and asset match. Can an attacker exploit database corruption where stored denomination differs from queried denomination, causing chain restoration to fail and freeze funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb2cb882-15c5-4204-8406-e697d27de211",
+    "timestamp": "2025-12-23 12:10:50.158448",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Transfer-Only Limitation] At lines 991-992, the function throws an error for non-transfer inputs (issues). Can this prevent restoration of chains that include the original issue transaction, making newly issued coins unspendable until first transfer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9bbb689-0e38-428b-9013-b6d149f55d3b",
+    "timestamp": "2025-12-23 12:11:05.753613",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Output Visibility Check] At lines 1006-1007, the function throws an error if all outputs are hidden. Can an attacker create a unit where outputs exist but both address and blinding are NULL, permanently hiding those outputs and freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0181e012-c67b-49cc-b326-8f8e733ed17f",
+    "timestamp": "2025-12-23 12:11:22.728810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Payload Hash Verification] At lines 1014-1016, the restored payload_hash must match the stored row.payload_hash. Can an attacker exploit version differences (versionWithoutTimestamp) to create payloads that hash differently on different nodes, causing chain restoration to fail non-deterministically?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3dbf0bdc-8975-436c-afb9-766d395f5c9c",
+    "timestamp": "2025-12-23 12:11:41.019769",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Output Loop Skip] At lines 1020-1021, outputs without address or blinding are skipped. Can an attacker manipulate the database to mark outputs as revealed (address/blinding present) without actually having the private data, causing restoration to skip valid outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cfa2eb3-272b-4b90-bf6d-f859f2b07c6a",
+    "timestamp": "2025-12-23 12:12:00.380506",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: restorePrivateChains()] [Array Population] At lines 1026-1028, chains are added to either arrRecipientChains or arrCosignerChains. Can duplicate outputs (same address in multiple messages) cause the same chain to be added multiple times, confusing wallet balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_436d83f9-485b-4715-8b04-0721011333b4",
+    "timestamp": "2025-12-23 12:12:20.548441",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readAddressesFundedInAsset()] [Definition Change Exclusion] At lines 1062-1065, addresses with unstable definition changes are excluded. Can an attacker submit definition_chg units to temporarily prevent addresses from being used in payments, causing DoS for specific users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e812261-d471-4066-bd4c-6e295907d448",
+    "timestamp": "2025-12-23 12:12:41.550843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readAddressesFundedInAsset()] [Denomination Filtering] At line 1071, outputs with denomination > remaining_amount are skipped. Can an attacker issue assets with only very large denominations, making it impossible to compose small payments and effectively bricking the asset?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b5c0970-c9bc-4052-b94e-5723617152ac",
+    "timestamp": "2025-12-23 12:13:03.856530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readAddressesFundedInAsset()] [Amount Calculation] At line 1074, used_amount is calculated with min(row.amount, denomination * floor(remaining/denomination)). Can this calculation underflow or produce negative values for edge cases, causing incorrect address selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f2c27ed-fe2d-4588-a63e-159fbdad2cff",
+    "timestamp": "2025-12-23 12:13:26.772459",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readAddressesFundedInAsset()] [Early Exit] At lines 1076-1077, the loop breaks when remaining_amount === 0. Can an attacker provide exact amounts that cause early exit before all eligible addresses are considered, biasing address selection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7db0483a-347c-47c2-b44a-14aa510407d4",
+    "timestamp": "2025-12-23 12:13:51.296900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readFundedAddresses()] [Fee Address Validation] At lines 1094-1099, the function reads fee paying addresses. If arrFundedFeePayingAddresses is empty, an error is thrown. Can an attacker drain all fee paying addresses to prevent any indivisible asset transactions, causing network-wide DoS for that asset?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30f78cc3-cc30-46fa-9a2d-6a7ca88826a5",
+    "timestamp": "2025-12-23 12:14:16.636939",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: readFundedAddresses()] [Typical Fee Constant] At line 1085, TYPICAL_FEE is hardcoded to 3000. If actual fees exceed this (large units), can the function select insufficient addresses for fees, causing transactions to fail validation with insufficient fee errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3062f5ed-2172-419b-bed4-71c13db87f9b",
+    "timestamp": "2025-12-23 12:14:42.013101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeMinimalIndivisibleAssetPaymentJoint()] [Target Amount Calculation] At lines 1111-1117, target_amount is calculated from either amount or asset_outputs. Can an attacker provide asset_outputs with amounts that sum to zero or overflow, causing the function to select no inputs or incorrect inputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_748eace5-416d-4317-bb42-bed4f5d36800",
+    "timestamp": "2025-12-23 12:15:07.251713",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeMinimalIndivisibleAssetPaymentJoint()] [Unfunded Address Error] At lines 1121-1122, if arrFundedPayingAddresses is empty, a generic error is returned. Can this be exploited to enumerate which addresses have funds by trying payments with different address sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4eac35f1-2e22-4da2-a7fb-04bc6a8f5f06",
+    "timestamp": "2025-12-23 12:15:34.138832",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeMinimalIndivisibleAssetPaymentJoint()] [Parameter Deletion] At lines 1124-1125, available_paying_addresses and available_fee_paying_addresses are deleted from params. Can this cause issues if the original params object is reused, leading to unexpected behavior in retry logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a1229e3-7e4d-495a-b4f7-06e8abbecd9b",
+    "timestamp": "2025-12-23 12:16:01.148147",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Database Transaction Scope] The file uses conn.addQuery and conn.query extensively, but are all operations properly wrapped in database transactions? Can concurrent operations interleave queries in unexpected ways causing race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70781a0d-f97e-4eb0-b1a9-446553be8378",
+    "timestamp": "2025-12-23 12:16:29.326716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Error Handling Consistency] Different functions use callbacks.ifError, throw Error, and return cb(err). Can inconsistent error handling cause some errors to crash the node while others are silently ignored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4d80791-19d0-4a3e-81bb-420b1c27c4a7",
+    "timestamp": "2025-12-23 12:16:58.569055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Private vs Public Asset Logic] Many functions have separate code paths for objAsset.is_private. Can an attacker flip the is_private flag after validation to execute the wrong code path during saving?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee9f498b-5af3-4b98-9b30-fcbed40730ff",
+    "timestamp": "2025-12-23 12:17:28.076804",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Denomination Validation] The file assumes denominations are powers of 10 or other specific values. Can an attacker define assets with invalid denominations (e.g., prime numbers, zero, negative) that break the coin selection logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d3a73b1-72a1-4e21-a9b9-90bf9955bcc2",
+    "timestamp": "2025-12-23 12:17:57.834718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Blinding Entropy] For private assets, blinding factors are generated using composer.generateBlinding(). If this uses weak randomness, can an attacker predict blinding factors to deanonymize private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec6a175b-cbb7-40d8-9b63-9b2b21ff393f",
+    "timestamp": "2025-12-23 12:18:26.973124",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: Multiple] [Serial Number Overflow] Serial numbers are incremented indefinitely (lines 518, 522). For long-lived assets, can serial_number exceed JavaScript's MAX_SAFE_INTEGER, causing precision loss and duplicate serials?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79217ded-97c9-4971-924a-4d3fabfaa31d",
+    "timestamp": "2025-12-23 12:18:54.983155",
+    "report_generated": false
   }
 ]
