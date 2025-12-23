@@ -6148,5 +6148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce80e988-68a4-4325-926a-8427dc3c5791",
     "timestamp": "2025-12-23 08:19:23.792100",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Race condition on unstable messages] If two AA units posting conflicting data feed values are being processed concurrently and both iterate through storage.assocUnstableMessages simultaneously (lines 26-79), can a TOCTOU race cause non-deterministic evaluation where different nodes observe different feed states, leading to AA execution divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3610604-ec6e-4e8b-812a-3c28d344e480",
+    "timestamp": "2025-12-23 08:20:42.173408",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Unstable unit cache inconsistency] When checking storage.assocUnstableUnits[unit] || storage.assocStableUnits[unit] (line 27), if a unit transitions from unstable to stable between the two lookups, can the function miss the unit entirely or read stale metadata, causing incorrect data feed existence checks in AA formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_342e03cd-c3db-47ba-a1af-29303ffdd9f9",
+    "timestamp": "2025-12-23 08:20:54.884712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Concurrent unstable message modification] During iteration over storage.assocUnstableMessages (lines 197-223), if main_chain.js simultaneously moves messages to stable state and deletes them from assocUnstableMessages, can the iterator become invalid or skip entries, causing AA to miss valid data feeds and produce incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60d9375f-dc24-42d8-8bc2-62d67c0ae8eb",
+    "timestamp": "2025-12-23 08:21:07.666265",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Non-atomic unit property reads] When reading objUnit.latest_included_mc_index, objUnit.level, and objUnit.bAA across multiple unstable units (lines 27-35), if these properties are being updated concurrently by writer.js during unit storage, can inconsistent reads cause incorrect MCI filtering or AA detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a089d204-bb20-41aa-a29e-24696c3718ad",
+    "timestamp": "2025-12-23 08:21:21.775268",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Candidate selection race] When multiple AAs post data feeds concurrently and arrCandidates is being populated (lines 197-223), if the unstable unit set changes between candidate collection and sorting, can the sorting logic (lines 237-246) fail or produce non-deterministic ordering across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0af9fd97-8ea7-4386-95c9-782c418e487b",
+    "timestamp": "2025-12-23 08:21:36.157617",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Type confusion in equality check] At line 44, the comparison 'value === feed_value || value.toString() === feed_value.toString()' treats numbers and their string representations as equal - can an attacker post a feed with string '123' that matches queries for numeric 123, bypassing type-specific validation in AA formulas and causing incorrect price oracle comparisons?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a131ddfb-b506-4e9a-bd24-9d972a26d487",
+    "timestamp": "2025-12-23 08:21:51.662352",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Inequality operator type inconsistency] Lines 48-50 check inequality using 'value.toString() !== feed_value.toString()' after converting both to strings - can this allow '123' != 123.0 to return false when the AA formula expects strict type checking, causing logic errors in conditional payouts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a50d24b5-2dee-4789-af4d-7192c9d7db66",
+    "timestamp": "2025-12-23 08:22:08.858734",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Mixed type comparison vulnerability] When comparing numeric and string types (lines 53-75), if one value is number and another is string '123abc', the relationSatisfied() function (lines 17-24) will perform JavaScript type coercion - can this cause '100' > 99 to evaluate unexpectedly and break AA price threshold logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f60261ab-7d31-4a46-b8f6-e6c9b7d3d67c",
+    "timestamp": "2025-12-23 08:22:26.625866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [String-to-number conversion ambiguity] Lines 58-59 convert strings to numbers using string_utils.toNumber(value, bLimitedPrecision) - if bLimitedPrecision changes based on max_mci crossing aa2UpgradeMci boundary (line 14), can the same string convert to different numbers on different nodes, causing non-deterministic AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2179931f-d06b-4c37-9235-9d1cb9d00209",
+    "timestamp": "2025-12-23 08:22:45.011078",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Type coercion in feed value extraction] Line 216 uses string_utils.getFeedValue(feed_value, bLimitedPrecision) which may convert strings to numbers - if an oracle posts '1e20' before the upgrade and '1e20' after, can the different precision modes (line 190) cause the value to be read as number vs string, breaking AA state consistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_06c01ecc-ec51-46a9-8f68-14c6cacebaef",
+    "timestamp": "2025-12-23 08:23:04.904943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Incomparable type handling] Lines 75-76 comment 'else they are incomparable e.g. abc > 123' but don't explicitly handle this case - can an attacker craft feeds with mixed types that cause relationSatisfied() to throw or return undefined, triggering AA bounces for legitimate users?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b119433a-e848-402f-ad0a-20da46397bbd",
+    "timestamp": "2025-12-23 08:23:25.901455",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Key prefix injection] The key_prefix construction (line 123) concatenates 'df\\\\n'+address+'\\\\n'+feed_name+'\\\\n'+prefixed_value using newlines as delimiters - if an attacker controls a feed_name containing newlines, can they inject additional key components and query arbitrary data feeds from other addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a8b8de8-2524-4158-90e8-86cdffe48fd5",
+    "timestamp": "2025-12-23 08:23:48.040687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Lexicographic encoding attack] When encoding numbers using string_utils.encodeDoubleInLexicograpicOrder(float) (lines 109, 118), if the encoding has edge cases for special values like NaN, Infinity, or -0, can an attacker post feeds with these values that sort incorrectly in the KV store and break range queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97eec6e9-aa76-4d49-a8b0-b6afd52d6b04",
+    "timestamp": "2025-12-23 08:24:09.585918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Range query boundary manipulation] The >= operator query (lines 132-134) uses 'gte: key_prefix' and 'lt: type+\\\\r' as boundaries - can an attacker craft a prefixed_value that equals the boundary condition, causing the range to include/exclude unexpected entries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bb7b84f-c4a1-40c8-9eef-ab53937ffb3b",
+    "timestamp": "2025-12-23 08:24:32.545097",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [MCI encoding wraparound] Line 121 encodes MCI as (0xFFFFFFFF - mci).toString(16) for reverse ordering - if min_mci or max_mci exceed 0xFFFFFFFF (4.2 billion), can integer overflow cause incorrect MCI range filtering and allow reading feeds from wrong time periods?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b988930-8132-4a59-8502-d2a75c32bd63",
+    "timestamp": "2025-12-23 08:24:57.509306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [String vs numeric type prefix collision] Lines 109-115 prefix numeric values with 'n\\\\n' and strings with 's\\\\n' - can an attacker post a string feed starting with 'n\\\\n' that collides with numeric encoding and appears in both string and numeric queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffd9a904-1fe7-4561-9889-ebc3c3fd5787",
+    "timestamp": "2025-12-23 08:25:23.170325",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Inequality decomposition vulnerability] Lines 96-102 decompose '!=' into '>' OR '<' queries - if both queries find different feed values within the MCI range, can the function incorrectly return true even when the feed value actually equals the query value at a specific MCI?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0a6ba7e-be3e-4e09-89a3-ae2c9cb3302d",
+    "timestamp": "2025-12-23 08:25:50.273160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [Key prefix ambiguity] When value===null, the key_prefix is 'dfv\\\\n'+address+'\\\\n'+feed_name (line 272) vs 'df\\\\n'+address+'\\\\n'+feed_name+'\\\\n'+prefixed_value (line 285) - can this prefix difference be exploited to query feeds from a different namespace?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bece30d8-9e2e-4aa8-93b0-4647da8116e0",
+    "timestamp": "2025-12-23 08:26:17.774276",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Stream premature destruction] Line 168 calls stream.destroy() when bFound becomes true to terminate iteration early - if the stream's 'end' event (line 182) was already emitted before destroy(), can onEnd() be called twice, violating the bOnEndCalled check (line 175)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_163942b1-d331-4ef2-adad-2c0a3d82b810",
+    "timestamp": "2025-12-23 08:26:46.237175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Stream error handling DoS] Lines 183-185 throw an Error on stream errors, crashing the node - can an attacker corrupt the KV store to trigger stream errors during data feed queries, causing all nodes querying that oracle to crash and halt the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_631377cb-c624-4e38-beed-3dff177aa02d",
+    "timestamp": "2025-12-23 08:27:14.520335",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Unbounded stream iteration] For inequality queries (lines 132-147), if an oracle has posted millions of feed values, the stream iterates all matching entries (line 159-170) - can an attacker query 'feed_value > 0' against a prolific oracle to cause excessive memory usage and DoS the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e8b7333-88ac-403e-8cf7-68e95a759dfb",
+    "timestamp": "2025-12-23 08:27:43.324312",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [Stream limit bypass] Line 290 sets 'limit: bAbortIfSeveral ? 2 : 1' to limit results, but line 292's handleData still processes all data events before checking objResult.value - can a malformed KV store emit more than 'limit' events, causing unexpected memory usage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d434609-aa5e-4619-bdbc-1df083ffeecb",
+    "timestamp": "2025-12-23 08:28:12.809964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Stream resource leak] If stream.destroy() is called (line 168) but the stream fails to actually terminate and continues emitting 'data' events, can handleData (line 181) continue processing entries after bFound=true, wasting CPU?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a19a5df3-1841-46c2-a101-632fd31175a3",
+    "timestamp": "2025-12-23 08:28:42.584204",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Candidate sorting non-determinism] Lines 237-246 sort candidates by latest_included_mc_index and level, throwing Error if two candidates have identical values - if two unstable AA units have exactly the same latest_included_mc_index and level, does the Error cause AA execution to fail on all nodes or can some nodes process them in different order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bf798b0-3e1f-4649-a99d-ad701d348f81",
+    "timestamp": "2025-12-23 08:29:12.196328",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Timestamp-dependent behavior] Line 367 passes 'Math.round(Date.now() / 1000)' as timestamp parameter - if nodes have clock skew, can this cause different data feed query results across nodes, leading to divergent AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_123aa87f-12ea-40d6-bd00-71fd0d41a4d6",
+    "timestamp": "2025-12-23 08:29:42.113356",
+    "report_generated": false
   }
 ]
