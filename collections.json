@@ -7498,5 +7498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d316832-b370-437b-b6d6-9c93d19ca992",
     "timestamp": "2025-12-23 09:49:11.827565",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Trust Model: Node.js Module System] The module assumes require() and the Node.js module system are uncompromised. If an attacker can inject code into Node.js's module resolution path (e.g., through NODE_OPTIONS environment variable or module preloading), could they intercept the require() call at line 52 to inject malicious code that executes with the privileges of the Obyte node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40908352-6136-4495-ba0e-351711f98939",
+    "timestamp": "2025-12-23 09:50:27.507945",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Platform: Windows] On Windows, if the APPDATA variable points to a path with trailing backslashes (e.g., 'C:\\\\Users\\\\User\\\\AppData\\\\'), will the concatenation at getAppDataDir() create double slashes, potentially causing path normalization issues in subsequent filesystem operations that could prevent database writes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84fd86ca-4922-421e-bb24-a5d8f3934151",
+    "timestamp": "2025-12-23 09:50:40.443374",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Platform: Linux] On Linux systems with HOME pointing to a directory with restricted permissions (e.g., mode 000), will subsequent attempts to create ~/.config/appname fail in a way that prevents the application from starting, causing a denial of service for that user's node and preventing participation in the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f104befe-d67b-452c-a2a4-0db6bbe9af08",
+    "timestamp": "2025-12-23 09:50:53.383482",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/desktop_app.js] [Platform: macOS] On macOS, if the application is run in a sandboxed environment (e.g., Mac App Store sandbox), does the path construction properly handle the redirected Library/Application Support directory, or could sandbox restrictions cause the app to write to temporary locations that are deleted on restart, losing all wallet data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f02e098c-fd57-4d94-bb48-de5e612b401c",
+    "timestamp": "2025-12-23 09:51:06.951826",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [Asset validation bypass] Can an attacker submit a private payment with payload.asset that is not exactly HASH_LENGTH (44 characters), bypassing the validation at line 84-85 if the check only validates string length but not actual hash format, potentially causing consensus divergence when different nodes interpret malformed asset IDs differently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_931be72b-ffb1-4e3b-aa90-bb67547216d4",
+    "timestamp": "2025-12-23 09:51:21.321994",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [Empty inputs exploitation] If payload.inputs is an empty array (length 0), does the validation at line 86-87 catch this before the spend proof loop at lines 98-156 attempts to process it, or can an attacker create a private payment with zero inputs that still passes validation and creates outputs, violating balance conservation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_174b80f6-885e-446f-a47f-06b8a0596106",
+    "timestamp": "2025-12-23 09:51:36.641809",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Spend proof ordering attack] The spend proofs are validated by comparing against database rows ordered by spend_proof at line 142, but the arrSpendProofs array is not explicitly sorted (line 140 is commented out). Can an attacker craft inputs in a specific order such that the spend_proof comparison at lines 147-149 succeeds even with mismatched spend_proofs, allowing unauthorized spending of outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b11d7ad3-5021-4fc8-bcd7-9cf7f16c55c7",
+    "timestamp": "2025-12-23 09:51:53.471676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Issue input spend proof forgery] For issue-type inputs at lines 101-110, the spend_proof is computed from input.amount, input.address, and input.serial_number without verifying these values against any issuer authorization. Can an attacker issue unlimited amounts of a private asset by crafting arbitrary issue inputs with fake serial numbers, causing inflation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db1ad479-bf20-4473-b724-aa31eb01f8d4",
+    "timestamp": "2025-12-23 09:52:11.627979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Transfer input SQL injection] At lines 113-115, the query selects from outputs using input.unit, input.message_index, and input.output_index without validating these are properly escaped integers. Can an attacker inject SQL through malformed input fields to bypass the output existence check or retrieve incorrect output data, leading to spend proof validation bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58892439-b181-4bd9-8301-379d1d855234",
+    "timestamp": "2025-12-23 09:52:30.216478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Spend proof count mismatch] The validation at line 145-146 checks that rows.length === arrSpendProofs.length, but if a malicious unit stores duplicate spend_proofs in the database (identical spend_proof values), could this check pass while actual input count differs, allowing an attacker to hide extra inputs or outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc6c8ebe-7cbb-4dab-9f42-f2f0311b647f",
+    "timestamp": "2025-12-23 09:52:48.802592",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Address mismatch in spend proofs] At lines 148-149, both address and spend_proof are compared, but if the database query at line 142 can return rows in different order than arrSpendProofs due to non-deterministic sorting of identical spend_proof values, can this cause valid private payments to fail validation on some nodes but succeed on others, leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3f3a1f6-ff81-432a-a34f-4ae8012f671f",
+    "timestamp": "2025-12-23 09:53:09.375837",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Missing asset check in transfer inputs] When querying outputs at line 114, the query filters by asset (payload.asset), but if a malicious private payment references outputs of a different asset and the spend_proof somehow validates, can this bypass the asset type check and allow cross-asset spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a476af3-feb5-449f-b140-586a7f8427d6",
+    "timestamp": "2025-12-23 09:53:30.986314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateSpendProofs()] [Blinding value tampering] The spend_proof for transfer inputs includes src_output.blinding at line 127, which comes from the database. If an attacker can modify the blinding value in the outputs table (e.g., through a prior race condition), can they generate valid spend_proofs for outputs they don't own, stealing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc557451-d6e9-43ea-a04a-05925221cabb",
+    "timestamp": "2025-12-23 09:53:51.702418",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateDivisiblePrivatePayment()] [Payment validation bypass] After spend proof validation at line 159, the code calls validation.validatePayment() at line 161, but if validatePayment returns success even with input-output balance mismatch (due to bugs in validation.js), can attackers create private payments that inflate asset supply without detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b2e1c2e-61a2-4fdf-8757-83bd6ad3e71c",
+    "timestamp": "2025-12-23 09:54:14.156274",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Output insertion race condition] At lines 32-38, outputs are inserted in a loop without transaction isolation guarantees. If two private payments referencing the same unit but different message_index are processed concurrently, can both insert outputs with conflicting output_index values, causing database constraint violations or duplicate outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e64c59d-9b84-4378-a800-d917bae9e60c",
+    "timestamp": "2025-12-23 09:54:38.000395",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Amount overflow in output insertion] The output.amount is parsed with parseInt() at line 36 without bounds checking. Can an attacker specify output.amount as a string exceeding JavaScript's safe integer range (2^53-1), causing parseInt to truncate the value and create outputs with incorrect amounts, violating balance conservation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6d43a03-91d3-46b4-b76c-1c19e0fe1f73",
+    "timestamp": "2025-12-23 09:55:01.874703",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Blinding value validation] Output.blinding is inserted directly into the database at line 36 without validating its format or length. Can an attacker supply malformed blinding values (e.g., non-base64, wrong length) that cause spend_proof mismatches in future transactions, permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfb5bb4f-aee6-41ac-82d7-de5bab7a3aeb",
+    "timestamp": "2025-12-23 09:55:27.088293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Input address resolution SQL injection] At lines 52-54, when arrAuthorAddresses.length > 1, a SQL query is constructed to find the address from outputs. If arrAuthorAddresses contains malicious values (e.g., SQL keywords or quotes), can this enable SQL injection to return arbitrary addresses, allowing unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_974def98-c6c8-435c-88cd-a812367e5d33",
+    "timestamp": "2025-12-23 09:55:52.822611",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Issue input address defaulting] For issue-type inputs at lines 46-47, if input.address is not provided, it defaults to arrAuthorAddresses[0]. Can an attacker create a multi-author unit where arrAuthorAddresses[0] is a controlled address, allowing them to issue assets on behalf of other co-authors without proper authorization?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82229441-6bc3-4f88-bf4c-33cb45701655",
+    "timestamp": "2025-12-23 09:56:18.309195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [is_unique field manipulation] The is_unique field is set to 1 for stable units and null for unstable units at line 56. If a unit's stability status changes after insertion (e.g., becomes orphaned), does the is_unique field get updated? Can stale is_unique values cause incorrect validation of subsequent transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5e61401-b54f-4bbd-918f-1c51c7a6a2f5",
+    "timestamp": "2025-12-23 09:56:44.584426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Serial number validation bypass] Input.serial_number is inserted at line 64 without validation. Can an attacker specify arbitrary or duplicate serial_numbers for issue-type inputs, creating multiple units that claim to issue the same serial, causing consensus failure when nodes disagree on which issuance is valid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39bd21f2-4816-4f73-bef7-7a56eb891468",
+    "timestamp": "2025-12-23 09:57:10.578975",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Transfer input double-spend prevention] At lines 66-70, the code marks src outputs as spent with is_spent=1, but if the UPDATE query at line 68 uses weak isolation levels, can two concurrent transactions both mark the same output as spent before either commits, allowing a double-spend to succeed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01d7a9c0-2a2c-4948-b47c-52101a2a0f70",
+    "timestamp": "2025-12-23 09:57:37.546927",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Async.series error handling] The arrQueries are executed with async.series at line 72, which stops on first error but doesn't rollback prior queries. If query N fails after queries 1..N-1 succeeded, can this leave the database in an inconsistent state with partial outputs/inputs inserted, corrupting the UTXO set?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7664bed0-5e5d-48c8-91a0-634d3ff162ac",
+    "timestamp": "2025-12-23 09:58:05.129155",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: validateAndSaveDivisiblePrivatePayment()] [Missing transaction atomicity] The function receives a conn parameter but doesn't verify it's part of a transaction. If called with a non-transactional connection, can the multi-step database operations at lines 32-71 be interrupted mid-execution by crashes or errors, permanently corrupting the database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b073828-d5f4-44c1-8f7b-951d027440b3",
+    "timestamp": "2025-12-23 09:58:33.569262",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [Parameter validation bypass] At lines 174-186, the function throws errors for incompatible param combinations, but these are thrown synchronously. If a caller wraps this in try-catch and retries with modified params, can they bypass the mutual exclusivity checks and create a payment with both to_address and asset_outputs, causing undefined behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8796d25-8c5d-4a39-80a6-fa6fdf96b0f6",
+    "timestamp": "2025-12-23 09:59:02.147176",
+    "report_generated": false
   }
 ]
