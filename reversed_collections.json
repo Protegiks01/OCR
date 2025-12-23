@@ -10048,5 +10048,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05df61cf-b6d1-416a-a0ac-1bfd35bf5e39",
     "timestamp": "2025-12-23 15:26:40.378312",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Deep Definition Recursion DoS] At line 229-238, the code calls Definition.validateAuthentifiers() which recursively evaluates address definitions. If an attacker provides a definition with extremely deep nesting (e.g., hundreds of nested 'and'/'or' operators), can this cause stack overflow during recursive evaluation, crashing the validation process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f04331d-16fa-458d-80ea-31cd1460bea3",
+    "timestamp": "2025-12-23 15:28:00.059303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Authors Array DoS] At lines 130-146, the code iterates through all authors without a length limit check. If an attacker submits a signed message with millions of author objects, can this cause excessive CPU usage during iteration and validation, delaying processing of legitimate transactions for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce53057f-b786-4d2e-9ab0-c292801cdd65",
+    "timestamp": "2025-12-23 15:28:12.569357",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: repeatString()] [Memory Exhaustion via String Repetition] At lines 17-21, the repeatString() function creates a string by repeating the input 'times' times. If an attacker provides a signing path with length value in billions, can this cause gigabytes of memory allocation for placeholder authentifiers at line 67, crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b32ec3a4-737c-45fb-bfed-38a47a9738b5",
+    "timestamp": "2025-12-23 15:28:25.515503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Infinite Retry Loop DoS] At lines 163-173, the code retries validation when last_ball_unit is not found. If conf.bLight is false but network.isCatchingUp() keeps returning true indefinitely (e.g., due to network issues), the code will retry indefinitely without the bRetrying flag check. Can this cause infinite recursion or event listener accumulation, exhausting memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8f4eee6-5fc6-4c0f-8b30-05dd4e6a3873",
+    "timestamp": "2025-12-23 15:28:39.008400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signing Path Amplification DoS] At lines 63-67 and 74-96, the code iterates over all signing paths for each author. If an attacker can register an address with thousands of signing paths (e.g., through a complex 'r of set' definition with many alternatives), can they cause exponential time complexity in the signing loop, leading to CPU exhaustion and denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a7b941fb-237b-4c17-855e-a09a6b4d2eeb",
+    "timestamp": "2025-12-23 15:28:54.324806",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Database Connection Race] The function accepts a 'conn' parameter (line 116) that can be a custom database connection or default to db. If multiple validations are running on the same connection object concurrently, and the connection doesn't properly serialize queries, can this cause query result mixing or transaction isolation violations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cce6ce52-5ceb-4edf-b8ff-2151cdef7cbf",
+    "timestamp": "2025-12-23 15:29:09.935433",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Event Bus Race Condition] At line 170, the code registers a listener on eventBus for 'catching_up_done'. If multiple signed messages are being validated concurrently and all waiting for catchup, can they all wake up simultaneously and overwhelm the database with concurrent queries (lines 160, 179), causing deadlocks or validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c29f744-2bdf-4a2e-91d8-28f9365826dd",
+    "timestamp": "2025-12-23 15:29:26.764083",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Author Array Modification Race] At lines 44-48, the objUnit.authors array is replaced with authors from composer.composeAuthorsAndMciForAddresses(). If the original objAuthor reference (line 32) is still being accessed elsewhere in the code during this replacement, can this cause use-after-free or stale reference bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49fae763-b8f8-4a1e-b539-f28f16aca6f0",
+    "timestamp": "2025-12-23 15:29:44.536267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Retry Flag Race] At lines 163-176, the bRetrying flag is used to control retry behavior, but it's set to false at line 176 after successful lookup. If multiple validation attempts for the same message are running concurrently (e.g., from different peers), can they interfere with each other's retry logic, causing infinite retry loops or premature validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d103bc24-fff5-41a4-a879-bfda262e6a34",
+    "timestamp": "2025-12-23 15:30:03.932141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Last Ball Timestamp Race] At line 178 and line 221, the last_ball_timestamp is read from the database and used in validation state. If the units table is updated between the read and the validation, can this cause timestamp inconsistencies that lead to different validation results on different nodes, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64dc19d3-5b2d-4945-97fc-abdfa2d5edaa",
+    "timestamp": "2025-12-23 15:30:23.364946",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Definition Read Race in Non-Network-Aware Mode] At lines 53-58, the code reads the definition using signer.readDefinition() and throws an error if it fails. If the definition is being modified concurrently by another process, can the read return stale or corrupted data, causing the signed message to be created with an outdated definition that won't validate later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f54884a1-fce4-4a4c-9cf1-5b54035f8754",
+    "timestamp": "2025-12-23 15:30:44.498270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Light Client History Race] At lines 165-168 and 185-187, light clients request history and retry validation. If the history response arrives while the validation is still processing the retry, can this cause duplicate validation attempts with inconsistent state, potentially accepting a message that should be rejected or vice versa?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b93b447-25a8-45e7-a4c4-23032581e3c6",
+    "timestamp": "2025-12-23 15:31:05.999337",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Parallel Signing Race] At lines 70-101, multiple authors and multiple signing paths are processed in parallel using async.each. If two signing paths for the same author execute concurrently and both try to update author.authentifiers[path] simultaneously, can this cause one signature to overwrite another, resulting in incomplete or corrupted authentifier sets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8f32ffc-aef0-431b-a49a-d025a80432c7",
+    "timestamp": "2025-12-23 15:31:29.030362",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Read Race] At lines 179-198, the code reads the definition from storage at a specific MCI. If another transaction is concurrently updating the definition or the units table, can a race condition cause the definition read to return inconsistent or partially updated data, leading to incorrect validation decisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54b4c802-9ca7-485a-be37-faa98c820e44",
+    "timestamp": "2025-12-23 15:31:52.867135",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Catchup Race Condition] At lines 163-173, when last_ball_unit is not found and the node is catching up, the code waits for 'catching_up_done' event and retries. If an attacker times their signed message submission to arrive during catchup, and the last_ball_unit becomes valid during catchup but with different MCI than expected, can this cause non-deterministic validation results across different nodes, leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_263be606-22cf-4307-868a-9fe957338b18",
+    "timestamp": "2025-12-23 15:32:16.066492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Version Bypass] At lines 128-129, the code checks if the version is in constants.supported_versions but only if version field exists. If an attacker omits the version field entirely (which passes this check), but downstream code assumes a default version with different validation rules, can they bypass stricter validation requirements of newer versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1a758ac-c5cf-4151-87ae-63a43923516a",
+    "timestamp": "2025-12-23 15:32:41.177213",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signing Path Manipulation] At lines 63-67, the code reads signing paths from signer.readSigningPaths() and creates authentifiers for each path. If an attacker can manipulate the signing paths returned (e.g., injecting duplicate paths, paths with special characters, or extremely long path strings), can this cause the signing process to create malformed authentifiers that bypass validation or cause crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7131538b-a160-47d1-ae6c-62cdaa32cbbc",
+    "timestamp": "2025-12-23 15:33:06.657487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Provider Attack] At lines 180-192, when a definition is not found in storage, the code expects it to be provided in objAuthor.definition and validates the hash. If an attacker can race the storage lookup to make the definition appear 'not found' when it actually exists with different content, can they force acceptance of a malicious definition that would otherwise be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18970bf6-656d-4f3f-9e5d-65b24bd4df61",
+    "timestamp": "2025-12-23 15:33:33.301069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Author Array Manipulation] At lines 136-146, the code iterates through all authors but only validates the one matching the expected address (or first author if no address specified). If an attacker includes multiple author objects with the same address but different definitions/authentifiers, can they exploit array iteration logic to have a malicious author validated instead of the legitimate one?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ad4265f-c2e6-4167-9f47-61f142984a4a",
+    "timestamp": "2025-12-23 15:34:01.509596",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Text-to-Sign Manipulation] At line 69, the code generates text_to_sign using objectHash.getSignedPackageHashToSign(objUnit). If objUnit has been partially modified between lines 42-60 (definition/last_ball_unit setting) and line 69 (hash calculation) due to race conditions or callback timing, can this result in signing a different message than intended, leading to signature malleability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f7b9ac5-0487-4db5-9a8a-37bd6cab7a95",
+    "timestamp": "2025-12-23 15:34:29.266220",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Last Ball MCI Manipulation] At line 179, the code reads the address definition at a specific last_ball_mci point in time. If an attacker can manipulate or delay the last_ball_unit lookup (lines 160-175) to reference an MCI where the victim's address had a different, weaker definition (e.g., single-sig instead of multi-sig), can they bypass the current strong authentication requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_425f7fc5-78fb-44d8-9392-313e56ea8652",
+    "timestamp": "2025-12-23 15:34:55.460551",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Authentifier Validation Bypass] At lines 229-238, the code calls Definition.validateAuthentifiers() to verify signatures. If the validateAuthentifiers() function has a vulnerability that allows it to return true for invalid signatures under certain conditions (e.g., race conditions, type confusion), can an attacker craft a signed message that passes validation despite having forged signatures, leading to unauthorized actions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6a04c17-d70f-43b8-a5ac-7b428c7607d7",
+    "timestamp": "2025-12-23 15:35:23.403670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Hash Bypass] At lines 189-190 and 205-206, the code validates that objectHash.getChash160(objAuthor.definition) matches the expected definition_chash or address. Can an attacker exploit hash collision vulnerabilities in the chash160 function to provide a malicious definition that hashes to the same value, allowing them to bypass authentication requirements and sign messages as another address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a3056ef-75c9-49b7-93fc-39a822e29c8e",
+    "timestamp": "2025-12-23 15:35:52.050541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Authentifier Placeholder Attack] At lines 66-67, the code creates placeholder authentifiers using repeatString('-', length). If an attacker can manipulate the assocLengthsBySigningPaths values to return extremely large lengths (e.g., Integer.MAX_VALUE), can this cause memory exhaustion or integer overflow when creating placeholder strings, leading to denial of service or corrupted authentifier structures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f27c8d3-7ae0-4ea9-b49f-d0c62fa4d9c0",
+    "timestamp": "2025-12-23 15:36:20.215591",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signature Bypass] In the signMessage() function at lines 77-86, when signer.sign() returns the special string '[refused]', the code treats this as an error and aborts signing. However, can an attacker craft a malicious custom signer that returns a valid-looking signature instead of '[refused]' to bypass multi-party approval requirements in multi-signature scenarios, allowing unauthorized message signing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8dc9bb6-22f0-4e8c-8b21-ed4dc9b6004b",
+    "timestamp": "2025-12-23 15:36:47.765322",
+    "report_generated": false
   }
 ]
