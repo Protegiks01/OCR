@@ -6898,5 +6898,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ef84607-3839-4bb7-a8ed-1c860785d5b4",
     "timestamp": "2025-12-23 09:09:40.613878",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'in data feed' case] [Oracle Address Array Manipulation] At lines 384-388, the function validates that all addresses in arrAddresses are valid and adds complexity for each address, but can an attacker provide the same oracle address multiple times in arrAddresses to either exhaust complexity or cause duplicate database queries, leading to DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d92e3f3e-e563-467f-a8ec-8453de7b7abc",
+    "timestamp": "2025-12-23 09:10:48.134165",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'in data feed' case] [Data Feed Value Type Coercion] The commented-out code at lines 864-923 shows complex logic for comparing string vs numeric feed values, but the actual implementation at line 863 calls dataFeeds.dataFeedExists; can an attacker exploit type coercion differences between the old and new implementations by providing feed values that compare differently under string vs numeric comparison?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a7f12a1-8ef7-40fa-b48f-33f6340961aa",
+    "timestamp": "2025-12-23 09:11:00.780898",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'in data feed' case] [Min MCI Validation] At line 410-411, if min_mci is provided, it must be a non-negative integer, but is there a maximum value check? Can an attacker set min_mci to a very large value (e.g., Number.MAX_SAFE_INTEGER) that would cause all current data feeds to be excluded, making the condition impossible to satisfy and permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4d6bede-300d-479e-949d-19d82394d0ed",
+    "timestamp": "2025-12-23 09:11:14.077984",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'in data feed' case] [Time-of-Check Time-of-Use for Data Feeds] At line 863, dataFeedExists is called with objValidationState.last_ball_mci, but if a new stable ball is added between when objValidationState was captured and when this check executes, can different nodes see different data feed availability, causing non-deterministic validation results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3606bdaa-1678-43c3-81ce-7482582aa223",
+    "timestamp": "2025-12-23 09:11:27.684499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'in data feed' case] [Feed Name Length DoS] At line 396, feed_name.length is checked against MAX_DATA_FEED_NAME_LENGTH, but is there a check on the number of distinct feed_name values used across all 'in data feed' operators in a single definition? Can an attacker create thousands of 'or' branches each checking a different feed name, causing database index thrashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed2f0a71-0bdb-4d99-bcc4-a323efe449dc",
+    "timestamp": "2025-12-23 09:11:42.267683",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'in merkle' case] [Merkle Proof Missing Authentifier] At lines 929-931, if assocAuthentifiers[path] is missing, the function returns cb(false) without setting fatal_error, but should this be treated as a fatal error like bad signature/hash? Can an attacker exploit this distinction to bypass merkle proof requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1eab55e-2110-4cee-888b-03bdf514c14c",
+    "timestamp": "2025-12-23 09:11:57.727520",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'in merkle' case] [Merkle Proof Deserialization Attack] At line 937, serialized_proof is deserialized via merkle.deserializeMerkleProof without validation; if the deserialization function has vulnerabilities (buffer overflow, prototype pollution), can an attacker crash the node or execute arbitrary code by providing a malicious serialized proof?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3c4f9dd-48eb-43f8-9685-0aefa5c03952",
+    "timestamp": "2025-12-23 09:12:15.007457",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'in merkle' case] [Merkle Root Collision] At lines 939-942, if the merkle proof is invalid, fatal_error is set, but the code then checks if the merkle root exists in data feeds; if an attacker finds a collision where two different elements produce the same merkle root, can they prove membership of an element not actually in the feed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04ee61e9-5bc5-4c65-b20a-e400bcd3e4f3",
+    "timestamp": "2025-12-23 09:12:33.361622",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'in merkle' case] [Element Format Validation Bypass] At lines 441-442, the element must match a specific regex pattern, but the regex allows many special characters; can an attacker craft an element string that matches the regex but causes injection attacks in downstream systems that use this element (e.g., SQL injection if element is used in queries)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc9af835-8da0-45af-91d9-bc8eac4aba76",
+    "timestamp": "2025-12-23 09:12:51.923998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'in merkle' case] [Negation Restriction] At line 415, 'in merkle' cannot be negated, but the validateDefinition code doesn't enforce this recursively; can an attacker nest 'in merkle' inside a 'not' operator at a different level (e.g., ['not', ['or', [['in merkle', ...], ['other']]]]) to bypass the restriction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c99af0bb-9d1b-4feb-8096-9be962e26992",
+    "timestamp": "2025-12-23 09:13:10.952126",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - getFilterError()] [Filter Amount Validation] At lines 66-73, amount, amount_at_least, and amount_at_most are validated as positive integers, but there's no check for maximum values; can an attacker specify amount_at_most as Number.MAX_SAFE_INTEGER, causing arithmetic overflow when summing amounts in the 'sum' operator evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_825c94c0-04ac-46bf-ae79-341cd554cec3",
+    "timestamp": "2025-12-23 09:13:31.099542",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: evaluateFilter()] [Input Address Augmentation Missing] At lines 1192-1204, when evaluating inputs, the code expects augmented_input to have an address field, but if augmentMessages() fails to populate this field for some input types, can the filter incorrectly match or skip inputs, causing 'has' operators to return wrong results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc588cf6-38f8-4fc2-8351-19402309ad18",
+    "timestamp": "2025-12-23 09:13:52.131378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: evaluateFilter()] [This Address vs Other Address Ambiguity] At lines 1193-1199 and 1219-1225, 'this address' refers to the address parameter passed to validateAuthentifiers, but in nested definitions evaluated via 'address' operator, does 'this address' refer to the outer or inner address? Can an attacker exploit this ambiguity to bypass address-based filters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58ba875a-d542-40d4-855d-edafa7de4566",
+    "timestamp": "2025-12-23 09:14:14.460353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: augmentMessages()] [Input Type Assumption] At lines 1269-1292, the function augments inputs by querying the database for transfer outputs, but if an input.type is explicitly set to something unexpected (not 'issue' or 'transfer'), does the code handle this gracefully? Can an attacker cause inputs to be incorrectly augmented, leading to wrong filter evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d0cb51f-5c62-4523-b576-cf58a55a63e0",
+    "timestamp": "2025-12-23 09:14:38.040528",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: augmentMessages()] [Concurrent Augmentation Race] At lines 1141-1146, augmentMessagesAndContinue checks if objValidationState.arrAugmentedMessages exists and skips augmentation if so, but if two parallel evaluation branches both enter augmentMessages simultaneously, can they both proceed to augment, causing duplicate queries and non-deterministic objValidationState.arrAugmentedMessages values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02cb4e05-2931-4134-889c-3fe91865f371",
+    "timestamp": "2025-12-23 09:15:02.460086",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: evaluateFilter()] [Message Index vs Payload Index Confusion] Throughout evaluateFilter (lines 1162-1248), the code iterates over objUnit.messages and payload.inputs/outputs, but when accessing augmented_input at line 1191, it uses objValidationState.arrAugmentedMessages[i].payload.inputs[j]; if objUnit.messages contains non-payment messages, does the index alignment break, causing wrong augmented input to be accessed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d0cf72a-7240-4e28-99ac-79c87c5de8ae",
+    "timestamp": "2025-12-23 09:15:28.253009",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has'/'has one' case] [Op Parameter Handling] At lines 1024-1032, 'has' and 'has one' call augmentMessagesAndEvaluateFilter, but the result is passed to cb(res) without checking the second parameter arrFoundObjects; if evaluateFilter returns true with an empty arrFoundObjects (which shouldn't happen but could due to bugs), would downstream 'has equal' or 'sum' operators mishandle this?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d0f9373-b21d-48b1-8155-6d133673bb66",
+    "timestamp": "2025-12-23 09:15:53.449841",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'has equal' case] [Equal Fields Comparison Type Safety] At line 1046, the code compares arrFirstObjects[i][field] !== arrSecondObjects[j][field] for equality, but if one field is a number and the other is a string representation of that number, does JavaScript's !== operator cause false inequality? Can an attacker exploit this to make 'has one equal' return false when it should be true, freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21a13e3a-73a7-4ab5-8ee8-30d0f3fbb685",
+    "timestamp": "2025-12-23 09:16:19.790452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'sum' case] [Sum Arithmetic Overflow] At lines 1062-1065, amounts are summed in a regular JavaScript number, but if amounts are very large positive integers near Number.MAX_SAFE_INTEGER, can the sum exceed this limit and wrap around or lose precision, causing 'sum' with equals/at_least/at_most checks to return wrong results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80db7524-55c8-4474-8baf-aa46a4f3f39a",
+    "timestamp": "2025-12-23 09:16:46.743759",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'has equal'/'has one equal' case] [Search Criteria Asset Privacy] At lines 508-523, the code collects assets from search_criteria filters and checks if any are private, but if filter.asset is 'base' or 'this asset' in an asset condition, the asset is not added to arrAssets; can an attacker craft search_criteria that references private assets indirectly through 'this asset', bypassing the privacy check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1aee8e62-e16f-4061-bcf8-3dd12c8854a6",
+    "timestamp": "2025-12-23 09:17:11.293416",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate() 'sum' case] [Sum Mutually Exclusive Constraints] At line 543, the code checks that equals and at_least/at_most are not used together, but there's no check preventing at_least > at_most; if an attacker sets at_least=100 and at_most=50, does the validation accept this impossible constraint, and would evaluation return false or true when sum is in [50, 100]?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ff580c4e-3cfd-4e98-b642-cabae262159e",
+    "timestamp": "2025-12-23 09:17:37.182575",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'timestamp' case] [Timestamp Comparison Type] At lines 959-970, timestamp comparisons use objValidationState.last_ball_timestamp directly with relation operators, but if last_ball_timestamp is undefined or null (due to validation state initialization bugs), does JavaScript coercion cause unexpected comparison results, making timestamp checks always pass or always fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ca191a4-33a7-4812-b448-409fd1903a82",
+    "timestamp": "2025-12-23 09:18:02.882124",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'mci' case] [MCI Boundary Conditions] At lines 973-984, MCI comparisons are performed, but there's no validation that mci (from args[1]) is within a reasonable range; can an attacker specify mci as a negative number or NaN, causing comparison operators to behave unexpectedly and bypassing MCI-based time locks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4203030e-ce49-48f8-ad3b-29543e47fc3b",
+    "timestamp": "2025-12-23 09:18:29.884082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'age' case] [Age Calculation Integer Overflow] At line 1013, the SQL query checks if objValidationState.last_ball_mci - age is greater/less than main_chain_index, but if age is negative or extremely large, can this cause integer overflow in SQLite/MySQL, returning wrong results and allowing premature spending of time-locked funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_544b1386-cfb9-4587-b172-c3c371ed6813",
+    "timestamp": "2025-12-23 09:18:56.517646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateAuthentifiers() - evaluate() 'age' case] [Age Source Unit Collection] At lines 1005-1006, the code collects arrSrcUnits only from inputs with input.address === address, but if an attacker transfers funds from address A to address A (self-transfer), does the age check measure the age of the self-transfer unit or the original source unit? Can this be exploited to reset time locks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b6258bf-4100-4805-8f55-1302f116a3a0",
+    "timestamp": "2025-12-23 09:19:24.138723",
+    "report_generated": false
   }
 ]
