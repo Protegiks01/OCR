@@ -9148,5 +9148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9996ba75-0370-4745-9951-996c1182e3ae",
     "timestamp": "2025-12-23 14:25:51.553363",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Event bus dependency] Lines 26 and 599 emit events on eventBus - if eventBus is not properly initialized or has been corrupted, could event emission fail silently, causing other modules to never receive migration status updates and hang waiting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_080cdeae-a0cf-4525-9aa5-5eaf43802c5d",
+    "timestamp": "2025-12-23 14:26:59.742863",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [Creation date defaults] Multiple tables use TIMESTAMP DEFAULT CURRENT_TIMESTAMP - if the system clock is wrong or manipulated during migration, could all migrated records have incorrect timestamps, breaking time-based queries or expiration logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3f01b8b-a66c-401b-9c59-8ebdbfedd17b",
+    "timestamp": "2025-12-23 14:27:12.284979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Async callback timing] Line 604 calls onDone() after all migrations complete - if async.series() has already called onDone earlier due to an error, could this result in double-callback execution, causing undefined behavior in the calling code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79ce8a94-1244-46d0-8b63-0fbc6aa07a9a",
+    "timestamp": "2025-12-23 14:27:25.134056",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [UPDATE with subquery] Lines 588-591 use UPDATE with subquery to set count_primary_aa_triggers - if aa_responses table is locked by another transaction, could this UPDATE block indefinitely, hanging the migration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01344c24-e4a7-466e-85b0-231110888ad7",
+    "timestamp": "2025-12-23 14:27:38.600899",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 43] [Wallet arbiter contracts shared_address] Line 454 has shared_address CHAR(32) NULL UNIQUE - could multiple contracts with shared_address=NULL violate the uniqueness constraint in some SQLite versions, or does NULL not participate in uniqueness checks, potentially hiding duplicate contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebfa6bee-a4a2-447f-b2e6-7b8ebeb37d8c",
+    "timestamp": "2025-12-23 14:27:52.557901",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 37] [Base AA null handling] Line 398 allows base_aa to be NULL - could this cause issues in AA inheritance resolution where NULL is treated differently than an AA with no base, leading to execution differences?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50e81283-383f-45b2-a22a-ca381948ae78",
+    "timestamp": "2025-12-23 14:28:08.149485",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 36] [Watched light AAs table] Lines 388-395 create watched_light_aas table - if a light client watches too many AAs, could this table grow unbounded, and when upgrading, could the migration timeout due to index creation on a huge table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_527ce111-8f64-4f59-af8f-0ccb3705669a",
+    "timestamp": "2025-12-23 14:28:24.491500",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 35] [EXISTS subquery performance] Lines 383-384 check if output unit is authored by an AA using EXISTS subquery - for large databases, could this cause the migration query to run for hours, locking the outputs table and preventing any unit processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2cbd111-43ef-4423-a606-7a386516a750",
+    "timestamp": "2025-12-23 14:28:42.503257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 35] [Balance aggregation timing] Lines 377-386 aggregate AA balances using SUM(amount) - if outputs table is being modified during this query execution, could the SUM be incorrect, leading to AA balance mismatches that prevent withdrawals or allow overdrafts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d268f078-6bb1-4823-92db-ae3eab73c402",
+    "timestamp": "2025-12-23 14:29:01.455330",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [CROSS JOIN usage] Line 195 uses CROSS JOIN between attestations and messages - if this produces a Cartesian product due to missing join conditions, could the query return duplicate or incorrect rows, causing attestation data corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_461d268a-b0cb-45ac-9df3-67a341fedd40",
+    "timestamp": "2025-12-23 14:29:21.376943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: addTypesToStateVars()] [Light client early return] Line 640 returns early for light clients - do light clients end up with state variables in old format, and when they query AAs, could type interpretation differ from full nodes, causing incorrect AA evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_74ec5481-d68f-4863-9958-992e28b0699b",
+    "timestamp": "2025-12-23 14:29:42.033623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: initStorageSizes()] [Cordova early return] Line 612 returns early for Cordova without doing anything - do Cordova nodes end up with incorrect storage_size values, and could this allow mobile nodes to accept different AA transactions than desktop nodes, causing chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9454fb37-6219-40bf-a91f-032617a12e8c",
+    "timestamp": "2025-12-23 14:30:03.771548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Connection.addQuery assumptions] Throughout the file, connection.addQuery() is called to build arrQueries array - if this method doesn't properly escape parameters or has SQL injection vulnerabilities, could migration code be exploited to inject malicious SQL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_90810f6f-29a7-4cc6-b324-5def5f0123c4",
+    "timestamp": "2025-12-23 14:30:26.578386",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA triggers composite primary key] Line 311 uses PRIMARY KEY (mci, unit, address) for aa_triggers - could the ordering of this key cause inefficient queries when looking up triggers by address or unit, significantly slowing down AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aaba7944-ae7f-4e5a-8316-a3c9397c27fa",
+    "timestamp": "2025-12-23 14:30:49.483038",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 28] [Timestamp default value] Line 288 adds timestamp column with DEFAULT 0 - could all existing units having timestamp=0 cause issues with time-based queries, witness selection, or stability calculations that assume timestamps are real Unix times?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe0db639-0c5f-4abb-ac7e-579f5d175f54",
+    "timestamp": "2025-12-23 14:31:13.930485",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 6] [ALTER TABLE ADD COLUMN] Lines 67-68 use ALTER TABLE ADD COLUMN - if these columns already exist from a previous failed migration, does SQLite return an error, and does this prevent migration retry, permanently bricking the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ea5a9bc-f608-4b8f-b0e4-6bf0074afd00",
+    "timestamp": "2025-12-23 14:31:39.126503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Version equality check] Line 23 returns early if version === VERSION - but does this check happen before or after eventBus.emit('started_db_upgrade')? If modules are waiting for finished_db_upgrade event that never comes, could this cause deadlock?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_984a447f-8b01-4c2c-8c65-4ae2761c8ed7",
+    "timestamp": "2025-12-23 14:32:05.999912",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 31] [KV migration blocking] Lines 346-355 execute all SQL migrations in arrQueries before calling migrate_to_kv.js, then clear arrQueries - if migrate_to_kv fails, are the SQL migrations rolled back, or does the database end up in an inconsistent state where SQL schema is v31+ but KV data is still in old format?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fcb1ab5-c04b-4b58-929f-fbaff4c81fa7",
+    "timestamp": "2025-12-23 14:32:33.062403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [Node vars last update] Line 570 stores last_update timestamp - if system clock is manipulated or incorrect, could this cause nodes to have wrong ideas about when data was last purged, leading to either premature data deletion (breaking catchup) or unbounded data growth (DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c04bc76-649a-4b1f-af13-a0f8c7eb9ce3",
+    "timestamp": "2025-12-23 14:33:00.816593",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [TPS fees negative balance] Line 563 allows tps_fees_balance to be negative (comment explicitly states 'can be negative') - could integer underflow in TPS fee calculations result in extremely large positive balances after wraparound, allowing unlimited transaction throughput without payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58007b39-f776-4ead-b26a-bd92824242b3",
+    "timestamp": "2025-12-23 14:33:28.099875",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 46] [System vars vote_count_mci] Lines 552-559 create system_vars with PRIMARY KEY (subject, vote_count_mci DESC) - could this descending order in primary key cause inefficient queries or index corruption in some SQLite versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62f32245-85a8-479a-99f9-0faba67ec6b1",
+    "timestamp": "2025-12-23 14:33:54.856154",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [Joints table creation] Lines 294-298 create joints table to store full unit JSON - if this table grows unbounded, could it consume all disk space, causing database corruption or preventing future unit storage (DoS attack via disk exhaustion)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21dc9115-c5e6-4f08-9d67-cbff31bf0af5",
+    "timestamp": "2025-12-23 14:34:21.098968",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Error propagation] Throughout the file, errors are thrown (lines 15, 18, 22, 200, 635, 667) - are these errors caught by the caller, and if not, could an uncaught error during migration crash the node permanently, preventing it from ever starting again?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_650216dd-2ff7-4556-9ee3-29f3048371ca",
+    "timestamp": "2025-12-23 14:34:47.345013",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [PRAGMA user_version manual updates] Lines 114, 289, 341, 365, 399, 414, 514 manually set PRAGMA user_version at specific checkpoints - if the final PRAGMA at line 597 fails but these intermediate ones succeeded, could the database be marked as partially upgraded, causing re-running of some migrations and skipping others on next restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84737123-ea93-4f33-a724-3e26407474f9",
+    "timestamp": "2025-12-23 14:35:14.066108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Attestation address validation] Line 199 checks attestation.address === row.address with throw on mismatch - if this validation fails, does it abort the entire migration, and could a single corrupt attestation prevent all nodes with that data from upgrading, causing network split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c4fa8d5-559d-44cb-a192-cf39444e0fe8",
+    "timestamp": "2025-12-23 14:35:40.838316",
+    "report_generated": false
   }
 ]
