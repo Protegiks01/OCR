@@ -3748,5 +3748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62537c8a-b097-4a63-be5e-f01e47317fe0",
     "timestamp": "2025-12-23 07:08:28.132907",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toOscriptPrecision() Lines 48-50] [Rounding inconsistency] This function is meant to 'calculate the same result as Oscript would calculate' by converting to string representation. If there's a version mismatch between the Oscript interpreter and this JavaScript implementation, or if edge cases in string conversion differ across platforms/Node.js versions, can this create consensus failure where different nodes compute different string representations of the same numeric value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_215693d5-282a-469d-b70f-fa7e34e79c4f",
+    "timestamp": "2025-12-23 07:09:43.112581",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: createDecimal() Lines 43-45] [Precision loss attack] The function calls new Decimal(val).times(1) to reduce precision. If an attacker passes a high-precision string (e.g., '0.123456789012345678901234567890') as input to an AA, does this function truncate it to 15 digits in a way that could allow precision-based attacks where the attacker exploits the difference between their local calculation (full precision) and the on-chain calculation (truncated)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_040aeb4f-fe4d-4d0d-b137-42d9fddb8365",
+    "timestamp": "2025-12-23 07:09:55.531716",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: toDoubleRange() Lines 38-41] [Underflow silencing] This function converts underflowed decimals (values that round to zero when converted to double) to exactly Decimal(0). Can an attacker exploit this by creating formulas that rely on very small non-zero values (e.g., 1e-325) which get silently converted to zero, causing incorrect balance calculations or division-by-zero errors that weren't intended in the original formula logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5d3fb2a-40ba-4c80-87df-2e81af65f5d5",
+    "timestamp": "2025-12-23 07:10:08.304400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isFiniteDecimal() Lines 34-36] [Type confusion] The function checks if val.isFinite() AND isFinite(val.toNumber()). If a malicious formula constructs a Decimal value where val.isFinite() returns true but val.toNumber() returns Infinity (e.g., due to overflow during conversion), can this bypass validation and allow infinite values to enter AA state variables, causing arithmetic errors in subsequent operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18252200-c928-4830-b38f-be7e2de96295",
+    "timestamp": "2025-12-23 07:10:21.811426",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 14] [Overflow exploitation] The maxE is set to 308, which is stated to be 'slightly wider' than IEEE754 double to handle overflowing datafeeds. Can an attacker craft a datafeed value exactly at 1.7e308 that gets saved as a string in datafeeds but is parsed as Decimal in formulas, causing different nodes to handle the value inconsistently (some as string, some as number) and diverge in AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad125d2f-3d04-4d90-937a-a6ea6a5743f7",
+    "timestamp": "2025-12-23 07:10:35.879462",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 11-18] [Non-deterministic execution] The Decimal.js library is configured with precision=15 and ROUND_HALF_EVEN rounding mode. If different nodes have different versions of Decimal.js or if floating-point edge cases produce slightly different rounding results near the precision boundary, can this cause non-deterministic AA formula evaluation across nodes, leading to permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b2bec5b-6fbd-423b-a615-00f0871bdcbe",
+    "timestamp": "2025-12-23 07:10:52.106718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Last ball MCI consistency] At lines 99-102, last_ball_unit and last_ball_mci are selected, but there's no check that last_ball_mci <= last_stable_mci parameter - can caller pass inconsistent last_stable_mci forcing proof to reference future stability point that doesn't exist yet?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fabf573-a4f1-4b58-a7ab-1ed44c82982f",
+    "timestamp": "2025-12-23 07:11:08.609648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Last ball chain verification] At lines 189-192, last_ball values are stored in assocLastBallByLastBallUnit keyed by last_ball_unit, but there's no verification that these form valid chain (each last_ball_unit's ball hash should match previous unit's last_ball) - can attacker send proof with broken last ball chain, tricking light clients about stability point?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d022505-d414-4119-8845-82d2782aa83f",
+    "timestamp": "2025-12-23 07:11:25.637098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Definition timeline consistency] At lines 316-330, definition changes are processed in order from arrWitnessChangeAndDefinitionJoints, but these units were selected from database with arbitrary level ordering - if witness changes definition in unit A (level 100) then again in unit B (level 99), does reverse level order cause definition changes to apply in wrong sequence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8591d636-f0ce-4711-b98b-279f62911e38",
+    "timestamp": "2025-12-23 07:11:44.434125",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Definition change double application] At line 258, if address_definition_change message matches current author, assocDefinitionChashes[address] is updated - if same unit contains multiple definition_chg messages for same address, are they all processed in sequence (lines 254-261 in loop), potentially applying multiple definition changes in single unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfb60f13-973e-47db-803a-b94d0990775f",
+    "timestamp": "2025-12-23 07:12:04.032450",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [bRequireDefinitionOrChange flag] At line 224, validateUnit() takes bRequireDefinitionOrChange parameter, set to true for definition changes (line 322, 326) and false for witness joints (line 336) - if attacker sends witness joint that contains definition_chg message, does bFound flag at line 246, 259 incorrectly succeed without the requirement, bypassing definition change validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05ac4f19-680b-471b-83da-795dec0de680",
+    "timestamp": "2025-12-23 07:12:24.672592",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Array length limits] At lines 23-24, arrUnstableMcJoints and arrLastBallUnits are standard JavaScript arrays - if unstable chain has more than MAX_SAFE_INTEGER units (unlikely but theoretically possible), can array operations silently fail or corrupt data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9cd3c12d-83ad-4471-b21b-8a162c03f553",
+    "timestamp": "2025-12-23 07:12:46.768712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [2^31 - 1 magic number] At line 79, findWitnessListUnit is called with 2^31 - 1 as max_mci parameter - this is INT_MAX for 32-bit signed integers. If database uses 64-bit integers for MCI, does this artificially limit search space, potentially missing witness list units at higher MCIs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4950574a-4226-42d7-a303-c01d7d2ad6a4",
+    "timestamp": "2025-12-23 07:13:09.391293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [MCI arithmetic overflow] At lines 85-86, start_mci is calculated via nested findLastBallMciOfMci() calls - if main_chain_index is near MAX_SAFE_INTEGER, can intermediate calculations overflow JavaScript number limits, producing negative or invalid start_mci that breaks SQL query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97c7c23e-8ad9-49ee-8a1d-5a97e177059a",
+    "timestamp": "2025-12-23 07:13:32.643503",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [async.eachSeries ordering guarantee] At lines 138-148, async.eachSeries is used to read joints in order from SQL result - does this guarantee that arrWitnessChangeAndDefinitionJoints has same ordering as SQL ORDER BY level? If async operations can complete out-of-order due to caching, can joint order be wrong?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fecb3c58-8fb4-48ad-8e89-68d1905ae8a7",
+    "timestamp": "2025-12-23 07:13:57.324076",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [Definition lookup race] At lines 268-276, if definition is not in cache, it's read from DB with storage.readDefinition() - if two nodes have different database states (one has definition, other doesn't due to archiving), can validation succeed on one node but fail on other, causing network split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_acb44978-16d4-4377-bbcc-63fef3380892",
+    "timestamp": "2025-12-23 07:14:22.298846",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Timestamp-based ordering ambiguity] At line 82, MySQL uses ORDER BY creation_date for witness list unit lookup - if multiple witness list units have identical creation_date timestamp (same second), can LIMIT 1 return arbitrary unit, causing different nodes to use different witness list units as reference point?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e08341ed-cc3b-47fd-8a32-7568fa21e568",
+    "timestamp": "2025-12-23 07:14:48.248857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [Non-deterministic UNION ordering] At lines 120-135, three UNION queries are ordered by level, but if multiple units have identical level, SQL ORDER BY doesn't specify secondary sort column - can database return units in different order on different executions, causing prepareWitnessProof() to generate different arrWitnessChangeAndDefinitionJoints for same chain state on different nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9be7da1-391a-4a43-b1fc-0db151616de4",
+    "timestamp": "2025-12-23 07:15:16.357855",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [storage.readDefinition() vs readDefinitionByAddress()] At lines 268-276 vs 300-311, two different storage functions are used to read definitions - do they have identical behavior and error callbacks? If readDefinitionByAddress() returns different results than readDefinition() for same address, can cached definitions mismatch between bFromCurrent=true and false cases?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd21ed9e-2876-4297-86a9-f6128b283d1f",
+    "timestamp": "2025-12-23 07:15:44.242862",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [storage.readJointWithBall() vs readJoint()] At line 31, storage.readJointWithBall() is used for unstable units, but at line 139, storage.readJoint() is used for definition changes - do these functions have compatible error handling and return formats? Can mismatch cause validation to fail unpredictably?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f09bfa5f-664c-4c32-89ad-aab3afd880da",
+    "timestamp": "2025-12-23 07:16:13.336077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [validation.validateAuthorSignaturesWithoutReferences() contract] At line 251, this validation function is called - does 'WithoutReferences' mean it skips validating definition references entirely, or just skips loading referenced definitions? If former, can attacker craft definitions with malicious references that bypass security checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a84218e2-9983-4012-9dea-d50d317c0630",
+    "timestamp": "2025-12-23 07:16:44.002491",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: processWitnessProof()] [validation.hasValidHashes() assumptions] At lines 173-174 and 208-209, validation.hasValidHashes() is assumed to return boolean - if this function actually returns string error message or undefined on invalid hashes, does the if (!validation.hasValidHashes()) check incorrectly pass validation, accepting units with invalid hashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82c17f44-8a80-4741-8d9d-da99cf116ebd",
+    "timestamp": "2025-12-23 07:17:15.069763",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: prepareWitnessProof()] [storage.getMinRetrievableMci() trust] At line 66, storage.getMinRetrievableMci() is called to determine oldest units to scan - if this function returns incorrect value (too new due to aggressive archiving), can proof generation miss old witness definition changes, causing signatures to validate against wrong definitions for light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d4fee52-1864-4cdf-940f-3e171b679c4d",
+    "timestamp": "2025-12-23 07:17:45.429798",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: findUnstableJointsAndLastBallUnits()] [Zero start_mci] If start_mci is 0 (genesis), does the SQL query 'main_chain_index>?' correctly select genesis unit with MCI=0, or does > operator exclude it requiring >= operator instead? Can this cause proofs starting from genesis to be invalid?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53190bfb-d5d5-4aad-b59b-b8b5bc38b63a",
+    "timestamp": "2025-12-23 07:18:14.130871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/witness_proof.js] [Function: validateUnit()] [Single author edge case] At lines 256-260, the condition (message.payload.address === address || objUnit.authors.length === 1 && objUnit.authors[0].address === address) has potential bug - if objUnit.authors.length === 1, does objUnit.authors[0].address === address always equal the message.payload.address check, making the OR redundant? Or can single-author unit have message.payload.address different from author address, allowing unauthorized definition changes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_673b6970-0a1e-4312-9690-ef9229c99e33",
+    "timestamp": "2025-12-23 07:18:41.369634",
+    "report_generated": false
   }
 ]
