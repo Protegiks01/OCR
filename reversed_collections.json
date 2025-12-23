@@ -3598,5 +3598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce0a37a9-b56e-4f3f-b421-1b57e28c2893",
     "timestamp": "2025-12-23 06:58:08.539190",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: getFormula() Lines 77-88] [Brace stripping vulnerability] The function checks if formula is enclosed in braces {} and strips them. If a malicious formula contains nested braces like '{{malicious code}}', will this function only strip the outer braces, leaving '{malicious code}' which might bypass subsequent validation that expects no braces?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4161167a-8c4b-4fb4-aff2-1b06b04051d6",
+    "timestamp": "2025-12-23 06:59:22.983872",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isValidValue() Lines 74] [Boolean coercion attack] The function explicitly allows booleans. In JavaScript, booleans coerce to 0/1 in arithmetic. Can an attacker set AA state variables to boolean values and then exploit formulas that expect numbers, causing 'true + 10' to evaluate to 11 instead of throwing an error, potentially bypassing validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40d281c3-2c19-4ab6-b8b1-3bd7443c18da",
+    "timestamp": "2025-12-23 06:59:35.590352",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isValidValue() Lines 73-75] [Empty string bypass] The function allows any string, including empty string ''. Can an AA exploit this by setting state variables to '' and later causing string-to-number coercion bugs where '' coerces to 0 in arithmetic but remains '' in string operations, leading to inconsistent behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_baa9b947-4c64-4093-bb06-2097e581735d",
+    "timestamp": "2025-12-23 06:59:49.229887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isValidValue() Lines 74] [Decimal vs Number confusion] The check is 'typeof val === 'string' || typeof val === 'boolean' || isFiniteDecimal(val)'. If val is a regular JavaScript Number (not a Decimal object), will it fail this check even if it's a valid finite number? Can this cause valid numeric datafeed values to be rejected if they're not properly converted to Decimal before validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba7706be-b23c-4577-bd1e-a4f322f495bb",
+    "timestamp": "2025-12-23 07:00:02.661314",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: isValidValue() Lines 73-75] [Type whitelist bypass] The function only allows string, boolean, or finite Decimal values. Can an attacker pass null, undefined, NaN, Infinity, or object types that slip through this check and later cause type coercion bugs when the 'invalid' value is used in arithmetic operations or comparisons within AA formulas?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dca162c2-501c-41e4-965d-88324278e469",
+    "timestamp": "2025-12-23 07:00:17.145624",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: assignObject() Lines 60-61] [Cyclic reference vulnerability] If source contains a cyclic reference to target (directly or through nested objects), will Object.assign create an infinite loop or throw an error, causing AA execution to fail and potentially freeze user funds if this occurs during a critical withdrawal operation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6507b432-f1db-4429-bca2-18bd9b79c0d9",
+    "timestamp": "2025-12-23 07:00:32.314863",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: clearObject() Lines 53-55] [Delete side effects] Using 'delete obj[key]' can trigger setters or getters if they exist on the prototype chain. If an AA's state object inherits from a prototype with malicious setters, can calling clearObject inadvertently execute attacker-controlled code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d48fb7f1-b934-4d87-aee0-f8cdad754835",
+    "timestamp": "2025-12-23 07:00:48.593219",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: assignField() Lines 64-71] [Property descriptor override] The function uses Object.defineProperty with writable:true, configurable:true, enumerable:true. If the object already has a field with the same name but different descriptors (e.g., writable:false, configurable:false), will this override fail silently in strict mode, or can an attacker exploit this to freeze certain properties and prevent AA state updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c86f9914-92a3-4983-8e5e-98d403e85c8a",
+    "timestamp": "2025-12-23 07:01:06.718247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: assignObject() Lines 59-62] [Object reference confusion] This function clears target and assigns source properties while 'preserving the target object reference'. If AA code holds multiple references to the target object before assignObject is called, will all those references now point to the mutated object? Can this cause unexpected side effects where an AA's internal state gets overwritten by a later assignObject call meant for a different purpose?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_002df1f4-bede-4719-8c9c-81eb0725fc83",
+    "timestamp": "2025-12-23 07:01:25.579402",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: clearObject() Lines 52-56] [Prototype pollution via clearObject] The function deletes all own properties of an object using Object.keys(obj). If obj has a malicious setter on __proto__ or constructor, and an AA formula triggers clearObject on a tainted object, can this lead to prototype pollution that affects all subsequent formula evaluations in the same process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6d3f333-2db0-451d-a4d5-343fe85e0325",
+    "timestamp": "2025-12-23 07:01:45.583414",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 22-28] [Boolean property type confusion] Properties like is_private, is_transferrable, auto_destroy are hardcoded as false/true. If formula evaluation code elsewhere expects these to be numbers (0/1) instead of booleans, can this cause type coercion bugs where 'false == 0' evaluates differently than 'false === 0', leading to incorrect conditional logic in AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22fc0bc3-22c4-4cde-9532-bf9c072264c0",
+    "timestamp": "2025-12-23 07:02:06.497717",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 31] [Definer address hardcoded] The definer_address is hardcoded as 'MZ4GUQC7WUKZKKLGAS3H3FSDKLHI7HFO'. If this address is compromised or if there's a protocol upgrade that changes the genesis address, will AAs still reference this stale hardcoded address, causing asset_info lookups to return incorrect definer information?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c7a82f8-0a0a-4848-b663-0273463e0720",
+    "timestamp": "2025-12-23 07:02:28.229821",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 21] [Total supply manipulation] The cap is set to constants.TOTAL_WHITEBYTES (presumably 1e15 bytes). If an AA formula queries asset info for the base asset and receives this hardcoded value, but the actual circulating supply differs (due to lost keys, burns, or bugs), can an attacker exploit this discrepancy to make incorrect assumptions about available supply and manipulate DeFi protocols that rely on accurate supply data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ade1fc82-e17a-40fe-9195-25135aa6379b",
+    "timestamp": "2025-12-23 07:02:50.745773",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [objBaseAssetInfo Lines 20-32] [Base asset property tampering] The objBaseAssetInfo is exported as a mutable object containing critical properties for the base 'bytes' asset (cap: TOTAL_WHITEBYTES, is_transferrable: true, etc.). If any code elsewhere in the codebase accidentally modifies this object (e.g., objBaseAssetInfo.cap = 0), will all subsequent AA executions use the corrupted asset info, potentially allowing AAs to believe the base asset is non-transferrable or has zero cap, causing logic errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba726275-cf54-466d-88cf-4a621b20fa13",
+    "timestamp": "2025-12-23 07:03:14.923404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 96] [Regex injection via replace()] The .replace() calls use simple string replacement, not regex. However, if formula content includes patterns like 'elsevarelse var', does replace('elsevar', 'else var') create 'else varelse var', and can this be chained with subsequent formula parsing to inject unexpected tokens or break parsing in a way that causes formula execution to diverge from validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e23296c7-af44-4c80-9973-658e964be717",
+    "timestamp": "2025-12-23 07:03:39.806004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 94-99] [Address collision attack] If an attacker can generate a new address that matches one of the 9 hardcoded addresses through hash collision (extremely unlikely but theoretically possible with SHA256 weaknesses), can they deploy malicious AA code that gets 'fixed' in an unintended way, bypassing normal formula validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a498825d-a6b0-405a-b4be-438753fc74e9",
+    "timestamp": "2025-12-23 07:04:06.046275",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 96] [Incomplete syntax fix] The function replaces 'elsevar' with 'else var', 'elseresponse' with 'else response', and 'elsebounce' with 'else bounce'. Are there other malformed syntax patterns (e.g., 'elseif', 'elsereturn', 'else{') that could exist in deployed AAs but aren't covered by this fix? Can an attacker deploy an AA using these patterns before this function is updated, causing the formula to be parsed incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91364549-e7f7-405e-829b-56f9f94aa67f",
+    "timestamp": "2025-12-23 07:04:32.757384",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 95-96] [Mainnet vs testnet divergence] The fix only applies 'if (constants.bTestnet && [...addresses...].indexOf(address) >= 0)'. If there's a configuration error where a node accidentally runs in testnet mode while connected to mainnet peers (or vice versa), will this cause formulas to be parsed differently (with/without the fixes), leading to a permanent chain split between nodes with different bTestnet values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b10c9d1d-ee91-4e38-b76c-5795c84a6432",
+    "timestamp": "2025-12-23 07:05:00.799319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Function: fixFormula() Lines 94-99] [Hardcoded address whitelist bypass] This function contains 9 hardcoded testnet addresses that receive special formula fixing (replacing 'elsevar' with 'else var', etc.). If an attacker discovers that one of these addresses has a vulnerable formula with syntax that was accidentally 'fixed' to work, but the fix itself introduced a security bug, can they exploit the fact that only these specific addresses get the fix while new AAs cannot use the same pattern?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8397ea5-6947-4e2b-bbf6-b9ca07e1f74f",
+    "timestamp": "2025-12-23 07:05:27.860192",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Array Lines 6, 94-98] [Cache eviction order vulnerability] The formulasInCache array uses FIFO eviction (shift() removes oldest). If the 100 most recently used formulas include both benign and malicious AAs, and a critical frequently-used AA's formula gets evicted, can an attacker deliberately trigger cache thrashing by alternating between 101 different formulas to ensure the victim AA always requires reparsing, causing targeted DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f97de747-f878-4c79-9f71-9aca6e37461e",
+    "timestamp": "2025-12-23 07:05:57.389259",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Implementation Lines 88-99 in evaluation.js] [Race condition in cache access] The cache check 'if(cache[formula])' followed by cache write 'cache[formula] = parser.results' is not atomic. In a multi-threaded or concurrent scenario (if Node.js event loop timing allows), can two simultaneous AA triggers with the same formula both miss the cache, parse twice, and cause one parsed result to overwrite the other, potentially leading to a corrupted cache entry if parsing is non-deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22f9cff6-392c-4d67-b9d5-6ed4950dff2e",
+    "timestamp": "2025-12-23 07:06:27.221319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Limit Lines 5-7, 94-99] [Memory exhaustion via cache] The cacheLimit is set to 100 formulas. If an attacker deploys 101 different AAs (or triggers 101 unique formulas through data variations), the cache will thrash as it continuously evicts and re-parses formulas. Can this cause a DoS by making formula evaluation extremely slow, delaying transaction processing for more than 1 hour (Medium severity per Immunefi)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0295a6c7-10fc-432f-af8e-5359c54a7493",
+    "timestamp": "2025-12-23 07:06:57.623387",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Cache Variables Lines 5-7] [Cache poisoning] The cache, formulasInCache, and cacheLimit are exported as mutable objects. If an attacker can somehow execute code in the same Node.js process (e.g., via a compromised dependency or eval vulnerability elsewhere), can they directly modify the cache object to replace parsed formula ASTs with malicious ones, causing all nodes using the cached formula to execute attacker-controlled code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84d3376e-624b-4937-a64c-f2d347d49aae",
+    "timestamp": "2025-12-23 07:07:28.113230",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 16-17] [Exponential notation bypass] The toExpNeg=-7 and toExpPos=21 settings control when numbers are displayed in exponential notation. Can an attacker craft formula inputs that exploit the boundary between standard and exponential notation (e.g., 9999999999999999999 vs 1e19) to cause string comparison mismatches or parsing errors when the value is later retrieved from state as a string?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7af2e91f-955d-4d19-8c6b-c8048a9db6cc",
+    "timestamp": "2025-12-23 07:07:58.450480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/formula/common.js] [Decimal Configuration Lines 12-13] [Rounding mode vulnerability] ROUND_HALF_EVEN is used (banker's rounding). In financial calculations where an AA divides fees or rewards, if an attacker can manipulate inputs to consistently fall on the .5 boundary (e.g., always 2.5, 4.5, etc.), can they exploit the even-rounding bias to systematically steal fractional amounts across many transactions that accumulate to significant value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62537c8a-b097-4a63-be5e-f01e47317fe0",
+    "timestamp": "2025-12-23 07:08:28.132907",
+    "report_generated": false
   }
 ]
