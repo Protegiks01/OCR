@@ -10948,5 +10948,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a30b4e9-5d53-4dd8-9a86-f6184e98ca32",
     "timestamp": "2025-12-23 16:25:55.213616",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [TOCTOU] The setField() function validates the field parameter in a whitelist check, then uses it in a SQL query. If there's a time gap between these operations and the field variable is mutable, can an attacker exploit a time-of-check-to-time-of-use vulnerability to inject a malicious field name after validation passes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9b23a8f-08f1-4b38-9ad0-478f2cba52a4",
+    "timestamp": "2025-12-23 16:27:13.519514",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: respond()] [Race Condition] The respond() function calls composeAuthorsAndMciForAddresses() and then sends a device message, but these are not atomic operations. If the device connection drops between author composition and message sending, can the contract enter an inconsistent state where one party believes a response was sent but the other never received it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da875ce8-19c2-4fcd-9db4-233658855479",
+    "timestamp": "2025-12-23 16:27:26.415098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend() + store()] [Race Condition] If two devices simultaneously call createAndSend() with the same contract hash, both database inserts might succeed (since there's no unique constraint enforcement before the query). Can this create duplicate contract records that cause confusion when getByHash() returns an arbitrary duplicate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6dc87c99-d07b-4e9e-bec9-00835b7da4d7",
+    "timestamp": "2025-12-23 16:27:39.594451",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [Race Condition] The setField() function performs an UPDATE query without any locking or transaction isolation. If two concurrent calls try to update the same contract hash with different field values (e.g., one sets status='accepted', another sets status='declined'), can this create an inconsistent state where the contract's final status is non-deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_795db3cd-7b46-4d23-8073-1988104947ad",
+    "timestamp": "2025-12-23 16:27:53.285248",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [JSON Injection] The store() function stores cosigners without validating the array structure before inserting. If objContract.cosigners is not provided or is malformed, can an attacker cause JSON.stringify() to produce invalid JSON that corrupts the database or breaks decodeRow() parsing later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_34cf2684-a731-4f51-b23c-32c321c36f16",
+    "timestamp": "2025-12-23 16:28:07.664068",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [TTL Validation] The createAndSend() function accepts a ttl parameter without validating it's a positive number or within reasonable bounds. Can an attacker set ttl to negative values, zero, Infinity, or extremely large numbers (e.g., Number.MAX_SAFE_INTEGER) that cause integer overflow, expiration logic bypass, or timestamp calculation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8495b80-9b07-4cc1-b3f0-c46e77c07f93",
+    "timestamp": "2025-12-23 16:28:23.495598",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: store()] [NULL Injection] The store() function accepts objContract.shared_address and objContract.status as optional fields without null/undefined validation. Can an attacker exploit this by sending contracts with crafted null values that bypass database constraints or cause SQL errors when these fields are later queried?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36cbce19-b581-404c-b538-1cfda4c96b55",
+    "timestamp": "2025-12-23 16:28:40.291849",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Address Validation] The createAndSend() function stores peer_address and my_address without validating they are properly formatted Obyte addresses. Can an attacker provide malformed addresses that corrupt database queries, bypass foreign key constraints, or cause crashes in downstream address validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8fd5af54-bbc7-41e9-a819-23a4295c6e22",
+    "timestamp": "2025-12-23 16:28:58.182170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: createAndSend()] [Input Validation] The createAndSend() function accepts title and text parameters without any length validation or sanitization before storing them in the database. Can an attacker send extremely large title/text values (e.g., multi-GB strings) that cause database bloat, memory exhaustion, or denial of service when other nodes sync these contracts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f1901ee-344d-4db1-bf69-9f8c656928eb",
+    "timestamp": "2025-12-23 16:29:17.984345",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash()] [Length Extension Attack] Since getHash() uses plain SHA256 without HMAC on concatenated strings, could an attacker exploit SHA256's length extension property to forge valid contract hashes by appending data to existing contracts without knowing the original creation_date?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99506d54-cd98-421f-9c1a-b5afc7fb28e7",
+    "timestamp": "2025-12-23 16:29:38.059823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash()] [Preimage Attack] The getHash() function creates a hash from concatenated title, text, and creation_date strings without salting or any secret. Can an attacker precompute rainbow tables or use birthday attacks to find colliding contract hashes that allow them to replace legitimate contracts with malicious ones?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_684d6e31-5e45-479d-bee0-925627587933",
+    "timestamp": "2025-12-23 16:29:59.074956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash() vs getHashV1()] [Hash Migration] Two different hash functions exist (getHash using crypto.createHash and getHashV1 using objectHash.getBase64Hash). Can an attacker exploit the difference between these hash algorithms to create a contract that validates with one hash function but produces different output with the other, causing contract disputes or replay attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2086eb23-4792-4d49-b9d4-6ddd2d9c26f6",
+    "timestamp": "2025-12-23 16:30:20.310532",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: getHash()] [Hash Collision] The getHash() function uses SHA256 on a simple string concatenation (title + text + creation_date) without any delimiters or length prefixing. Can an attacker create two different contracts with colliding hashes by exploiting ambiguity in the concatenation (e.g., title='AB', text='C' vs title='A', text='BC' both hash to 'ABC')?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e916b54-df65-4f16-9a2f-e8292975a2e6",
+    "timestamp": "2025-12-23 16:30:43.063597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [SQL Injection] If the whitelist in setField() is ever extended to include user-controlled field names in the future, could the current string concatenation approach create a critical SQL injection vulnerability that allows attackers to modify arbitrary database columns or drop tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed3adfca-661f-41b2-abba-ca3dd755cf83",
+    "timestamp": "2025-12-23 16:31:06.885039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [SQL Injection] The setField() function uses string concatenation to build the SQL UPDATE query with the field parameter. Even with the whitelist check, could database-specific features (e.g., SQLite's column name handling or MySQL's special characters) allow an attacker to inject malicious SQL by crafting a hash value that escapes query context?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9ef6ed8-81a4-471b-b5e2-2e31972477f7",
+    "timestamp": "2025-12-23 16:31:31.356441",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/prosaic_contract.js] [Function: setField()] [SQL Injection] In the setField() function, the field parameter is validated against a whitelist but then directly concatenated into the SQL query string. Can an attacker bypass the whitelist check by exploiting race conditions or by modifying the field variable after the validation but before the query execution, allowing arbitrary SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54258c3a-d600-46c8-a455-489660b9a1aa",
+    "timestamp": "2025-12-23 16:31:55.830439",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Target unit as parent] In findParent, at line 121-122, if the target unit is found directly in arrParents, addBall is called for it. What if the target unit is both a parent and has other parents that also need to be included in the proof chain? Would the proof chain be incomplete (Critical severity - incomplete proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1bed501f-174d-49c4-a719-414434544705",
+    "timestamp": "2025-12-23 16:32:20.122438",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Unit equals MC unit] At line 147-148, if mc_unit === unit, onDone is called immediately. But what if the unit parameter is incorrect and doesn't actually match the MC unit at the given mci? Would this cause an empty proof chain to be generated when a full proof is needed (Critical severity - incomplete proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4936dedb-c0aa-4d49-8b8c-b9cc70696c51",
+    "timestamp": "2025-12-23 16:32:45.372617",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Single MCI range] When later_mci = earlier_mci + 1 (adjacent MCIs), the code should add one ball and terminate. Does the skiplist logic correctly handle this case, or could there be off-by-one errors (Medium severity - incorrect proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d543c56-9fcc-4a62-b803-99e88c0419a1",
+    "timestamp": "2025-12-23 16:33:11.678988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Genesis unit handling] What happens when earlier_mci = 0 (genesis unit)? The proof chain construction should handle this gracefully, but are there any edge cases in skiplist traversal or parent finding that break at MCI 0 (High severity - inability to verify genesis transactions)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66f31799-3d52-467a-a58b-95f2841c1744",
+    "timestamp": "2025-12-23 16:33:37.922468",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [determineIfIncluded performance] The graph.determineIfIncluded() function is called for each parent in the async.eachSeries loop (line 128). If this function is computationally expensive and an attacker creates units with many parents, could this cause DoS (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f07aa982-11fe-4d7c-9083-b6c6b99cdbef",
+    "timestamp": "2025-12-23 16:34:04.827401",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Deep DAG structure DoS] If the target unit is very far off the main chain (many hops from MC unit), the last mile traversal could be very deep. Could an attacker create or request proofs for units with extremely long off-chain paths to cause excessive database queries and processing (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c6bb6c0d-5706-4831-b35f-05323ea3f7a3",
+    "timestamp": "2025-12-23 16:34:32.185317",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Memory exhaustion via arrBalls] The arrBalls array grows as proof chain construction proceeds (line 50). For very long chains, could this array consume excessive memory, potentially causing out-of-memory errors and node crashes (Medium severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_328230aa-cbac-42c5-ae72-9c4130a5d88d",
+    "timestamp": "2025-12-23 16:34:59.313620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Large MCI range DoS] If an attacker requests a proof chain with a very large MCI range (e.g., later_mci=1000000, earlier_mci=0), even with skiplist optimization, the proof chain construction could take significant time and memory. Could this be exploited to DoS nodes by flooding them with expensive proof chain requests (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bbfe07f3-8b89-44a1-a07c-2a85e0445cde",
+    "timestamp": "2025-12-23 16:35:25.241162",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Catchup stability points] Catchup chains are built between stable MCIs. If the earlier_mci or later_mci are not actually stable (e.g., due to database corruption or attack), could this cause syncing nodes to accept unstable units as part of the stable chain (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_677458c9-3634-4c0a-984d-8d5a065b7d82",
+    "timestamp": "2025-12-23 16:35:52.058842",
+    "report_generated": false
   }
 ]
