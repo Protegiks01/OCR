@@ -12148,5 +12148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f93a73b-006f-4172-92aa-15adb695b328",
     "timestamp": "2025-12-23 15:00:21.315441",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughRelay()] [Authentication Optional] When conf.smtpUser and conf.smtpPassword are not provided, does the relay connection attempt unauthenticated SMTP, and could this fail with modern SMTP servers that require authentication, causing all emails to fail silently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24ccdb71-4899-4cf5-b134-16bd5228eee0",
+    "timestamp": "2025-12-23 15:01:40.771116",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Message Truncation] When error_message is potentially very long but only the first 200 characters are used in the subject, could critical context be lost, making bug reports impossible to diagnose without the full message?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_95b9c120-9a76-43a5-ab01-da48b7480abf",
+    "timestamp": "2025-12-23 15:01:53.938110",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [stdout/stderr Piping] When child.stdout and child.stderr are piped to process.stdout/stderr, could this expose sensitive information from sendmail output (like recipient addresses, delivery status) in node logs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe89aabb-8d17-4d7f-80cc-735483dbffe2",
+    "timestamp": "2025-12-23 15:02:06.948621",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendmail()] [conf.smtpTransport Mutation] If conf.smtpTransport is modified at runtime by other modules, could this cause unexpected behavior in pending email sends or create race conditions between transport method selection and execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3722667-b683-4183-bcea-f6727684180d",
+    "timestamp": "2025-12-23 15:02:20.457178",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [Hostname Extraction] When hostname is extracted using params.to.slice(params.to.indexOf('@')+1), is the '@' character validated to exist in the email address, or could a malformed address cause indexOf to return -1, resulting in the entire string being used as the hostname?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73fdb366-13a2-45e5-b813-cf25bffa6ea7",
+    "timestamp": "2025-12-23 15:02:34.806112",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Exception Type Coercion] When checking typeof exception === 'string', what happens if exception is undefined, null, or a complex object that cannot be JSON stringified, and could this cause sendBugEmail to fail or send malformed emails?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4340fb7b-bf3f-4297-90f6-e8174cd297a0",
+    "timestamp": "2025-12-23 15:02:50.290887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Email Body Encoding] Are non-ASCII characters in params.body properly encoded before being written to stdin, or could UTF-8 or other encoding issues cause email corruption when sending internationalized text?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f399315-d9ab-4b32-a51b-74bfb023ad12",
+    "timestamp": "2025-12-23 15:03:07.299808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [Connection Timeout] Is there a timeout configured for the nodemailer transport connection, or could connecting to a slow or unresponsive MX server hang indefinitely, blocking the event loop and causing node unresponsiveness?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a25ba51-ee4d-4af2-bb22-f5bce21df820",
+    "timestamp": "2025-12-23 15:03:25.350719",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendmail()] [Error Propagation] When email sending fails in any transport method, are errors properly propagated to calling code (like wallet.js for textcoin emails), or could critical payment notifications fail without the user being notified?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60d09fc9-d8d4-4b5f-bde8-1531146f938c",
+    "timestamp": "2025-12-23 15:03:43.180871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughRelay()] [SSL/TLS Version] Does the tls configuration specify minimum TLS versions (e.g., TLSv1.2+), or could the connection negotiate weak or deprecated protocols (SSLv3, TLSv1.0) that are vulnerable to attacks like POODLE or BEAST?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e5456b7-d80f-45d2-ac6b-d407e0bb895c",
+    "timestamp": "2025-12-23 15:04:01.136404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Configuration Check Timing] When conf.bug_sink_email and conf.bugs_from_email are checked at the time of sending, could race conditions occur if configuration is reloaded while sendBugEmail is executing, causing inconsistent behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce6f379f-3bcd-4e61-a18e-721896456f66",
+    "timestamp": "2025-12-23 15:04:20.457823",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Header Injection via Subject] When params.subject is written directly to the email headers without escaping, could an attacker inject additional headers by including newlines in the subject, allowing arbitrary header manipulation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1b0b015-3478-4aeb-9755-bdc1c078f119",
+    "timestamp": "2025-12-23 15:04:40.429238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [HTML Body Injection] When params.htmlBody is included in mailOptions without sanitization, could an attacker inject malicious HTML or JavaScript that executes when the recipient opens the email in an HTML-capable client?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_28e67a72-559e-4273-b714-0a8d55204be4",
+    "timestamp": "2025-12-23 15:05:01.516918",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Module Initialization] [DNS Resolution Failure] If DNS.setServers() fails or the specified DNS servers are unreachable, does the module handle this gracefully, or could DNS resolution failures cause all direct email sending to fail without fallback?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_001020a2-5509-4fc6-95c4-17f262fb0afa",
+    "timestamp": "2025-12-23 15:05:23.712550",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendmail()] [Synchronous Configuration Access] When conf.smtpTransport is accessed synchronously, could this cause issues if the conf module performs asynchronous initialization or configuration updates, leading to undefined or stale values being used?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d1ebd23-ffb6-483f-97af-10d20d99906c",
+    "timestamp": "2025-12-23 15:05:47.012845",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughRelay()] [Relay Server Validation] Is conf.smtpRelay validated to be a valid hostname or IP address, or could invalid values (like URLs with schemes, or values with shell metacharacters) cause nodemailer to throw unexpected errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d1e8e86-6654-4f34-85e3-f568dccb0787",
+    "timestamp": "2025-12-23 15:06:10.936037",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Log Exposure] When logging 'not sending bug email' messages to console, could these logs expose sensitive error information to unauthorized users who have access to node logs (e.g., in shared hosting environments)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5cd9d86c-f16a-45d8-ba2d-af30104ab83d",
+    "timestamp": "2025-12-23 15:06:35.676583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughRelay()] [Authentication Optional] When conf.smtpUser and conf.smtpPassword are not provided, does the relay connection attempt unauthenticated SMTP, and could this fail with modern SMTP servers that require authentication, causing all emails to fail silently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f90a02dc-b682-46aa-a777-4709671ab8f3",
+    "timestamp": "2025-12-23 15:07:01.649701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Message Truncation] When error_message is potentially very long but only the first 200 characters are used in the subject, could critical context be lost, making bug reports impossible to diagnose without the full message?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5934d187-2654-47da-bc2e-746378f24c4f",
+    "timestamp": "2025-12-23 15:07:27.051245",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [stdout/stderr Piping] When child.stdout and child.stderr are piped to process.stdout/stderr, could this expose sensitive information from sendmail output (like recipient addresses, delivery status) in node logs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bfc35886-9cbd-4f64-ba90-6ae1a4d5e0f7",
+    "timestamp": "2025-12-23 15:07:53.450847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendmail()] [conf.smtpTransport Mutation] If conf.smtpTransport is modified at runtime by other modules, could this cause unexpected behavior in pending email sends or create race conditions between transport method selection and execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9fb0dc55-fb46-4d27-bc6f-752e89d6ec1b",
+    "timestamp": "2025-12-23 15:08:19.711008",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [Hostname Extraction] When hostname is extracted using params.to.slice(params.to.indexOf('@')+1), is the '@' character validated to exist in the email address, or could a malformed address cause indexOf to return -1, resulting in the entire string being used as the hostname?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_891cf43d-d002-47ad-9db3-9590884bf79c",
+    "timestamp": "2025-12-23 15:08:45.736396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendBugEmail()] [Exception Type Coercion] When checking typeof exception === 'string', what happens if exception is undefined, null, or a complex object that cannot be JSON stringified, and could this cause sendBugEmail to fail or send malformed emails?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6213cdc-12fc-43b9-81f0-42cfae6e2565",
+    "timestamp": "2025-12-23 15:09:10.605101",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailThroughUnixSendmail()] [Email Body Encoding] Are non-ASCII characters in params.body properly encoded before being written to stdin, or could UTF-8 or other encoding issues cause email corruption when sending internationalized text?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5cb6dd1-82d8-46c7-a6a5-a840c4e903b5",
+    "timestamp": "2025-12-23 15:09:33.612427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/mail.js] [Function: sendMailDirectly()] [Connection Timeout] Is there a timeout configured for the nodemailer transport connection, or could connecting to a slow or unresponsive MX server hang indefinitely, blocking the event loop and causing node unresponsiveness?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebc45ca1-a52e-4cf3-bd24-4f486b3d419c",
+    "timestamp": "2025-12-23 15:09:54.487264",
+    "report_generated": false
   }
 ]
