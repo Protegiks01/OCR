@@ -9448,5 +9448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00dc783a-49d1-42af-9c6b-f8ee9e99c5e4",
     "timestamp": "2025-12-23 11:58:19.639202",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: issueNextCoin()] [Denomination Floor Division] At lines 519 and 535, Math.floor is used with division. Can an attacker provide tolerance_plus values that cause rounding errors, issuing more coins than requested and exceeding caps?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_670259ed-cae0-4136-992e-0bc47a837f9e",
+    "timestamp": "2025-12-23 11:59:29.302838",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: issueNextCoin()] [Spend Proof Serial Collision] At lines 548-554, the spend proof for issue includes serial_number to avoid duplicates. But if two different denominations have the same serial_number (issued in parallel), can they produce duplicate spend proofs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82dd5e56-ee16-4f00-9f37-82eaabbca788",
+    "timestamp": "2025-12-23 11:59:41.824724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: issueNextCoin()] [Recursive Issuance Loop] At line 567, after issuing, the function calls pickNextCoin again. Can an attacker craft inputs that cause infinite recursion between pickNextCoin and issueNextCoin, causing stack overflow and node crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4ce50ee-d287-4e65-b443-a2ea23566f37",
+    "timestamp": "2025-12-23 11:59:54.767513",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Output Hiding] At lines 608-612, hidden_payload is created by deleting address and blinding from outputs. Can an attacker provide a payload where some outputs already lack these fields, causing inconsistent hidden payloads that don't match stored output_hash values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca747ad9-ddcf-4170-ab51-6adf5d390fab",
+    "timestamp": "2025-12-23 12:00:08.286061",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Input Query Single Row Assumption] At lines 631-634, the function throws an error if in_rows.length !== 1. Can an attacker craft a unit with 0 inputs or multiple inputs that causes this error, preventing legitimate chain reconstruction and freezing private funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0e79a88-f731-4302-9a40-b2620261a766",
+    "timestamp": "2025-12-23 12:00:22.537524",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Asset Mismatch Detection] At lines 638-641, the function validates asset and denomination match. Can an attacker exploit a race condition where asset properties are modified between chain elements, causing validation to pass but creating invalid chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85b031f7-b610-4cea-a7ec-00df639c0c93",
+    "timestamp": "2025-12-23 12:00:38.231404",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Multi-Author Address Injection] At lines 652-653, if count_authors > 1, input.address is added to the input object. Can an attacker manipulate unit authorship to inject arbitrary addresses into inputs, bypassing ownership checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_044379ed-59ae-4e08-9216-398664b9314f",
+    "timestamp": "2025-12-23 12:00:54.808185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Output Index Consistency] At line 668, the function looks for output where o.output_index === _output_index. If outputs are not properly ordered or have gaps in output_index, can this cause output.address to remain unset (line 677) and throw an error, blocking valid chain reconstruction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_043f563e-15db-4d0a-abd2-78df5c51cfec",
+    "timestamp": "2025-12-23 12:01:12.837325",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Recursion Depth] The readPayloadAndGoUp function calls itself recursively at line 694. For very long chains (thousands of transfers), can this exceed JavaScript's call stack limit causing uncaught exceptions and node crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b8c31ef-2d19-46af-9f5d-82a02fc6daec",
+    "timestamp": "2025-12-23 12:01:31.410321",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: buildPrivateElementsChain()] [Array Push Order] At line 691, new elements are pushed to arrPrivateElements. If the chain traversal encounters branching (multiple paths), can elements be added in the wrong order causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d022bf68-0102-4242-b01e-9de18c8a0455",
+    "timestamp": "2025-12-23 12:01:51.546728",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Parameter Validation] At lines 709-712, the function checks for mutually exclusive parameters (to_address/amount vs asset_outputs). Can an attacker provide both sets of parameters with conflicting values, causing undefined behavior in payment composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca973f17-9ad0-4e17-b525-b8affe4b5ff4",
+    "timestamp": "2025-12-23 12:02:12.430135",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Base Output Construction] At line 715, arrBaseOutputs starts with a 0-amount output to fee_paying_addresses[0]. Can an attacker manipulate this to create dust outputs or outputs with invalid amounts that violate validation rules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65dbe9f0-3455-45c2-bcaf-5f0cef4365a1",
+    "timestamp": "2025-12-23 12:02:34.951332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Address Union] At line 719, paying_addresses and fee_paying_addresses are unioned. Can an attacker provide overlapping addresses that cause double-counting of available funds or unexpected signing requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8459f00d-9ae0-4708-9b47-4efa83c6c844",
+    "timestamp": "2025-12-23 12:02:57.692397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Asset Loading Race] At lines 730-732, storage.loadAssetWithListOfAttestedAuthors is called. Can an attacker submit transactions while asset properties are being modified, causing non-deterministic behavior based on timing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40a686bf-d39e-4a68-947a-67651de1a348",
+    "timestamp": "2025-12-23 12:03:21.323079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Transferability Check] At line 735, the function checks if asset is transferrable and definer_address is present. Can an attacker bypass non-transferrable restrictions by using multi-authored units where definer_address is among paying_addresses but not signing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_15aee1d0-e541-47d0-bbbd-ff0f5b1673f8",
+    "timestamp": "2025-12-23 12:03:45.954547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Cosign Requirement] At line 737, if cosigned_by_definer is set, definer_address must be in paying or signing addresses. Can an attacker compose a valid payment without the definer's signature by manipulating the signing_addresses array?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22de505b-89cc-4976-9ec9-dd3fca93becf",
+    "timestamp": "2025-12-23 12:04:11.744026",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Attestation Bypass] At lines 739-740, the function checks spender_attested. Can an attacker who obtained attestation for one address use that attestation to spend from other addresses in a multi-authored unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16837377-6d84-472b-aacc-5624133d1380",
+    "timestamp": "2025-12-23 12:04:38.438238",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Private Output Hash] At lines 762-764, output_hash is calculated for private assets. If the output.address or output.blinding contains special characters or null bytes, can this produce colliding hashes allowing output substitution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_426cd072-d651-412b-a1cc-8d86070a954f",
+    "timestamp": "2025-12-23 12:05:06.405989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Payload Hash Timing] At line 760, bJsonBased depends on last_ball_mci >= constants.timestampUpgradeMci. Can an attacker submit payments at the exact MCI boundary causing different nodes to use different hash algorithms, leading to network divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7cc3e5f0-6c13-49f6-982f-f322accfcea8",
+    "timestamp": "2025-12-23 12:05:35.396740",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: composeIndivisibleAssetPaymentJoint()] [Message Shuffling] At line 788, messages are shuffled using shuffleArray. Can an attacker analyze the randomization to deanonymize private payments or exploit deterministic shuffling in tests to predict message order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a59da6f8-abbc-4333-b0cd-0448dc6fc7fa",
+    "timestamp": "2025-12-23 12:06:04.731327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Mutex Lock Acquisition] At line 816, a mutex lock is acquired. If validation takes a very long time (complex multi-output private payment), can this lock timeout or be held indefinitely, preventing other transactions from being processed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fefece93-8991-4203-af3b-ba9238dc65ea",
+    "timestamp": "2025-12-23 12:06:34.941202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Combined Unlock Order] At lines 817-820, combined_unlock calls both validate_and_save_unlock and composer_unlock. If one fails, can this leave the other lock held causing deadlock?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f97fcda4-4771-4ecb-bc88-63d1c5675f7c",
+    "timestamp": "2025-12-23 12:07:05.968031",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Sequence Validation] At lines 841-844, the function rejects units with sequence !== 'good'. Can an attacker force a unit to have sequence='temp-bad' temporarily by manipulating parent selection, causing legitimate transactions to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4c04ce3-41e8-46e1-9646-25d816b268e7",
+    "timestamp": "2025-12-23 12:07:35.121105",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [PreCommit Callback Failure] At lines 850 and 887-889, if bPreCommitCallbackFailed is set, the error is returned at line 939. Can an attacker cause preCommitCallback to fail (e.g., by corrupting private chains) after validation passes, causing funds to be locked in limbo?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1efd37d8-f573-48e5-baa7-a06014a81031",
+    "timestamp": "2025-12-23 12:08:05.051206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: getSavingCallbacks()] [Chain Building Loop] At lines 854-883, the function iterates over assocPrivatePayloads and builds chains. If buildPrivateElementsChain takes extremely long for deep chains, can this cause transaction timeout or allow an attacker to DoS the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02d12d0b-89aa-4303-ab19-24fccfbae61c",
+    "timestamp": "2025-12-23 12:08:34.184957",
+    "report_generated": false
   }
 ]
