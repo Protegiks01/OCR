@@ -6748,5 +6748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc4f95ab-22e6-4f30-b103-bcdd07088adf",
     "timestamp": "2025-12-23 10:28:05.639339",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Sequence Inheritance] After spendUnconfirmedUpgradeMci, can an attacker exploit sequence inheritance at line 2256 to make a good unit inherit temp-bad or final-bad sequence from parents?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4fd43979-493f-4e9d-8fa2-648acccd8c11",
+    "timestamp": "2025-12-23 11:45:27.162528",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Spend Unconfirmed Before Upgrade] Before spendUnconfirmedUpgradeMci, can an attacker spend unstable outputs in private payments (allowed at line 2247) but not public, creating validation inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7e5221f6-eb6f-4d7e-b3c1-b784810904fa",
+    "timestamp": "2025-12-23 11:45:39.889518",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Asset Mismatch] Can an attacker exploit the asset comparison at line 2238 to spend outputs of one asset as inputs for another asset due to null/undefined confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4eff9832-1670-4488-8d3c-7fb0fdd46500",
+    "timestamp": "2025-12-23 11:45:52.843808",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Final-Bad Stripped Output] Can an attacker spend outputs from final-bad units below min retrievable MCI (checked at line 2231), exploiting archiving to reuse old final-bad outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8244a179-070e-4e6c-8a0c-31d24acc1e6f",
+    "timestamp": "2025-12-23 11:46:06.233079",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Stable Temp-Bad Spend] Can an attacker spend outputs from stable temp-bad units (should throw at line 2226), exploiting cached results to bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e395f25f-541b-4b31-a85f-9f9840f8b0de",
+    "timestamp": "2025-12-23 11:46:20.488830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Input Not Found] When querying src output at line 2211, can an attacker reference inputs from units that exist but have no matching output, exploiting null checks at line 2230 to spend non-existent outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_858cdc82-a70c-4adf-9ec4-03e947d4fba4",
+    "timestamp": "2025-12-23 11:46:36.619017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Genesis Issue Bypass] Can an attacker craft a non-genesis unit that issues base asset (checked at line 2117), exploiting storage.isGenesisUnit to mint unlimited base currency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffa7e102-0dd0-4c29-952f-da6c8387fffb",
+    "timestamp": "2025-12-23 11:46:52.792704",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Capped Issue Not Equal] For capped assets, can an attacker issue amounts not equal to cap (checked at line 2113), exploiting partial issues followed by remainder issues to exceed cap?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_545f17d1-d285-458f-b2d6-34695359f342",
+    "timestamp": "2025-12-23 11:47:09.883827",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Serial Number Reuse] Can an attacker reuse serial_numbers for issue inputs (checked via double-spend query), exploiting race conditions to issue the same serial multiple times before database commit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dab3379d-be09-439c-9301-d1f78195d873",
+    "timestamp": "2025-12-23 11:47:28.610108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Issue Amount Validation] For issue inputs, can an attacker exploit the checks at lines 2083-2086 to issue amounts that overflow MAX_CAP when combined with existing supply?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58230f22-9427-40a9-873c-07c658fbb333",
+    "timestamp": "2025-12-23 11:47:48.442516",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Blinding Reuse] Can an attacker reuse the same blinding value across multiple private outputs, exploiting the check at line 1941 to link outputs and deanonymize private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67845115-a128-4288-80dc-333ee3f2cbff",
+    "timestamp": "2025-12-23 11:48:08.759158",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Private Asset Open Outputs] For private assets, can an attacker submit exactly 1 open output (checked at line 1970) but make it point to an address they don't control, stealing funds by revealing the recipient?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_277bbc51-62e2-4c6d-8ed9-327221ecb57e",
+    "timestamp": "2025-12-23 11:48:29.737981",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Output Sorting Attack] For public payments, can an attacker craft outputs sorted by address but not by amount for the same address (checked at lines 1957-1960), exploiting sort comparison to include duplicate outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df710310-d1d4-4c6f-884c-d7aab9dd788f",
+    "timestamp": "2025-12-23 11:48:51.069428",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Output Amount Overflow] Can an attacker craft outputs where individual amounts pass isPositiveInteger check at line 1928 but total_output overflows at line 1966, bypassing the MAX_CAP check at line 1967?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3c1886b-e868-4219-9ad7-e6e48415bcbc",
+    "timestamp": "2025-12-23 11:49:13.467010",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Input Count DoS] Can an attacker submit payments with MAX_INPUTS_PER_PAYMENT_MESSAGE inputs (checked at line 1912), each requiring database queries, to exponentially slow validation through O(n²) complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1de7fbe-de3f-48a3-ae5b-6de4cd2cec91",
+    "timestamp": "2025-12-23 11:49:36.912458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePayment()] [Attested Authors Empty] Can an attacker exploit spender_attested assets where arrAttestedAddresses is empty (checked at line 1893), bypassing attestation by submitting during a window when attestations are temporarily removed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9283d9e9-d0ce-4a5c-a602-7b6ebd57a4ee",
+    "timestamp": "2025-12-23 11:50:01.879569",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePayment()] [Issue Without Definer] For issued_by_definer_only assets, can an attacker issue from a multi-sig address where definer_address is one signer but not the issuer_address (checked at line 1884)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fce97a21-80de-4bb1-a14a-83129d13d81e",
+    "timestamp": "2025-12-23 11:50:28.033564",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePayment()] [Privacy Mismatch] Can an attacker exploit the check at line 1872 to mix public and private assets by crafting objValidationState.bPrivate incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0632123f-ccbf-4bf0-b2e9-4cb4a8503168",
+    "timestamp": "2025-12-23 11:50:54.737874",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePayment()] [Denomination Mismatch] For fixed_denominations assets, can an attacker exploit the denomination check to submit payments where inputs and outputs have different denominations due to integer overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9fd72cb5-b036-4c4b-9157-ded6f589a117",
+    "timestamp": "2025-12-23 11:51:22.424853",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePayment()] [Asset Loading Race] Can an attacker exploit storage.loadAssetWithListOfAttestedAuthors at line 1859 to spend an asset before its attestation status changes, bypassing spender_attested requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_387bfd37-c1b6-4c97-acbb-4db20364e221",
+    "timestamp": "2025-12-23 11:51:51.554706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Attestation Self-Attest] Can an attacker attest their own address (allowed at line 1802), creating circular attestation chains that confuse asset attestation requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecba736b-a74f-4722-9fc1-dabda4b2aff7",
+    "timestamp": "2025-12-23 11:52:20.741208",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Temp Data Purge Timing] Can an attacker submit temp_data without 'data' field but with timestamp within TEMP_DATA_PURGE_TIMEOUT (checked at line 1779), exploiting transient error to force repeated validation attempts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab3499a9-28d9-43a8-aa16-f0527efc0814",
+    "timestamp": "2025-12-23 11:52:50.825959",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Fractional Data Feed] Can an attacker submit non-integer numbers in data feeds (checked at line 1735), exploiting floating point precision to cause divergence between nodes with different precision?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a8233b3-f580-4ea0-a7d7-61036a1bb7e5",
+    "timestamp": "2025-12-23 11:53:21.422053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [Data Feed Name Length] Can an attacker submit data_feed with feed names exactly MAX_DATA_FEED_NAME_LENGTH chars (checked at line 1723) containing special characters that expand when processed, causing buffer overflows?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a378350-93dc-4da9-9224-57e5ee3c4c0c",
+    "timestamp": "2025-12-23 11:53:53.402962",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validateInlinePayload()] [System Vote Threshold] Can an attacker vote for threshold_size < 1000 (checked at line 1687) on testnet or before MCI 3543000, exploiting version checking to set dangerous system parameters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4083301-d26f-42d1-a85b-f9be846581d5",
+    "timestamp": "2025-12-23 11:54:23.710027",
+    "report_generated": false
   }
 ]
