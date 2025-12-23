@@ -11098,5 +11098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_677458c9-3634-4c0a-984d-8d5a065b7d82",
     "timestamp": "2025-12-23 16:35:52.058842",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Catchup chain construction] The buildProofChainOnMc function is used in catchup.js:prepareCatchupChain. If a syncing node receives a catchup chain with gaps or incorrect balls, would the processCatchupChain validation catch these errors? Could malicious nodes send fake catchup chains to corrupt newly syncing nodes (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cc3371b-19c7-4898-8dc0-1e9e3a1d5ad6",
+    "timestamp": "2025-12-23 16:37:04.537327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Last mile path validation] Light clients receive last mile portions of proof chains showing the path from MC unit to target unit. Do light clients verify that this path is the shortest or canonical path? Could malicious nodes send unnecessarily long paths that include invalid intermediate units (Critical severity - fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16ee0955-a701-4a09-b94f-705eae954e78",
+    "timestamp": "2025-12-23 16:37:17.002762",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist validation by light clients] Light clients receive proof chains with skiplist_balls arrays (line 49). Do light clients verify that the skiplist references are correct and that the skiplist chain is valid? If not, could malicious nodes send fake skiplist entries to make light clients accept invalid MCIs (Critical severity - fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d111f536-020a-4db3-b5ef-e08028d2e549",
+    "timestamp": "2025-12-23 16:37:29.815212",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Ball hash verification] The code constructs ball objects with unit, parent_balls, skiplist_balls, and is_nonserial. Does the verification code (light.js:processHistory, light.js:processLinkProofs) recompute ball hashes and compare them? If not, could malicious nodes send proof chains with incorrect ball data (Critical severity - fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9864bdc-5c2b-494c-a042-635c54a8a744",
+    "timestamp": "2025-12-23 16:37:43.255242",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Proof chain completeness] The proof chain is built by appending balls to arrBalls. Does the calling code (light.js) verify that the proof chain is complete (no missing balls between later_mci and earlier_mci)? If gaps exist in the returned arrBalls, could light clients accept incomplete proofs (Critical severity - fake proofs enabling fund theft)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b9f96c8-487e-43db-8d4d-31e5a0fd4739",
+    "timestamp": "2025-12-23 16:37:57.182552",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [MCI parameter in queries] The mci parameter is used in multiple queries (lines 117, 143). If mci is attacker-controlled and not validated, could negative or extremely large MCI values cause database performance issues or errors (Medium severity - DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9045a1d5-d934-4a47-b76c-81121f663c57",
+    "timestamp": "2025-12-23 16:38:13.332796",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Unit parameter validation] The unit parameter is used directly in queries at lines 79 and 117-118 via [_unit] and [interim_unit]. If the unit parameter is attacker-controlled (e.g., from a light client request), could malicious unit hashes cause database errors or be used to probe the database structure (Medium severity - information disclosure or DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89c7f18c-e233-4f5d-843b-ae82837cf5ef",
+    "timestamp": "2025-12-23 16:38:29.332379",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Unit hash query] The query at line 32-34 uses [objBall.unit] as parameter. The objBall.unit comes from the previous database query result (line 28), so it should be safe. But what if objBall.unit is null or malformed due to database corruption? Would this cause query errors (Medium severity - DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_95cb337d-686c-44a7-b57f-6ec262b6b687",
+    "timestamp": "2025-12-23 16:38:46.776205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Parameterized query safety] The query at line 25 uses parameterized query with [mci], which is safe from SQL injection. However, is the mci value validated to be an integer before being passed to the query? Could non-integer values cause database errors or unexpected behavior (Medium severity - DoS)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb2bfecf-8d09-4363-9f7b-56c0e855f2ea",
+    "timestamp": "2025-12-23 16:39:04.982589",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Cycle detection in last mile] The findParent → addBall → findParent recursion could potentially cycle if the DAG has cycles (which shouldn't exist but could due to bugs). Is there any cycle detection? Could an attacker create cyclic DAG structures that cause infinite loops in proof chain construction (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36cef071-f79d-473d-9d01-e20125032a87",
+    "timestamp": "2025-12-23 16:39:25.260550",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Inclusion determination correctness] At line 128-130, graph.determineIfIncluded() is used to check if a parent includes the target unit. If this function has bugs (e.g., returns true for units that don't actually include the target), would invalid proof chains be constructed (Critical severity - fake proofs enabling fund theft)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b860abc-90d3-48e2-a520-f31d644e518c",
+    "timestamp": "2025-12-23 16:39:45.932437",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Path uniqueness] The findParent logic finds one valid path from MC unit to target unit. If multiple valid paths exist (common in DAG structures), could different nodes select different paths, resulting in different proof chains that are all technically valid but have different ball sequences (Critical severity - permanent chain split due to divergent verification)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_80663fa6-4e7a-4f81-bbc0-479671c7e645",
+    "timestamp": "2025-12-23 16:40:06.441998",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Target unit on MC] At line 147-148, if the MC unit equals the target unit (mc_unit === unit), onDone() is called immediately. Could an attacker request proof chains where the target unit is claimed to be on MC but actually isn't, causing empty proof chains to be generated and accepted (Critical severity - fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e75e5ef6-a154-4c18-9cef-94c531aa636a",
+    "timestamp": "2025-12-23 16:40:28.096100",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [MC unit identification] At line 143-145, the MC unit at the given mci is retrieved. If there are multiple units at this MCI (database corruption), the error thrown would prevent proof chain construction. But what if the wrong MC unit is selected by the database (e.g., due to non-deterministic query results)? Would different nodes build proof chains starting from different MC units (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef88af9e-78d2-49a2-a5fd-c81f6b7330fb",
+    "timestamp": "2025-12-23 16:40:49.453091",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Off-chain unit MCI] The last mile traversal assumes the target unit has main_chain_index=mci (passed as parameter). What if the target unit's actual MCI differs from the mci parameter due to database inconsistency? Would the proof chain construction fail or produce an invalid proof (Critical severity - fake proofs or permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_34aabab8-d8d5-4de6-afac-e845b86fd712",
+    "timestamp": "2025-12-23 16:41:12.504718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [MCI constraint in findParent] The findParent query at line 116-118 requires parent_unit to have main_chain_index=mci. What if a unit has parents at different MCIs (which is expected in DAG)? Would only parents at the specific mci be considered, potentially excluding valid paths to the target unit (High severity - permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8792257e-bba9-4178-96a9-2804f9c44d16",
+    "timestamp": "2025-12-23 16:41:36.992932",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI gap detection] The code traverses from later_mci-1 down to earlier_mci (line 73, then recursive calls). If there are gaps in MCI assignments (e.g., MCI 100, 101, 103 but no unit at MCI 102), would the query at line 25 return 0 rows and throw an error? Could an attacker exploit this by causing MCI gaps to DoS proof chain construction (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f97a184e-e74e-4031-ab43-caa810178a39",
+    "timestamp": "2025-12-23 16:42:02.987663",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI assignment verification] The query at line 25 selects units WHERE main_chain_index=? AND is_on_main_chain=1. If a unit has main_chain_index set but is_on_main_chain=0 (database inconsistency), would this be excluded from proof chains? Could this cause proof chains to skip units that should be included, creating invalid proofs (Critical severity - fake proofs)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68035041-5248-4856-b64a-4eb9b70f26ad",
+    "timestamp": "2025-12-23 16:42:29.013273",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Silent failure modes] At line 51-52, if mci === earlier_mci, onDone() is called. But what if the objBall that was just pushed is malformed or incomplete? Would the proof chain be accepted even though it's invalid because no validation occurs before calling onDone (Critical severity - fake proof acceptance)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0dc7e98e-3467-429c-b085-9ad15014a66a",
+    "timestamp": "2025-12-23 16:42:56.350307",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc() & buildLastMileOfProofChain()] [Database error handling] None of the database query callbacks (lines 25, 32, 40, 79, 86, 94, 116, 143) check for database errors (e.g., connection loss, query timeout). If a database error occurs, would the callback be invoked with an error parameter that is ignored, causing undefined behavior (Critical severity - network halt or data corruption)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b69c6fab-9a01-49f0-80b9-dbdfc8ac752d",
+    "timestamp": "2025-12-23 16:43:24.581857",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Last mile error handling] Errors are thrown at lines 81, 91, 101, 134, 145. If these occur during light client proof chain construction, would the light client receive an error response or would the connection be terminated? Could this be exploited to DoS light clients by requesting proofs for edge-case units (Medium severity - transaction delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_114ed6cc-309e-401d-b9e2-ae283d2bfaad",
+    "timestamp": "2025-12-23 16:43:52.757140",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Multiple error throw points] The code throws errors at lines 24, 27, 37, 47, 70. Are all these exceptions caught and handled gracefully by callers? If any exception propagates to the top level, could it crash the node (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_861a6422-6939-41f3-a85e-9eaf4aba2de7",
+    "timestamp": "2025-12-23 16:44:21.672224",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Null MCI exception] At line 10-11, if earlier_mci is null, an Error is thrown synchronously. Does the calling code (light.js, catchup.js) properly catch this exception? If uncaught, could this crash the Node.js process, causing network halt (Critical severity - network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c241017-ab57-4177-9c84-26ce95de3059",
+    "timestamp": "2025-12-23 16:44:51.442748",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Last mile arrBalls order] At line 104, balls are pushed to arrBalls during last mile traversal. The traversal starts from MC unit and works backwards to target unit (line 107: findParent → addBall). Is the order in arrBalls from target unit to MC unit or vice versa? If the order is ambiguous or inconsistent with buildProofChainOnMc, could this cause verification failures (Critical severity - incorrect proof validation)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c8a3d71-3bc3-4791-b9c1-9fdd3a0b970c",
+    "timestamp": "2025-12-23 16:45:20.363956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [skiplist_balls array construction] At line 49, skiplist_balls is constructed similarly. The ORDER BY ball clause at line 43 must produce deterministic ordering. If skiplist units can have duplicate balls or if the ordering is database-dependent, could this cause non-deterministic proof chains (Critical severity - permanent chain split)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62b624ff-2730-4ea4-8ebd-f90bf4aa4d99",
+    "timestamp": "2025-12-23 16:45:49.624100",
+    "report_generated": false
   }
 ]
