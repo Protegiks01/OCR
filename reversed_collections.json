@@ -6298,5 +6298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_700c1e49-2f26-4ba3-a354-91204d0c54b2",
     "timestamp": "2025-12-23 09:58:38.067303",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Multiple functions] [Validation order dependency] If validation.js calls multiple validation_utils functions on the same value (e.g., isNonemptyString() then isStringOfLength()) but doesn't check the order, can short-circuit evaluation in logic operators cause some checks to be skipped, allowing malformed units to pass validation and corrupt database, causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc959f46-951b-4d77-9533-20558578f53d",
+    "timestamp": "2025-12-23 09:59:51.344334",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasOwnProperty()] [Symbol properties exclusion] Since hasOwnProperty() only checks string/number properties and excludes Symbol properties, can an attacker include Symbol-keyed properties in units that bypass validation but are processed by formula/evaluation.js, causing non-deterministic AA execution results if Symbol.for() resolves differently across nodes, triggering chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe80a030-4fb8-4497-853e-792ca67ed785",
+    "timestamp": "2025-12-23 10:00:03.991839",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasOwnProperty()] [Proxy object interception] If an attacker creates proxy objects that intercept Object.prototype.hasOwnProperty.call(), can they return fake results causing aa_validation.js to believe required properties exist in AA definitions when they don't, leading to AA execution failures and permanent fund freezing in incompletely defined AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0ff7f38-5693-4c35-bdc2-ad7966f3960a",
+    "timestamp": "2025-12-23 10:00:17.073165",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasOwnProperty()] [Object.create(null) bypass] When hasOwnProperty() uses Object.prototype.hasOwnProperty.call(), can it correctly handle objects created with Object.create(null) that lack prototype chain, and if validation.js uses this to check unit properties, can an attacker create prototype-less unit objects that bypass property validation and include malicious fields?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76dce902-0534-46f6-9d63-ba6c7c97de90",
+    "timestamp": "2025-12-23 10:00:30.526480",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidEmail()] [Email length limits] Does isValidEmail() enforce maximum length limits for email addresses (254 chars per RFC 5321), and if private_profile.js stores unlimited-length emails validated by this function, can database column overflow cause profile storage to fail, preventing users from receiving attestations and freezing their funds in attestation-gated AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64942455-a68c-4f65-98a8-14c70e6012ab",
+    "timestamp": "2025-12-23 10:00:44.779881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidEmail()] [Unicode domain bypass] Does the regex accept internationalized domain names (IDN) with Unicode characters, and if device.js uses this to validate email notifications but email service providers reject Unicode domains, can users miss critical payment notifications leading to payment disputes and fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b4800cb-f7a6-449f-91d5-0ea47c42dc05",
+    "timestamp": "2025-12-23 10:01:00.625917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidEmail()] [RFC 5322 compliance] Since the email regex is a simplified pattern, can an attacker use RFC-compliant but unusual email formats (e.g., quoted strings with special chars, IP address domains) that bypass isValidEmail() validation, causing data_feeds.js to accept invalid attestation email addresses that don't match real users, enabling impersonation attacks in attestation services?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23143279-c433-469d-ad11-ee94877812ef",
+    "timestamp": "2025-12-23 10:01:17.203911",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidEmail()] [ReDoS vulnerability] Does the email regex in isValidEmail() contain nested quantifiers or alternations that could cause catastrophic backtracking on crafted input strings, enabling a ReDoS attack where validation.js spends excessive time validating attestation units with malicious email fields, delaying transaction processing for >24 hours (network halt)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5061ab34-d1f8-4661-895b-9b7e546ec20f",
+    "timestamp": "2025-12-23 10:01:35.566802",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidHexadecimal()] [0x prefix handling] Does isValidHexadecimal() accept hex strings with '0x' prefix that are valid JavaScript hex literals, and if aa_validation.js expects unprefixed hex for AA state variables but this function accepts both, can state variable naming collisions occur where '0xabc' and 'abc' are treated as same key, corrupting AA state and causing incorrect fund transfers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_785f0806-ce4d-43f2-8406-88ad91cc90f5",
+    "timestamp": "2025-12-23 10:01:54.519504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidHexadecimal()] [Odd-length hex strings] If an attacker passes odd-length hex strings like 'abc' (3 characters), does Buffer.from(hex, 'hex') pad or truncate, and does the round-trip comparison catch this, or can malformed hex cause signature.js to parse signatures incorrectly, enabling signature forgery and fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e5c5129-b2e0-4178-958d-1c264271770c",
+    "timestamp": "2025-12-23 10:02:14.462990",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidHexadecimal()] [Uppercase vs lowercase handling] Does isValidHexadecimal() accept both uppercase and lowercase hex strings, and if validation.js later compares hex values with case-sensitive comparison, can an attacker create signature fields or hashes in mixed case that validate but fail verification, causing units to be permanently rejected after storage and freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3ece8fd-1b1a-4fd5-b5e5-1e177b4a9e3e",
+    "timestamp": "2025-12-23 10:02:35.320183",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidHexadecimal()] [Try-catch exception swallowing] Since isValidHexadecimal() wraps validation in try-catch that returns false on any exception, can this hide critical errors in validation.js (e.g., memory exhaustion, stack overflow) that should halt processing, allowing malicious units to continue through validation pipeline and corrupt database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea459aff-7bda-40bb-91d0-f7e6ef4187c9",
+    "timestamp": "2025-12-23 10:02:56.597446",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidBase64()] [Empty string validation] Does isValidBase64('', 0) return true for empty strings when len=0, and if indivisible_asset.js uses this to validate optional fields that should be omitted, can an attacker include empty string fields that bypass validation but are stored in database, corrupting asset metadata and preventing transfers (permanent fund freezing)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e627554e-8863-4490-90f4-e4170f2cb68b",
+    "timestamp": "2025-12-23 10:03:18.610458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidBase64()] [Buffer.from() exception handling] If Buffer.from(b64, 'base64') throws an exception on malformed input, does isValidBase64() catch it gracefully, or can uncaught exceptions crash validation.js when processing units with invalid base64 fields, causing node crash and network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e611bb21-631e-4101-89cf-d83c954dd0e5",
+    "timestamp": "2025-12-23 10:03:41.335612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidBase64()] [URL-safe base64 bypass] Does isValidBase64() accept URL-safe base64 encoding (using - and _ instead of + and /) that would decode differently, allowing wallet.js to generate payment URIs that are ambiguous between standard and URL-safe encoding, causing payment misdirection and fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_911b4fa1-f162-4baa-ae2e-8829965b5f9e",
+    "timestamp": "2025-12-23 10:04:06.261116",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidBase64()] [Length parameter enforcement] When validation.js calls isValidBase64(definition_chash, 44) to validate definition changes, does the function enforce exact length matching, or can an attacker pass base64 strings of wrong decoded length that pass validation but corrupt definition storage, enabling unauthorized definition changes that steal funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49a2c9c5-d194-4e7f-8885-4fc07501fe06",
+    "timestamp": "2025-12-23 10:04:32.250205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isValidBase64()] [Buffer round-trip validation] Since isValidBase64() validates by encoding-decoding round-trip (b64 === Buffer.from(b64, 'base64').toString('base64')), can an attacker exploit differences in base64 padding or whitespace handling across Node.js versions to create addresses that validate on some nodes but not others, causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91bc5d46-4360-4c7f-a823-8a699242e75f",
+    "timestamp": "2025-12-23 10:04:57.883209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isEmptyObjectOrArray()] [Array.length override] If an attacker overrides Array.prototype.length to always return 0, can isEmptyObjectOrArray() be tricked into treating non-empty arrays as empty, causing validation.js to accept units with witness lists or parent_units that appear valid but are actually missing, corrupting DAG and causing consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf3394ca-08ec-44d9-a5de-4551c0c6c75c",
+    "timestamp": "2025-12-23 10:05:24.269648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isEmptyObjectOrArray()] [Null and undefined distinction] Since isEmptyObjectOrArray(null) returns false, if aa_composer.js uses this to check for empty AA responses but null represents missing response, can this cause AA execution to continue with invalid state, creating bounces that incorrectly refund or withhold funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4fef419-7550-44da-8862-789a05470aa1",
+    "timestamp": "2025-12-23 10:05:49.452085",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isEmptyObjectOrArray()] [Primitive return values] Does isEmptyObjectOrArray() return false for all primitives (numbers, strings, booleans), and if formula/evaluation.js expects this function to validate empty results, can type confusion cause AA formulas to treat primitives as empty objects, producing incorrect execution results and causing AA state corruption without direct fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6a37ec6-4f9d-47ea-8883-b37ca5c04e5d",
+    "timestamp": "2025-12-23 10:06:16.427299",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyObject()] [Inherited properties] Since Object.keys() only returns enumerable own properties, can an attacker create objects with inherited properties that appear non-empty but have Object.keys().length === 0, causing aa_validation.js to reject valid AA definitions with inherited state variables and freezing AA funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df61ee6f-c90c-445d-b2ab-e1fe93fb6124",
+    "timestamp": "2025-12-23 10:06:42.227160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyObject()] [Null object check order] Does isNonemptyObject() check obj === null before typeof obj, or can the order cause unexpected behavior if obj is a proxy or exotic object that throws on typeof check, crashing validation.js when processing malicious units from peers and causing network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2dea4871-682a-411c-8ed4-6bb7e09b1a18",
+    "timestamp": "2025-12-23 10:07:09.374221",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyObject()] [Object.keys() performance] If an attacker creates objects with thousands of properties and validation.js calls isNonemptyObject() on each message payload in aa_validation.js, can the O(n) cost of Object.keys() create a DoS vulnerability delaying unit validation and transaction processing for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5136cd4b-24da-4938-ac2d-d0761423ebb3",
+    "timestamp": "2025-12-23 10:07:36.621863",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonemptyObject()] [Array rejection logic] Since isNonemptyObject() explicitly rejects arrays with !Array.isArray(obj), if validation.js accidentally passes array-like structures that aren't true arrays, can this cause inconsistent validation results across nodes running different JavaScript engines, triggering non-deterministic consensus failure and chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_518d1fd3-cd73-4976-a8a2-f33c634caff3",
+    "timestamp": "2025-12-23 10:08:04.412439",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isArrayOfLength()] [Zero-length array acceptance] When isArrayOfLength(arr, 0) is used to validate empty arrays in formula/evaluation.js for AA formula parameters, can an attacker exploit this to pass empty arrays where non-empty ones are required, causing formula evaluation to crash and freeze AA funds permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0063355d-948a-4b0a-a5c9-b6e1c43c696a",
+    "timestamp": "2025-12-23 10:08:31.149461",
+    "report_generated": false
   }
 ]
