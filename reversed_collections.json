@@ -9598,5 +9598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_580f6b66-b11a-41c1-a5dd-b8aa9e284595",
     "timestamp": "2025-12-23 14:55:51.923440",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 31] [KV store migration] Lines 346-355 call migrate_to_kv.js after executing all prior arrQueries - if the KV migration fails but the SQL migrations already committed, could the database be left in a state where AA state variables are inaccessible, permanently freezing all funds locked in AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb4682b3-aeb2-4025-b49c-31b55df1393c",
+    "timestamp": "2025-12-23 14:57:11.273263",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 30] [AA infrastructure creation] Lines 294-341 create critical AA tables (aa_addresses, aa_triggers, aa_balances, aa_responses) - if these migrations fail partway through, could some nodes have incomplete AA infrastructure, causing them to reject valid AA trigger units from other nodes and leading to permanent chain split?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 14:57:23.946378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 24] [Asset attestor migration] Lines 255-269 create asset_attestors_new table, copy data, drop old table, and rename - if the COMMIT fails at line 269 after dropping the original table (line 267), are all asset attestor records permanently lost, potentially allowing unauthorized asset issuance if attestor verification relies on this data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10ed0cc6-0775-46f9-947e-a8b9a32bea89",
+    "timestamp": "2025-12-23 14:57:36.778469",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Uncaught JSON parse error] At line 198, JSON.parse(row.payload) is called without try-catch - if a corrupt database contains an attestation with invalid JSON, the migration crashes with an unhandled exception - does this permanently brick nodes that have this corruption, preventing them from ever upgrading and causing permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecb937ff-090a-4136-aa70-ede36aa6a8f5",
+    "timestamp": "2025-12-23 14:57:49.911819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 18] [Attestation data integrity] Lines 194-213 migrate attestation data by parsing JSON payloads and inserting into attested_fields table - if the JSON parsing throws an exception for malformed attestation payloads that were somehow stored in an earlier version, does the migration fail completely, preventing nodes from upgrading and causing network fragmentation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e74218d0-8ba2-4b24-a7ad-5d288521aa05",
+    "timestamp": "2025-12-23 14:58:03.574660",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Migration version 10] [Transaction atomicity] Lines 80-94 wrap chat_messages table migration in BEGIN/COMMIT, but if the COMMIT fails after data is inserted into the new table (line 91) and the old table is dropped (line 92), could the database lose all chat message history, and more critically, if similar patterns exist for critical tables, could financial data be lost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_880d0260-29fe-4806-a711-802f7a219e70",
+    "timestamp": "2025-12-23 14:58:18.164989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Partial migration failure] If a migration query fails midway through the arrQueries execution (line 598), and some queries have already committed changes while others haven't, could this leave the database in an inconsistent state where critical indexes or foreign keys are missing, allowing double-spend attacks or violating referential integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d96b127-64a7-41a6-927e-5cb8f25f5640",
+    "timestamp": "2025-12-23 14:58:33.812562",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Race condition in migration check] Between reading the version (line 13-19) and starting migrations (line 34-607), if another process or thread simultaneously initiates a migration, could both processes execute overlapping schema changes, causing database corruption that prevents unit storage and results in permanent network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bd7b3fb-eb56-4a9e-b74f-e2f0c0603ff9",
+    "timestamp": "2025-12-23 14:58:50.959799",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [PRAGMA injection] At line 13, the code executes 'PRAGMA user_version' without parameterization - if the connection.db object is compromised or the query method is overridden, could an attacker inject malicious SQL that returns a fake version number to skip critical security-related migrations, allowing double-spend or balance manipulation attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_deedb5b9-e3e5-4209-bef6-1bb1db035850",
+    "timestamp": "2025-12-23 14:59:09.195669",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Version rollback vulnerability] When checking version at line 19-22, if the database reports user_version > VERSION, the code throws an error - but does this prevent a scenario where a node downgrades from a future version to an older version, potentially causing the node to accept invalid units that were rejected by newer validation rules, leading to chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2f14edf-859b-4daf-bd47-ae6a3465fb6b",
+    "timestamp": "2025-12-23 14:59:28.693624",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_migrations.js] [Function: migrateDb()] [Version comparison attack] If an attacker can manipulate the PRAGMA user_version result to return a value greater than VERSION (46), the migration throws an error suggesting 'new database with old client', but could this error handling be exploited to prevent legitimate nodes from upgrading their database schema, causing a network-wide inability to process new units and leading to total network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ec0322b-3b5a-4367-b7bc-79ace472dcc6",
+    "timestamp": "2025-12-23 14:59:49.482431",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Address Definition Caching Race] The storage.readDefinitionByAddress() call at line 179 might use cached definitions. If the cache is stale (definition was updated but cache not invalidated), can an attacker exploit the timing window to\n\n### Citations\n\n**File:** signed_message.js (L1-259)\n```javascript\n/*jslint node: true */",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04488e54-af2f-49ec-9701-5b7e9c236755",
+    "timestamp": "2025-12-23 15:00:10.177246",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Signing Paths Injection] At lines 63-67, the code gets signing paths from signer.readSigningPaths() and creates authentifiers for each. If an attacker can manipulate readSigningPaths() to return unexpected paths (e.g., empty strings, paths with SQL injection, or paths that don't match the definition), can they create malformed signatures that bypass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1cc733a1-698d-445e-b69d-3db301862b54",
+    "timestamp": "2025-12-23 15:00:32.711977",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Authentifiers Path Validation] The authentifiers are validated by Definition.validateAuthentifiers() at line 229-238, but the code doesn't validate that the paths in authentifiers match the expected paths from the definition. Can an attacker provide authentifiers for paths that don't exist in the definition, causing validation errors or bypasses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e96802b-41d9-4b18-bb2c-2a64c4503954",
+    "timestamp": "2025-12-23 15:00:55.414179",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Chain Attack] Address definitions can reference other addresses. If the validation at line 229-238 doesn't properly track which addresses have been evaluated in the recursion chain, can an attacker create circular definition references that cause infinite loops or allow authentication bypass through repeated evaluation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66822978-03fe-4150-b9e3-c68ff091864e",
+    "timestamp": "2025-12-23 15:01:20.195723",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition Template Parameter Injection] When reading definitions at line 179 or validating them at line 189/205, if the definition uses templates with parameters, and those parameters aren't properly sanitized, can an attacker inject malicious parameters that change the authentication requirements (e.g., changing required threshold from 2-of-3 to 1-of-3)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35862564-99f1-418c-b563-0831a702fb15",
+    "timestamp": "2025-12-23 15:01:45.559225",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Multiple Author Definition Conflicts] At lines 136-146, the code iterates through multiple authors but only tracks one (the_author). If an attacker includes the same address multiple times with different definitions, can they exploit which definition gets validated, potentially using a weaker definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00924aa5-49d1-41e0-bb9e-108077a805f6",
+    "timestamp": "2025-12-23 15:02:12.283732",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Definition Update Race in Non-Network-Aware] At lines 53-58, non-network-aware signing reads the current definition without reference to any specific MCI. If the address definition is updated via definition_chg message between signing and validation, can the signature become invalid, or worse, can the new definition be exploited to bypass authentication?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_620f73ba-2d85-4033-92fa-90745e6b59dc",
+    "timestamp": "2025-12-23 15:02:40.427236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [First Use Definition Injection] At lines 180-192, when a definition is not found in storage (first use), the code requires it to be provided. If an attacker can make an existing definition appear as 'not found' (e.g., through database manipulation or race condition), can they inject a malicious replacement definition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_281259c1-5e60-4baf-88a1-20779f3d4468",
+    "timestamp": "2025-12-23 15:03:08.396520",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition vs Address Mismatch] At lines 189-190 (network-aware first use) and 205-206 (non-network-aware), the code validates that the definition hash matches the expected value. If an attacker provides a valid definition for a different address and exploits a hash collision or validation race, can they authenticate as the wrong address?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d0b5f62-e5f9-4812-960b-76f435bf205e",
+    "timestamp": "2025-12-23 15:03:37.189972",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: signMessage()] [Console.log Information Disclosure] At line 105, the code uses console.log to output the complete objUnit including all authentifiers (signatures). In production environments where logs might be captured, can this expose sensitive signature data that could be used for replay attacks or signature analysis?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d4a42f8-f42c-4802-9248-6b5347df732f",
+    "timestamp": "2025-12-23 15:04:06.639041",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Unvalidated Database Query Results] At line 160, the code queries units table but doesn't validate the structure of returned rows beyond checking length. If the database schema is corrupted or returns unexpected data types, can this cause type errors in subsequent code (e.g., accessing rows[0].main_chain_index when it's not a number)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14158b06-9765-4828-a0c0-a56f15225365",
+    "timestamp": "2025-12-23 15:04:36.751043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Definition.validateAuthentifiers Error Ambiguity] At lines 229-238, Definition.validateAuthentifiers() can call back with error or false (wrong signature) but both are treated as validation failure. If there's a difference in security implications between actual errors (e.g., database failure) vs invalid signatures, can this ambiguity cause inappropriate error responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69a55096-032c-4e6b-bf2e-b4c870eb7475",
+    "timestamp": "2025-12-23 15:05:07.800684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Network Require in Callback] At lines 162 and 184, the code requires './network.js' inside the callback. If this require() fails (e.g., circular dependency issue or module not found), it will throw an exception that bypasses the callback error handling, potentially crashing the process. Can an attacker trigger conditions that cause module loading to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7b4bb38-26f0-4d25-942c-27b346c7fbb8",
+    "timestamp": "2025-12-23 15:05:38.710173",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/signed_message.js] [Function: validateSignedMessage()] [Storage Callback Error Propagation] At lines 179-198, storage.readDefinitionByAddress() uses callbacks (ifDefinitionNotFound, ifFound) that may call handleResult to propagate errors. If storage itself throws an exception (e.g., database connection error), is it properly caught and converted to callback error, or can it crash the validation process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e36f95e2-08a7-4d18-99e5-6b34fcaa25b4",
+    "timestamp": "2025-12-23 15:06:08.147203",
+    "report_generated": false
   }
 ]
