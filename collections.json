@@ -5248,5 +5248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c2a23d9-587c-4f66-a474-e6aefd0b030a",
     "timestamp": "2025-12-23 07:08:21.562513",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 59] [Peer Request Manipulation] exports.bWantNewPeers = true enables peer discovery. Can an attacker set this to false via conf override on a subset of nodes, partitioning the network into isolated clusters that don't share peers, causing divergent DAGs when witness voting differs across clusters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_968c3757-223e-4da0-b640-6680af7f8920",
+    "timestamp": "2025-12-23 07:09:32.647441",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 62] [Unpair Request Ignore] exports.bIgnoreUnpairRequests = false by default. Can an attacker set this to true on victim nodes, preventing them from removing malicious paired devices that send spam or invalid units, leading to resource exhaustion or wallet corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6198bb1-3a45-429a-bf0c-8c8678de933a",
+    "timestamp": "2025-12-23 07:09:45.270885",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 122-127] [MySQL Connection Exhaustion] For MySQL storage, exports.database.max_connections defaults to 1. Can an attacker override this to 1000+ connections, causing the node to open excessive database connections that exhaust MySQL server resources or hit per-user connection limits, leading to database unavailability and node crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b20b094e-8e4c-4fe3-a66c-97c4aef760b9",
+    "timestamp": "2025-12-23 07:09:58.303011",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 124-126] [MySQL Credential Injection] Default MySQL credentials are database.name='byteball', database.user='byteball', database.host='localhost'. Can an attacker override database.host to point to a malicious MySQL server that returns fake DAG data (e.g., modified units or balances), causing the node to accept invalid history and diverge from network consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09d836d8-2c83-4676-bb69-c68d28388954",
+    "timestamp": "2025-12-23 07:10:11.654427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 128-131] [SQLite File Path Manipulation] For SQLite, database.filename defaults to 'byteball-light.sqlite' or 'byteball.sqlite'. Can an attacker override this to an absolute path (e.g., '/tmp/malicious.db' or '../../../etc/shadow') to cause the node to read/write arbitrary files, potentially corrupting system files or leaking sensitive data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbef9304-61cc-4da8-936a-b79bf188376f",
+    "timestamp": "2025-12-23 07:10:25.734431",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 128-131] [SQLite Database Substitution] Can an attacker replace the SQLite database file specified in database.filename with a pre-crafted malicious database containing fake units, modified balances, or incorrect witness lists, causing the node to operate on corrupted state and reject valid units from honest peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b0f56da-d369-476f-88ef-72d6c09ea9ee",
+    "timestamp": "2025-12-23 07:10:41.202700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 67] [Storage Engine Switch Attack] exports.storage defaults to 'sqlite'. Can an attacker override this to 'mysql' on a node that was previously running SQLite, causing the node to attempt MySQL connection without valid credentials, crash, and lose sync with the network until manually reconfigured?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9d40df9-525a-4255-9f4b-ae555626c923",
+    "timestamp": "2025-12-23 07:10:57.551611",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 68-71] [Cordova Detection Bypass] The code detects Cordova via typeof window === 'object' && window && window.cordova. Can an attacker running a desktop app create a fake window.cordova object to trick the node into light mode and SQLite storage, bypassing full node validation and accepting invalid units from malicious light servers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_109cb724-80cd-4dd3-8ffd-00469a3b8c58",
+    "timestamp": "2025-12-23 07:11:15.464738",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 74] [Updatable Asset Registry Manipulation] exports.updatableAssetRegistries = ['O6H6ZIFI57X3PLTYHOCVYPP5A553CYFQ'] specifies a single registry address. Can an attacker override this array to add malicious registry addresses or remove the legitimate one, causing asset metadata queries to fail or return fake asset information that misleads users about asset properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be1a5a2b-c5d9-488d-906d-ea8c9dff5802",
+    "timestamp": "2025-12-23 07:11:34.287844",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 74] [Asset Registry Collision] If an attacker creates a custom conf that appends their own asset registry address to updatableAssetRegistries, can they inject fake asset definitions that override legitimate assets, causing the node to display incorrect decimals, names, or caps for existing assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c22339c-c462-4c20-bce7-ec5d1bf57a25",
+    "timestamp": "2025-12-23 07:11:54.330080",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 3] [Singleton Bypass] The file requires './enforce_singleton.js' to prevent multiple instances. Can an attacker bypass this by deleting node_modules cache or using dynamic require() with modified paths, causing multiple conf.js instances with different configurations to coexist, leading to non-deterministic behavior and consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e39153bd-9928-40b2-9ee5-11fb7090e0da",
+    "timestamp": "2025-12-23 07:12:15.173681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 4] [Constants Loading Order] The file requires './constants.js' to force loading .env before app-root conf.js. Can an attacker manipulate the require order by modifying Node.js require.cache to load app-root conf.js first, overriding critical environment variables (e.g., devnet flag) before constants are loaded, causing protocol mismatch?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c785cbd-4c38-41ae-a3e5-85c93586c452",
+    "timestamp": "2025-12-23 07:12:37.479364",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 82-86] [Direct Export Modification Race] The comments suggest modules can modify conf at runtime via 'var conf = require(\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5433108-7fb3-4371-b6f8-b4ef583c36bc",
+    "timestamp": "2025-12-23 07:12:59.982224",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 82-86] [Late Configuration Override] If a module modifies conf properties after network.js, storage.js, or validation.js have already read them, can this cause inconsistent state where network module uses old connection limits but new units are validated with new parameters, leading to unit rejection and network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27b0db76-57c6-41c9-b56e-80f51098e6a7",
+    "timestamp": "2025-12-23 07:13:24.017822",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 11-12] [ExplicitStart Override] The commented-out exports.explicitStart = true suggests network.start() must be called explicitly. Can an attacker enable this via conf override but fail to call network.start(), causing the node to never connect to peers while appearing to run normally, resulting in stale DAG state and missed transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c8e3451-dfc3-4f29-abdc-0c01e624fb24",
+    "timestamp": "2025-12-23 07:13:47.993073",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 28] [Hub Mode Exploitation] exports.bServeAsHub is commented out (default false). Can an attacker enable this on a malicious node to advertise itself as a hub, then serve fake witness proofs or censored unit history to light clients that connect, causing them to accept invalid transactions or miss important units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a5ee801-4854-4a77-a63b-4ebf7a3b5667",
+    "timestamp": "2025-12-23 07:14:13.372494",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 31] [Forced Light Mode Attack] exports.bLight is commented out (default false for full node). Can an attacker enable this via conf override on a full node, causing it to skip unit validation, accept invalid units from light servers, and then propagate these invalid units to other full nodes, corrupting the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2bc7c1c8-4240-433d-a471-31a2791eff71",
+    "timestamp": "2025-12-23 07:14:38.430592",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 31, 70] [Light Mode Inconsistency] Light mode can be set via exports.bLight = true in conf override OR automatically when Cordova is detected. Can this dual-source configuration cause confusion where a node believes it's in full mode (conf says false) but operates in light mode (Cordova detected), leading to validation bypasses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_832e4b35-334f-428f-85e4-5a31e393ca04",
+    "timestamp": "2025-12-23 07:15:03.060235",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 25] [MyUrl Spoofing] exports.myUrl is commented out but used by network.js for peer announcements. Can an attacker set this to a malicious URL (e.g., 'wss://phishing-site.com/bb') causing other nodes to connect to the attacker's server instead of the legitimate node, enabling man-in-the-middle attacks on peer connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec1364d2-abe9-4a4b-a9a2-0d1fe80ea15e",
+    "timestamp": "2025-12-23 07:15:29.000556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Lines 33-39] [Bug Report Hijacking] exports.bug_sink_url specifies where crash reports and errors are sent. Can an attacker override this to their own server, causing all error reports (which may contain sensitive data like unit hashes, addresses, or partial keys) to be exfiltrated, enabling targeted attacks on users experiencing specific bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8788d297-bf4b-4db0-9138-8a67e661139b",
+    "timestamp": "2025-12-23 07:15:55.986791",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 38] [Email Header Injection] exports.bug_sink_email and bugs_from_email are used for sending error reports via email. Can an attacker inject CRLF characters or malicious email headers into these fields (e.g., 'attacker@evil.com\\nBcc: spam-list@spam.com') to spam users or inject malicious content into error report emails?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6fff54e7-cdfe-4382-92ca-1cd6310beb09",
+    "timestamp": "2025-12-23 07:16:23.807170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 22] [Port Reuse Attack] exports.portReuse is commented out but if enabled, allows reusing an existing socket port. Can an attacker enable this and bind multiple nodes to the same port, causing connection race conditions where some peer requests go to the wrong node, leading to confused unit propagation or consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc91025c-bb02-4d26-baeb-e97d5f5b650a",
+    "timestamp": "2025-12-23 07:16:50.617536",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [All exports] [Network.js Dependency] If network.js reads MAX_INBOUND_CONNECTIONS, MAX_OUTBOUND_CONNECTIONS, and MAX_TOLERATED_INVALID_RATIO from conf.js before validation.js initializes, can a race condition cause network module to accept connections from peers that send invalid units before validation rules are loaded, allowing early DoS attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2204ba9f-8dc3-42af-82f7-c2f0ac8c2cb0",
+    "timestamp": "2025-12-23 07:17:16.320630",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [All exports] [Storage.js Dependency] If storage.js reads database configuration from conf.js but database credentials are overridden later via runtime conf modification, can this cause storage module to connect to the wrong database mid-execution, corrupting DAG state or causing unit writes to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91198d9a-caf2-4aa5-9cc3-5c124b941ed0",
+    "timestamp": "2025-12-23 07:17:42.626113",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/conf.js] [Line 52] [Network.js Protocol Check] Does network.js validate that WS_PROTOCOL matches the expected protocol for the network (livenet must be wss://, testnet can be ws://)? If conf.js allows ws:// on livenet via environment variable manipulation, does network.js reject connections or silently accept insecure connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96f7f6a8-0bbc-4dd8-b634-4a2236283b4a",
+    "timestamp": "2025-12-23 07:18:09.077066",
+    "report_generated": false
   }
 ]
