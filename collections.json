@@ -7648,5 +7648,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8796d25-8c5d-4a39-80a6-fa6fdf96b0f6",
     "timestamp": "2025-12-23 09:59:02.147176",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [Empty fee_paying_addresses] The validation at line 189-190 checks for non-empty fee_paying_addresses, but if the array contains empty strings or whitespace, does this pass validation but fail later when trying to select UTXOs, causing transaction composition to stall indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_937e0c94-9eef-42df-9fb4-47f29c7dbce3",
+    "timestamp": "2025-12-23 10:00:15.746690",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [Change address validation] At lines 193-196, the code checks if base_outputs or outputs_by_asset.base contain amount:0 outputs to avoid duplicate change outputs. If an attacker specifies multiple outputs with amount:0 to different addresses, can they bypass this check and cause the change to be split or sent to unintended addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ca1fa35-93d2-4e74-863d-9310da7751ff",
+    "timestamp": "2025-12-23 10:00:28.166169",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [Base output manipulation] At lines 197-201, arrBaseOutputs is constructed from fee_paying_addresses[0] as change address, then concatenated with params.base_outputs. If params.base_outputs contains an output to fee_paying_addresses[0] with amount > 0, can this create duplicate outputs to the same address, confusing change calculation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf44edba-937f-49d8-8327-a0b3e381da3b",
+    "timestamp": "2025-12-23 10:00:40.852456",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: composeDivisibleAssetPaymentJoint()] [outputs_by_asset iteration] At lines 208-210, the code iterates over params.outputs_by_asset with 'for (var a in ...)' without hasOwnProperty check. Can an attacker pollute the prototype of outputs_by_asset to inject additional assets, causing unintended asset transfers or fee calculation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da5be202-37c0-47aa-8c4d-d7241c0d6d8f",
+    "timestamp": "2025-12-23 10:00:54.052747",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Fixed denominations asset bypass] At lines 231-232, if objAsset.fixed_denominations is true, the callback returns an error. However, this check occurs after asset loading. Can an attacker race to issue new units spending fixed-denomination outputs before this check executes, creating invalid transactions that are already broadcast?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_570e3ed0-e8cb-44bd-8d3a-9adcfd06a7cd",
+    "timestamp": "2025-12-23 10:01:08.334670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Non-transferrable asset definer check] At lines 234-235, for non-transferrable assets, the code checks if params.to_address === objAsset.definer_address OR definer is in arrAssetPayingAddresses. Can an attacker set params.change_address to a different address than definer, causing the change output to violate transferability restrictions and making funds unspendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_37602b1a-f914-432d-86c8-762b0b920a26",
+    "timestamp": "2025-12-23 10:01:23.652753",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [cosigned_by_definer bypass] At lines 236-237, the check for cosigned_by_definer looks in arrPayingAddresses and params.signing_addresses. If params.signing_addresses is undefined and definer is not in arrPayingAddresses, but definer was added to signing_addresses after this check, can the transaction succeed without definer's signature, violating the cosigning requirement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5a8ef19-fd3a-4617-83bb-efe0b4f4db8f",
+    "timestamp": "2025-12-23 10:01:39.507539",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Attested addresses check timing] At lines 238-239, if objAsset.spender_attested is true but arrAttestedAddresses.length === 0, an error is returned. However, this check only applies when !conf.bLight. Can light clients compose payments that violate attestation requirements, causing full nodes to reject these units and creating network inconsistency?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f99906be-0303-40e7-b2a0-bca21b46081f",
+    "timestamp": "2025-12-23 10:01:57.152319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Target amount calculation overflow] At line 241, target_amount is calculated by reducing over payment.outputs with accumulator + output.amount. If multiple outputs have amounts near MAX_SAFE_INTEGER, can this sum overflow, causing pickDivisibleCoinsForAmount to select insufficient inputs and create an invalid payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d1e4161-090c-49c5-8c6e-95d9746f953f",
+    "timestamp": "2025-12-23 10:02:15.709804",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Insufficient inputs handling] At lines 246-247, if pickDivisibleCoinsForAmount returns null (insufficient funds), an error with code 'NOT_ENOUGH_FUNDS' is returned. But if arrInputsWithProofs is an empty array (not null), does the code proceed to create a payment with zero inputs, violating balance conservation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2b6571a-0fa1-4cf9-bbe3-293c9cff8776",
+    "timestamp": "2025-12-23 10:02:35.103084",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Change calculation underflow] At line 249, change is calculated as total_input - target_amount. If target_amount was inflated due to prior overflow, can change become negative? If JavaScript coerces negative change to a large positive value when compared with 0 at line 250, can this create outputs with astronomical amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e69bd071-749f-4e63-a7d7-71e6b3adf5fe",
+    "timestamp": "2025-12-23 10:02:55.991039",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Change address validation] At line 251, the change output uses params.change_address without validating it's a valid Obyte address. Can an attacker specify a malformed change_address that passes initial checks but causes unit validation to fail after the unit is composed, wasting fees and locking the UTXO set?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c11b8638-c8e0-4760-bd58-c8add2063543",
+    "timestamp": "2025-12-23 10:03:17.811836",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Private asset blinding generation] At lines 254-255, for private assets, blinding is generated with composer.generateBlinding(). If generateBlinding() has weak entropy or collisions, can two outputs have identical blinding values, causing spend_proof collisions that make one output unspendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cb2fc0e-788d-487d-b4c9-11ce10004c5d",
+    "timestamp": "2025-12-23 10:03:40.473566",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Output sorting non-determinism] At line 256, outputs are sorted with composer.sortOutputs. If this function has non-deterministic behavior (e.g., depends on object iteration order), can different nodes produce different output orderings, causing payload_hash mismatches and validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99fc096b-13e4-4087-9a57-72ff447ac2ac",
+    "timestamp": "2025-12-23 10:04:04.241811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Payload hash version handling] At line 265, payload_hash is computed with a version flag based on last_ball_mci >= constants.timestampUpgradeMci. If last_ball_mci is obtained from a stale cache or races with a witness level update, can different nodes compute different payload_hashes for identical payloads, causing unit validation divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1dd84916-4218-4b94-94dc-efcdc24c646b",
+    "timestamp": "2025-12-23 10:04:27.742279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Private payload association] At line 270, private_payload is stored in assocPrivatePayloads[objMessage.payload_hash]. If two messages in the same unit have identical payload_hashes (due to hash collision or bug), does the second assignment overwrite the first, causing loss of one private payload and making outputs unspendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fbb8d2fb-eee3-4a22-90f6-78075a8be73a",
+    "timestamp": "2025-12-23 10:04:52.545981",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Spend proofs ordering] At line 268, spend_proofs are mapped from arrInputsWithProofs. If the order of spend_proofs doesn't match the order of inputs in the payload at line 259, can this cause validateSpendProofs() to fail even for valid private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99a75b7b-5a51-41f1-89a9-e5e55bbfb564",
+    "timestamp": "2025-12-23 10:05:17.891853",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: retrieveMessages()] [Async.eachSeries error propagation] At lines 225-285, async.eachSeries processes arrAssetPayments sequentially. If an early payment fails but the error callback is delayed (e.g., due to async DB operations), can later payments in the series execute and add messages to the array before the error is detected, creating a partially constructed unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2347fede-9751-48ce-8cb3-8e77f7654ea9",
+    "timestamp": "2025-12-23 10:05:44.560535",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [Mutex deadlock] At line 309, a mutex.lock('handleJoint') is acquired. If validation.validate() at line 314 internally acquires the same or a conflicting lock and waits indefinitely, can this cause a deadlock where the combined_unlock at lines 310-313 is never called, freezing all future unit handling?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_70ee9bc6-a74b-45f8-8ff2-9b1009b6b784",
+    "timestamp": "2025-12-23 10:06:12.458216",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks()] [Unlock ordering] The combined_unlock function at lines 310-313 calls validate_and_save_unlock() before composer_unlock(). If composer_unlock() holds resources that validate_and_save_unlock() needs to release its mutex, can this incorrect unlock ordering cause resource leaks or corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_94944545-4bcd-4947-90d5-d2435c9efa48",
+    "timestamp": "2025-12-23 10:06:41.122605",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Validation error not unlocking composer] At lines 315-318, if ifUnitError is triggered, combined_unlock() is called but validation_unlock() is not. If validation.validate() has already acquired validation-internal locks before returning error, can these locks remain held forever, blocking future validations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd0649e0-b974-4a70-a385-91e58be1a662",
+    "timestamp": "2025-12-23 10:07:11.179381",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Unexpected validation paths throw] At lines 320-330, several unexpected validation outcomes (ifJointError, ifTransientError, ifNeedHashTree, ifNeedParentUnits) throw errors without calling combined_unlock(). Can these thrown errors bypass the unlock, causing permanent mutex locks that halt all transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd9be1c8-f5b4-4c3b-9e86-fbdbaa453fc8",
+    "timestamp": "2025-12-23 10:07:41.737951",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Sequence validation bypass] At lines 334-338, if objValidationState.sequence !== 'good', the unit is rejected. However, if objValidationState.sequence can be manipulated (e.g., through validation.js bugs), can attackers force acceptance of units with bad sequence, allowing double-spends or DAG corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16210b83-8900-451d-b304-415372df21a9",
+    "timestamp": "2025-12-23 10:08:09.349053",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Private payload version mismatch] At line 345, payload_hash is recomputed using objUnit.version !== constants.versionWithoutTimestamp. If objUnit.version was tampered with between composition and validation, can this produce a different payload_hash than the one stored in assocPrivatePayloads at line 270, causing private payload lookup to fail and validation to break?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_43a215f6-90c4-4c1d-9117-fe05944de486",
+    "timestamp": "2025-12-23 10:08:36.054149",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/divisible_asset.js] [Function: getSavingCallbacks().ifOk()] [Message index retrieval failure] At line 346, message_index is obtained via composer.getMessageIndexByPayloadHash(). If this function returns -1 or undefined (e.g., payload_hash not found in unit), does the code handle this gracefully or proceed to create objPrivateElement with invalid message_index, corrupting the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e851668c-9fbe-491b-ad7d-c7cae08a270e",
+    "timestamp": "2025-12-23 10:09:01.530761",
+    "report_generated": false
   }
 ]
