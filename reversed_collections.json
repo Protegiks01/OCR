@@ -8098,5 +8098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38623e81-735b-414e-b4e1-083b2c8c3ab6",
     "timestamp": "2025-12-23 13:15:28.241273",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: decodeLexicographicToDouble()] [Bit manipulation symmetry] The decoding at lines 152-156 should be the exact inverse of encoding at lines 142-146. If there's any asymmetry in the XOR operations (e.g., off-by-one in the loop bounds), could this cause decoding to produce values slightly different from the original, breaking oracle data integrity in AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_425eb19c-729c-4979-8860-d657cc29a785",
+    "timestamp": "2025-12-23 13:16:40.006488",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: decodeLexicographicToDouble()] [Hex validation] At line 151, `Buffer.from(hex, 'hex')` is called without validating that `hex` is a valid hex string of exactly 16 characters. If the input is shorter, longer, or contains non-hex characters, will this produce a malformed buffer that causes `readDoubleBE()` to return garbage values, corrupting AA data feed reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0b8e54f-c734-4883-80e8-9ac452d8b650",
+    "timestamp": "2025-12-23 13:16:52.624835",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeDoubleInLexicograpicOrder()] [NaN encoding] The function does not check for NaN input. If a NaN value is passed, `writeDoubleBE()` will encode it, but IEEE 754 has multiple NaN representations with different bit patterns. Could different JavaScript engines produce different encodings for NaN, causing data feed key collisions or ordering inconsistencies in main_chain.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2fa9f594-eb29-46cd-bba3-d6c7745f3304",
+    "timestamp": "2025-12-23 13:17:06.260258",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeDoubleInLexicograpicOrder()] [Endianness assumption] The function uses `writeDoubleBE()` (big-endian) at line 141. If Obyte nodes run on mixed-endianness architectures, or if Node.js version differences handle endianness differently, could this cause the same float to be encoded differently on different systems, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad9f64b7-e81b-457d-beb6-bdd146932046",
+    "timestamp": "2025-12-23 13:17:19.641576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeDoubleInLexicograpicOrder()] [Sign bit flipping] At line 143, positive numbers have their first byte XORed with 0x80 to flip the sign bit. At line 145-146, negative numbers have all bytes XORed with 0xff. Can an attacker exploit edge cases in IEEE 754 representation (e.g., subnormal numbers, infinity, or specific bit patterns) to create two different floats that encode to the same hex string, breaking data feed key uniqueness?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad0cea23-2fe0-43a3-bf2c-865a54f90e8e",
+    "timestamp": "2025-12-23 13:17:34.043742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeDoubleInLexicograpicOrder()] [Buffer allocation] At line 140, `Buffer.allocUnsafe(8)` is used without initialization. While the next line writes to all 8 bytes, could a race condition or error in `writeDoubleBE()` leave some bytes uninitialized, causing non-deterministic encoding that breaks consensus when different nodes encode the same float?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2167cd6-fed1-4c4e-b78b-643f17cd2d32",
+    "timestamp": "2025-12-23 13:17:49.323460",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeDoubleInLexicograpicOrder()] [Negative zero handling] At line 138-139, the function converts `-0` to `+0` before encoding. However, in JavaScript, `-0 === 0` returns true, so the check `if (float === -0)` will match both -0 and +0. Could this cause legitimate +0 values to be re-assigned, or is this intentional? What happens if an attacker encodes -0 in a data feed, does it get stored identically to +0, potentially breaking oracle data integrity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_01c9098f-cf6e-4077-b07f-51ec53f644ec",
+    "timestamp": "2025-12-23 13:18:06.469487",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getNumericFeedValue()] [Mantissa extraction inconsistency] The regex at line 105 captures `mantissa = m[1]`, which includes the decimal point. But at line 116, leading zeros are removed with `replace(/^0+/, '')`. For a value like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b9ffd4b-672c-437c-a3a5-b957f031e9c9",
+    "timestamp": "2025-12-23 13:18:24.622190",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getNumericFeedValue()] [Precision loss detection] The function returns `null` (line 120, 125) to indicate a value should remain as string rather than be converted to number. If an AA formula performs arithmetic on this string (e.g., `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ef7a072-d7d2-493d-bc75-8e4c5f478da3",
+    "timestamp": "2025-12-23 13:18:43.898800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getNumericFeedValue()] [Decimal point handling] At line 117-118, the function removes trailing zeros and the decimal point using `replace(/0+$/, '').replace('.', '')`. If the mantissa is something like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5c6accf-091f-4577-8a63-8e9bee48ee82",
+    "timestamp": "2025-12-23 13:19:04.230033",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getNumericFeedValue()] [Significant digits mode] When `bBySignificantDigits` is true (line 115), the function counts significant digits after removing leading zeros and trailing zeros. For a value like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e667d8bf-fd3f-4e80-9b0b-2378343546d7",
+    "timestamp": "2025-12-23 13:19:24.862854",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getNumericFeedValue()] [Mantissa length check] At line 124, the function rejects values where `mantissa.length > 15`. However, the comment notes this includes the decimal point, so `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b11c7a7-68be-4b37-a2e5-26ea2fb1d968",
+    "timestamp": "2025-12-23 13:19:47.071922",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toNumber()] [Type check bypass] At line 88, the function throws an error if the value is not a string and `bLimitedPrecision` is false. But if `bLimitedPrecision` is true, line 86 calls `getNumericFeedValue()` without type validation. Can an attacker pass a non-string non-number value (e.g., object, array) that bypasses the check and corrupts the parsing logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50460e49-2cba-4b1c-b0fd-ea39fb112198",
+    "timestamp": "2025-12-23 13:20:09.989085",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toNumber()] [Null vs zero ambiguity] The function returns `null` to indicate invalid input at lines 91, 94, 98. Can calling code distinguish between `toNumber()` returning `null` (invalid) and returning `0` (valid zero)? Could an attacker exploit this ambiguity to make AAs treat invalid feed values as zero, bypassing price oracle checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c920503a-0a39-4004-a89e-544140ded2f2",
+    "timestamp": "2025-12-23 13:20:33.651974",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toNumber()] [Scientific notation edge case] At line 97, the function checks `if (f === 0 && mantissa > 0 && abs_exp > 0)` to detect underflow. However, what about a value like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_985d1f84-4d38-48fc-ab95-84ea07a707f8",
+    "timestamp": "2025-12-23 13:20:57.381646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toNumber()] [Regex bypass] The regex at line 89 matches `^[+-]?(\\\\d+(\\\\.\\\\d+)?)([eE][+-]?(\\\\d+))?$`. Can an attacker submit a value like `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b338dbe6-56fe-4d18-84cc-e715575ef001",
+    "timestamp": "2025-12-23 13:21:22.592742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: toNumber()] [Limited precision mode] The function has two different parsing behaviors based on `bLimitedPrecision` parameter at line 85. If this boolean is set incorrectly due to MCI comparison logic (`bLimitedPrecision = (max_mci < constants.aa2UpgradeMci)`), could nodes before and after the upgrade MCI parse the same numeric string differently, causing AA executions to diverge and creating permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82a27924-c8f5-4309-90ae-05df30d44382",
+    "timestamp": "2025-12-23 13:21:48.433565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getValueFromDataFeedKey()] [Ternary operator precedence] At line 78, the ternary operator `(type === 's') ? value : decodeLexicographicToDouble(value)` assumes binary type distinction. What happens if `type` is 'n' but `value` is not a valid hex-encoded double? Will `decodeLexicographicToDouble()` silently corrupt the value, causing AAs to read incorrect oracle data and execute wrong logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12dbc950-75dc-44b0-81f2-37eaab4319dc",
+    "timestamp": "2025-12-23 13:22:15.732673",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getValueFromDataFeedKey()] [Type indicator trust] At line 76-77, the function extracts `type` and `value` from array indices without validation. If an attacker crafts a data feed key where the type indicator at position [3] is something other than 's' or a valid numeric type, will line 78 call `decodeLexicographicToDouble()` on invalid input, potentially returning corrupted numeric values that cause incorrect AA state transitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbee9f53-6ea4-48cd-b876-a86a51795a04",
+    "timestamp": "2025-12-23 13:22:42.244994",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getValueFromDataFeedKey()] [Array length assumption] The function splits the key by newline and checks `if (m.length !== 6)` at line 74. However, if the `value` field itself contains newline characters (e.g., a multi-line string), will this cause the split to produce more than 6 elements, throwing an error and causing AA executions that depend on this data feed to fail, freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93b7f7b2-9cf9-4e34-8ab4-695b65c5780e",
+    "timestamp": "2025-12-23 13:23:08.394456",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getMciFromDataFeedKey()] [Unsigned integer assumption] At line 67, the function computes `0xFFFFFFFF - reversed_mci`. If `reversed_mci` is greater than 0xFFFFFFFF (from overflow or malformed input), can this produce negative MCI values that break main_chain.js's MCI ordering invariants, causing MC index corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7daebc97-5aa8-4b2f-82c7-da6942c23274",
+    "timestamp": "2025-12-23 13:23:34.512276",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getMciFromDataFeedKey()] [Hex parse failure] At line 66, `parseInt(strReversedMci, 16)` is called without validating that `strReversedMci` contains valid hex characters. If the last element after split is not a valid hex string (e.g., contains 'g-z' characters), will `parseInt` return `NaN`, and will line 67 produce an invalid MCI that breaks AA data feed lookups?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_964ae50e-3212-45c0-bb60-ba00b0428983",
+    "timestamp": "2025-12-23 13:24:01.047444",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getMciFromDataFeedKey()] [Array split vulnerability] At line 64, the function splits the key by newline and takes the last element. Can an attacker inject newlines into earlier parts of the data feed key (e.g., in the `feed_name` or `value` fields) to manipulate which component is treated as the MCI, corrupting the decoded MCI value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fb0aef2-5b9e-48de-9068-6f85d6e4c4a2",
+    "timestamp": "2025-12-23 13:24:27.141538",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeMci()] [Hex padding edge case] The function uses `padStart(8, '0')` at line 60 to ensure 8 hex digits. What happens if the result of `(0xFFFFFFFF - mci).toString(16)` is already longer than 8 characters due to overflow? Would `padStart()` leave it unchanged, causing database key collisions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_721e9817-8063-4f04-b50e-5d2aeac322fd",
+    "timestamp": "2025-12-23 13:24:54.484628",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeMci()] [Type coercion] At line 60, if `mci` is passed as a string (e.g., `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d4536d4-0853-45de-97a8-003907c46c5d",
+    "timestamp": "2025-12-23 13:25:21.862555",
+    "report_generated": false
   }
 ]
