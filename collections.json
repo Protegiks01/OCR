@@ -4798,5 +4798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_50f618b5-80da-4059-a055-e6b8dccd2aed",
     "timestamp": "2025-12-23 06:38:04.253832",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Signing path manipulation] At lines 548-549, the code iterates over Object.keys(author.authentifiers). If an attacker controls the signer and returns authentifiers with unexpected paths, can they cause signatures to be placed on wrong paths, bypassing definition requirements?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed4ff91b-a172-44f3-af58-f3db40281b6e",
+    "timestamp": "2025-12-23 06:39:18.711204",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [Sequence='good' requirement bypass] At line 887, the query only considers units with sequence='good'. If an attacker's first transaction has sequence='final-bad' or 'temp-bad', will setDefinition() be called, revealing their definition when it shouldn't be?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_114d2a5e-379d-42a4-be6d-a2cb914c88b2",
+    "timestamp": "2025-12-23 06:39:31.681118",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeAuthorsForAddresses()] [Stability check bypass for definitions] At line 884, the and_stable condition checks if last_ball_mci < constants.unstableInitialDefinitionUpgradeMci. Can an attacker compose units at the exact upgrade boundary to bypass stability checks on initial definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5913853d-70f7-4e04-9468-e2ac0fa3d17b",
+    "timestamp": "2025-12-23 06:39:44.759670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Witness list vs witness_list_unit inconsistency] At lines 427-432 (light mode) and 435-444 (full node mode), the code sets either objUnit.witnesses or objUnit.witness_list_unit. Can an attacker exploit the branching logic to set both fields or neither field, causing validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1cd6217d-6fa6-47b9-a24b-1db3b08c45cb",
+    "timestamp": "2025-12-23 06:39:58.000108",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Witness address reference check bypass] At lines 435-437, storage.determineIfWitnessAddressDefinitionsHaveReferences() checks if witness addresses have references. If this check has race conditions or can be bypassed, can an attacker use witnesses with references, violating the protocol?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_699a7454-7aa7-438f-8b62-88f1abb1ac0a",
+    "timestamp": "2025-12-23 06:40:12.066081",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Witness list from params vs opList inconsistency] At lines 133-147, witness list is obtained either from storage.getOpList() (post-v4) or params.witnesses (pre-v4) or myWitnesses.readMyWitnesses(). Can an attacker exploit the different code paths to use an incompatible witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d063204-375c-404a-94b9-21f6d30c7b37",
+    "timestamp": "2025-12-23 06:40:27.561176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Genesis witness list manipulation] At lines 256-267, for genesis units with bGenesis && params.witnesses, system_vote messages for op_list are added. Can an attacker manipulate params.witnesses to vote for their own witnesses in the genesis unit, gaining control over consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ad52c79-ae50-45da-90dd-6c792f051b0d",
+    "timestamp": "2025-12-23 06:40:43.966518",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Witness list sorting attack] At line 261, params.witnesses.sort() is called. If the witnesses are not sorted consistently with how they're stored elsewhere, can this cause witness compatibility failures in descendant units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8531e4d0-8e40-4fe0-9ecc-d955ea872f52",
+    "timestamp": "2025-12-23 06:41:01.221305",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [FindWitnessListUnit race condition] At line 438-444, storage.findWitnessListUnit() is called to find a unit with the same witness list. If multiple concurrent units are being composed with the same witnesses, can they all fail to find a witness_list_unit and redundantly include the full witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4238274a-253f-435f-8e21-e461dd1566d3",
+    "timestamp": "2025-12-23 06:41:19.877202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Payload hash collision] At line 408, payload_hash is calculated for non-payment messages using objectHash.getBase64Hash(getPayloadForHash(message), bVersion2). Can an attacker craft two different payloads that hash to the same value by exploiting getPayloadForHash() logic at lines 622-628 which removes temp_data.data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6be1b052-5239-4c6b-bcf3-55aadcedc350",
+    "timestamp": "2025-12-23 06:41:40.146892",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [retrieveMessages callback manipulation] At lines 447-461, fnRetrieveMessages callback can add additional messages to objUnit.messages. Can a malicious callback add messages that violate protocol rules, bypass fee calculations, or include malicious payloads that aren't properly validated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38065fc7-e27a-4728-9411-5cdade91bb18",
+    "timestamp": "2025-12-23 06:42:01.478231",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Private payload association attack] At lines 457-459, assocMorePrivatePayloads from retrieveMessages are merged into assocPrivatePayloads. Can an attacker return private payloads with payload_hash keys that overwrite existing private payloads, causing data loss or confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e82f6a8-9ff2-4196-8c30-c22c652553f9",
+    "timestamp": "2025-12-23 06:42:23.408576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Message app field manipulation] At line 403-404, the code checks if message.app === 'payment' to skip payload_hash calculation. Can an attacker craft non-payment messages with app='payment' to bypass payload_hash validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c8fc6b8-2cf4-46d5-a450-a093bb00a8bb",
+    "timestamp": "2025-12-23 06:42:46.106694",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: createTextMessage()] [Text message payload hash upgrade boundary] At line 44, the payload_hash for text messages uses storage.getMinRetrievableMci() >= constants.timestampUpgradeMci to determine the hash version. Can an attacker create text messages at the upgrade boundary that hash differently on different nodes, causing consensus failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e129eccf-0f9c-47f1-a6c5-0ca36c4ab04a",
+    "timestamp": "2025-12-23 06:43:09.574953",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Payment message payload_hash placeholder] At line 223, objPaymentMessage.payload_hash is set to hash_placeholder. At line 541, it's recalculated. Can an attacker interfere with this recalculation or cause the placeholder to remain, creating an invalid unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f26c765f-1523-4644-a9af-1b07e5f850a5",
+    "timestamp": "2025-12-23 06:43:33.801938",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: getPayloadForHash()] [Temp data manipulation] At lines 622-628, for temp_data messages, the data field is deleted from the payload before hashing. Can an attacker exploit this to create two units with different temp_data.data but identical payload_hash, causing storage confusion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82a4bbd1-f475-44cf-9665-3cf9bff58ea9",
+    "timestamp": "2025-12-23 06:43:59.812962",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Message ordering attack] The order of messages in objUnit.messages array affects the unit hash. Can an attacker manipulate message ordering (via retrieveMessages at line 456 or initial params.messages) to create intentional hash collisions or bypass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_319e2093-b213-44e9-beaf-5ac3850ca75c",
+    "timestamp": "2025-12-23 06:44:26.415955",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Version downgrade attack] At lines 392-398, the unit version is determined based on last_ball_mci vs various upgrade MCIs. Can an attacker manipulate last_ball_mci to use an older version, bypassing new validation rules?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca842eb5-e1b8-4718-89ce-8edf0eab7ec0",
+    "timestamp": "2025-12-23 06:44:54.495202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [TPS fee field inconsistency at v4 boundary] At lines 399-400, the code throws an error if last_ball_mci >= constants.v4UpgradeMci but tps_fee is not a number. Can an attacker compose units right at the upgrade boundary where this check might be inconsistent across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5bc43b6-0617-4935-ac83-cb348c5edc77",
+    "timestamp": "2025-12-23 06:45:21.877383",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Timestamp upgrade MCI boundary confusion] At line 392, bVersion2 is determined by comparing last_ball_mci with constants.timestampUpgradeMci. If nodes have different values for this constant, can they compose units with different versions, causing rejection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f538049-81f2-4ed2-b08b-b98736bd419d",
+    "timestamp": "2025-12-23 06:45:50.930094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Version field not updated for genesis] At line 393-398, version is conditionally updated, but the initial version is set at line 241. For genesis units, can the version field remain at the wrong value if last_ball_mci is 0?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89c33525-0df9-44b5-acfc-88464a534170",
+    "timestamp": "2025-12-23 06:46:21.533445",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Payload hash version mismatch] At line 408, payload_hash for non-payment messages uses bVersion2, but at line 541, payment message payload_hash uses objUnit.version !== constants.versionWithoutTimestamp. Can these two checks diverge, causing inconsistent hashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4913d411-e9a8-41ef-a7ab-1d468e5ad140",
+    "timestamp": "2025-12-23 06:46:50.694632",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Mutex lock scope mismatch] At line 289, mutex locks are acquired for 'c-'+from_address keys. But the actual operations span multiple async steps until line 586. Can operations after the database COMMIT at line 524 but before lock release at line 586 cause race conditions with other transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59bb68e4-07a0-458e-a871-0e9cf05eacda",
+    "timestamp": "2025-12-23 06:47:21.322728",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: composeJoint()] [Lock not released on error] At line 278-285, handleError() calls unlock_callback(). But what if an error occurs before unlock_callback is assigned at line 290? Can this cause permanent deadlock on the locked addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_712ae128-4d2a-425c-8ff4-0911143db6fd",
+    "timestamp": "2025-12-23 06:47:51.527942",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/composer.js] [Function: getSavingCallbacks()] [Double unlock vulnerability] At lines 724-728, combined_unlock() calls both validate_and_save_unlock() and composer_unlock(). If either of these throws an error, can the other unlock be skipped, causing deadlock? Or can combined_unlock() be called twice, causing double-unlock?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9760847d-6626-496d-8ff3-6201368a3781",
+    "timestamp": "2025-12-23 06:48:19.778109",
+    "report_generated": false
   }
 ]
