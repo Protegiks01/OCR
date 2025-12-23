@@ -8248,5 +8248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dbd66d9d-0fa1-4dd6-97a5-f20928d2dffb",
     "timestamp": "2025-12-23 10:38:28.090494",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Test environment bypass] In unit testing scenarios where tests might need to reload ocore modules with different configurations between tests, does the singleton check force test frameworks to use workarounds (like process forking) that might hide concurrency bugs that only appear in production?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3dd9f784-dfd0-4cb5-a03f-f339940d53d2",
+    "timestamp": "2025-12-23 10:39:40.948055",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [REPL exploitation] If an attacker gains access to a Node.js REPL session on a running ocore node, can they execute `delete global._bOcoreLoaded` followed by `require('ocore/event_bus')` to load duplicate critical modules, potentially creating parallel event processing pipelines that corrupt state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2dd04329-04f8-4c23-ab3f-2b11985453f8",
+    "timestamp": "2025-12-23 10:39:53.515854",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Dynamic import bypass] With ES6 dynamic imports (import() expressions), can an attacker bypass the singleton check if they use import() instead of require(), as these might not trigger the CommonJS require hooks that enforce_singleton.js relies on?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1464f651-6188-4896-8e81-023b5645695d",
+    "timestamp": "2025-12-23 10:40:06.476778",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Subresource integrity missing] The singleton check doesn't verify the integrity (hash) of the loaded ocore modules - if an attacker performs a supply chain attack by modifying ocore files on disk after installation, will the singleton check still pass, allowing compromised code to run?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_314c3dfc-da81-493b-8c75-7846e6e9ff91",
+    "timestamp": "2025-12-23 10:40:19.830944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Process inspection vulnerability] Can an attacker use Node.js process inspection tools (like node --inspect) to attach a debugger, pause execution at line 4, modify `global._bOcoreLoaded` in the debugger, then resume execution to bypass the singleton check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4894e0e-03c6-4cee-b400-b372df9b6c0f",
+    "timestamp": "2025-12-23 10:40:34.064881",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Insufficient startup validation] The singleton check occurs at module load time but doesn't validate that critical subsequent initializations (database connections, network setup, witness list loading) also remain singletons - could an attacker cause multiple initialization attempts that corrupt shared resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6920e45-a279-46ad-86bb-81409e6d79db",
+    "timestamp": "2025-12-23 10:40:49.691699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Graceful degradation failure] When the error at line 5 is thrown, it provides no graceful degradation or recovery mechanism - if the duplicate load is due to a legitimate bug (like circular dependency resolution order change in a new Node.js version), will the system fail catastrophically with no fallback?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a6785ee-22b5-4385-a301-527b4b843ebe",
+    "timestamp": "2025-12-23 10:41:05.729964",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Test environment bypass] In unit testing scenarios where tests might need to reload ocore modules with different configurations between tests, does the singleton check force test frameworks to use workarounds (like process forking) that might hide concurrency bugs that only appear in production?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63f1f4b0-e4f5-4b1e-930a-12e5b4e3e399",
+    "timestamp": "2025-12-23 10:41:23.750868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [REPL exploitation] If an attacker gains access to a Node.js REPL session on a running ocore node, can they execute `delete global._bOcoreLoaded` followed by `require('ocore/event_bus')` to load duplicate critical modules, potentially creating parallel event processing pipelines that corrupt state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b5477a24-6c38-4aad-83cb-e03976c315b7",
+    "timestamp": "2025-12-23 10:41:42.977220",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Dynamic import bypass] With ES6 dynamic imports (import() expressions), can an attacker bypass the singleton check if they use import() instead of require(), as these might not trigger the CommonJS require hooks that enforce_singleton.js relies on?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f960622a-1750-4ca5-a11c-4620d5948661",
+    "timestamp": "2025-12-23 10:42:02.406861",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Subresource integrity missing] The singleton check doesn't verify the integrity (hash) of the loaded ocore modules - if an attacker performs a supply chain attack by modifying ocore files on disk after installation, will the singleton check still pass, allowing compromised code to run?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_11dd7515-6100-4442-a85b-f35391f04d8e",
+    "timestamp": "2025-12-23 10:42:23.470903",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Process inspection vulnerability] Can an attacker use Node.js process inspection tools (like node --inspect) to attach a debugger, pause execution at line 4, modify `global._bOcoreLoaded` in the debugger, then resume execution to bypass the singleton check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39021c7e-1064-4c3a-a8b4-16ac73bfba2f",
+    "timestamp": "2025-12-23 10:42:44.573576",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Insufficient startup validation] The singleton check occurs at module load time but doesn't validate that critical subsequent initializations (database connections, network setup, witness list loading) also remain singletons - could an attacker cause multiple initialization attempts that corrupt shared resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1bd0591-4178-47f6-8c7d-aaa50e0a0739",
+    "timestamp": "2025-12-23 10:43:06.146190",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Graceful degradation failure] When the error at line 5 is thrown, it provides no graceful degradation or recovery mechanism - if the duplicate load is due to a legitimate bug (like circular dependency resolution order change in a new Node.js version), will the system fail catastrophically with no fallback?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c273e17a-c4bf-4978-afa3-49d0dfa01aa8",
+    "timestamp": "2025-12-23 10:43:28.279595",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [Module loading] [Singleton bypass] Can an attacker create multiple instances of the event bus by manipulating the global._bOcoreLoaded flag or by loading ocore through different module resolution paths (e.g., symlinks, npm link), causing event handlers to register on different EventEmitter instances and leading to missed critical events like 'mci_became_stable' that could result in consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d7e25eb-e912-49b1-b59d-c7e47cf469fb",
+    "timestamp": "2025-12-23 10:43:52.438215",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [Module initialization] [Race condition] If multiple modules simultaneously require event_bus.js before enforce_singleton.js completes execution, can they each create separate EventEmitter instances before the global flag is set, causing event subscribers in some modules to never receive critical events (like 'new_joint' or 'aa_definition_saved'), potentially leading to network halt or fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_31a604d0-1a40-45b1-b28b-e242d1fc5217",
+    "timestamp": "2025-12-23 10:44:16.047303",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [Singleton enforcement] [Global state pollution] Can an attacker deliberately delete or modify global._bOcoreLoaded after initialization to bypass singleton enforcement on subsequent requires, allowing creation of parallel event buses that cause some nodes to process events (like unit validation or main chain updates) on different timelines, leading to permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3b227ad-f2d7-41ac-8e29-c715f2a206e5",
+    "timestamp": "2025-12-23 10:44:40.666176",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [setMaxListeners(40)] [Denial of Service] Can an attacker trigger registration of 40+ event listeners for the same event name (e.g., by creating 40+ wallet instances, AA definitions, or device pairings) to exceed the maxListeners limit set on line 8, causing Node.js to emit warnings, degrade performance, or silently fail to register critical listeners for 'mci_became_stable' events, potentially halting consensus updates for >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd36e65f-1748-408d-977f-2d99538eedae",
+    "timestamp": "2025-12-23 10:45:04.380961",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [setMaxListeners(40)] [Listener exhaustion] If network.js registers listeners for each connected peer and an attacker opens 40+ WebSocket connections, can they exhaust the listener limit for events like 'new_joint' or 'validated-{unit}', preventing legitimate peers from receiving unit broadcasts and causing network partition or transaction delay >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4e4cffd-edd5-4bfd-aa27-67879151bdb0",
+    "timestamp": "2025-12-23 10:45:28.851956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [setMaxListeners(40)] [AA cascade DoS] Can an attacker create a chain of 40+ Autonomous Agents where each AA triggers the next via secondary triggers, causing each AA to register listeners on event_bus (e.g., for 'aa_response' or 'aa_execution' events), exceeding the 40 listener limit and blocking new AA executions, potentially permanently freezing funds locked in subsequent AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f494592-9129-40be-8828-13f1172c5f2a",
+    "timestamp": "2025-12-23 10:45:52.793986",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [setMaxListeners(40)] [Per-event limit bypass] Since the 40 listener limit applies globally to the EventEmitter instance rather than per-event-name, can an attacker register listeners across many different event names (e.g., 'validated-unit1', 'validated-unit2', etc.) to consume the limit, preventing registration of critical single-use listeners like eventBus.once('mci_became_stable') used in wallet operations, causing transaction composition failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b74f3d58-ecb4-4bf7-8ede-7cbe221c3d3b",
+    "timestamp": "2025-12-23 10:46:18.395015",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter memory] [Memory leak] Given that very few places in the codebase call eventBus.removeListener() or removeAllListeners(), can long-running nodes accumulate thousands of orphaned event listeners (e.g., from completed wallet operations using .once(), closed network connections, or finished AA executions), eventually consuming all available memory and causing the node to crash, resulting in network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce1587fc-9f27-471a-9949-9df3c616fa41",
+    "timestamp": "2025-12-23 10:46:43.171277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [Listener registration] [Memory exhaustion] Can an attacker repeatedly trigger operations that register event listeners without cleanup (e.g., by continuously sending trigger units to an AA that registers listeners for oracle data feeds, or by repeatedly initiating device pairing), accumulating listeners until the node runs out of memory and crashes, causing >24 hour network outage for that node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_98509bbc-2dc3-426c-b211-b81838739279",
+    "timestamp": "2025-12-23 10:47:08.187099",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Listener leak from exceptions] If an event handler throws an exception before completing cleanup (e.g., before calling eventBus.removeListener()), does the listener remain registered forever, and can an attacker repeatedly trigger such exceptions (e.g., by sending malformed units that crash validation handlers) to accumulate leak thousands of listeners and exhaust memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_727a928c-000e-41c7-adaf-9cc3ece502d3",
+    "timestamp": "2025-12-23 10:47:33.276012",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Event ordering non-determinism] Since EventEmitter fires listeners in registration order but different nodes may load modules in different sequences (due to filesystem differences, npm version variations, or concurrent requires), can two nodes process the same 'mci_became_stable' event with handlers executing in different orders, leading to non-deterministic state updates (e.g., different AA state variable values) and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13947b40-2953-447c-8dee-78570e8d80d2",
+    "timestamp": "2025-12-23 10:47:59.304774",
+    "report_generated": false
   }
 ]
