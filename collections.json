@@ -13798,5 +13798,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf7cfd6a-3c37-42fe-9cb5-865a2f8bb805",
     "timestamp": "2025-12-23 16:50:41.723330",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [Race Condition] If insertWitnesses() is called twice concurrently (e.g., from initialization and from OP list update), can both INSERT operations succeed, resulting in 24 witnesses in the database and causing permanent corruption of the witness list?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_168ac9c6-c009-46c4-938e-7ff1affd5fe2",
+    "timestamp": "2025-12-23 16:51:53.164396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [Rollback Failure] If the INSERT query (line 75) succeeds but the process crashes before the console.log or onDone callback (lines 76-78), can the database remain in an inconsistent state where witnesses are inserted but initialization is incomplete, causing dependent processes to fail on restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_571d2fde-3d3c-4184-83d6-e598cc34d4a5",
+    "timestamp": "2025-12-23 16:52:05.710684",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Function: insertWitnesses()] [SQL Injection] Although the code uses parameterized queries with placeholders '(?)' (line 73), does the placeholder generation logic properly escape the witness addresses, or can specially crafted addresses containing SQL metacharacters cause SQL injection when the VALUES clause is constructed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ec5a96bc-b85a-45ba-8236-052e3391417b",
+    "timestamp": "2025-12-23 16:52:18.698674",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Global State] [Race Condition] If readMyWitnesses() and replaceWitness() execute concurrently, can the read happen after the DELETE in replaceWitness's nested readMyWitnesses call (line 41) but before the UPDATE (line 47), returning an array missing the old_witness, causing the replacement to fail with 'old witness not known' even though it was present moments before?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_446db686-0261-4b98-a9ee-ccfb4caf8810",
+    "timestamp": "2025-12-23 16:52:32.036445",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Global State] [Atomicity] Since my_witnesses table modifications are not wrapped in explicit transactions, can a sequence of replaceWitness() followed by readMyWitnesses() be interleaved with insertWitnesses() from another process, producing non-atomic witness list updates that leave the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1775018-8520-4b72-ae36-c81c157d963d",
+    "timestamp": "2025-12-23 16:52:46.151522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Integration] [Consensus Impact] When composer.js calls readMyWitnesses() to compose a unit (composer.js lines 141-144), if the witness list is modified by replaceWitness() mid-composition, can the composed unit reference a witness array that no longer matches the node's current witness list, causing the unit to be invalid immediately after creation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a9170d82-93aa-4431-9d01-0aa426e1f1f9",
+    "timestamp": "2025-12-23 16:53:01.487648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Integration] [Network Protocol] When network.js calls readMyWitnesses() for light client history requests (network.js line 2338), if the witness list is empty or corrupted, does the history request send an empty witness array to the light vendor, causing the vendor to reject the request and preventing light clients from syncing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9578e88d-bac4-4bd7-8b6d-5340710cbf9c",
+    "timestamp": "2025-12-23 16:53:18.199888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Integration] [OP List Updates] When network.js updates witnesses based on op_list system variable (network.js lines 1900-1920), if multiple witnesses need replacement and some replacements fail while others succeed, can this result in a partially updated witness list that matches neither the old nor new OP list, causing witness compatibility failures with all network peers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c5da9bf-70fe-4126-a0d8-d2495eba0302",
+    "timestamp": "2025-12-23 16:53:36.019754",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Database] [Query Performance] Does the 'ORDER BY address' clause in the SELECT query (line 10) have a corresponding index on my_witnesses.address, or can this query perform a full table scan every time readMyWitnesses() is called, causing performance degradation and delays in unit composition during high transaction volume?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed2d9169-5263-4da5-b93a-9e74d3fa540a",
+    "timestamp": "2025-12-23 16:53:54.992560",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Database] [Connection Pool] If the database connection pool is exhausted when readMyWitnesses(), replaceWitness(), or insertWitnesses() are called, do these functions properly handle connection timeout errors, or can they hang indefinitely waiting for a connection, causing the entire node to freeze and halt transaction processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1903b3ff-81b0-4cbc-976f-36d8a003fa6c",
+    "timestamp": "2025-12-23 16:54:15.264735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Database] [Transaction Isolation] What transaction isolation level is used for the my_witnesses queries - if READ UNCOMMITTED is used, can readMyWitnesses() see partially committed witness updates from replaceWitness(), returning witness lists in transient invalid states?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4bf0662-5582-4e29-a0fd-1f7e79534d2d",
+    "timestamp": "2025-12-23 16:54:35.736523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Database] [Deadlock] If multiple nodes simultaneously attempt to replaceWitness() for different witnesses while others call readMyWitnesses(), can database-level row locks cause deadlocks that block all witness operations, preventing unit composition and causing network-wide transaction delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d83edc9-c27e-4beb-bad8-fc736899742d",
+    "timestamp": "2025-12-23 16:54:57.654622",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Reset Logic] [Version Detection] The old witness reset checks constants.alt === '2' and constants.versionWithoutTimestamp === '1.0' (lines 13-14) - can an attacker manipulate environment variables or configuration to artificially trigger these conditions, forcing nodes to delete their legitimate witness lists and enter emergency re-initialization mode?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bed4de8b-83c2-4024-ab59-79004285cced",
+    "timestamp": "2025-12-23 16:55:19.904117",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Reset Logic] [Hardcoded Addresses] The hardcoded old witness addresses '5K7CSLTRPC5LFLOS3D34GBHG7RFD4TPO' and '2FF7PSL7FYXVU5UIQHCVDTTPUOOG75GX' (lines 13-14) are checked for deletion - if these addresses are still actively used as witnesses on some legacy networks, can this logic cause nodes bridging multiple networks to incorrectly delete valid witnesses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d51ba22-c09b-4a0c-9be7-f0a6314ea07d",
+    "timestamp": "2025-12-23 16:55:42.200687",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Reset Logic] [Array Mutation] The reset logic modifies arrWitnesses by setting it to [] after DELETE (line 18) - does this mutation affect the callback's reference to arrWitnesses, potentially causing use-after-free errors if the callback tries to access witness addresses after reset?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14487bcd-9497-404f-acdf-03411a1d6456",
+    "timestamp": "2025-12-23 16:56:05.567016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Empty List] [Network Bootstrap] During initial node setup, if readMyWitnesses() is called with actionIfEmpty='ignore' before any witnesses are inserted, does the calling code properly handle the empty array, or can it attempt to compose units with zero witnesses, violating the COUNT_WITNESSES invariant and causing validation rejection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41256377-8d70-447c-9a9b-6b3d0bfcbe2b",
+    "timestamp": "2025-12-23 16:56:30.442989",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Empty List] [Initialization Order] If multiple modules call readMyWitnesses() concurrently during node startup, some with actionIfEmpty='wait' and others with actionIfEmpty='ignore', can this create race conditions where some modules proceed with empty witness lists while others wait, causing inconsistent initialization state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b510784c-e258-42c8-ad9a-93caadc35d63",
+    "timestamp": "2025-12-23 16:56:56.616565",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Empty List] [Callback Invocation] When actionIfEmpty='ignore' returns handleWitnesses([]) immediately (line 22), does this happen synchronously before the database query completes, potentially causing callback ordering issues where dependent code executes before database operations finish?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_818b43c2-be1b-405a-a5bd-4c60d4a80ec7",
+    "timestamp": "2025-12-23 16:57:23.793123",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Error Handling] [Uncaught Exceptions] The witness count validation throws Error() (line 32) - is this error caught by callers, or can it propagate up as an uncaught exception, crashing the node daemon when an invalid witness list is detected instead of gracefully handling the error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4f8bda29-ae09-468a-8335-b4ace74c54cf",
+    "timestamp": "2025-12-23 16:57:50.229344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Error Handling] [Async Errors] Since all three functions use asynchronous database callbacks, if errors occur within the database operations (query failures, connection errors), are these errors properly propagated to handleWitnesses/handleResult/onDone callbacks, or are they silently swallowed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_545c98e1-18f0-4fc4-a8a3-42e170d16c0d",
+    "timestamp": "2025-12-23 16:58:17.859702",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Error Handling] [Callback Guarantee] Do all code paths in readMyWitnesses(), replaceWitness(), and insertWitnesses() guarantee exactly one callback invocation, or can error conditions cause callbacks to be invoked multiple times or not at all, leading to resource leaks or deadlocks in calling code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bf57f090-dcc9-4ee3-8352-b26c60e30d5c",
+    "timestamp": "2025-12-23 16:58:45.327739",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Consensus Impact] [Witness Compatibility] If different nodes replace witnesses at different times during OP list updates, creating temporary witness list mismatches between peers, can this cause composed units to be rejected by peers due to witness incompatibility, effectively partitioning the network until all nodes synchronize their witness lists?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1b4de0f-a46c-4a94-875d-f0ddf89e9d11",
+    "timestamp": "2025-12-23 16:59:12.777658",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Consensus Impact] [Main Chain Selection] Since witness lists determine which units are considered for main chain selection, if a node operates with a corrupted witness list (e.g., 11 or 13 witnesses due to database corruption), can this cause the node to calculate different main chain indexes (MCIs) than the network, leading to permanent consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_161e1462-9c70-4233-8044-b95f0a4b5956",
+    "timestamp": "2025-12-23 16:59:41.521236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Consensus Impact] [Stability Determination] Witness voting determines unit stability - if witness addresses in my_witnesses table are corrupted or replaced with non-participating addresses, can this cause the node to never reach stability for new units, blocking all confirmations and causing perceived network freeze for the affected node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17c1f17d-9809-4783-964e-a428eb6819b6",
+    "timestamp": "2025-12-23 17:00:10.015646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/my_witnesses.js] [Network Impact] [Light Client Divergence] If light clients receive different witness lists from their hubs due to timing of replaceWitness() operations, can light clients end up requesting witness proofs for units that their hub considers invalid (due to witness incompatibility), causing light client sync failures and inability to process transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9c93fde-a06f-4cee-a5db-9da4bea4846e",
+    "timestamp": "2025-12-23 17:00:38.975716",
+    "report_generated": false
   }
 ]
