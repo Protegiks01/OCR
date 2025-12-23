@@ -7498,5 +7498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee93d48d-6240-46dc-9975-61a808d04aa1",
     "timestamp": "2025-12-23 12:36:04.166879",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Slowloris DoS] Can an attacker provide definition URLs that send response data at 1 byte per second, holding connections open for hours while slowly filling memory, eventually crashing the node and causing 1+ day transaction delay (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1ef8e77-d0bb-4be6-a1d8-655b9fa932b8",
+    "timestamp": "2025-12-23 12:37:17.879261",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Concurrent fetch DoS] Multiple URIs with remote definitions can be parsed concurrently. Can an attacker submit 1000+ definition URIs simultaneously, causing the node to open 1000+ HTTPS connections and exhausting file descriptors, preventing new connections and causing network partition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44df06cb-4739-4327-a46e-83e3cc34430c",
+    "timestamp": "2025-12-23 12:37:30.399358",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Additional asset count DoS] No limit exists on how many amount2, amount3, ..., amountN parameters can be added. Can an attacker submit URIs with 100,000+ additional assets that overwhelm composer.js when constructing the transaction, causing timeout and transaction rejection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c87c912-b39a-4809-b603-9212b4914307",
+    "timestamp": "2025-12-23 12:37:44.051284",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Query string DoS] At lines 164, 51, 114, query strings are parsed with parseQueryString(). Can an attacker submit URIs with 10,000+ query parameters that exhaust memory during parsing and storage in assocParams object, causing node crash and 1+ day network delay (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_97da33c8-f798-4a8d-b301-2ee5acd515e7",
+    "timestamp": "2025-12-23 12:37:57.535910",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Regex DoS on pairing] The pairing regex at line 35 has multiple '+' quantifiers. Can an attacker submit URIs with 10,000+ characters that nearly match the pattern, causing exponential backtracking and CPU exhaustion, delaying transaction processing for 1+ hour (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee633161-1fc1-4aef-8837-4918960d9920",
+    "timestamp": "2025-12-23 12:38:11.560862",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Null byte injection] JavaScript strings are not null-terminated, but can an attacker inject '\\\\x00' bytes that get truncated differently by C-based modules (if any are called downstream), causing validation bypass where uri.js sees 'address\\\\x00malicious' but C code only processes 'address'?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_036a04f5-2d73-4bd3-b0b1-cadd7d6c3fcb",
+    "timestamp": "2025-12-23 12:38:27.505621",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Unicode normalization bypass] None of the validation functions appear to perform Unicode normalization. Can an attacker submit URIs with composed vs. decomposed Unicode characters (e.g., 'é' vs 'e\\\\u0301') that appear identical but have different hashes, allowing duplicate address registration or attestation bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f38ed70b-1545-4db3-b3d9-bca9f48d164d",
+    "timestamp": "2025-12-23 12:38:45.105943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Missing input sanitization] Many fields (hub, pairing_secret, app, address, etc.) are extracted from URIs and assigned to objRequest without sanitization. Can an attacker inject control characters (\\\\x00, \\\\n, \\\\r) that cause SQL injection, command injection, or log injection when these fields are used in database queries or system commands?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f063a085-32f1-4ce7-abcb-172015304805",
+    "timestamp": "2025-12-23 12:39:02.928140",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Object property injection] Throughout parsing, properties are added directly to objRequest. Can an attacker inject JavaScript property names that conflict with Object.prototype methods (e.g., 'toString', 'valueOf') causing unexpected behavior when objRequest is used downstream?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d473c591-bf81-4b26-852c-1996f05ae902",
+    "timestamp": "2025-12-23 12:39:21.629413",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Type field collision] objRequest.type is set to 'pairing', 'auth', 'textcoin', 'data', or 'address' in different branches. Can an attacker craft URIs that match multiple patterns, causing type to be overwritten and downstream code to misinterpret the request type, leading to funds being sent instead of pairing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c3007a6-8592-4702-b8f9-0349ed8fc26a",
+    "timestamp": "2025-12-23 12:39:42.861588",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Error callback information leak] Error messages returned via callbacks.ifError() may contain sensitive info (line 27, 54, 58, etc.). Can an attacker use timing attacks or error message variations to fingerprint node configuration, enabled features, or internal state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_54eb7d84-b3ef-4d75-a4c4-4287b477429f",
+    "timestamp": "2025-12-23 12:40:03.732122",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Async callback race condition] At lines 129-134, fetchUrl() uses async callback for definition fetching. Can an attacker exploit race conditions where multiple URIs are parsed concurrently, causing definition responses to be assigned to wrong objRequest objects, corrupting AA definitions and fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_baa90b47-e5b2-4bf0-96c9-6db9281d97a7",
+    "timestamp": "2025-12-23 12:40:25.918085",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Callback double-invocation] Throughout parseUri(), callbacks.ifOk() and callbacks.ifError() are called in multiple branches. Can an attacker craft URIs that trigger multiple callback invocations due to logic errors, causing downstream code to process the same payment multiple times and enabling double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3fd446c0-0c23-4914-a148-04e4a333c4b1",
+    "timestamp": "2025-12-23 12:40:48.469452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Constants dependency race] At lines 66, 122, 146, 176, constants.PUBKEY_LENGTH, constants.HASH_LENGTH, and constants.COUNT_WITNESSES are used. Can an attacker exploit race conditions where constants are modified between URI parsing and transaction composition, causing validation mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a07a30b6-903e-450d-abae-d3971a4381c1",
+    "timestamp": "2025-12-23 12:41:11.376585",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [ValidationUtils dependency] The file relies heavily on ValidationUtils.* functions. Can an attacker exploit inconsistencies between uri.js validation and validation.js main validation to craft URIs that pass parseUri() but fail validation.js, causing transaction rejection after user has committed to payment?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b361a2c4-a0b4-4d52-91c5-cb065eb1b957",
+    "timestamp": "2025-12-23 12:41:36.059787",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Single address backward compatibility bypass] At line 206, 'single' prefix is removed for backward compatibility. Can an attacker submit single_address='singleADDRESS' where 'ADDRESS' is malicious payload that gets accepted as from_address after prefix removal, bypassing address validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6539c5f5-b6d5-44bf-b881-4c941a7d11e0",
+    "timestamp": "2025-12-23 12:42:01.039049",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Single address flag confusion] At lines 204-210, single_address can be a boolean flag or contain an address (prefixed with 'single'). Can an attacker exploit this dual interpretation to cause parsing inconsistencies where some nodes treat it as flag and others as address, leading to transaction validation failures or chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_605ef24b-4915-4e00-8388-5ebc26fb638e",
+    "timestamp": "2025-12-23 12:42:26.922807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [From address validation bypass] At lines 199-202, from_address is validated with isValidAddress(). If wallet.js or composer.js doesn't verify that the user controls this address, can an attacker specify from_address of a victim, causing the victim to unknowingly create and sign transactions when scanning the URI?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1ad8e589-e1e2-4f2c-81b9-44a22a99f210",
+    "timestamp": "2025-12-23 12:42:52.370118",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Base64 data size limit] At lines 194-197, base64data is validated but no size limit is enforced. Can an attacker embed megabytes of base64 data in payment URIs that get decoded and stored, exhausting storage or memory and causing node instability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_94ed135e-a404-414d-a268-b01c1eaab515",
+    "timestamp": "2025-12-23 12:43:18.542496",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Device address validation timing] At lines 189-192, device_address is validated with ValidationUtils.isValidDeviceAddress(). Can an attacker exploit timing side channels in this validation to enumerate valid device addresses, then target those devices for spam or exploit attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c34553bf-6bbd-4913-8b55-76c3c68ccab3",
+    "timestamp": "2025-12-23 12:43:43.924844",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query parameter length limit] There's no limit on parameter name or value length in parseQueryString(). Can an attacker submit URIs with megabyte-sized parameter values that exhaust memory when stored in assocParams, causing node crash and 1+ day network delay (Medium/Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2dc6c41-b42b-4216-84b3-97215ec4433a",
+    "timestamp": "2025-12-23 12:44:09.702227",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query parameter prototype pollution] Can an attacker submit query parameters like '__proto__=polluted', 'constructor=malicious', or 'prototype.isAdmin=true' that pollute Object.prototype through assocParams[name] assignment at line 246, affecting global application state and potentially allowing privilege escalation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21f1854a-6731-4a82-a945-e3cde264b286",
+    "timestamp": "2025-12-23 12:44:36.614491",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query decodeURIComponent error handling] At lines 244-245, decodeURIComponent() is called without try/catch. Can an attacker submit malformed percent-encoded sequences (e.g., '%' without hex digits) that throw URIError exceptions, crashing the node and causing network halt (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b196088d-1e33-499c-8dc2-c6f831a49141",
+    "timestamp": "2025-12-23 12:45:03.586158",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query malformed parameter bypass] At line 242, pairs with !== 2 parts are silently skipped. Can an attacker submit critical parameters in malformed format (e.g., 'amount=') that get ignored during parsing but processed by downstream code expecting all params, causing validation bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1803cff-c311-4e48-a9d1-6e9ee71db2ae",
+    "timestamp": "2025-12-23 12:45:28.992279",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Query parameter name collision] At lines 244-246, if multiple parameters have the same name, later values overwrite earlier ones. Can an attacker exploit this by submitting 'amount=1&amount=999999999' where validation checks the first value but payment uses the last value, stealing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f0ced12-03f1-4c2a-a3c0-3bcd81ae0922",
+    "timestamp": "2025-12-23 12:45:54.288510",
+    "report_generated": false
   }
 ]
