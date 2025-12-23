@@ -12748,5 +12748,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e31b82db-a0b9-45f8-b0de-ab30e5814421",
     "timestamp": "2025-12-23 18:23:48.766380",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Negative payload_commission] Can corrupted or malicious units have negative payload_commission values? If so, does line 162 create negative witness payments that could drain the witnessing_outputs table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09a4b7f9-1763-40e3-a90d-edab037824e7",
+    "timestamp": "2025-12-23 18:25:00.665282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Zero payload_commission units] If a unit has payload_commission = 0, line 162 calculates 0 / count_paid_witnesses = 0 - but does the witnessing_outputs table still get entries, and can empty entries accumulate causing storage bloat?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b06e977-4f49-443f-bdd8-731b6ff8409f",
+    "timestamp": "2025-12-23 18:25:13.128681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Rounding loss accumulation] Using Math.round() at line 162 for each unit's payment can accumulate rounding errors - over millions of units, can the total paid differ significantly from total payload_commission, creating inflation or deflation in witness rewards?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7dd9e99c-7194-4c89-b3f9-fcdcb27f2b09",
+    "timestamp": "2025-12-23 18:25:26.206021",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [Type parameter in calcWitnessEarnings] The 'type' parameter (line 15) is passed to mc_outputs.calcEarnings() without validation - can arbitrary type strings access unintended database tables or cause errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_769c757f-4eb2-4bc4-b065-91c1e2c553ee",
+    "timestamp": "2025-12-23 18:25:39.544245",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [Address format validation] Addresses used in queries (lines 22, 157, 169, 248) are not validated for proper length (32 chars) or character set - can malformed addresses cause SQL errors or security issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32c9bc1b-bb49-4d2a-afae-9bc0dc19058f",
+    "timestamp": "2025-12-23 18:25:53.555267",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [MCI value range] Main_chain_index values are used without validation - can negative MCIs, MCIs exceeding current network state, or non-integer MCIs cause SQL errors or incorrect calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12e1e553-ffce-4c22-bd40-c1c418084799",
+    "timestamp": "2025-12-23 18:26:08.865905",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [objUnitProps validation] The objUnitProps parameter in buildPaidWitnesses() (line 222) is assumed to have .unit and .main_chain_index properties - can passing malformed objects cause undefined behavior or crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5854d208-3a07-454a-80c8-c7623b1a220c",
+    "timestamp": "2025-12-23 18:26:25.263654",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [arrWitnesses validation missing] The arrWitnesses parameter in buildPaidWitnesses() (line 222) and multiple other functions is used directly without validating array length = 12 or that addresses are valid - can passing invalid witness arrays corrupt witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4b58409-cf5c-4d30-98ad-be45a695e7ae",
+    "timestamp": "2025-12-23 18:26:43.478373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Database collation differences] The queries at lines 245-250 compare addresses - if database collations differ between nodes (case-sensitive vs case-insensitive), can witness filtering produce different results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_053e56a1-1f13-492c-8fce-f4042d3a6ad5",
+    "timestamp": "2025-12-23 18:27:02.305665",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Lodash library version differences] Heavy use of Lodash functions (_.countBy, _.reduce, _.map, etc.) - can different Lodash versions on different nodes produce different results for edge cases, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a95693ec-c543-4945-aa2e-42ed8ead9eed",
+    "timestamp": "2025-12-23 18:27:22.497491",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Timestamp dependencies] The profiler calls (e.g., lines 64, 66, 73, 124) use Date.now() for timing - while this shouldn't affect payments, can any logic accidentally depend on timing, causing non-deterministic behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12bfcf59-8ce1-4033-a26a-9f5c4c6a89e4",
+    "timestamp": "2025-12-23 18:27:43.338126",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [conf.bFaster mode divergence] Lines 114, 121, 136, 142, 168, 209, 262, 264 have different code paths based on conf.bFaster flag - if nodes have different configurations, can they calculate different witness payments, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52965711-70ea-4abc-a07b-d56e2546c6d2",
+    "timestamp": "2025-12-23 18:28:05.327762",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Array ordering non-determinism] Lines 109-113, 135-139, 183-186 compare arrays using _.isEqual() which is order-sensitive - if database query result ordering differs between nodes (different DB versions, locale settings), can this cause throwError() on some nodes but not others, creating chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8516b31d-83b4-490c-8c73-bc20ea1d5058",
+    "timestamp": "2025-12-23 18:28:28.509381",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Floating-point precision] Math.round() at line 162 can have platform-dependent precision - can different hardware (x86 vs ARM) or JavaScript engines (Node.js vs browser) produce different rounding results, causing nodes to calculate different witness payment amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9014878-b24f-48af-b1ea-4284cb58fb2d",
+    "timestamp": "2025-12-23 18:28:53.103533",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Database transaction isolation] Without explicit transaction BEGIN/COMMIT, can read-write conflicts between concurrent operations cause inconsistent reads, where stability checks pass but unit state has changed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d081005-ce27-4488-8c23-be8ec2c55a39",
+    "timestamp": "2025-12-23 18:29:18.074075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [buildPaidWitnesses() parallelization] Although async.eachSeries() at line 141 processes units sequentially, if buildPaidWitnesses() itself has async operations that overlap, can race conditions in paidWitnessEvents array cause payment mixing between units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6477bcc5-02a5-484b-9595-3629d6f7dc68",
+    "timestamp": "2025-12-23 18:29:43.724154",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Last stable MCI advancement] Between readLastStableMcIndex() at line 65 and processing at lines 72-98, if last_stable_mci advances significantly, can the function process MCIs that are no longer at the stability boundary, violating the stability invariant?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39e82017-daad-4bd7-82c1-d3e46cf929ec",
+    "timestamp": "2025-12-23 18:30:09.927266",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [RAM cache invalidation timing] If storage.assocStableUnits is modified while buildPaidWitnessesForMainChainIndex() iterates through units (lines 141-195), can iterator see partial/inconsistent state leading to incorrect payment calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bc1d6ec-19d5-4583-ac3c-daf0e6025dcd",
+    "timestamp": "2025-12-23 18:30:36.631040",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Multiple updatePaidWitnesses() calls] If updatePaidWitnesses() is called concurrently from different event handlers (e.g., new stable unit notifications), can two executions process the same MCIs simultaneously, causing duplicate or conflicting witnessing_outputs entries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cbc6dff-e915-4510-8a28-6c55a28a26d1",
+    "timestamp": "2025-12-23 18:31:04.879556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [cquery vs query inconsistency] The code uses both conn.query() and conn.cquery() - if these have different transaction semantics or error handling, can mixing them cause consistency issues in witness payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08b153f6-7c8f-4c70-8bc6-b2e7becc4fd1",
+    "timestamp": "2025-12-23 18:31:33.131567",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Temporary table persistence] If process crashes while temporary table paid_witness_events_tmp exists (created at line 128), does it persist across restarts causing CREATE TABLE to fail and permanently break witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fbce293-ac61-45dc-bfd8-94c16ab5db80",
+    "timestamp": "2025-12-23 18:32:01.071131",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [SQLite vs MySQL differences] The code has SQLite-specific (line 74 'CROSS') and MySQL-specific (line 238 'FORCE INDEX') optimizations - can behavioral differences between databases cause non-deterministic witness payment amounts, leading to consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac9f4f2e-15a8-48e8-8492-9e400e9fce26",
+    "timestamp": "2025-12-23 18:32:29.722174",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Connection pool exhaustion] Multiple nested queries (e.g., lines 103-196) hold database connections - can deep nesting or concurrent executions exhaust the connection pool, causing deadlocks that freeze witness payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aaae68c1-a7b5-4b00-b0dd-689102f0436f",
+    "timestamp": "2025-12-23 18:32:58.308760",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Index coverage] The queries at lines 17, 55, 76, 104, 132, 170, 211 rely on database indexes - if indexes are missing or corrupted, can query performance degrade to point of causing network freeze (Medium severity - ≥1 hour delay)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6bbcae4-2476-4f74-b554-036467247278",
+    "timestamp": "2025-12-23 18:33:27.062414",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Duplicate payment prevention] Is there a unique constraint on (main_chain_index, address) in witnessing_outputs? If buildPaidWitnessesForMainChainIndex() runs twice for same MCI, can it create duplicate payment records, inflating witness earnings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b23da834-2216-4349-860b-d98515651e36",
+    "timestamp": "2025-12-23 18:33:55.446465",
+    "report_generated": false
   }
 ]
