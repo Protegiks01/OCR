@@ -13498,5 +13498,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1125be0-21dc-4426-9415-4731b5135c5d",
     "timestamp": "2025-12-23 16:30:24.503647",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Batch commit ordering] Batches are committed sequentially in rowid order. If a unit at higher rowid depends on a unit at lower rowid (via parent references), and the lower unit fails to migrate, can the higher unit be migrated successfully but reference a non-existent parent in KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c48eb77-1b9a-4154-8bdf-36d5fd636018",
+    "timestamp": "2025-12-23 16:31:37.323372",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed migration timing] Data feeds are migrated after units. If an AA execution during this window tries to query a feed that exists in SQL but hasn't been migrated to KV yet, does the query fail and cause the AA to bounce incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82c86118-7ea0-43c4-a623-4c58dc7af5af",
+    "timestamp": "2025-12-23 16:31:49.729167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Migration trigger timing] Migration is triggered during database version upgrade. If new units arrive from peers while migration is running, are they stored only in SQL or also in KV store, and can this create a gap in KV data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39f7544c-2dad-4539-91a0-cce267136df0",
+    "timestamp": "2025-12-23 16:32:02.701286",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Process.hrtime fallback] The code sets process.hrtime to a no-op if it doesn't exist. If hrtime is unavailable, getTimeDifference() always returns 0. Does this affect migration logic that depends on accurate timing, such as timeout detection or performance monitoring?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea669ad9-9254-4a36-bcfa-0ea5444e6cb5",
+    "timestamp": "2025-12-23 16:32:16.855786",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Window.cordova detection] The code detects Cordova by checking 'typeof window === object && window.cordova'. If a browser environment mimics this but isn't actually Cordova, does the migration take the wrong code path and write to non-existent tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e9370a6-5ce0-4428-b93e-63c5a559e24a",
+    "timestamp": "2025-12-23 16:32:31.048051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [SQLite PRAGMA platform differences] PRAGMA cache_size behavior differs between SQLite versions and platforms. On some systems, negative values mean KB, on others MB. Can this cause the migration to allocate 400GB instead of 400MB, immediately crashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e0cb251-fafb-4737-bae7-b5bb648844ec",
+    "timestamp": "2025-12-23 16:32:46.144397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Query syntax compatibility] The query uses SQLite-specific syntax like CROSS JOIN and backtick column quoting. If the same code is accidentally run on MySQL (despite the check), does the query fail with syntax errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c73d436e-7253-41d9-8d5d-2e65ab10cb19",
+    "timestamp": "2025-12-23 16:33:02.954522",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: commitBatch()] [RocksDB platform availability] RocksDB (via kvstore.js) may not be available on all platforms (e.g., some ARM architectures, WASM). If kvstore.batch() returns null on unsupported platforms, does commitBatch() crash with null reference?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_76300f72-6d2e-4ba0-ac5c-43ef863ab102",
+    "timestamp": "2025-12-23 16:33:20.471646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Oracle data loss] If migration fails to migrate some data feeds due to errors, and AAs depend on these feeds for price calculations, can the AA executions produce incorrect results that send funds to wrong addresses or apply wrong exchange rates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0fa4695c-cef6-41f6-8932-5a86d2fe0267",
+    "timestamp": "2025-12-23 16:33:39.121368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Unit history loss] If some units fail to migrate and are lost from KV store, but their outputs are still recorded in SQL, can these outputs become unspendable because wallet cannot retrieve the unit to construct proofs, permanently freezing funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f6c4c04c-3176-41ab-9d18-33a1e4676c92",
+    "timestamp": "2025-12-23 16:33:59.140156",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [AA state consistency] If AA state variables are stored in SQL and AAs read joint data from KV after migration, can mismatches between SQL state and KV joint data cause AAs to execute incorrectly, transferring wrong amounts or to wrong recipients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b876c7e-f4c2-484f-b493-c5545284005b",
+    "timestamp": "2025-12-23 16:34:19.922247",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Definition change units] If a unit containing definition_chg message fails to migrate, but the SQL still records the definition change, can this cause addresses to have incorrect definitions in KV store, allowing unauthorized spending by wrong parties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7058659-d1a9-4277-b6e1-74ea770cd068",
+    "timestamp": "2025-12-23 16:34:41.551015",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Multi-oracle AA dependencies] If an AA requires consensus from multiple oracles by querying multiple feeds, and migration corrupts some feed keys causing queries to return null, can the AA execution fail to reach consensus threshold and permanently halt all operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_333080be-db78-424d-a39e-5b4fda688660",
+    "timestamp": "2025-12-23 16:35:04.248420",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Empty database migration] If the database has 0 units (fresh install), does the migration still call onDone() correctly, or does it hang waiting for rows that never arrive?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_48d0949b-dc2e-4df6-b822-b7d13767af83",
+    "timestamp": "2025-12-23 16:35:27.636577",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Data feeds with null authors] The query joins unit_authors, but if a unit somehow has no authors in the table due to corruption, does the join return 0 rows and skip valid feeds, losing oracle data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d582301-cce5-42ec-880e-0e7a45fd2a74",
+    "timestamp": "2025-12-23 16:35:52.281640",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: commitBatch()] [Empty batch handling] If a batch has 0 operations (e.g., all units in chunk already existed), does batch.write() handle empty batches correctly, or does it throw an error that aborts migration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36b0d5f0-febd-417c-98b4-a45b0bdc2697",
+    "timestamp": "2025-12-23 16:36:17.221381",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Integer feed value limits] For int_value feeds, are there checks for INT_MAX overflow? If an oracle posts 2^53+1 which exceeds JavaScript safe integer, does encoding/decoding corrupt the value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eb70b827-2359-4cfc-90d8-591e3addb911",
+    "timestamp": "2025-12-23 16:36:42.679371",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Circular unit references] If the SQL database contains circular parent references due to corruption (unit A→B→C→A), does readJoint() detect this and fail, or does it loop infinitely consuming memory until OOM?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c60310b-6fbd-4dd2-8cf0-ed5f3e5a69fa",
+    "timestamp": "2025-12-23 16:37:07.378175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Batch commit ordering] Batches are committed sequentially in rowid order. If a unit at higher rowid depends on a unit at lower rowid (via parent references), and the lower unit fails to migrate, can the higher unit be migrated successfully but reference a non-existent parent in KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b01ac284-df9f-4fb1-955c-a58f5326efa0",
+    "timestamp": "2025-12-23 16:37:33.054662",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed migration timing] Data feeds are migrated after units. If an AA execution during this window tries to query a feed that exists in SQL but hasn't been migrated to KV yet, does the query fail and cause the AA to bounce incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8c11d51-6bd9-4e28-8916-4dc2fd4dfa39",
+    "timestamp": "2025-12-23 16:37:59.381586",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Migration trigger timing] Migration is triggered during database version upgrade. If new units arrive from peers while migration is running, are they stored only in SQL or also in KV store, and can this create a gap in KV data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64f01dcb-2bd1-43a0-8445-0c0b0df257ad",
+    "timestamp": "2025-12-23 16:38:26.771809",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Process.hrtime fallback] The code sets process.hrtime to a no-op if it doesn't exist. If hrtime is unavailable, getTimeDifference() always returns 0. Does this affect migration logic that depends on accurate timing, such as timeout detection or performance monitoring?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_14858390-d790-4e28-aace-99294b63976c",
+    "timestamp": "2025-12-23 16:38:54.645511",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Window.cordova detection] The code detects Cordova by checking 'typeof window === object && window.cordova'. If a browser environment mimics this but isn't actually Cordova, does the migration take the wrong code path and write to non-existent tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f88f6d1a-f6e0-434b-aaef-eb853b55fc33",
+    "timestamp": "2025-12-23 16:39:23.764195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [SQLite PRAGMA platform differences] PRAGMA cache_size behavior differs between SQLite versions and platforms. On some systems, negative values mean KB, on others MB. Can this cause the migration to allocate 400GB instead of 400MB, immediately crashing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b916c1af-6afb-4742-aac1-690b4edd7310",
+    "timestamp": "2025-12-23 16:39:53.829410",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Query syntax compatibility] The query uses SQLite-specific syntax like CROSS JOIN and backtick column quoting. If the same code is accidentally run on MySQL (despite the check), does the query fail with syntax errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3b2c2841-d510-47ad-82c3-097465ac5abf",
+    "timestamp": "2025-12-23 16:40:22.838940",
+    "report_generated": false
   }
 ]
