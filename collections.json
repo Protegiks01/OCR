@@ -12298,5 +12298,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebc45ca1-a52e-4cf3-bd24-4f486b3d419c",
     "timestamp": "2025-12-23 15:09:54.487264",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateMainChain()] [Race Condition] If two parallel calls to updateMainChain() occur simultaneously (e.g., from different network peers adding units concurrently), can the lack of mutex protection during the initial goUpFromUnit() traversal cause both operations to read stale arrAllParents and arrNewMcUnits state, leading to non-deterministic main chain selection and permanent chain split across nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fa3beea-76cc-4111-861f-a83279d0bb5e",
+    "timestamp": "2025-12-23 15:11:09.341558",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateMainChain()] [Memory Leak] The arrNewMcUnits array accumulates units during MC traversal but is never explicitly cleared between calls - can a long-running node processing thousands of units experience memory exhaustion from unbounded array growth, causing network halt when the process crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b680d2fd-20a7-4fc2-8606-719746dea5d3",
+    "timestamp": "2025-12-23 15:11:22.156277",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateMainChain()] [Non-determinism] The bStabilizedAATriggers flag and arrStabilizedMcis array are shared across the entire function scope - if multiple sequential MCI stabilizations occur in a single updateMainChain() call, can race conditions in their updates cause different nodes to disagree on which MCIs contained AA triggers, breaking consensus on AA execution order?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cca2044-4b9e-497a-a641-e84f2279c74c",
+    "timestamp": "2025-12-23 15:11:35.258962",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateMainChain()] [Parameter Validation] The function accepts from_unit which can be null to indicate reading free balls - can an attacker deliberately pass an invalid but non-null from_unit that doesn't exist in the database, causing the initial goUpFromUnit() call to fail silently or throw an unhandled exception that crashes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e038adf1-2e0c-4152-8e84-54902606ff3b",
+    "timestamp": "2025-12-23 15:11:48.810886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateMainChain()] [Callback Hell] The deeply nested async callback structure with goUpFromUnit → checkNotRebuildingStableMainChainAndGoDown → goDownAndUpdateMainChainIndex → updateLatestIncludedMcIndex → updateStableMcFlag creates opportunities for callback errors to be swallowed - can an exception in any intermediate callback prevent onDone from being called, leaving the system in a partially updated state with locks never released?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_189ac5cc-6d5e-4cb0-81ea-816cc95a25eb",
+    "timestamp": "2025-12-23 15:12:03.056336",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findNextUpMainChainUnit()] [Hardcoded Exception List] The arrRetreatingUnits array contains 6 hardcoded unit hashes that override normal best parent selection logic - can an attacker who discovers the criteria for being added to this list deliberately create units that match those patterns, allowing them to manipulate main chain selection by forcing their unit to be chosen as best parent even when it shouldn't be?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60a3f1ab-effb-48c1-9e56-a027ccfc7f91",
+    "timestamp": "2025-12-23 15:12:18.922201",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findNextUpMainChainUnit()] [SQL Injection via LIMIT] The query uses LIMIT 5 to select potential best parents when unit is null - can an attacker flood the network with carefully crafted free units that all have identical witnessed_level and level-witnessed_level values, causing the ORDER BY tie-breaking to become non-deterministic due to database-dependent sorting of equal values, leading to different nodes selecting different best parents and causing a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f47ce3eb-c080-43c7-8384-81b2c2bad1f8",
+    "timestamp": "2025-12-23 15:12:35.423666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findNextUpMainChainUnit()] [Array Index Attack] When multiple free units are found (rows.length > 1), the code iterates through arrRetreatingUnits and uses indexOf to find matches - if an attacker can add thousands of units to arrAllParents, can the O(n*m) complexity of these nested indexOf operations cause a DoS where findNextUpMainChainUnit() takes minutes to complete, freezing new transaction confirmations for hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cf9dd07-90df-4fe7-9504-984a002a7f99",
+    "timestamp": "2025-12-23 15:12:53.163208",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findNextUpMainChainUnit()] [Best Parent Null] The function throws 'best parent is null' if props.best_parent_unit === null - can an attacker create a unit where best_parent_unit is legitimately null due to database corruption or a race condition during storage, causing all subsequent MC updates to crash with an unhandled exception and halting the entire network permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e0649da-c4d3-414c-8670-0de83c4e548f",
+    "timestamp": "2025-12-23 15:13:12.849355",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: readLastUnitProps()] [Free Unit Exhaustion] The query selects units WHERE is_free=1 and throws 'no free units?' if none are found - can an attacker exploit a scenario where all free units simultaneously become non-free due to parallel additions, causing this query to fail and preventing any new MC updates until at least one unit becomes free again, effectively halting consensus for an unbounded period?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4454ce26-767e-49a3-bcaa-4e000c8b501c",
+    "timestamp": "2025-12-23 15:13:32.872672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goUpFromUnit()] [Cache Inconsistency] The function reads unit props from both database (storage.readUnitProps) and in-memory cache (storage.assocUnstableUnits / storage.assocStableUnits) and compares them with _.isEqual - if a race condition causes the database and cache to diverge (e.g., another process updates DB but not cache), can the throwError('different props') be triggered during normal operation, crashing nodes randomly and causing network instability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a7fc307-0984-4060-9738-672162108342",
+    "timestamp": "2025-12-23 15:13:53.602461",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goUpFromUnit()] [Infinite Loop] The function recursively calls itself via goUpFromUnit(best_parent_unit) until reaching genesis - can an attacker create a cycle in best_parent_unit references through database corruption or a validation bypass, causing infinite recursion that exhausts the call stack and crashes the node with a stack overflow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02023cf9-0405-4411-9735-9c5fea6e5f98",
+    "timestamp": "2025-12-23 15:14:15.462418",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goUpFromUnit()] [Genesis Check Bypass] The function checks storage.isGenesisUnit(unit) to stop recursion - if an attacker can manipulate the genesis unit hash constant or inject a fake genesis unit, can they create a situation where goUpFromUnit never terminates because it never encounters the real genesis, causing all MC updates to hang indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b38eeaf0-3f75-4370-9b67-b410c4848337",
+    "timestamp": "2025-12-23 15:14:38.477807",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goUpFromUnit()] [UPDATE Race Condition] When a unit is not on MC, it executes 'UPDATE units SET is_on_main_chain=1, main_chain_index=NULL WHERE unit=?' - if two parallel goUpFromUnit calls process the same unit simultaneously, can both UPDATE queries succeed but the in-memory cache updates conflict, causing objBestParentUnitProps2.is_on_main_chain and .main_chain_index to have inconsistent values across the two operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_314d8c52-1c50-410b-bd9b-56623925b2f2",
+    "timestamp": "2025-12-23 15:15:01.875282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goUpFromUnit()] [arrNewMcUnits Ordering] The arrNewMcUnits.push(best_parent_unit) occurs inside the UPDATE callback - if database query execution order is non-deterministic due to connection pooling, can different nodes build arrNewMcUnits in different orders even when processing the same units, causing disagreement on MCI assignments in goDownAndUpdateMainChainIndex?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a618ac3-ce93-4777-af8a-7e159ffb7431",
+    "timestamp": "2025-12-23 15:15:24.957907",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: checkNotRebuildingStableMainChainAndGoDown()] [Stable Unit Removal] The function queries for stable units with main_chain_index > last_main_chain_index and throws an error if any exist - can an attacker exploit a timing window where units are marked stable between the check and the subsequent UPDATE in goDownAndUpdateMainChainIndex, allowing stable units to be removed from MC without triggering this safety check, permanently corrupting the last ball chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05ad3eba-7232-46d6-868d-56a30403cfcb",
+    "timestamp": "2025-12-23 15:15:49.372185",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: checkNotRebuildingStableMainChainAndGoDown()] [Error Message Info Leak] The error message includes 'removing stable units X from MC after adding Y with all parents Z' revealing internal DAG structure - while not directly exploitable, can this information disclosure help an attacker understand the current MC topology and time their attacks to maximize impact on stability advancement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_896226d8-f610-4ee2-969a-3303ac1ffb64",
+    "timestamp": "2025-12-23 15:16:14.142988",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: checkNotRebuildingStableMainChainAndGoDown()] [Query Performance] The query SELECT unit FROM units WHERE is_on_main_chain=1 AND main_chain_index>? AND is_stable=1 scans all stable MC units above a threshold - if an attacker floods the network causing millions of units to stabilize, can this query become so slow (O(n) where n is stable units) that every MC update takes seconds, effectively DoSing the network by making transaction confirmation take hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c537b026-f23b-456f-ab39-b620ce29961d",
+    "timestamp": "2025-12-23 15:16:39.239064",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [UPDATE Without WHERE] The query 'UPDATE units SET is_on_main_chain=0, main_chain_index=NULL WHERE main_chain_index>?' clears MC flags for all units above a threshold - if last_main_chain_index is accidentally 0 due to a bug, can this UPDATE clear the genesis unit's MC flags, corrupting the entire DAG history irreversibly and requiring a hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10a1eb56-b4dc-4493-bd5a-33223acd3c17",
+    "timestamp": "2025-12-23 15:17:05.834835",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [In-Memory Desync] The function updates storage.assocUnstableUnits in a loop AFTER executing the database UPDATE - if the node crashes between the DB update and the cache update, can the node restart with a database where MC flags are cleared but a cache where they still exist, causing all future MC comparisons to fail the _.isEqual check and crash the node repeatedly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_21ccb272-2006-4523-9c37-cb769a1661b4",
+    "timestamp": "2025-12-23 15:17:32.201217",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [MCI Assignment Race] The main_chain_index++ occurs in a loop processing arrNewMcUnits sequentially via async.eachSeries - if the callback for one unit hangs or times out, can subsequent units be assigned MCIs in the wrong order or skip MCIs entirely, breaking the monotonicity invariant where MCI must increase strictly along any path in the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9904892d-c0f1-48e3-869e-f19b647ee0d9",
+    "timestamp": "2025-12-23 15:17:57.981265",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [goUp() Infinite Loop] The nested goUp() function recursively traverses parents with main_chain_index === null - can an attacker create a unit whose parents form a cycle in the 'main_chain_index IS NULL' subgraph, causing goUp to recurse infinitely and hang this critical function, preventing any MCI assignments and halting all transaction confirmations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1394ef79-9844-463d-9b1e-34771833e73e",
+    "timestamp": "2025-12-23 15:18:24.996194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [String Concatenation SQL Injection] The query uses 'WHERE unit IN('+strUnitList+')' with strUnitList built from arrUnits.map(db.escape).join(', ') - if db.escape() has a bug or an attacker finds a unit hash that breaks the escape logic, can they inject arbitrary SQL to manipulate the UPDATE query, potentially marking attacker-controlled units as being on MC or corrupting other database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_062b97cf-45f8-4ff9-a100-a18cc6abf2dc",
+    "timestamp": "2025-12-23 15:18:52.926174",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [arrNewMcUnits Reversal] The function calls arrNewMcUnits.reverse() to process units in ascending MCI order - if the initial accumulation in goUpFromUnit pushes units in inconsistent order due to race conditions, can the reversed array still be out of order, causing MCIs to be assigned non-monotonically and creating a permanent inconsistency between declared MCI values and actual topological ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b73d146f-64de-463e-8d17-0d34fe923cad",
+    "timestamp": "2025-12-23 15:19:19.655408",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [unit_authors Update] After updating units table, it updates 'unit_authors SET _mci=?' - if this second UPDATE fails due to database error but the first succeeds, can queries that rely on unit_authors._mci return stale data, causing address balance calculations or AA trigger detection to use wrong MCI values and produce incorrect results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44793456-8c5b-44ec-9204-ef40e991d26b",
+    "timestamp": "2025-12-23 15:19:47.045337",
+    "report_generated": false
   }
 ]
