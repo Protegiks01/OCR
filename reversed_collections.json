@@ -11548,5 +11548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d4dbdde-96d5-4dcb-80a3-b55347ac0568",
     "timestamp": "2025-12-23 17:06:12.890452",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Division by zero] Line 146 checks if count === 0 but line 152 calculates times_for_tag/counter_for_tag without checking if counter_for_tag is 0 - can a scenario where times[tag] exists but counters[tag] is 0 cause NaN or division by zero errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8dd6e67c-003c-49dc-84f9-340f6709bba3",
+    "timestamp": "2025-12-23 17:07:26.008606",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [State corruption] Lines 82-87 update times[tag] and counters[tag] - if these operations are interrupted mid-execution by errors or crashes, can partial updates cause counters to be incremented without corresponding time additions, corrupting average calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6245715-47c3-4759-bdb9-3dbc386ebfeb",
+    "timestamp": "2025-12-23 17:07:38.652338",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: increment()] [State corruption] Line 214 increments count without checking for integer overflow - can an extremely long-running node eventually overflow count causing division by zero errors in getFormattedResults() at line 146 or line 165?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bf3882b-6e0e-4ff4-ad82-e00bb6c95475",
+    "timestamp": "2025-12-23 17:07:51.739629",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: paid_witnessing.js] [Witness payments] paid_witnessing.js uses profiler (17 calls) during witness reward distribution - if profiler errors crash witness payment calculations, can this cause witnesses to not receive payments and stop posting units, freezing the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f248b519-22c1-4f66-a44a-582cac842103",
+    "timestamp": "2025-12-23 17:08:06.350689",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: main_chain.js] [Consensus impact] main_chain.js has 27 profiler calls during main chain index calculation and stability determination - if profiler errors interrupt MC updates, can this cause nodes to have different MCI assignments leading to permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2290d7b-9d9f-494b-8b9c-39c9ef1c568d",
+    "timestamp": "2025-12-23 17:08:20.883186",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: writer.js] [Crash risk] writer.js uses profiler extensively (34 calls) during unit writing to storage - if profiler errors occur during atomic database transactions, can this cause transaction rollbacks that leave the DAG in an inconsistent state with partially written units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf528b7e-5dc3-41a8-b60b-d74d1f8026dd",
+    "timestamp": "2025-12-23 17:08:36.355253",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [Error masking] validation.js checks profiler.isStarted() at line 313 to conditionally stop profiling - if this check is wrong due to race conditions, can incorrect profiler state mask validation errors or cause incorrect error handling paths to execute?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d06d7df1-7619-4d8f-8faf-3ba352a12a7e",
+    "timestamp": "2025-12-23 17:08:53.627967",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [State corruption] validation.js calls profiler.stop() with different tags throughout the validation pipeline (lines 252-341) - if a validation error occurs mid-pipeline leaving profiler in started state, can subsequent validations fail with 'profiler already started' errors causing a cascade of unit rejections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_512be99b-bde4-43a4-b7f7-a847f5136275",
+    "timestamp": "2025-12-23 17:09:11.424331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [Error propagation] validation.js calls profiler.start() at line 248 within async.series before checkDuplicate - if profiler.start() throws an error due to already being started, does this bypass checkDuplicate and allow duplicate units to pass validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02c3ba0d-73aa-4e0f-9952-60fdc9d52340",
+    "timestamp": "2025-12-23 17:09:30.203782",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Desktop App Dependency] [Module loading] Lines 19-20 require desktop_app.js and call getAppDataDir() - if desktop_app is not available (in server environments), can this cause the module to crash on load and break all code that imports profiler.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e0492ab-2010-4d6b-ad4b-b8089f5f2528",
+    "timestamp": "2025-12-23 17:09:49.904488",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Event Bus Dependency] [Module loading] Line 18 requires event_bus.js which may have circular dependencies with other modules - if event_bus initialization fails or is delayed, can the profiler event listener registration at line 123 fail silently and cause profiling files to never be written despite printOnFileMciPeriod > 0?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_394defe6-4e26-4bab-b9bc-81fedca85dff",
+    "timestamp": "2025-12-23 17:10:10.439646",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Conditional Exports] [API inconsistency] Lines 243-250 conditionally export real implementations only if bOn is true, otherwise exports are no-ops - if code calls profiler functions expecting side effects but bOn is false, can this cause logic errors where validation assumes profiling occurred?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb44b570-df15-4d3d-84fa-558c7b5a407d",
+    "timestamp": "2025-12-23 17:10:30.982473",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Configuration] [State inconsistency] Line 27 calculates bOn = bPrintOnExit || printOnScreenPeriodInSeconds > 0 at module load time - if configuration changes after module initialization, does bOn remain stale while actual profiling behavior changes, causing mismatches?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30431fb0-2289-475b-950a-3109ceaf8db1",
+    "timestamp": "2025-12-23 17:10:52.291038",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Configuration] [Undefined behavior] Lines 22-27 define configuration variables bPrintOnExit, printOnScreenPeriodInSeconds, printOnFileMciPeriod that are hardcoded to false/0 - if these are dynamically set at runtime via conf.js, can changing them mid-operation cause state inconsistencies or errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7693fe80-cfcc-40db-a406-a71d86be7706",
+    "timestamp": "2025-12-23 17:11:14.609466",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Export: time_in_db] [Information disclosure] Line 256 exports profiler.time_in_db variable that tracks database operation time - if this is logged publicly, can it reveal database performance characteristics that help attackers optimize database-level DoS attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9493646c-2462-4df4-a6b2-c6bce3fef6a2",
+    "timestamp": "2025-12-23 17:11:37.905926",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [Information disclosure] Lines 189-190 log tag.padding(50), avg, max, min timing statistics - can an attacker use this information to craft malicious units that maximize validation time and execute DoS attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea868c3f-b34c-43e1-be20-313d9457ea59",
+    "timestamp": "2025-12-23 17:12:01.066491",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Information disclosure] Lines 143-176 calculate and format detailed timing statistics including per-operation and per-unit averages - can this data expose protocol inefficiencies or reveal which types of units are most expensive to validate?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53fa416c-4522-476d-9222-d22eac2d88b7",
+    "timestamp": "2025-12-23 17:12:24.661329",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: print_on_screen()] [Information disclosure] Line 114 logs formatted profiling results to console.error including timing breakdowns - if console output is monitored by attackers, can this reveal which validation steps are slow and guide DoS attacks targeting expensive operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05add7c5-2ca5-4dff-81af-194f4fb4cb3e",
+    "timestamp": "2025-12-23 17:12:48.897069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: add_result()] [Information disclosure] Line 70 collects consumed_time values from validation.js and other critical components - can timing data reveal sensitive information about transaction processing patterns, validation complexity, or system performance that aids side-channel attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0e7d166-3258-432a-9d80-b4766bc881d4",
+    "timestamp": "2025-12-23 17:13:14.081422",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: Date.now()] [Non-determinism] The profiler uses Date.now() at lines 41, 52, 61, 76, 84, 94, 102, 136, 191-192 for timing measurements - if profiler results are logged or influence any conditional logic in validation or consensus code, can timestamp differences across nodes cause non-deterministic behavior leading to chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1792bbff-fe98-416f-b3c0-486a12e1db66",
+    "timestamp": "2025-12-23 17:13:40.807972",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Security risk] Adding methods to built-in prototypes can be exploited if any protocol code iterates over string properties using for-in loops without hasOwnProperty checks - can this cause validation or hashing logic to process unexpected properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9aebec1d-9e15-42da-ab79-98a931863e9e",
+    "timestamp": "2025-12-23 17:14:08.323066",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Non-determinism] The String.prototype.padding function uses Math.abs and Array.join which may have different implementations across Node.js versions - can this cause non-deterministic string formatting in profiler output that, if somehow used in protocol logic, leads to chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e259593-bff1-4455-8323-0c572a69a24c",
+    "timestamp": "2025-12-23 17:14:36.602445",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Global pollution] Lines 227-238 modify String.prototype.padding globally - can this affect other modules' string operations and cause unexpected behavior in validation.js, object_hash.js, or signature.js where string manipulation must be deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6d13227-5224-4707-a672-bf64990794e0",
+    "timestamp": "2025-12-23 17:15:03.869723",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [File Operations] [Race condition] Lines 128-136 reset profiling state (count=0, times={}, etc.) after writing files - if concurrent validation operations are accessing these variables during reset, can this cause race conditions where timing data is corrupted or lost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d3ac3f9-9574-45da-afc6-7a51352f7e92",
+    "timestamp": "2025-12-23 17:15:30.631847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [File Operations] [Unhandled errors] Lines 122 and 128 use fs.mkdir and fs.writeFile with empty error callbacks () => {} - if file operations fail silently (permissions, disk full, etc.), can this cause the profiler state to become inconsistent with assumptions in validation code that expects profiling to work correctly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef50acf3-77fb-42ed-ae53-a3733c10126c",
+    "timestamp": "2025-12-23 17:15:58.121056",
+    "report_generated": false
   }
 ]
