@@ -5548,5 +5548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9bc16987-a7ba-4abb-819a-cff73d45f5f9",
     "timestamp": "2025-12-23 09:07:56.817174",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: replaceInTextcoinTemplate()] [Unescaped replacement] Line 2410 uses basic regex replacement without HTML escaping - can special characters in mnemonic break email rendering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79fe18f3-22f9-4fad-b940-1ff02244c0b1",
+    "timestamp": "2025-12-23 09:09:11.542392",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: replaceInTextcoinTemplate()] [Template injection] Lines 2404-2417 replace template variables with user-controlled values - can an attacker inject HTML/JavaScript in params.amount or params.asset to create phishing emails?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_785df230-26df-4fd4-a201-bf26b48f0226",
+    "timestamp": "2025-12-23 09:09:24.632006",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendTextcoinEmail()] [Exchange rate injection] Line 2388 uses network.exchangeRates['GBYTE_USD'] without validation - if exchange rate is manipulated, can emails show fraudulent USD values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fd65070-06ab-435b-b1e4-9f22f01fa6b5",
+    "timestamp": "2025-12-23 09:09:37.611001",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: sendTextcoinEmail()] [Amount manipulation] Lines 2382-2391 subtract TEXTCOIN_CLAIM_FEE from amount and display in email - if constants.TEXTCOIN_CLAIM_FEE is updated, can old emails show incorrect claimable amounts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_085695d5-8655-4508-906c-fe5366178824",
+    "timestamp": "2025-12-23 09:09:51.128287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: signMessage()] [Network awareness bypass] Line 2804 accepts bNetworkAware flag without validation - can an attacker force network-aware signatures when they should be offline?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bdf3722-4545-4884-8730-d84f20775286",
+    "timestamp": "2025-12-23 09:10:05.670436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: signMessage()] [Parameter order confusion] Lines 2797-2802 allow swapping message and from_address parameters if types are detected - can this cause signatures to be generated for unintended content?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8c23147-7270-4d0e-9314-072f6addc34d",
+    "timestamp": "2025-12-23 09:10:21.465063",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: determineIfDeviceCanBeRemoved()] [Race condition on correspondent read] Lines 2786-2794 read correspondent then check non-removable list, but correspondent could be added to contracts between these steps - can device be removed while still needed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b4423c3-7ae2-4312-bba2-f16143b42c11",
+    "timestamp": "2025-12-23 09:10:38.096206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: readNonRemovableDevices()] [SQL query without parameters] Lines 2764-2783 build SQL with multiple UNIONs but don't use parameterized queries - if any column names come from user input, can this enable SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6da00afe-beef-4d3b-bd46-88e59a309c80",
+    "timestamp": "2025-12-23 09:10:56.045507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [Cordova permission bypass] Lines 2743-2750 request READ_EXTERNAL_STORAGE permission when fileReader.result is null, but doesn't retry if permission denied - can file reading silently fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1e9d40e-ca3a-4ff2-9d6a-277923854acb",
+    "timestamp": "2025-12-23 09:11:15.154319",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [Light client history manipulation] Lines 2706-2708 request history for mnemonic address if no rows found - can an attacker flood with fake mnemonic addresses causing excessive network requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_afd65b69-009c-45df-97ae-dffd06f5c661",
+    "timestamp": "2025-12-23 09:11:34.811308",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [Textcoin claimed check bypass] Lines 2710-2712 check if textcoin was claimed by comparing action counts, but if mnemonic address has multiple incoming payments, can this incorrectly identify as already claimed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3cf34eb-aa24-4ba1-a5e4-3da78fc4c267",
+    "timestamp": "2025-12-23 09:11:56.100999",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [Event handling race] Lines 2677-2686 subscribe to event 'all_private_payments_handled-' + first_chain_unit but if the event fires before subscription, it's missed - can this cause payments to be processed but callback never fires?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82a5e794-c9dc-4bcd-8b13-9705380bc4b4",
+    "timestamp": "2025-12-23 09:12:18.203399",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [Malicious ZIP content] Line 2669 calls zip.file(",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18bb0314-058d-4060-b9fe-a118260feb17",
+    "timestamp": "2025-12-23 09:12:40.738506",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: handlePrivatePaymentFile()] [ZIP bomb] Lines 2662-2720 decompress ZIP files without checking compressed vs uncompressed size ratio - can an attacker upload a ZIP bomb to exhaust memory/disk?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4989e00-6638-40f0-8814-6df9e0036708",
+    "timestamp": "2025-12-23 09:13:04.980757",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: storePrivateAssetPayload()] [Cordova path injection] Lines 2642-2655 construct file paths in Cordova without validation - can an attacker inject malicious paths in cordovaPathObj.path to access other apps' data?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0541a9fe-095c-4680-9c89-bb700714ee0c",
+    "timestamp": "2025-12-23 09:13:30.075524",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: storePrivateAssetPayload()] [File path traversal] Line 2639 uses fullPath directly in fs.writeFile() without sanitization - can an attacker specify path like '../../../etc/passwd' to overwrite system files?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffe9d886-4d03-4a96-b061-1afe38339534",
+    "timestamp": "2025-12-23 09:13:55.688266",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: claimBackOldTextcoins()] [Claiming error suppression] Lines 2605-2610 only log errors without failing - can an attacker cause all claimBack attempts to silently fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d278234-ec73-4b61-b518-82849ffeec6e",
+    "timestamp": "2025-12-23 09:14:22.710744",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: claimBackOldTextcoins()] [Days parameter injection] Lines 2595-2616 use days parameter directly in SQL with db.addTime() - if days is negative, can this select future textcoins or cause SQL injection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ecfad48-eacb-414d-824f-964a3ef22e8f",
+    "timestamp": "2025-12-23 09:14:51.672043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: expandMnemonic()] [Mnemonic validation bypass] Lines 2422-2423 check (mnemonic.split(' ').length % 3 !== 0) but this allows 3, 6, 9 words while BIP39 requires 12, 15, 18, 21, 24 - can shorter mnemonics have weak entropy?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69e89fe2-c0f1-44ad-b0aa-49ff17fd9a12",
+    "timestamp": "2025-12-23 09:15:20.924664",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Send_all for bytes] Line 2559 uses send_all for byte claims, but composer.composeJoint() might include change output - can this cause claiming to fail if exact amounts don't match?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e014f62-a143-459d-ae5b-9a3de13d7ee2",
+    "timestamp": "2025-12-23 09:15:50.878597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Stability check timing] Lines 2519-2565 check stability of textcoin address before claiming, but between check and actual spending, outputs could become spent - can this cause claim failures or race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e9729851-86a7-4427-a2a4-0951a365f045",
+    "timestamp": "2025-12-23 09:16:20.290581",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Already claimed check bypass] Line 2491 checks for 'some definition changes' error string but this is fragile - can error messages change in other modules causing this check to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8b91818-f8dd-4fd3-83cc-bf8931e005c0",
+    "timestamp": "2025-12-23 09:16:48.524530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Asset info race condition] Lines 2529-2531 request unknown assets in light mode then recursively call checkStability() - can an attacker cause infinite recursion by repeatedly creating unknown assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca980304-f2f7-4076-977b-cfc25be0f448",
+    "timestamp": "2025-12-23 09:17:17.724843",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Multi-asset textcoin vulnerability] Lines 2528-2547 iterate over multiple assets in rows but only claim the first asset if private - can an attacker create textcoins with mixed private/public assets to steal unclaimed assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_895a8c24-2c01-48b7-b828-a5c9871f7a7d",
+    "timestamp": "2025-12-23 09:17:45.330600",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet.js] [Function: receiveTextCoin()] [Private asset detection bypass] Line 2534 checks objAsset.is_private but if asset metadata is missing or corrupted, can this default to false allowing private asset recipient addresses to be revealed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa619ea3-0966-4716-b094-4f5551c3d9c4",
+    "timestamp": "2025-12-23 09:18:12.727133",
+    "report_generated": false
   }
 ]
