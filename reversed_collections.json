@@ -5098,5 +5098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f4b53c5c-911c-4a17-b87f-f2c157b9d453",
     "timestamp": "2025-12-23 08:38:18.471688",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [Authorization Bypass] At lines 431-434, the function checks that both device.getMyDeviceAddress() and from_address are in the definition - but does it verify that from_address is actually the sender of the current network message, or can an attacker spoof from_address to make it appear they were invited to a template they weren't?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3acda11-5665-4a8b-a685-9aa6697a9354",
+    "timestamp": "2025-12-23 08:39:30.607045",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [Device Count Bypass] At lines 428-430, the function requires arrDeviceAddresses.length < 2 to reject templates with too few members - but what if the same device address appears multiple times in different paths? Does this count as multiple devices or is there a uniqueness check that prevents single-device 'multi-sig' addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b47592ed-6ac6-4de8-a04f-b38e9d9385c0",
+    "timestamp": "2025-12-23 08:39:43.339978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: validateAddressDefinitionTemplate()] [Fake Address Injection] At lines 439-441, a fake_address is constructed by taking device.getMyDeviceAddress().substr(1) and used to fill template variables - if device addresses can start with characters that are invalid in addresses, can this fake_address bypass validation checks that should catch malformed definitions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0517052-0d8b-412d-b9a0-b9c35c8d545b",
+    "timestamp": "2025-12-23 08:39:56.358623",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Missing Validation] The function does not validate that args.set exists before accessing args.set.length at lines 397 and 403 - if an attacker provides malformed 'r of set' or 'weighted and' definitions without a 'set' property, can this cause undefined access, TypeError, or incorrect path extraction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_505837f1-ca6b-4131-99c4-3159a745bcfc",
+    "timestamp": "2025-12-23 08:40:09.901820",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Unsupported Operation] At line 417, the function throws an Error for 'definition template' operations - but the throw is inside the evaluate function which is not guaranteed to propagate the error correctly - can this cause silent failures where definition templates are silently skipped instead of causing proper validation errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65c22398-67d2-4d5c-aaef-3a50f545d203",
+    "timestamp": "2025-12-23 08:40:26.098396",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Type Confusion] At line 408, the function checks for op === 'address' but doesn't validate that args is actually a string before calling args.substr() at lines 411-413 - can an attacker provide a non-string args value that causes TypeError, crashes, or bypasses the device address extraction logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_387772b0-9e85-4f70-a3a1-bf3ff8ca18db",
+    "timestamp": "2025-12-23 08:40:41.484992",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Path Injection] At lines 394, 400, and 406, the path is constructed by string concatenation path + '.' + i - can an attacker inject special characters or control sequences in the path that later cause path traversal, injection attacks, or incorrect signing path resolution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3663ceb5-652c-4462-b93c-fc3e848125c0",
+    "timestamp": "2025-12-23 08:40:57.896720",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Array Bounds] At lines 393-407, the function iterates over args arrays using for loops with args.length and args.set.length - if these arrays are maliciously large (e.g., millions of elements), can this cause excessive CPU/memory usage or timeouts that freeze the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a2af73a-6e7c-4e1c-8dd8-01a6747bfd88",
+    "timestamp": "2025-12-23 08:41:15.596458",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: getMemberDeviceAddressesBySigningPaths()] [Infinite Recursion] The evaluate() inner function at lines 385-420 recursively processes 'or', 'and', 'r of set', and 'weighted and' operations - can an attacker craft a deeply nested or cyclically referencing definition template that causes stack overflow, memory exhaustion, or denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a465fd5-dd36-4a9f-a1dd-0841de185b9c",
+    "timestamp": "2025-12-23 08:41:34.688394",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddress()] [Device Address Filtering] At lines 373-374, the function checks signerInfo.device_address !== device.getMyDeviceAddress() to avoid sending to self - but if device.getMyDeviceAddress() changes during iteration or if signerInfo.device_address is spoofed, can this cause missed notifications or duplicate sends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a93fa381-e62f-4e7c-a530-7cf7094c9a89",
+    "timestamp": "2025-12-23 08:41:53.686452",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddress()] [Broadcast Failure] At lines 370-378, the function sends the new address to all other device addresses - if some sends fail due to network errors or offline peers, do those peers permanently lose awareness of the shared address, making it impossible to gather enough signatures for spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_640e7c06-fb83-457d-b60c-902a7c38f02e",
+    "timestamp": "2025-12-23 08:42:13.497944",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddress()] [Address Reuse] At line 365, the address is computed as objectHash.getChash160(arrDefinition) - if the same definition is used twice to create shared addresses (intentionally or due to race conditions), does this cause database primary key violations, overwrite existing addresses, or create ambiguity about which signing paths are authoritative?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_889f1854-5ec2-42c3-86d4-1382b715c047",
+    "timestamp": "2025-12-23 08:42:34.176701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: createNewSharedAddress()] [Authorization Check] At line 363, the function checks includesMyDeviceAddress(assocSignersByPath) but this only verifies that the device is mentioned somewhere - does it verify that the user actually controls the corresponding signing keys, or can an attacker include my device address without permission to make me unwittingly participate in a malicious multi-sig?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6b6a15d4-7c9d-4deb-a26c-d6f6dd250e4e",
+    "timestamp": "2025-12-23 08:42:55.452327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Empty Signers Object] At line 342, the function checks Object.keys(body.signers).length === 0 to reject empty signers - but what if body.signers is not an object at all (e.g., null, array, primitive)? Can this cause typeof check at line 342 to pass but Object.keys() to throw, crashing the handler?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e95353e-4980-41df-b3f2-736b1a611346",
+    "timestamp": "2025-12-23 08:43:18.571076",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Callback Handling] The function uses callbacks.ifError and callbacks.ifOk at multiple points (lines 341, 343, 345, 353, 356, 357) - if the caller provides malicious callback functions, can they exploit the context in which these callbacks are invoked to cause reentrancy, state corruption, or denial of service?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b39f2371-9d3a-44ea-ba6a-93da4618a229",
+    "timestamp": "2025-12-23 08:43:42.449886",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Definition Validation Ordering] At line 354, validateAddressDefinition() is called after determineIfIncludesMeAndRewriteDeviceAddress() at line 351 - can an attacker craft a definition that passes initial checks but fails Definition.validateDefinition(), leaving the device with corrupted assocSignersByPath after device addresses have been rewritten but before validation completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e0e0d9d-6524-4fb7-8d42-2fcd33863c9b",
+    "timestamp": "2025-12-23 08:44:07.776252",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Address Injection] At lines 346-350, the function validates signerInfo.address for each signing path, allowing 'secret' as a special value - can an attacker exploit the 'secret' handling or ValidationUtils.isValidAddress() to inject malformed addresses that bypass validation but cause errors during signature verification?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7ff6abe3-1858-4b7d-8c79-b10786f888cd",
+    "timestamp": "2025-12-23 08:44:33.797866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Hash Verification Bypass] At lines 344-345, the function verifies body.address === objectHash.getChash160(body.definition) - but does objectHash.getChash160() deterministically handle all possible definition structures, or can an attacker find colliding inputs that pass this check but produce different addresses when evaluated by other nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4a9f64fc-0c64-4b27-b4a0-ea1dbe40f60f",
+    "timestamp": "2025-12-23 08:44:59.076403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: handleNewSharedAddress()] [Validation Bypass] At line 340, the function checks ValidationUtils.isArrayOfLength(body.definition, 2) - but address definitions can have complex nested structures beyond simple 2-element arrays (e.g., ['or', [['sig', ...], ['and', ...]]] ) - does this validation correctly handle all valid definition formats, or can it reject legitimate shared addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_10fd7551-b8e8-41a1-a40a-93dfeda5a714",
+    "timestamp": "2025-12-23 08:45:25.175996",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardNewSharedAddressToCosignersOfMyMemberAddresses()] [Information Disclosure] The function forwards the complete arrDefinition and assocSignersByPath to all cosigners at line 332 - can this leak sensitive information about other members' device addresses or signing paths to parties who should only know their own segment of the multi-sig configuration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc1bf0d0-1f37-40e1-a574-e1848773ac6e",
+    "timestamp": "2025-12-23 08:45:52.076847",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardNewSharedAddressToCosignersOfMyMemberAddresses()] [Forwarding Loop Prevention] At line 332, the function calls sendNewSharedAddress() with bForwarded=true - but does the receiving device respect this flag and avoid re-forwarding, or can this create a forwarding storm where every cosigner's cosigners keep forwarding the same address indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02cc5e69-23b1-4e88-a1df-f53c51c43823",
+    "timestamp": "2025-12-23 08:46:17.860580",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardNewSharedAddressToCosignersOfMyMemberAddresses()] [Exception Handling] At line 326, if arrMyMemberAddresses.length === 0, the function throws an Error - is this error caught by calling code, or can it crash the node? Additionally, is it possible for legitimate execution to reach this state (e.g., if the shared address only includes others' addresses as members)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64ce8588-33fc-4e92-8b87-6efb722e3cd7",
+    "timestamp": "2025-12-23 08:46:44.051202",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: forwardNewSharedAddressToCosignersOfMyMemberAddresses()] [Authorization Bypass] At lines 327-329, the function queries for device_address WHERE address IN(?) AND device_address!=? but does not verify that the queried device_address values are actually authorized cosigners - can this forward sensitive shared address information to unauthorized devices that happen to be stored in wallet_signing_paths?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca6d5a9a-0c59-4328-a4be-35325ac869c6",
+    "timestamp": "2025-12-23 08:47:10.665727",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: determineIfIncludesMeAndRewriteDeviceAddress()] [Empty Address Array] At line 292, if arrMemberAddresses.length === 0, the function returns error 'no member addresses?' - but what if assocSignersByPath contains signers without addresses? Can this scenario occur in legitimate cases (e.g., merkle paths) and cause valid shared addresses to be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_715a438a-d3f1-4059-a2dd-fde015805e3b",
+    "timestamp": "2025-12-23 08:47:36.590904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/wallet_defined_by_addresses.js] [Function: determineIfIncludesMeAndRewriteDeviceAddress()] [Type Confusion] At line 303, the function filters rows by row.type === 'my' - if the database returns unexpected types or if an attacker can inject records with manipulated 'type' values, can this cause incorrect address classification and unauthorized device rewriting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf8b33ee-c10b-47f4-b60f-4586773443ef",
+    "timestamp": "2025-12-23 08:48:02.029413",
+    "report_generated": false
   }
 ]
