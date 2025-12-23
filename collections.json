@@ -13348,5 +13348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db2c1c71-b7d7-4eb7-a9e7-13f92fc22e25",
     "timestamp": "2025-12-23 16:20:15.329134",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Batch size optimization] CHUNK_SIZE is hardcoded to 10000. For databases with hundreds of millions of units, does this small chunk size make migration take days or weeks, during which the node cannot participate in consensus, effectively removing it from the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_842997c9-c84e-497f-9c2f-fca0816db0e2",
+    "timestamp": "2025-12-23 16:21:34.360193",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Complex JOIN performance] The data feed query joins three tables (data_feeds, units, unit_authors). If indexes on these joins are missing, can this query take exponential time for large databases, causing migration to never complete?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_364732e7-1080-4628-bd6b-98e372891a85",
+    "timestamp": "2025-12-23 16:21:46.928645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [SetImmediate throttling] The code uses setImmediate(cb) every 1000 feeds to yield to event loop. If the event loop is blocked by other long-running tasks during migration, can this cause the migration to stall indefinitely waiting for the next event loop tick?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c27629ce-dc3f-4f47-82a7-91b48cca11fe",
+    "timestamp": "2025-12-23 16:21:59.938201",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [No unit hash verification] Since readJoint() is called with bSql=true, it bypasses hash verification. If the SQL database was corrupted by a bug or attack and contains units whose serialized JSON doesn't match their unit hash, does migration cement these invalid units into KV store?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96d7468e-a579-4952-8637-806c9e8a3a62",
+    "timestamp": "2025-12-23 16:22:13.502287",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [JSON parse vulnerability] After reading from KV store, storage.js calls JSON.parse(strJoint). If an attacker previously injected malformed JSON into the SQL database, can this cause JSON.parse() to throw exceptions when other code tries to read the migrated unit, bricking access to that unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e805c1e-35ad-446b-a647-3be02eadfe5f",
+    "timestamp": "2025-12-23 16:22:27.795136",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Null value handling] The code checks if row.value !== null to determine whether to use string or numeric encoding. If both row.value and row.int_value are null due to database corruption, does this cause the feed to be stored with value=null, breaking AA queries that expect valid values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac1db573-93c7-4133-b28b-7a8304e8569f",
+    "timestamp": "2025-12-23 16:22:43.318379",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed name injection] Feed names are concatenated directly into KV keys without sanitization. If a malicious oracle posts a feed_name containing newlines or null bytes, can this break key parsing when reading the feed back, causing queries to return wrong results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2f8a0ad-365c-4593-8e87-3c70ded62c14",
+    "timestamp": "2025-12-23 16:23:00.123878",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Address validation] Oracle addresses are used directly in keys without validation. If the SQL database contains invalid addresses (wrong length, invalid base32), does migration store them with malformed keys that cannot be queried later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfaeb6d8-9413-4f5c-9be6-c449f90ece62",
+    "timestamp": "2025-12-23 16:23:17.777326",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Mixed storage mode] After migration completes, the system reads from both SQL (for metadata like MCI) and KV (for joint content). If these two databases drift out of sync due to concurrent writes during migration, can queries return inconsistent results where MCI from SQL doesn't match the unit content from KV?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3109b494-c259-4f5e-a0a6-aff41265321f",
+    "timestamp": "2025-12-23 16:23:36.109866",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Unit metadata loss] By deleting main_chain_index from migrated joints, does the system now depend on SQL for this critical consensus data? If SQL and KV ever diverge, which MCI value is authoritative, and can this cause nodes to disagree on unit ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96d6f6ee-3c4c-4f8e-8caf-ddaffed0d368",
+    "timestamp": "2025-12-23 16:23:55.668736",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed metadata consistency] Data feeds are migrated with their MCI at migration time. If a unit's MCI changes after migration (e.g., due to a reorg before stabilization), do the migrated feed keys still point to the old MCI, causing queries by MCI to miss these feeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0214b2fd-c82f-42d6-b780-9ca130b0f679",
+    "timestamp": "2025-12-23 16:24:15.788025",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [No migration marker] After migration completes, is there a flag set in the database to indicate migration is complete? Without such a marker, if the node restarts midway, does it attempt to re-migrate, potentially overwriting data or causing duplicate key errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_75768480-b61c-490d-a7ed-a505d7e918b1",
+    "timestamp": "2025-12-23 16:24:36.514403",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Rowid instability] The query uses rowid for pagination, assuming rowid values are stable. If SQLite performs a VACUUM or rebuild that changes rowid values during migration, can this cause units to be skipped or migrated twice?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f138ec61-75f8-4a95-8203-7de561710668",
+    "timestamp": "2025-12-23 16:24:58.687354",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Migration duration network split] If migration takes several hours during which the node cannot process new units, does the node fall too far behind the network to catch up, effectively creating a permanent split where the migrating node sees a different DAG than active nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60aad6c0-9fb6-4ece-8e90-0efadf0bd532",
+    "timestamp": "2025-12-23 16:25:22.235706",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Version-gated feature access] Migration is triggered by sqlite_migrations.js when upgrading to version 31. If some nodes fail migration and remain on version 30, do they become incompatible with v31 nodes that read from KV store, creating a hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd3d284c-8970-4d21-8486-b574d031a465",
+    "timestamp": "2025-12-23 16:25:46.303884",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Non-deterministic JSON encoding] If JSON.stringify() produces different key ordering on different Node.js versions or architectures, do nodes migrating the same SQL database produce different KV store contents, causing them to compute different hashes when reading joint data and diverge?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_36164cd5-42d3-4975-8ec4-73a289e8b814",
+    "timestamp": "2025-12-23 16:26:10.651549",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Feed query determinism] The query orders by data_feeds.rowid, which may not be deterministic across different SQL database file copies. Can two nodes starting with identical SQL databases end up with different KV feed data due to non-deterministic rowid ordering?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6b3b63c-7f67-4e36-bc7c-1fb8c10df6f6",
+    "timestamp": "2025-12-23 16:26:36.847099",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Upgrade rollback impossibility] Once migration completes and sqlite_migrations advances to version 31, can a node downgrade to version 30 software? If not, is the migration irreversible, and does this mean a buggy migration locks all nodes into a corrupted state with no rollback?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0349b23f-9618-435e-82c4-580fa27872d2",
+    "timestamp": "2025-12-23 16:27:03.301779",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Numeric encoding precision loss] When encoding floats with encodeDoubleInLexicograpicOrder(), if the encoding loses precision beyond IEEE 754 double precision, can AAs that rely on exact decimal values (e.g., price feeds with 18 decimals) get incorrect values from migrated feeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecfa237c-e66b-4665-bc0e-4607575735a3",
+    "timestamp": "2025-12-23 16:27:30.480803",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [String vs numeric value confusion] The code stores both strValue and numValue for feeds that can be parsed as numbers. If a feed value is '100.00' (string) vs 100 (number), do these get stored with different keys, and can this cause range queries to miss one variant?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89a7a24f-b6da-4f71-af25-1d28f9ecd999",
+    "timestamp": "2025-12-23 16:27:58.540643",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [MCI encoding overflow] If encodeMci() uses a fixed-width encoding and MCI grows beyond the encoded range (e.g., > 2^53 for number encoding), does the encoding overflow, causing migrated feeds to have corrupted MCI values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f18f9ece-e126-4655-a50d-96d50301988d",
+    "timestamp": "2025-12-23 16:28:27.403004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateDataFeeds()] [Lexicographic ordering assumptions] The feed keys are designed for lexicographic range queries. If the encoding functions don't preserve correct sort order (e.g., '9' > '10' in string comparison), can this break queries that filter feeds by value range?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_661d77ff-5de8-43cc-b2b5-b2ad60c9092d",
+    "timestamp": "2025-12-23 16:28:56.529073",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Unit hash encoding] Unit hashes are base64 strings used as KV keys. If a hash contains characters that have special meaning in RocksDB keys (e.g., null byte used as separator), can this corrupt the key or cause retrieval failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7a22f4c-59bb-4aff-8c3f-d558908a4868",
+    "timestamp": "2025-12-23 16:29:25.119956",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrateUnits()] [Reading time measurement] The code measures reading_time separately from total time. If reading from SQL is abnormally slow due to corruption or hardware failure, does this cause timeouts in the async callbacks, or can the migration hang indefinitely waiting for slow reads?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebdf1211-1f04-4ea2-a2fb-65f267eac7f3",
+    "timestamp": "2025-12-23 16:29:55.074192",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/migrate_to_kv.js] [Function: migrate()] [Initialization ordering] The migration calls initializeMinRetrievableMci() before starting unit migration. If initializeMinRetrievableMci() depends on data that hasn't been migrated yet, can this cause initialization to fail or return incorrect values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1125be0-21dc-4426-9415-4731b5135c5d",
+    "timestamp": "2025-12-23 16:30:24.503647",
+    "report_generated": false
   }
 ]
