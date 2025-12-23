@@ -14548,5 +14548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65e5637b-d896-4154-99b2-a5a9a55fe4c0",
     "timestamp": "2025-12-23 17:41:27.348784",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleSavedPrivatePayments()] [Private Payment Validation Loop] At lines 2182-2259, the function processes all saved private payments. At lines 2237-2239, if the chain is waiting (light client case), it just calls cb() without removing the payment from the database. Can an attacker force many private payments into this 'waiting' state by sending chains that reference units that will never become stable, causing the table to fill up and handleSavedPrivatePayments() to repeatedly process the same payments forever, wasting CPU?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56d9915d-40ae-43ee-847c-adc298805520",
+    "timestamp": "2025-12-23 17:42:50.055789",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: requestUnfinishedPastUnitsOfPrivateChains()] [History Request Amplification] At lines 2304-2330, this function finds unfinished units and calls requestHistoryFor(). If an attacker sends many incomplete private payment chains to a light client, each triggering a full history request, can they cause the light client to request and process gigabytes of history data from the light vendor, eventually exhausting bandwidth or storage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4397e8b6-e12c-43e1-a116-dc32be740605",
+    "timestamp": "2025-12-23 17:43:02.588742",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: cleanBadSavedPrivatePayments()] [Delayed Cleanup Exploit] At lines 2268-2282, cleanBadSavedPrivatePayments() only deletes private payments older than 1 day where the unit doesn't exist. Can an attacker keep sending invalid private payment chains continuously, and since they're only cleaned after 24 hours, cause the unhandled_private_payments table to grow to millions of rows over time, eventually slowing down all queries against it and causing transaction processing delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_84eb3556-11fc-44c0-884c-a589000b3756",
+    "timestamp": "2025-12-23 17:43:16.042397",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleOnlinePrivatePayment()] [Private Payment Storage Bypass] At lines 2142-2147, light clients with arrPrivateElements.length > 1 immediately save the payment and call updateLinkProofsOfPrivateChain(). If the link proof validation fails, the payment remains in unhandled_private_payments but is never associated with a peer (line 2133 uses empty string for peer). Does this prevent the payment from ever being requested again since there's no peer to request from, causing lost private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00560e77-f79c-490e-9209-00ac5fe82870",
+    "timestamp": "2025-12-23 17:43:30.369852",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_history')] [History Size DoS] At lines 3314-3358, light/get_history is processed with mutex.lock(['get_history_request']). If a malicious light client requests history for thousands of addresses with addresses parameter, and each address has thousands of transactions, can they cause light.prepareHistory() to allocate gigabytes of memory and consume hours of CPU time while holding the mutex, blocking all other history requests and causing denial of service for legitimate light clients?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_452e0947-ef27-4690-9724-98dfa8eb7ea6",
+    "timestamp": "2025-12-23 17:43:44.730639",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_history')] [Large History Tag Tracking] At lines 3315-3316, if history is too large, the tag is marked in largeHistoryTags[tag]=true and future requests with the same tag return an error. However, largeHistoryTags is never cleaned up. Can an attacker repeatedly request large histories with unique tags, causing largeHistoryTags to grow unboundedly and eventually consume all available memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1afc95c-1e99-4dc9-bf3d-38491b20137e",
+    "timestamp": "2025-12-23 17:44:00.331123",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_link_proofs')] [Link Proof Forgery] At lines 3360-3375, light/get_link_proofs is processed via light.prepareLinkProofs(). If the full node is compromised or malicious, can it send fake link proofs that appear valid but actually link to units on a minority fork, causing the light client to accept an alternative version of history and potentially spend funds that don't exist on the real main chain?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_104ba35d-8f35-49a4-8121-8dfeea8061e5",
+    "timestamp": "2025-12-23 17:44:16.675906",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/pick_divisible_coins_for_amount')] [Coin Selection Manipulation] At lines 3439-3477, the function picks coins via inputs.pickDivisibleCoinsForAmount() with amount + size parameter at line 3472. Can a malicious light vendor deliberately return a coin selection that includes coins that will soon become invalid (e.g., being spent in another transaction the vendor knows about), causing the light client's transaction to fail with double-spend error after submission?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5988a52-8233-4785-a71f-b397ef2d881d",
+    "timestamp": "2025-12-23 17:44:34.517004",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_aa_state_vars')] [State Var Query Limit] At lines 3629-3660, light/get_aa_state_vars accepts a limit parameter (default MAX_STATE_VARS = 2000). If an attacker requests exactly 2000 state vars repeatedly with slightly different var_prefix_from values, can they enumerate the entire AA state by making multiple requests, and if the AA has millions of state variables, does this cause excessive database load on the full node serving the requests?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a68a1530-5e37-4ded-b0e7-583a157bdaea",
+    "timestamp": "2025-12-23 17:44:53.429977",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/dry_run_aa')] [Dry Run State Pollution] At lines 3605-3627, light/dry_run_aa executes aa_composer.dryRunPrimaryAATrigger() which may modify in-memory state. At lines 3619-3622, if COUNT_WITNESSES === 1, the memory is reset via storage.resetMemory(). Can an attacker on a testnet (where COUNT_WITNESSES might be 1) repeatedly call dry_run_aa with triggers that create massive temporary state, forcing the node to repeatedly reset memory and rebuild state, causing severe performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9729349c-4410-4c4b-93b1-aa602f0d8d63",
+    "timestamp": "2025-12-23 17:45:12.954903",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/execute_getter')] [Getter Execution Timeout] At lines 3672-3693, light/execute_getter calls formulaEvaluation.executeGetter() with no timeout parameter visible. If an attacker submits a getter that takes hours to execute (e.g., complex loops or recursive formulas), can they tie up execution resources indefinitely, preventing other getters from running and causing DoS for legitimate users trying to read AA state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce9a70df-a421-4e4c-a856-17ab704bdc30",
+    "timestamp": "2025-12-23 17:45:34.267228",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_aas_by_base_aas')] [Base AA Query Injection] At lines 3695-3732, the function accepts aa_params with comparison operators ['=', '!=', '>', '>=', '<', '<='] at line 3713. If the AA parameter value is carefully crafted (e.g., SQL injection patterns in string comparisons), can this bypass the satisfiesSearchCriteria() validation at line 3725 and cause unintended AA matches to be returned, leaking information about AAs that shouldn't match the search?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b93a1070-9989-4a54-b693-90b533dd18c3",
+    "timestamp": "2025-12-23 17:45:56.448236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('light/get_aa_responses')] [AA Response Pagination Exploit] At lines 3734-3768, responses are limited to 100 but ordered by mci. If an attacker creates an AA that generates thousands of responses at the same MCI, and the light client requests them with that MCI as max_mci, does the LIMIT 100 cut off in the middle of that MCI's responses, and the note about filtering duplicates at line 3753 suggests pagination might return duplicates, causing the light client to miss responses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78c0201e-ba00-4dd2-a0c0-3363f3c1e65d",
+    "timestamp": "2025-12-23 17:46:19.903780",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('hub/login')] [Authentication Challenge Replay] At lines 2703-2758, hub/login validates objLogin.challenge against ws.challenge set when the connection opened. If an attacker captures a valid login signature and can force the hub to assign the same challenge (e.g., by manipulating random number generation or timing), can they replay the login and impersonate the original device?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_592cb6ea-0d69-4679-b5f6-f438266f3a46",
+    "timestamp": "2025-12-23 17:46:43.825735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('hub/login')] [Max Message Length Bypass] At lines 2717-2718, max_message_length validation only checks if it's a positive integer. If an attacker sets max_message_length to Number.MAX_SAFE_INTEGER (9007199254740991), can they bypass the intent of limiting message size and cause hub/deliver at lines 3239 to deliver enormous messages that exhaust memory when stringified?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aec0fcdf-46b6-4bf1-a11a-96709cf830a5",
+    "timestamp": "2025-12-23 17:47:08.799963",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('hub/deliver')] [Device Message Flooding] At lines 3199-3259, hub/deliver inserts messages into device_messages table with INSERT IGNORE at line 3234. If an attacker repeatedly sends slightly different messages (different encrypted content but same recipient), can they fill the device_messages table with millions of rows for a single recipient, causing database bloat and slowing down message retrieval in sendStoredDeviceMessages()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d544cac8-eebd-4f4a-97eb-a17178cfb7d9",
+    "timestamp": "2025-12-23 17:47:34.495927",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('hub/deliver')] [Message Notification DoS] At lines 3247-3255, after delivering a message, the hub emits 'peer_sent_new_message' event if push is enabled. If an attacker sends thousands of messages per second to multiple recipients, can they trigger thousands of event emissions per second, and if the event handlers (e.g., push notification services) are slow, cause event queue buildup and eventual memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d5c03489-6685-4d53-bd38-5327365f6b03",
+    "timestamp": "2025-12-23 17:48:00.419306",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('my_url')] [URL Verification Bypass] At lines 2634-2698, peers can advertise their URL which is verified via echo test at lines 2660-2664. If an attacker controls both the advertised URL and can intercept the reverse connection, can they pass the echo test even though they don't actually operate at that URL, allowing them to inject false routing information into the peer_host_urls table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b11dff2e-6735-4bc6-b9fb-3d58ec0b28e2",
+    "timestamp": "2025-12-23 17:48:28.296288",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: sendStoredDeviceMessages()] [Message Retrieval Limit] At lines 2479-2490, sendStoredDeviceMessages() queries with LIMIT (line 2482) of ws.max_message_count or 100. If an attacker fills the device_messages table with 100 messages for their own device, then sends 1 legitimate message to a victim device, does the victim's messages get pushed out of the query results, causing them never to receive their legitimate message?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce8eb0ea-59f9-4de9-b4c2-5aa59c7f278b",
+    "timestamp": "2025-12-23 17:48:57.280392",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleRequest('hub/temp_pubkey')] [Temp Pubkey Update Race] At lines 3282-3312, hub/temp_pubkey updates the temp_pubkey_package at line 3302. If a device logs in on multiple connections simultaneously and updates its temp_pubkey from both connections, can they race and cause the final stored temp_pubkey to be inconsistent, breaking future pairing attempts that try to retrieve this key via hub/get_temp_pubkey?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8508b485-284e-4ebf-9789-e40d8d5c17f6",
+    "timestamp": "2025-12-23 17:49:27.064190",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: deleteOverlengthMessagesIfLimitIsSet()] [Overlength Message Purge Timing] At lines 2469-2476, messages exceeding max_message_length are deleted. If an attacker knows a victim's max_message_length is small, can they repeatedly send messages just under the limit to fill the victim's message box, then have a legitimate party send an important large message, which gets deleted immediately upon the victim's next login, causing message loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6677e479-3c43-4417-9de8-7900cd2907c5",
+    "timestamp": "2025-12-23 17:49:58.152900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('joint')] [Joint Archive Race] At lines 2583-2605, when receiving a 'joint' justsaying, the function first checks if the unit is in archived_joints at line 2591. If a unit is being archived in a background thread while simultaneously being received as a new joint, can this race cause the joint to be both archived and processed as new, creating duplicate entries or inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f779ceb9-f3c4-450b-ac21-a5daa67ac1b7",
+    "timestamp": "2025-12-23 17:50:29.135052",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('joint')] [Object Length Ratio Check] At line 2594, getRatio() checks if the joint's key-to-value ratio exceeds 3. If an attacker crafts a joint with a ratio of exactly 3.0 or uses floating point manipulation to bypass this check, can they submit joints with abnormally large key names that waste storage space and slow down JSON serialization across the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1149b16-b622-4c70-b117-0227318217ec",
+    "timestamp": "2025-12-23 17:51:00.991082",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('version')] [Version Downgrade Attack] At lines 2511-2549, the version handler checks library_version against minCoreVersion and minCoreVersionForFullNodes. If an attacker can modify these constants in conf.js or constants.js, can they force the node to accept connections from outdated peers with known vulnerabilities, allowing those peers to exploit old bugs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a2cd5d5-04b2-4c47-adfc-9f51bc7afa49",
+    "timestamp": "2025-12-23 17:51:30.813160",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/network.js] [Function: handleJustsaying('bugreport')] [Bug Report Email Bomb] At lines 2566-2581, bug reports are sent via mail.sendBugEmail() at line 2580, with deduplication based on prev_bugreport_hash (line 2575). Can an attacker send bug reports with slightly different 'message' fields that hash to different values, bypassing deduplication and causing the hub to send thousands of emails to the bug_sink_email address, overwhelming the email system?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fdce4ac-f5e0-4230-afdf-c25609f8b148",
+    "timestamp": "2025-12-23 17:52:01.559509",
+    "report_generated": false
   }
 ]
