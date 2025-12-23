@@ -15598,5 +15598,47 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f27c6ddd-c694-4c61-b110-1c460194cd70",
     "timestamp": "2025-12-23 18:53:46.748821",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Witness list unit selection] Lines 208-218 select witness_list_unit from MC, using the unit itself if witness_list_unit is NULL (line 214) - can an attacker craft units with manipulated witness_list_unit references pointing to units with favorable witness lists to redirect witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26d3d840-5eec-4510-8176-cb195e6a50da",
+    "timestamp": "2025-12-23 18:55:14.184151",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [RAM inconsistency not caught in bFaster] Lines 215-216 check witness_list_unit consistency between DB and RAM, throwing if different - but this check is skipped when conf.bFaster=true (line 209-210) - can bFaster mode allow RAM corruption to go undetected, causing incorrect witness payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_373e13b0-d309-43fd-babd-8d784525351a",
+    "timestamp": "2025-12-23 18:55:27.508493",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Multiple MC units] The query at line 211 expects exactly 1 row with is_on_main_chain=1 (check at line 212) - but if database corruption causes multiple rows, the throw at line 213 crashes the entire witness payment process - can this be triggered intentionally to DoS the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a96245b7-035f-466e-bc73-01522fcb0dbe",
+    "timestamp": "2025-12-23 18:55:40.733453",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [storage.readWitnessList() trust] Both code paths (lines 210 and 217) call storage.readWitnessList() without validating the returned witness array - can this function return invalid witness lists (wrong length, duplicate addresses, null values) that corrupt witness payment calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_070cfb8d-c8a7-4ab7-a481-960f279ef535",
+    "timestamp": "2025-12-23 18:55:54.440030",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Unit hash validation missing] The objUnitProps.unit at line 231 is used directly in database queries without validating it's a proper 44-character base64 unit hash - can passing malformed unit values cause SQL errors or injection attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd9f6a69-ce9f-4b04-9095-89d249ee5b8b",
+    "timestamp": "2025-12-23 18:56:08.785539",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Integer overflow in to_main_chain_index] Line 232 calculates 'objUnitProps.main_chain_index + constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING' - if main_chain_index is near MAX_SAFE_INTEGER, can this overflow, causing graph.readDescendantUnitsByAuthorsBeforeMcIndex() to query incorrect MCI ranges?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39ae22c5-293c-49b1-be61-8462643848c3",
+    "timestamp": "2025-12-23 18:56:23.876887",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [strUnitsList SQL injection] Lines 239-240 construct strUnitsList by joining conn.escape(unit) - if arrUnits contains malicious strings that bypass escaping, can this enable SQL injection in the query at lines 242-250?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5393f77-28f9-43b5-b649-f8beaa430403",
+    "timestamp": "2025-12-23 18:56:40.105165",
+    "report_generated": false
   }
 ]
