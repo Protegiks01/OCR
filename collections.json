@@ -8698,5 +8698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_07d9144a-e92b-4c15-863e-eee80decb2d1",
     "timestamp": "2025-12-23 11:08:23.112493",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Index Usage] The query at lines 41-46 filters by chunits.main_chain_index-punits.main_chain_index<=1 - does this prevent index usage on main_chain_index, causing full table scans that could delay transaction processing for >1 hour when the DAG is large?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8d199e7-5107-4214-b3eb-9a7b9e15635a",
+    "timestamp": "2025-12-23 11:09:34.987393",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Rounding Loss] At line 51, headers commissions are rounded using ROUND() before being summed - if a unit wins commissions from many parent units with small shares (e.g., 1% of 10 bytes = 0.1 bytes), could repeated rounding down cause the winner to lose significant funds compared to rounding after summing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5beb788e-37d2-4da2-b521-5fa29b7de71e",
+    "timestamp": "2025-12-23 11:09:47.399043",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Precision Mismatch] At lines 181 and 200, JavaScript's Math.round() is used for share calculations (share/100.0) - could floating-point precision errors cause different nodes to calculate slightly different amounts, leading to consensus divergence when spending these outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d00de63-5ddc-419e-8adf-380874dbb769",
+    "timestamp": "2025-12-23 11:10:00.839415",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Share Sum] If earned_headers_commission_recipients has shares that don't sum to exactly 100 (due to manual database manipulation or a bug elsewhere), does line 181 distribute more or less than the full headers_commission, violating balance conservation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a1e1c132-2fc8-4599-a7cf-970c30068ff3",
+    "timestamp": "2025-12-23 11:10:14.163900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Zero Amount] If rounding at line 181 or 200 produces an amount of 0, is this zero-value entry still inserted into headers_commission_contributions, potentially bloating the database and causing the unit to pay commission to an address that receives nothing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9c50d663-8234-4657-b3c4-93c415f0e274",
+    "timestamp": "2025-12-23 11:10:28.179917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Transaction Atomicity] The async.series at lines 21-243 performs three separate INSERT/SELECT operations without explicit transaction boundaries - if the node crashes between line 210 (INSERT contributions) and line 221 (INSERT outputs), could headers_commission_contributions have entries without corresponding headers_commission_outputs, breaking the accounting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d2650d3-7afe-456e-acb1-2fd8df841525",
+    "timestamp": "2025-12-23 11:10:43.286764",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Partial Commits] If the database connection is lost between the two UNION ALL queries at lines 32-64, could only the first batch of commissions (single authors) be committed while multi-recipient commissions are lost, causing incorrect distribution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49acdc98-c8e8-46e0-be68-9952cc575831",
+    "timestamp": "2025-12-23 11:10:59.209175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Duplicate Prevention] At line 48, the query checks that earned_headers_commission_recipients has 0 rows for single-author units - if two calcHeadersCommissions() calls process the same MCI concurrently, could both pass this check and insert duplicate contributions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c897cb2-6e4e-4cf9-bddd-204330e28ccf",
+    "timestamp": "2025-12-23 11:11:16.898016",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Stability Bypass] At lines 39, 44, 45, 63, and 81, the query filters for is_stable=1 - if a bug in main_chain.js marks units as stable prematurely, could commissions be distributed before the units are truly finalized, and could these units later become invalid if they're reorged?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5569c3f1-8c16-493b-b1af-d816c8a54f29",
+    "timestamp": "2025-12-23 11:11:35.625865",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Sequence Filter] The queries use +chunits.sequence='good' and +punits.sequence='good' with a unary + operator - does this force type conversion, and could a unit with sequence='temp-bad' or 'final-bad' bypass this check if the database stores it as an integer?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b3109a82-5f0b-413a-956e-95270a1e1303",
+    "timestamp": "2025-12-23 11:11:54.927612",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [MCI Constraint] At line 42, the query requires chunits.main_chain_index-punits.main_chain_index<=1 - if punits is at MCI 100 and chunits is at MCI 102, does this unit fail to receive commission even though it legitimately references the parent, potentially causing commission loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7e0a021-a1fd-40e5-bc18-cad834d6479b",
+    "timestamp": "2025-12-23 11:12:15.583142",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Memory Corruption] At lines 88-113, assocChildrenInfosRAM is built from storage.assocStableUnitsByMci - if this in-memory structure is corrupted or stale (e.g., not updated after a reorg), could the commission calculation diverge from the database query result, causing throwError at line 138?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_062d6229-ac76-4f60-be5c-a5f20887fe13",
+    "timestamp": "2025-12-23 11:12:37.141904",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [bFaster Mode Risk] When conf.bFaster is true, the code uses only in-memory data (line 189) without validating against the database - if storage.assocStableUnits is missing entries or has wrong data, could nodes running in bFaster mode distribute commissions incorrectly and diverge from nodes using the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_99f060e0-ab3e-4829-a221-27bb773ac986",
+    "timestamp": "2025-12-23 11:12:59.549209",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [RAM Validation] At lines 128-138, the code validates that assocChildrenInfos matches assocChildrenInfosRAM - if this validation fails, throwError() is called, but this only triggers in non-bFaster mode - could a bug go undetected in production nodes running bFaster=true?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f060472-a4be-4b90-a9db-dd84dc2cb267",
+    "timestamp": "2025-12-23 11:13:22.909331",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Storage Dependency] At line 88, the code directly accesses storage.assocStableUnitsByMci[since_mc_index+1] - if this property is undefined or null due to a race condition in storage.js, does the filter() call at line 88 throw an exception, crashing the commission calculation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9ad3e64-90d4-4f9a-a772-0de233a55687",
+    "timestamp": "2025-12-23 11:13:47.329674",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Genesis Commission Loss] At lines 91-93, if since_mc_index is 0 (genesis), the code returns early without processing commissions - does this mean the genesis unit's headers_commission is permanently lost, and was this intentional or a bug?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c58f075-524a-4f7f-a0a3-1cb56abc4193",
+    "timestamp": "2025-12-23 11:14:12.394701",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: initMaxSpendableMci()] [Genesis Default] At line 259, if headers_commission_outputs is empty, max_spendable_mci is set to 0 with a comment 'should be -1' - if max_spendable_mci=0 is used in subsequent queries, could this cause the genesis unit (MCI 0) to be reprocessed, creating duplicate entries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_405b2b7e-4cb6-4cd9-ae77-f57dc9212788",
+    "timestamp": "2025-12-23 11:14:38.913781",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [First Invocation] At lines 15-16, if max_spendable_mci is null, initMaxSpendableMci() is called recursively - if the database has no entries in headers_commission_outputs, max_spendable_mci becomes 0, but does the recursive call at line 16 then process MCI 0 immediately, potentially duplicating genesis commission processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5660ec48-eeeb-4abb-910a-c2db684e6f4c",
+    "timestamp": "2025-12-23 11:15:06.059399",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Empty Winners] At lines 152-154, if arrWinnerUnits.length is 0 (no valid children found), the code returns early - but could this leave since_mc_index unprocessed, causing the next invocation to skip forward and miss commissions for this MCI?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_543d6ac5-be4e-44a9-9597-9929d5b4186c",
+    "timestamp": "2025-12-23 11:15:32.639316",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [MCI Gap Validation] At lines 229-232, the code validates that contributions only exist for since_mc_index+1 (or since_mc_index=0 case) - but if units at multiple MCIs become stable simultaneously, could this validation fail and throw an error, halting commission processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4b75727-84ac-464d-ad99-d6bddb1e9a2e",
+    "timestamp": "2025-12-23 11:16:02.080714",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Missing Next MC Unit] At lines 97-98, if next_mc_unit_props is not found, throwError() is called - could an attacker craft a DAG structure where a stable unit at MCI X has no corresponding main chain unit at MCI X+1, causing all commission calculations to fail?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a00b925-bc43-4688-9e35-5f3c21a5998f",
+    "timestamp": "2025-12-23 11:16:30.306377",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Multi-Author Check] At line 47, the MySQL query checks (SELECT COUNT(*) FROM unit_authors WHERE unit=chunits.unit)=1 to identify single-author units - if a unit has 0 authors (which should be impossible but might exist due to a bug), does it fall through to the second UNION query at line 50 and fail to receive commissions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_102e78b3-637c-4a5c-b860-2843e37c84e6",
+    "timestamp": "2025-12-23 11:16:59.459199",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Recipient Validation] At lines 178-182, objUnit.earned_headers_commission_recipients is accessed without checking if objUnit exists in storage.assocStableUnits - if the winner unit is missing from the in-memory cache, could this cause a null pointer exception?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_847ef51d-947b-42be-b075-72258f27feab",
+    "timestamp": "2025-12-23 11:17:28.032206",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Share Overflow] If earned_headers_commission_recipients contains a share value >100 (due to database corruption or a bug), does line 181 distribute more than the full_amount, creating inflation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12cf2e84-b82c-40ce-93d1-35648c6f43b0",
+    "timestamp": "2025-12-23 11:17:57.139715",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Address Mismatch] At lines 179-182, the code iterates over objUnit.earned_headers_commission_recipients which comes from in-memory storage - if this differs from the database query result at lines 156-170, could commissions be distributed to wrong addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c1f56b4-f517-41fd-8c99-669fc47f3403",
+    "timestamp": "2025-12-23 11:18:25.732638",
+    "report_generated": false
   }
 ]
