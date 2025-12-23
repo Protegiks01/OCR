@@ -11398,5 +11398,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7ff614f-1b55-4a69-a24e-1ceb68d9ff87",
     "timestamp": "2025-12-23 14:10:53.714955",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Genesis Unit Exception] At lines 800-803, GENESIS_UNIT is exempted from parent_balls checks. Can attackers exploit this by claiming units are descendants of GENESIS_UNIT without proper validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87a1fb68-5f8a-43d1-83ac-f77926cfa64b",
+    "timestamp": "2025-12-23 14:12:19.391286",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Skiplist Ball Trust Propagation] At lines 804-807, skiplist_balls are trusted and added to known balls. Can fake skiplist references create shortcuts in proof validation, allowing attackers to skip critical validation checkpoints?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad91138f-7ed1-44a0-aebb-a47b55a35a86",
+    "timestamp": "2025-12-23 14:12:31.969718",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Unknown Ball Error] At lines 796-797, if ball is not in assocKnownBalls, an error is returned. Can this be bypassed by providing balls in a specific order that causes all balls to appear known?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e80f488a-9fb5-4753-974d-17d69f35ddc0",
+    "timestamp": "2025-12-23 14:12:45.313145",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Unit Not Found in Chain] At lines 814-816, if any requested unit is not found in assocKnownUnits, an error is returned. Can partial proof chains pass validation if they don't include all requested units due to indexing errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f949e746-a8ee-4cb7-8249-7561e0f5c3a5",
+    "timestamp": "2025-12-23 14:12:58.517724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Function: processLinkProofs()] [Chain Element Type Validation] At lines 780-811, elements are validated as either joints or balls based on field presence. Can ambiguous elements with both joint and ball fields confuse validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da75bdd8-1143-4bea-884b-6157365ed9f9",
+    "timestamp": "2025-12-23 14:13:12.507233",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Integration: prepareHistory + processHistory] Can a malicious hub prepare history with valid witness proofs but manipulated joint data, exploiting the fact that processHistory trusts witness proofs to skip full validation, allowing invalid units to be stored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e46058cb-530c-4bde-8161-57c44a4e6c40",
+    "timestamp": "2025-12-23 14:13:27.698212",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light.js] [Integration: processHistory + writer.saveJoint] At line 329, units are saved with sequence from proofchain analysis. Can inconsistencies between proofchain sequence determination and writer.saveJoint's validation cause units to be saved with incorrect sequence, enabling double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e397d5eb-9217-409e-b80d-8cf91e06c7f1",
+    "timestamp": "2025-12-23 14:13:44.000343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [SQL Injection] In the query at lines 73-76 where address list is constructed using db.escape() and string concatenation, can an attacker register addresses containing escape sequence bypass characters that break out of the IN() clause to inject arbitrary SQL, potentially deleting units table or exfiltrating private keys from the database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_510d14b1-5bf2-424c-9146-8d6cfc0eb0ed",
+    "timestamp": "2025-12-23 14:14:02.544276",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [SQL Injection] The query at line 134 concatenates escaped addresses using join(', '), but if db.escape() is implemented incorrectly or has edge cases with Unicode characters, can an attacker craft addresses that survive escaping and inject malicious SQL to mark unstable units as stable, bypassing double-spend detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_58985aff-8c15-40fb-8ade-1f2eb5603467",
+    "timestamp": "2025-12-23 14:14:20.880431",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [SQL Injection - UNION attack] At lines 74-76, the query uses UNION to combine results from unit_authors and outputs tables - can an attacker register an address that closes the IN clause early and appends a UNION SELECT to retrieve witness private keys or other sensitive data from unrelated tables?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_41dcbdd5-ad16-4e8b-a43b-43d675645b8f",
+    "timestamp": "2025-12-23 14:14:40.507724",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: prepareRequestForHistory()] [Database Transaction Atomicity] The query at lines 86-92 reads MAX(main_chain_index) without explicit transaction isolation - if a new stable unit is committed between the query execution and history refresh, can this create a gap in the light client's history where units are missed, potentially hiding double-spends or invalid transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9debf27a-23d9-4a3e-a58e-a3f9555a433a",
+    "timestamp": "2025-12-23 14:15:00.863419",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_address] [SQL Injection] At line 109, the DELETE query uses a parameterized query with address, but at line 115, the same address is passed to refreshLightClientHistory() which constructs SQL at line 71 - can an attacker register multiple addresses where one bypasses db.escape() due to encoding differences, causing SQL injection in the prepareRequestForHistory() path while the DELETE succeeds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d95d436f-e7bd-4ddb-821f-69067c846b14",
+    "timestamp": "2025-12-23 14:15:22.093290",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: connected] [SQL Injection] At line 126, addresses are selected from unprocessed_addresses table, then at line 134, these are used in a DELETE statement with db.escape() - if the unprocessed_addresses table was previously corrupted by SQL injection, can malicious address values be retrieved and used to inject SQL in the DELETE statement, dropping the units table entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c156017e-cdb6-41b7-ba9f-d2266c41e789",
+    "timestamp": "2025-12-23 14:15:44.955504",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: archiveDoublespendUnits()] [SQL Injection via column name] At line 223, the query conditionally uses 'rowid' or 'creation_date' based on conf.storage - can an attacker modify conf.storage to inject arbitrary column names or SQL fragments into the ORDER BY clause, causing the query to leak sensitive data through error messages or timing side channels?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4f052db-15f2-4bf1-9ebc-a936297689eb",
+    "timestamp": "2025-12-23 14:16:08.220035",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Event Handler: new_my_transactions] [SQL Injection] At line 244, arrUnits is mapped through db.escape() and joined - but if arrUnits contains non-string values (objects, arrays, null) that db.escape() doesn't handle correctly, can this result in SQL injection that modifies the outputs table to mark attacker's addresses as owners of victim's assets?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c7d8933-1d88-4401-832e-623f99c8f8dd",
+    "timestamp": "2025-12-23 14:16:32.428119",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: reconnectToLightVendor()] [Race Condition - bLightVendor flag] At lines 32-33, the function checks ws.bLightVendor to detect if already connected, but this check happens AFTER the connection is established - can two concurrent calls to reconnectToLightVendor() both pass the check and set ws.bLightVendor=true at line 189, causing duplicate history refresh requests that process the same units twice and corrupt balance calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cd6fb1e-22c0-4c89-9a5e-00e616c7b6b3",
+    "timestamp": "2025-12-23 14:16:57.624170",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: reconnectToLightVendor()] [Race Condition - bRefreshingHistory flag] At lines 34-35, the function checks ws.bRefreshingHistory but doesn't use any mutex - if reconnectToLightVendor() is called simultaneously from the 60-second interval timer (line 23) and the 'connected' event handler (line 24), can both threads proceed to refreshLightClientHistory() causing concurrent history processing and DAG corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85c4bbd8-842f-4c41-a2f7-5e10aef1417a",
+    "timestamp": "2025-12-23 14:17:23.714527",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Race Condition - bFirstRefreshStarted] At lines 156-159, bFirstRefreshStarted is checked and set without atomicity - if two calls to refreshLightClientHistory() execute simultaneously on startup, can both skip archiveDoublespendUnits(), causing unstable units older than 1 day to remain in the database and enabling double-spend attacks through reuse of archived unit references?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b323c78-6d85-4f30-b54c-18bed518e2ee",
+    "timestamp": "2025-12-23 14:17:49.932144",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Race Condition - bRefreshingHistory flag check/set] At lines 175-178, the code checks ws.bRefreshingHistory and sets it to true in separate statements without atomic compare-and-swap - can two concurrent full refresh requests both pass the check at line 176, then both set the flag at line 178, causing two simultaneous history processing operations that write conflicting unit data and corrupt the DAG structure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_38df44e9-b9e7-41c4-b7e0-c5d9d5beefd6",
+    "timestamp": "2025-12-23 14:18:17.948567",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Race Condition - bFirstHistoryReceived] At lines 208-212, bFirstHistoryReceived is set to true and 'first_history_received' event is emitted - if multiple history refreshes complete simultaneously (e.g., selective + full), can the event be emitted multiple times causing event handlers to execute duplicate operations like re-composing already sent transactions, resulting in double-spends?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d86f2c71-e7ef-432b-a543-86abd5effac3",
+    "timestamp": "2025-12-23 14:18:45.574273",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: waitUntilHistoryRefreshDone()] [Race Condition - callback execution] At lines 269-276, the function checks ws.bRefreshingHistory at line 272 and registers a callback at line 275 - if refresh completes between these lines, can the callback never fire, causing the waiting operation to hang indefinitely and blocking transaction composition, effectively freezing user funds until restart?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b46d3619-64a5-4d2d-a401-2df8dcb0029c",
+    "timestamp": "2025-12-23 14:19:13.973266",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [TOCTOU - selective vs full refresh] At lines 180-184, selective refresh is delayed if full refresh is ongoing, but the checks for ws.bRefreshingHistory and isFirstHistoryReceived() are separate - can an attacker trigger selective refresh exactly when first history completes but before bRefreshingHistory is cleared, bypassing the delay and causing concurrent processing that corrupts address history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1206a670-b372-464b-a705-fcc741620856",
+    "timestamp": "2025-12-23 14:19:42.595925",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Global State] [Race Condition - bFirstHistoryReceived across restarts] At line 209, bFirstHistoryReceived is set but never persisted to database - if the light client crashes after setting this flag but before processing all history, can the restart cause the client to skip requesting critical units, leaving permanent gaps in transaction history that hide double-spends affecting the user?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbb03bb7-0bcc-426b-91e0-52d0c390a88b",
+    "timestamp": "2025-12-23 14:20:09.263215",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: refreshLightClientHistory()] [Race Condition - finish() callback] At lines 161-170, the finish() callback is defined but can be called from multiple paths (lines 172, 188, 194, 203, 207) - if an error occurs after ws.bRefreshingHistory is set but the callback is invoked multiple times due to exception handling, can this cause the flag to be cleared prematurely while another refresh is still processing, leading to concurrent history updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2169366e-aaab-4c3f-8a17-1008e3418fc5",
+    "timestamp": "2025-12-23 14:20:36.358371",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/light_wallet.js] [Function: setLightVendorHost()] [Man-in-the-Middle - URL substitution] At lines 17-18, if network.light_vendor_url is already set, the function logs a warning but doesn't prevent the new host from being used in subsequent calls - can an attacker who compromises the application after initial setup call setLightVendorHost() again with a malicious server, causing all future history requests to go to the attacker's server which returns fake units that steal user funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d34ece49-5af7-44bb-ac9f-e0f65fec74e0",
+    "timestamp": "2025-12-23 14:21:03.662639",
+    "report_generated": false
   }
 ]
