@@ -8548,5 +8548,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b362247f-c28d-4710-a537-381a859e1187",
     "timestamp": "2025-12-23 10:58:12.540004",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Event flood DoS] Can an attacker flood the network with units that each trigger multiple event emissions (e.g., a unit with 100 messages each emitting separate events, or units that cascade through AAs triggering 'aa_response' events recursively), overwhelming the event bus and causing the event queue to grow unbounded, exhausting memory and crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8a33782-4c0b-4535-9d36-724a13592b8c",
+    "timestamp": "2025-12-23 10:59:30.860363",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Handler registration DoS] Can an attacker repeatedly perform actions that register new event listeners (e.g., opening and closing WebSocket connections, creating and destroying wallet instances, or registering and unregistering AA observers) at a rate faster than garbage collection can clean them up, gradually consuming memory until the node crashes, causing >24 hour downtime?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a526470-e755-4349-9ae2-f625152f3a2f",
+    "timestamp": "2025-12-23 10:59:43.550660",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Non-deterministic handler execution] Since JavaScript object property iteration order can vary across Node.js versions (though now standardized to insertion order), and if event bus internals rely on object iteration for any operations, can different Node.js versions process event handlers in different orders, causing non-deterministic state updates and chain split between nodes running different Node.js versions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3d28d421-de74-44a5-b30a-3db002c30092",
+    "timestamp": "2025-12-23 10:59:56.503609",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Platform-specific timing] Can differences in event loop scheduling between different operating systems (Linux vs Windows vs macOS) cause events wrapped in process.nextTick() to be processed in different orders relative to I/O operations (like database writes), leading to subtle timing-dependent bugs where nodes on different platforms diverge in state (e.g., different AA state variable values after the same triggers)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fd2977f5-8514-4c50-8a91-f03f1801618c",
+    "timestamp": "2025-12-23 11:00:09.901649",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Clock skew in event timing] If handlers rely on timestamps (e.g., Date.now()) when processing events, and different nodes have clock skew, can this cause deterministic operations (like AA formula evaluation using `timestamp` keyword) to produce different results on different nodes, leading to state divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de8ec947-5f98-469f-80b5-bd65258bd6d1",
+    "timestamp": "2025-12-23 11:00:24.207810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Database transaction boundaries] When events are emitted from inside database transactions (as seen with 'mci_became_stable'), if handlers make additional database queries or modifications, are these guaranteed to see the committed state of the emitting transaction, or can they read uncommitted data or have their changes rolled back if the outer transaction fails, leading to inconsistent state between event bus and database?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de6aa1d6-1d20-44a1-9e44-37eae9309c55",
+    "timestamp": "2025-12-23 11:00:39.578499",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Mutex interaction] If a handler acquires a mutex lock (common pattern in validation and storage operations) and then emits another event whose handler also needs that lock, does this cause deadlock, and can an attacker craft units that deliberately trigger such deadlock scenarios to halt validation or storage operations for >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af996942-3a3b-44f3-844a-5b54fe1e029c",
+    "timestamp": "2025-12-23 11:00:55.824067",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Network I/O in handlers] If event handlers perform synchronous network I/O (e.g., broadcasting to peers, querying oracles, or forwarding to hubs), can network latency or timeouts block the event loop, preventing other events from being processed, and can an attacker exploit this by controlling a peer/oracle that responds slowly to specific requests, effectively DoSing the event bus and halting protocol operations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d822238d-bd9b-446c-b77c-78cec11795a8",
+    "timestamp": "2025-12-23 11:01:12.992463",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Light client notification timing] When network.js handles 'mci_became_stable' to notify light clients (via notifyWatchersAboutStableJoints), if the event is processed before the database transaction commits due to race conditions, can light clients be notified of stability before the full node's database actually reflects this, allowing light clients to receive witness proofs for units that the full node might later roll back (if transaction fails), potentially allowing light clients to accept invalid history?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0940ec1-29fc-41aa-9d81-ddd47e9ccb20",
+    "timestamp": "2025-12-23 11:01:31.356231",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Hub message relay via events] If device.js emits events like 'message_for_light' to be relayed to hub connections, and multiple handlers process the same event for different hubs, can a malicious handler intercept, modify, or drop messages intended for light clients, allowing attackers to censor transactions, feed false data to light wallets, or conduct targeted phishing attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5d35ae94-b005-4d68-9d69-5ca5c794315e",
+    "timestamp": "2025-12-23 11:01:50.745492",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [AA state race conditions] When aa_composer.js emits AA-related events like 'aa_response' or 'aa_definition_saved', if multiple AAs are being triggered simultaneously and their events interleave, can this cause race conditions in reading/writing AA state variables stored in the kvstore, leading to lost updates, incorrect balances, or state corruption that permanently freezes funds locked in affected AAs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8eaf69a6-d0a0-4157-8214-e88bb147f2e1",
+    "timestamp": "2025-12-23 11:02:11.198727",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Secondary trigger ordering] When an AA triggers secondary AAs in cascade, and each trigger emits events that spawn new triggers, if the event bus doesn't enforce deterministic ordering of these nested trigger events, can different nodes process the cascade in different orders, causing AAs to see different execution sequences and produce different final states, leading to permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e578196-e07e-4b31-a2be-ebecc72e5d04",
+    "timestamp": "2025-12-23 11:02:32.406405",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [AA bounce event handling] If an AA execution fails and storage.js needs to emit a 'bounce' event to notify systems to refund inputs, but the event is lost or not handled due to listener limit or handler exception, can this cause the bounce to never be created, permanently locking the user's funds in a failed AA state with no way to recover them?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e283fa36-cbf4-4fb8-8b9e-f8300954542a",
+    "timestamp": "2025-12-23 11:02:55.334400",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter instance] [Global state corruption] Since the event bus is a singleton global object, if any module gains the ability to modify its internal state (e.g., through prototype pollution, accessing private properties via Object.getOwnPropertyDescriptor, or exploiting vulnerabilities in Node.js EventEmitter), can an attacker corrupt the listener list, disable specific handlers (like validation or consensus), or inject malicious handlers that steal data or manipulate protocol behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d98ab8b-bbc3-4899-9c4d-ce3a72c77541",
+    "timestamp": "2025-12-23 11:03:18.858804",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/event_bus.js] [EventEmitter] [Prototype pollution] Can an attacker exploit JavaScript prototype pollution vulnerabilities in any module that interacts with event_bus to modify EventEmitter.prototype or event bus instance properties, potentially disabling event emission, bypassing security checks in handlers, or injecting code that executes when any event is emitted, allowing complete compromise of the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b274f012-d96c-4277-a0a8-41531594e18b",
+    "timestamp": "2025-12-23 11:03:42.678678",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Race Condition] If calcHeadersCommissions() is called simultaneously from multiple main chain stabilization processes (e.g., during rapid block confirmations), can the global max_spendable_mci variable become corrupted or inconsistent, causing duplicate commission distributions or skipped MCIs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64274d3b-5383-4f6d-8d78-37364a528363",
+    "timestamp": "2025-12-23 11:04:07.940579",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: resetMaxSpendableMci()] [State Management] If resetMaxSpendableMci() is called during an active calcHeadersCommissions() execution, can this cause max_spendable_mci to be null when the final UPDATE query executes at line 239, resulting in incorrect commission calculations on subsequent invocations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91f6590d-3024-4cc7-a141-47b6e5fa5f32",
+    "timestamp": "2025-12-23 11:04:34.412198",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Reentrancy] If the onDone callback triggers another calcHeadersCommissions() invocation before max_spendable_mci is updated at line 239, can this cause the same MCI range to be processed twice, creating duplicate entries in headers_commission_contributions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c733f61c-e9b0-4618-8cb2-3a866070731c",
+    "timestamp": "2025-12-23 11:05:01.152192",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: initMaxSpendableMci()] [Initialization Race] If initMaxSpendableMci() is called concurrently from multiple threads/processes during node startup, can multiple initializations race and cause max_spendable_mci to be set incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f815bce-f2b2-47af-b84b-ef4e886b1526",
+    "timestamp": "2025-12-23 11:05:28.635695",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Hash Collision] If two child units produce identical SHA1 hashes when concatenated with their next_mc_unit (line 251), does the sort at line 253 produce deterministic ordering, or could different nodes pick different winners causing a permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12041318-025c-4145-9342-c4b877b3ac0d",
+    "timestamp": "2025-12-23 11:05:56.227368",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Winner Manipulation] Can an attacker who controls the next_mc_unit selection (by posting a unit at the right MCI) manipulate the SHA1 hash calculation at line 251 to ensure their child unit wins headers commissions from targeted parent units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57c90cb1-e3c9-4a0b-a879-a6f045e295a6",
+    "timestamp": "2025-12-23 11:06:24.884637",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Empty Array] If arrChildren is empty when getWinnerInfo() is called, does the function return undefined, and could this cause a crash or incorrect commission distribution in the calling code at line 145?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72142013-d73a-4535-8a55-8b50f764c539",
+    "timestamp": "2025-12-23 11:06:54.362339",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Non-deterministic Sort] If the JavaScript sort function at line 253 is not stable across different Node.js versions or operating systems when hashes are equal, could this cause different nodes to select different winners and diverge?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96234bd9-9bb7-40c2-95db-288d498ed8ca",
+    "timestamp": "2025-12-23 11:07:24.470464",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [SQL Injection] At line 155, strWinnerUnitsList is constructed using db.escape() on unit hashes, but if db.escape() has a bug or doesn't properly handle all edge cases, could an attacker craft a malicious unit hash that breaks out of the SQL string and injects arbitrary SQL?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a98529b7-4769-433d-bd12-f76810c581b0",
+    "timestamp": "2025-12-23 11:07:54.567797",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [MySQL Query Complexity] The MySQL query at lines 31-64 uses a subquery (best_child_sql) that includes SHA1 concatenation and sorting - if an attacker creates thousands of child units for a single parent, could this cause severe performance degradation (>1 day delay) due to O(n²) complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_07d9144a-e92b-4c15-863e-eee80decb2d1",
+    "timestamp": "2025-12-23 11:08:23.112493",
+    "report_generated": false
   }
 ]
