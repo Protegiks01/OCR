@@ -8998,5 +8998,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe2e0d67-75bd-430f-b5dc-2c96418d6647",
     "timestamp": "2025-12-23 11:28:33.442248",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Callback Delay] If the onDone callback at line 243 is invoked after a long delay (e.g., due to system load), could max_spendable_mci become stale, causing the next calcHeadersCommissions() invocation to reprocess the same range?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b555bad4-a37b-4d43-a045-71a9ef841572",
+    "timestamp": "2025-12-23 11:29:38.419928",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Early Return] At line 154, if no winners are found, the callback cb() is invoked immediately without updating max_spendable_mci - could this cause max_spendable_mci to remain at the old value, causing the same MCI to be queried repeatedly in an infinite loop?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_097a5dc9-ad9f-4e79-b2e5-9266fbdd084d",
+    "timestamp": "2025-12-23 11:29:51.054389",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getMaxSpendableMciForLastBallMci()] [Spending Window] At line 270, the function returns last_ball_mci - 1 as the maximum spendable MCI - if a unit at MCI X tries to spend commission outputs from MCI X-1 before calcHeadersCommissions() has processed MCI X-1, could the validation fail even though the commissions are legitimately earned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_342bff0c-d6f0-4b9b-b8cb-06c29253678d",
+    "timestamp": "2025-12-23 11:30:03.908094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [is_spent Flag] The headers_commission_outputs table has an is_spent column but this file never updates it - if commission outputs are spent but is_spent remains 0, could the same commission be spent multiple times in different units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_667a0e9b-d0a6-4759-a37d-c9b3598cb9ef",
+    "timestamp": "2025-12-23 11:30:17.340175",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Output Uniqueness] At line 359 of the SQL schema, headers_commission_outputs has PRIMARY KEY (main_chain_index, address) - if the same address wins commissions from multiple parent units at the same MCI, are the amounts correctly summed at line 222, or could earlier amounts be overwritten?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3b93cfd-d595-441d-a3a8-31fccc74f4a9",
+    "timestamp": "2025-12-23 11:30:31.423428",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Next MC Unit Filter] At lines 38 and 56, the queries join next_mc_units with is_on_main_chain=1 and main_chain_index=punits.main_chain_index+1 - if there is no main chain unit at MCI X+1 (e.g., due to a gap or reorg), does the query return no results, causing commissions for MCI X to be permanently lost?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d1df7b59-0e08-46e9-a71a-30da2a832f0a",
+    "timestamp": "2025-12-23 11:30:46.982924",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Stability Requirements] At lines 39, 44, 45, 63, and 81, all units must be stable - if a parent unit is marked stable but one of its children is not yet stable, does the child fail to compete for commissions, even though it will become stable later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_344a674a-38e1-4930-91cd-1ef7748cf91d",
+    "timestamp": "2025-12-23 11:31:03.315152",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Filter Consistency] The SQLite query at line 82 filters chunits.main_chain_index-punits.main_chain_index<=1 but doesn't filter in the parenthoods join - could this allow non-direct children (grandchildren, etc.) to incorrectly appear in the results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_153ddb00-1f6c-4d32-bff4-989060941ec1",
+    "timestamp": "2025-12-23 11:31:21.357511",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Array Join] At line 210, arrValues.join(', ') creates the INSERT statement - if arrValues contains elements with embedded quotes or special characters (which shouldn't happen but could if unit hashes are malformed), could this break the SQL syntax?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bb39f8e4-a8b1-457f-9e74-eba9f9a3cb97",
+    "timestamp": "2025-12-23 11:31:40.076481",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Array Mutation] At lines 250-253, the function mutates the arrChildren array by adding a hash property and sorting it - if the caller reuses this array, could the mutation cause unexpected behavior in subsequent code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a961a19f-a7c2-4313-9dc7-3cf554d9e4b9",
+    "timestamp": "2025-12-23 11:31:58.842035",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Map Iteration] At lines 143-149, the code iterates over assocChildrenInfos using for..in - if Object.prototype has been polluted with additional properties (e.g., by malicious npm package), could this cause extra iterations and incorrect commission distribution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3be4ae7e-d936-4351-9905-316147b376b4",
+    "timestamp": "2025-12-23 11:32:20.032427",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Array Sorting] At lines 132-136, the code sorts children arrays before comparing assocChildrenInfos and assocChildrenInfosRAM - if the sort order is not stable (same hashes produce different orders), could valid data be flagged as inconsistent, triggering throwError unnecessarily?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_83d076f2-311f-4cd8-a5be-62b64f5e10de",
+    "timestamp": "2025-12-23 11:32:41.253627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Deep Equality] At line 128, _.isEqual() performs deep equality checking - if one of the objects contains circular references or special objects (e.g., Buffer), could _.isEqual() behave unexpectedly or cause performance issues?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_13ff52e1-1a4f-4612-ad82-920c528db02b",
+    "timestamp": "2025-12-23 11:33:04.691026",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Error Message] At line 138, if validation fails, throwError() is called with a JSON.stringify() of potentially large objects - could this cause out-of-memory errors if assocChildrenInfos contains thousands of units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d0320532-8ef2-49f1-bcdf-206ac890247d",
+    "timestamp": "2025-12-23 11:33:28.714177",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [bFaster Mode Divergence] At lines 114, 189, and 227, the code branches based on conf.bFaster - if different nodes have different bFaster settings, could they calculate different commission distributions, causing consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ed23345-41f1-45fa-abf6-f578e39f6e19",
+    "timestamp": "2025-12-23 11:33:53.302699",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Storage Mode] At line 23, the code checks conf.storage === 'mysql' - if a node switches storage backends (e.g., migrating from SQLite to MySQL), could the different code paths produce different results for the same inputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a03722f1-15e8-46d8-a504-174d913456b4",
+    "timestamp": "2025-12-23 11:34:18.512483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Validation Skipping] At line 227, validation is skipped when conf.bFaster is true - could this allow bugs in the in-memory data structures to go undetected in production, only to surface later when bFaster is disabled?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c01b1a5-b227-4cf3-bb06-9d58ca200521",
+    "timestamp": "2025-12-23 11:34:45.102365",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Memory Usage] At lines 87-113, the SQLite code path builds assocChildrenInfosRAM entirely in memory from storage.assocStableUnitsByMci - if the DAG has thousands of units at a single MCI, could this consume excessive memory and cause the node to crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c4d743a-743a-4782-9662-e74fdbae772c",
+    "timestamp": "2025-12-23 11:35:12.660784",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Query Result Size] At lines 70-83, the SQLite query fetches all children of all parent units at since_mc_index without pagination - if there are millions of parenthood relationships, could the rows array at line 85 exhaust available memory?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_687858c7-c909-4bbc-ac72-aed71927adfc",
+    "timestamp": "2025-12-23 11:35:40.843939",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Object Accumulation] At lines 142-149, assocWonAmounts accumulates winning amounts for all child units - if the same child unit wins commissions from thousands of parents, could this nested object structure become excessively large?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a2f8c855-97bb-4bdb-8659-3f6ce54fab19",
+    "timestamp": "2025-12-23 11:36:09.926819",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Loose Equality] At line 122, the code uses !== for comparison - if assocChildrenInfos[payer_unit].headers_commission is a string (due to database query returning strings) while row.headers_commission is a number, could this comparison incorrectly trigger an error?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_89281090-8324-4753-9503-acbf9bed7d9c",
+    "timestamp": "2025-12-23 11:36:39.855888",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: getWinnerInfo()] [Hash Comparison] At line 253, the sort compares string hashes using < operator - is this lexicographic comparison, and could it produce different ordering than numeric comparison if the hashes are interpreted as numbers?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4609476-dda8-4b5a-927f-c0f37e5b145d",
+    "timestamp": "2025-12-23 11:37:09.414318",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Null vs Zero] At line 259, max_spendable_mci is set to 0 if the query returns null - could downstream code incorrectly treat 0 (genesis) as null (uninitialized), causing logic errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e4d4014-03cd-48a4-9ab3-3cdc60b03893",
+    "timestamp": "2025-12-23 11:37:39.271814",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Storage Module Race] At lines 88-113, the code relies on storage.assocStableUnitsByMci being populated correctly - if storage.js has a bug that causes units to be missing or incorrectly indexed, could commission calculation fail or distribute to wrong addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12cf5391-4e7e-4584-aba1-cec4b6f723a7",
+    "timestamp": "2025-12-23 11:38:07.552850",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Database Query Builder] The code uses conn.query() and conn.cquery() without validating the connection state - if the database connection is closed or broken, do these queries throw exceptions, silently fail, or hang indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c68e91d-fd79-4f09-8a8b-2d77fb500d14",
+    "timestamp": "2025-12-23 11:38:36.867651",
+    "report_generated": false
   }
 ]
