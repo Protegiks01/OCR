@@ -6598,5 +6598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7fd1b5da-34af-4851-9195-5f3c934afbcd",
     "timestamp": "2025-12-23 08:49:45.065049",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [getMciFromDataFeedKey parsing] Line 164 extracts MCI using string_utils.getMciFromDataFeedKey(data) - if the key format is malformed, can parsing return wrong MCI and include/exclude feeds incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0cc06fa-58fc-4862-a245-9c7baf2b010a",
+    "timestamp": "2025-12-23 08:51:00.245193",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedByAddress()] [getFeedValue conversion] Line 305 calls string_utils.getFeedValue(arrParts[0], bLimitedPrecision) - if this conversion is inconsistent with the encoding at storage time, can feeds be stored as numbers but read as strings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c470a4f9-f6d2-4615-b494-151db6635f32",
+    "timestamp": "2025-12-23 08:51:12.796925",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Unstable message iteration DoS] Lines 26-79 iterate all units in storage.assocUnstableMessages without limit - can an attacker flood the network with unstable AA units to make this iteration extremely slow, causing AA execution timeouts?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_78ef2642-e2f8-4b7b-b1c4-3844a6cd6f7e",
+    "timestamp": "2025-12-23 08:51:26.709681",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Inequality query DoS] For queries like 'feed_value > 0', lines 136-138 scan all values from 0 to maximum in KV store - can an oracle with millions of historical feeds cause this scan to take minutes, making AA execution unacceptably slow?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ce16ccd7-4245-4770-805e-98bb0f70d462",
+    "timestamp": "2025-12-23 08:51:40.018442",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Multiple oracle query cascade] Lines 255-264 query each oracle in arrAddresses sequentially via async.eachSeries - if AA queries 10 oracles and each takes 10 seconds, can total query time exceed AA execution timeout?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5e5e7f1e-95ef-4723-a153-db2872509766",
+    "timestamp": "2025-12-23 08:51:53.900195",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Message iteration per unit] Line 36 calls forEach on storage.assocUnstableMessages[unit] - if an unstable unit contains maximum 128 messages (per MAX_MESSAGES_PER_UNIT), can iterating all messages for all unstable units cause O(n*m) complexity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_781e929e-911e-4915-b8ed-f047d1987e52",
+    "timestamp": "2025-12-23 08:52:08.793647",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Console.log in hot path] Lines 89, 167, 177 call console.log during every feed query - can excessive logging slow down AA execution or fill disk with logs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a54d86e-c38f-4726-a48d-42555a4baf6c",
+    "timestamp": "2025-12-23 08:52:25.476648",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Identical MCI and level collision] Lines 242-246 throw Error if two candidates have identical latest_included_mc_index and level - can this legitimately occur when two AAs post feeds in the same round, causing all nodes to fail AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e846ae9-dcfa-468a-bc30-4ed46d997594",
+    "timestamp": "2025-12-23 08:52:44.543244",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Level-based tiebreaker reliability] Line 243 uses objUnit.level as secondary sort key - if unit level calculation has edge cases or bugs, can sort order be non-deterministic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3f0e6b5a-f774-434d-84de-0c2ab0413454",
+    "timestamp": "2025-12-23 08:53:03.814911",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Single candidate early return] Lines 224-230 return immediately if arrCandidates.length === 1 and ifseveral='last' - does this skip the stable DB query (lines 255-264) even if the DB might have a more recent stable feed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6b99d03-a675-433f-a4de-ede99f21e97a",
+    "timestamp": "2025-12-23 08:53:22.969398",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Array sort mutability] Line 237 calls arrCandidates.sort() which mutates the array in place - if arrCandidates is shared across multiple queries due to reference aliasing, can sorting affect concurrent queries?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39d56344-7b38-4c7e-80e9-5d72a3507ea1",
+    "timestamp": "2025-12-23 08:53:43.582676",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Missing unit Error throw] Lines 29, 200 throw Error 'unstable unit X not in assoc' - does this crash the entire AA execution or is it caught somewhere, and can attacker trigger this by racing unit storage and query?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_79f95bac-ac47-43b1-8540-b74af14aa99f",
+    "timestamp": "2025-12-23 08:54:05.942187",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Unknown relation Error] Line 23 throws Error for unknown relation - if relation parameter is corrupted or injection occurs, does this throw propagate to AA formula evaluation and cause bounce?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bdbf7abe-091d-44a6-90cd-baa0dd85f2d8",
+    "timestamp": "2025-12-23 08:54:28.882464",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Double onEnd Error] Line 175 throws Error 'second call of onEnd' if bOnEndCalled is already true - can this happen legitimately due to stream events, and does it crash the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc5dc866-5a03-43dd-b542-b6b88cd70bd5",
+    "timestamp": "2025-12-23 08:54:51.846353",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [Error callback inconsistency] Lines 325-366 return cb(error_message) for validation failures but lines 369-380 return cb(error_message) or cb(null, result) - if callback expects different signatures, can this cause undefined behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77f63405-67ed-4550-baf2-2648cdce27b2",
+    "timestamp": "2025-12-23 08:55:16.074744",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Stream error throw] Line 184 throws Error on stream errors rather than calling handleResult - can this bypass the async.eachSeries error handling and leave the iteration in undefined state?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 08:55:41.732475",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedExists()] [Storage module state consistency] Lines 26-28 access storage.assocUnstableMessages and storage.assocUnstableUnits - if storage.js has race conditions in populating these structures, can queries see inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_885e2bb8-0a6c-404a-ad83-648ef4b0da15",
+    "timestamp": "2025-12-23 08:56:07.649259",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Constants.aa2UpgradeMci trust] Lines 14, 106, 190, 268 rely on constants.aa2UpgradeMci being accurate - if this constant is wrong in config or if devnet sets it to 0 (line 131), can precision mode be incorrect?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a4714bda-93c1-444a-8f74-c24350f55d14",
+    "timestamp": "2025-12-23 08:56:34.595583",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: dataFeedByAddressExists()] [Kvstore.createKeyStream dependency] Line 180 uses kvstore.createKeyStream - if kvstore.js (RocksDB wrapper) has bugs in stream implementation, can corrupt data be returned?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4bd80d8-2f0a-42a3-bbc2-e350ccb136f2",
+    "timestamp": "2025-12-23 08:57:01.493401",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [ValidationUtils.isValidAddress trust] Line 328 validates addresses using ValidationUtils.isValidAddress - if this function has false positives, can invalid addresses be queried?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_791a332e-bc5e-4b46-9939-895e6f26b17c",
+    "timestamp": "2025-12-23 08:57:29.603047",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Main_chain.js MCI assignment race] Lines 32, 203 filter by objUnit.latest_included_mc_index - if main_chain.js updates this field concurrently, can queries see partially updated MCI values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33c78e7a-2dcd-4825-ac5c-7d4a8fde8325",
+    "timestamp": "2025-12-23 08:57:56.747725",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [Value=null special case] Lines 271-272 handle value===null separately with different key prefix - if an oracle posts feed_value=null (JSON null), can it be queried using value=null parameter?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ae805ca-f2df-4a90-bb0d-d406a6b60e3b",
+    "timestamp": "2025-12-23 08:58:25.410051",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValueByParams()] [feed_value optional parameter] Lines 336-340 check 'if (feed_value in params)' - can attacker pass params={feed_value: undefined} that passes the 'in' check but fails isValidValue()?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ba13fe46-8813-4f49-ad5f-2cb3d8af078b",
+    "timestamp": "2025-12-23 08:58:54.120877",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/data_feeds.js] [Function: readDataFeedValue()] [ObjResult.value undefine\n\n### Citations\n\n**File:** data_feeds.js (L1-390)\n```javascript\n/*jslint node: true */",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32e5eb2d-47d2-4772-b835-9e9c1dc5a3e8",
+    "timestamp": "2025-12-23 08:59:23.746249",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/definition.js] [Function: validateDefinition() - evaluate()] [Complexity Bypass] Can an attacker craft a deeply nested definition with alternating 'or' and 'and' operators that increments complexity only once per level but requires exponential evaluation time, causing nodes to hang while staying under MAX_COMPLEXITY limit, leading to network DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69f388f4-0691-4d3d-a92d-915869de90f0",
+    "timestamp": "2025-12-23 08:59:54.792881",
+    "report_generated": false
   }
 ]
