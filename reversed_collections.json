@@ -6598,5 +6598,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a8d623b-1856-4b84-974b-efcee25d00b1",
     "timestamp": "2025-12-23 10:17:51.318448",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonnegativeInteger()] [Array index validation] If formula/evaluation.js uses isNonnegativeInteger() to validate array indices in AA state variables but doesn't check upper bounds, can an attacker access out-of-bounds indices causing memory corruption or reading sensitive data from other AAs' state, leading to fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_150594db-5199-4a2c-a208-cbbf15b9a5d5",
+    "timestamp": "2025-12-23 10:19:01.450766",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonnegativeInteger()] [Witness list unit validation] When validation.js validates witness_list_unit field using isNonnegativeInteger(), can an attacker set witness_list_unit to 0 (genesis unit) to bypass witness compatibility checks, causing units to reference incompatible witness lists and triggering permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cba39313-65bb-47c1-af93-e7057b9abcc9",
+    "timestamp": "2025-12-23 10:19:14.042391",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isNonnegativeInteger()] [Zero acceptance edge case] If aa_composer.js uses isNonnegativeInteger() to validate AA response outputs and allows zero-amount outputs, can an attacker craft AA responses with zero-value outputs that bypass balance checks but still consume output slots, enabling bloat attacks that slow catchup processing for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18f1d978-4dfc-4f87-9ac3-ae919fbba100",
+    "timestamp": "2025-12-23 10:19:27.017900",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isPositiveInteger()] [Indivisible serial validation] When indivisible_asset.js validates serial numbers with isPositiveInteger(), can an attacker use extremely large serials (>10^15) that lose precision in JavaScript's number type, causing duplicate serials to be issued and violating indivisible serial uniqueness invariant, leading to NFT counterfeiting?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5e4fcc4-95b6-4bcc-b63f-2a056d82cb9a",
+    "timestamp": "2025-12-23 10:19:41.066710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isPositiveInteger()] [Asset amount validation] If divisible_asset.js uses isPositiveInteger() to validate asset output amounts, can an attacker exploit rounding errors or precision loss with amounts near MAX_SAFE_INTEGER to create outputs that appear positive but become zero or negative after arithmetic, enabling asset inflation or theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_af6903c7-f4e4-474d-b8e8-4095af0ed338",
+    "timestamp": "2025-12-23 10:19:55.277219",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isPositiveInteger()] [Zero exclusion validation] Since isPositiveInteger() requires int > 0, if validation.js uses this to validate fee amounts but accidentally allows 0 fees through alternative code paths, can an attacker submit units with zero fees, violating fee sufficiency invariants and enabling spam attacks that delay transaction processing for >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bafcf8a0-e84f-44d1-8854-0cae577a808c",
+    "timestamp": "2025-12-23 10:20:11.101508",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isInteger()] [NaN and Infinity] While isInteger() checks isFinite(), does it correctly reject all edge cases like -Infinity, +Infinity, and NaN when used in validation.js for unit_props.main_chain_index or last_ball_mci validation, preventing network halt from invalid MCI assignments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1dcdfffb-e3fc-4fcc-bfa7-56c0149b48bf",
+    "timestamp": "2025-12-23 10:20:28.012163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isInteger()] [Type coercion bypass] If isInteger() receives a numeric string like '42' or boolean true (which typeof returns as 'number' after coercion in some contexts), does it incorrectly validate, allowing formula/evaluation.js to process invalid operands and produce incorrect AA execution results?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_017a9913-94bc-432b-b6d4-ffce71b0a5ef",
+    "timestamp": "2025-12-23 10:20:45.705549",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isInteger()] [MAX_SAFE_INTEGER boundary] Can an attacker pass integers larger than Number.MAX_SAFE_INTEGER (2^53-1) to isInteger() that return true but lose precision when stored or compared, causing aa_validation.js to accept invalid AA state variable values that diverge across nodes and break deterministic execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bc68a16-41c9-4f37-b0b1-cb72f1cf4393",
+    "timestamp": "2025-12-23 10:21:04.498818",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: isInteger()] [Negative zero handling] Does isInteger(-0) return true, and if so, can an attacker use -0 in unit timestamps, witness_list_unit indices, or parent_units indices to cause non-deterministic behavior in validation.js when comparing values, leading to consensus divergence and permanent chain split?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4b3da666-4b77-4fcc-9b4d-f5dcadfff0d0",
+    "timestamp": "2025-12-23 10:21:24.362288",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasFieldsExcept()] [Array.indexOf performance] If arrFields contains thousands of allowed fields and obj has hundreds of properties, does the O(n*m) complexity of hasFieldsExcept() cause validation.js to spend excessive time checking fields, enabling DoS attacks that delay transaction processing for >1 hour (Medium severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_96f670c5-3383-4198-b449-dd3115263be3",
+    "timestamp": "2025-12-23 10:21:45.668985",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasFieldsExcept()] [Non-deterministic iteration] Since JavaScript object property iteration order is implementation-dependent for non-integer keys in older engines, can hasFieldsExcept() produce different results on different nodes when validating units with many fields, causing a permanent chain split requiring hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_621beda7-797a-4cb9-b4ed-1e6faf3f5b15",
+    "timestamp": "2025-12-23 10:22:07.454142",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasFieldsExcept()] [Type confusion] Can hasFieldsExcept() be bypassed by passing non-object primitives (null, undefined, number, string) that lack enumerable properties, causing validation.js to incorrectly accept units with missing required fields and leading to DAG corruption or consensus failure?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c0a2aff4-d431-4f04-bfda-d52d614507c3",
+    "timestamp": "2025-12-23 10:22:30.830077",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation_utils.js] [Function: hasFieldsExcept()] [Prototype pollution] If an attacker crafts a malicious object with __proto__, constructor, or other prototype chain properties, does hasFieldsExcept() iterate over inherited properties causing false positives in field validation, potentially allowing invalid unit structures to pass validation in validation.js and causing permanent fund freezing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df1cfbdd-71b6-41cb-bc25-3b79f4e84d37",
+    "timestamp": "2025-12-23 10:22:54.193853",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Attested Output Addresses] Can an attacker send spender_attested assets to non-attested output addresses (checked at line 2398), exploiting the filterAttestedAddresses timing to lock funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c254285e-8ae3-4adb-91f7-e6ecb8773615",
+    "timestamp": "2025-12-23 10:23:19.748668",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Non-Transferrable Loophole] For non-transferrable assets, can an attacker exploit the complex conditions at lines 2378-2389 to transfer by using 2 outputs (one to definer, one to self as change) while actually transferring to a third party?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_367811cd-f70b-4dd1-8ed8-2dbe8825be62",
+    "timestamp": "2025-12-23 10:23:45.301406",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Balance Mismatch] Can an attacker exploit rounding or overflow in the balance check at line 2375 to create/destroy assets by making total_input slightly differ from total_output?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7362a5f4-286d-44d4-8a18-1a28d69ffdb4",
+    "timestamp": "2025-12-23 10:24:12.279758",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Input Sum Overflow] Can an attacker craft inputs where total_input overflows MAX_CAP (checked at line 2372) due to headers_commission or witnessing earnings being added last?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0f7e06d4-4d5d-4dca-aeed-419155b30df0",
+    "timestamp": "2025-12-23 10:24:39.385069",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Zero Commission] Can an attacker submit headers_commission or witnessing inputs that calculate to zero commission (checked at line 2356), wasting validation resources without contributing value?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f74a5f6-9b25-42de-8f9c-9fcd0c86be28",
+    "timestamp": "2025-12-23 10:25:07.761507",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Witnessing To MCI Too Large] Can an attacker set witnessing input to_main_chain_index to max_mci (checked at line 2346), exploiting getMaxSpendableMciForLastBallMci calculation errors to claim future earnings?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd18c568-e902-4802-aa03-981a603b702b",
+    "timestamp": "2025-12-23 10:25:36.338478",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Headers Commission Range Overlap] Can an attacker submit headers_commission inputs with overlapping from/to MCI ranges (checked at line 2342), exploiting mc_outputs.readNextSpendableMcIndex race conditions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cdc6744-5d8d-412d-ba28-b6ff92540a6d",
+    "timestamp": "2025-12-23 10:26:04.821098",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Unstable Input Not In Parents] For unstable inputs, can an attacker reference input units not in parent_units (checked at line 2281), exploiting graph.determineIfIncludedOrEqual race conditions to spend unconfirmed outputs?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ebbc05ec-322b-442a-8db4-5865389a96cc",
+    "timestamp": "2025-12-23 10:26:34.378135",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Auto-Destroy Bypass] Can an attacker send auto_destroy assets to the definer_address then immediately spend them (checked at lines 2198, 2265), exploiting timing to prevent destruction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_edced970-e56d-4801-ab70-4d0571cdb8d9",
+    "timestamp": "2025-12-23 10:27:05.069785",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Denomination Mismatch Transfer] Can an attacker transfer fixed_denominations assets where input denomination doesn't match output denomination (checked at line 2263), exploiting integer division to alter denominations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_16628a63-606c-44c9-bb50-b12c23912326",
+    "timestamp": "2025-12-23 10:27:34.891122",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validatePaymentInputsAndOutputs()] [Owner Not Author] Can an attacker spend outputs where owner_address is not among authors (checked at line 2261), exploiting cached author lists to bypass this check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc4f95ab-22e6-4f30-b103-bcdd07088adf",
+    "timestamp": "2025-12-23 10:28:05.639339",
+    "report_generated": false
   }
 ]
