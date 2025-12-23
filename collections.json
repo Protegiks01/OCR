@@ -12448,5 +12448,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_44793456-8c5b-44ec-9204-ef40e991d26b",
     "timestamp": "2025-12-23 15:19:47.045337",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: goDownAndUpdateMainChainIndex()] [NULL Propagation] The final query sets '_mci=NULL WHERE main_chain_index IS NULL' - if there are millions of unstable units, can this UPDATE take minutes to execute, holding a database write lock that blocks all other operations and effectively DoSing the node until the update completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d65c388e-5acf-44ed-88fb-60a8e7b6bc6f",
+    "timestamp": "2025-12-23 15:20:59.488633",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [Infinite Recursion] The propagateLIMCI() function calls itself recursively when rows.length > 0 - can an attacker create a DAG structure where LIMCI propagation never converges (e.g., cycles or constantly increasing LIMCI values), causing infinite recursion that exhausts stack space and crashes the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_881b1ece-3477-47a0-ac5a-9d8822fe6c67",
+    "timestamp": "2025-12-23 15:21:12.139617",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [calcLIMCIs Deadlock] The calcLIMCIs() function removes units from assocChangedUnits as it processes them, then recursively calls itself if any remain - can an attacker create a dependency cycle where unit A's LIMCI depends on unit B's LIMCI which depends on C's which depends on A's, causing calcLIMCIs to never remove all units and recurse infinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_471bf6e1-e125-4729-8076-e6f31dd04dfb",
+    "timestamp": "2025-12-23 15:21:25.295543",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [LIMCI = -1 Bypass] When a parent is on MC, the code sets 'props.latest_included_mc_index = parent_props.main_chain_index' - if an attacker creates a unit whose parent has main_chain_index = -1 due to overflow or corruption, can this propagate -1 as LIMCI to descendants, breaking all queries that rely on LIMCI being non-negative and causing validation failures for all child units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e4f45ff6-b86b-4a96-99ae-66b9aadde49d",
+    "timestamp": "2025-12-23 15:21:39.920712",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [max_limci < 0 Exception] The code throws 'max limci < 0 for unit X' if all parents have negative max_limci - can an attacker deliberately create this condition by exploiting integer underflow in parent MCI calculations, causing the exception to halt MC updates and prevent any new units from being added until manual database repair?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27ef6afe-6e38-4a27-8a5a-7958060e8038",
+    "timestamp": "2025-12-23 15:21:54.268957",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [assocLimcisByUnit Memory Leak] The assocLimcisByUnit object accumulates entries for all units being processed but is never explicitly cleared - if a single updateMainChain() call processes millions of units (e.g., during initial sync), can this object grow to gigabytes of memory, causing OOM and node crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dd834bc5-e780-4f4d-87dc-429307f2e9d0",
+    "timestamp": "2025-12-23 15:22:10.093317",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: propagateLIMCI()] [UPDATE Without Limit] The query 'UPDATE units SET latest_included_mc_index=? WHERE unit=?' is called in a loop for potentially thousands of units via async.eachSeries - if this loop encounters a unit that doesn't exist (e.g., deleted by parallel archiving), can the UPDATE fail silently, leaving that unit with NULL LIMCI forever and breaking all child units that try to propagate LIMCI from it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4427449d-a474-4f8d-8553-1dd19b014e75",
+    "timestamp": "2025-12-23 15:22:26.905556",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [assocDbLimcisByUnit Comparison] The code compares assocDbLimcisByUnit with assocLimcisByUnit using _.isEqual and throws error if different - if the two objects are built using different iteration orders (JavaScript object property iteration is not guaranteed), can this throw false positive errors even when the data is actually consistent, causing nodes to crash unnecessarily?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20a5c664-e64e-4ed5-b326-b4a7d7c985e1",
+    "timestamp": "2025-12-23 15:22:44.011587",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateLatestIncludedMcIndex()] [NULL LIMCI Propagation] Units with main_chain_index > last_main_chain_index OR main_chain_index IS NULL get their LIMCI set to NULL - can an attacker exploit this by creating a unit that triggers MC reorg, causing its descendants to have NULL LIMCI temporarily, and if those descendants have children committed during that window, can those grandchildren inherit incorrect LIMCI values permanently?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_273b1669-7d30-48d8-99c7-c14bd8ffe219",
+    "timestamp": "2025-12-23 15:23:02.966189",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [bKeepStabilityPoint Override] The function immediately calls finish() and returns if bKeepStabilityPoint is true - can an attacker exploit a code path that sets bKeepStabilityPoint=true incorrectly, preventing any stability advancement permanently and causing all units to remain unstable forever, breaking light client sync and last ball updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1061d009-491f-4a34-a890-5c0054d50cef",
+    "timestamp": "2025-12-23 15:23:22.878548",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [No Best Children] The code throws 'no best children of last stable MC unit X?' if rows.length === 0 - can an attacker create a unit that becomes the last stable MC unit but has zero best children due to all its children being on alt branches, causing this exception to halt all future stability advancement until a hard fork manually fixes the state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c16c309-8771-42e5-93ff-836354fc9c7c",
+    "timestamp": "2025-12-23 15:23:44.136763",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [arrMcRows.length !== 1] The code throws 'not a single MC child?' if the number of MC children is not exactly 1 - can a race condition during MC updates cause two units to both be marked is_on_main_chain=1 with the same best_parent, causing this exception to be thrown randomly and halting stability advancement unpredictably?",
+    "url": "https://deepwiki.com/search/not-found",
+    "timestamp": "2025-12-23 15:24:06.347182",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [Recursive Call without Bound] The function calls itself recursively via advanceLastStableMcUnitAndTryNext() → updateStableMcFlag() - if many consecutive MCIs become stable in one pass, can the recursive call depth exceed JavaScript's stack limit, causing a stack overflow that crashes the node mid-stability-advancement and leaves the database in an inconsistent state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_57346ec9-4dde-46f3-b922-89a09c3dafbc",
+    "timestamp": "2025-12-23 15:24:28.102910",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [min_mc_wl = -1 Return] When findMinMcWitnessedLevel returns -1 (couldn't collect witnesses), the function calls finish() without advancing stability - can an attacker manipulate witness postings to repeatedly force min_mc_wl = -1, preventing any stability advancement and keeping all units unstable indefinitely, breaking the protocol's finality guarantee?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db5a32d9-03e4-45db-9f80-a350f2a9b216",
+    "timestamp": "2025-12-23 15:24:50.708361",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [arrFreeUnits Collection] The code collects free units by iterating storage.assocUnstableUnits - if an attacker floods the network with thousands of free units, can the determineIfStableInLaterUnits call with a large arrFreeUnits array become so slow that updateStableMcFlag takes minutes, causing 1+ hour transaction delay and medium severity impact?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8089fff5-3acd-4c6d-93dc-b17bf7523905",
+    "timestamp": "2025-12-23 15:25:14.767902",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [MC Tip Not Single] The query for tip units with 'is_free=1 AND is_on_main_chain=1' throws 'not a single mc tip' if rows.length !== 1 - can two units both be marked as MC tips simultaneously due to race conditions, causing this exception to halt all stability checks until database state is manually repaired?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd4b5af6-96c2-4d5c-aa75-5ddb13410d32",
+    "timestamp": "2025-12-23 15:25:38.941999",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: updateStableMcFlag()] [arrAllParents.length Check] The code checks 'if (arrAllParents.length <= 1)' to determine if there's a single free unit - if arrAllParents was incorrectly populated earlier due to a bug in findNextUpMainChainUnit, can this condition be false when it should be true, causing the code to skip determineIfStableInLaterUnits when it shouldn't and advancing stability incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6b7331b-1c91-45f8-8006-b1b344a025fa",
+    "timestamp": "2025-12-23 15:26:05.210653",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevel()] [level < first_unstable_mc_level] The function returns -1 if level drops below first_unstable_mc_level - can an attacker create a long chain of units with gradually decreasing witnessed_level values that forces this function to walk back to genesis, taking exponential time and causing DoS where findMinMcWitnessedLevel never completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e29ff5d6-1d49-43db-9eee-9e2f9d43360e",
+    "timestamp": "2025-12-23 15:26:32.175932",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevel()] [Witness List Substitution] The function initially uses arrWitnesses parameter but can switch to arrTipUnitWitnesses if first_unstable_mc_index <= constants.lastBallStableInParentsUpgradeMci - can an attacker exploit the boundary condition where MCI equals the upgrade MCI, causing different nodes to use different witness lists and collect different witnesses, leading to different min_mc_wl values and consensus failure on which units should stabilize?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c248e5a5-93d4-4308-9a86-1ce73fd79acd",
+    "timestamp": "2025-12-23 15:26:59.029670",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevel()] [arrCollectedWitnesses.length < MAJORITY_OF_WITNESSES] The code recurses via addWitnessesAndGoUp(best_parent_unit) while collected witnesses < 7 - can an attacker create a DAG where no path from tip to genesis contains 7 witness addresses, causing infinite recursion that never reaches the base case and hangs the stability check indefinitely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_139cad00-6b6c-4f66-a3f0-8b6a610b7932",
+    "timestamp": "2025-12-23 15:27:26.519282",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevel()] [Duplicate Witness Collection] The code checks 'arrCollectedWitnesses.indexOf(address) === -1' before adding a witness - if the same address authors multiple units on the MC, can the function count it multiple times due to race conditions in array updates, incorrectly reaching MAJORITY_OF_WITNESSES threshold with fewer than 7 distinct witnesses and advancing stability prematurely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1b78de0-08cd-4806-85db-b2b2d8cef154",
+    "timestamp": "2025-12-23 15:27:55.385871",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: findMinMcWitnessedLevel()] [min_mc_wl Integer Overflow] The function tracks min_mc_wl starting at Number.POSITIVE_INFINITY and updates it with Math.min - if witnessed_level values contain corrupted negative numbers or NaN, can min_mc_wl become NaN or negative infinity, causing all subsequent comparisons (min_mc_wl >= first_unstable_mc_level) to fail and preventing any stability advancement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d584ffef-5225-448f-8e9f-3dfd93a47e8c",
+    "timestamp": "2025-12-23 15:28:24.266347",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: createListOfBestChildren()] [Empty Array Handling] The function returns empty array if arrParentUnits.length === 0 - can this lead to incorrect max_alt_level calculations in determineMaxAltLevel where an empty alt branch is treated as having no impact on stability, causing units to stabilize prematurely when active alt branches exist?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d02d822-a2ab-4a3f-a789-dbbb046ee659",
+    "timestamp": "2025-12-23 15:28:53.118094",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: createListOfBestChildren()] [Infinite Loop via is_free] The recursive goDownAndCollectBestChildren continues until finding a unit with is_free === 1 - can an attacker create a chain of non-free units with circular best_parent relationships that never encounters a free unit, causing infinite recursion in this function and hanging all stability checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33995be8-eac6-4576-8455-e087c7b26012",
+    "timestamp": "2025-12-23 15:29:21.753300",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/main_chain.js] [Function: createListOfBestChildren()] [arrBestChildren Memory] The arrBestChildren array accumulates all units in the best-child chain - if an attacker creates a DAG with millions of units in a single best-child chain, can this array grow to gigabytes of memory, causing OOM crashes when updateStableMcFlag tries to process it?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c65f7445-83ff-4c25-ae8b-f8a240d881e1",
+    "timestamp": "2025-12-23 15:29:49.210909",
+    "report_generated": false
   }
 ]
