@@ -5698,5 +5698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0af0e6e5-afc5-4802-913a-8b5206911722",
     "timestamp": "2025-12-23 07:48:38.507393",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 45: MAX_MESSAGES_PER_UNIT=128] [Message Validation Amplification] With 128 messages per unit, if each message requires validation (payments, AA triggers, definitions), can an attacker craft units with 128 complex messages to amplify validation cost 128x, delaying transaction confirmation for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d6116ac-c2ed-4c3b-a7a5-943861cf191d",
+    "timestamp": "2025-12-23 07:49:55.451818",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 46: MAX_SPEND_PROOFS_PER_MESSAGE=128] [Private Payment Verification DoS] Private payments require spend proof validation - with 128 spend proofs per message and 128 messages per unit, can an attacker create units with 16,384 total spend proofs, causing cryptographic verification to exhaust node resources?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4ef3b5e1-0224-4a7b-939c-7b08061ed997",
+    "timestamp": "2025-12-23 07:50:08.453541",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 47: MAX_INPUTS_PER_PAYMENT_MESSAGE=128] [Input Validation Computational Explosion] With 128 inputs per message, each requiring database lookup to verify unspent status and ownership, can an attacker create payment messages with 128 inputs to amplify database queries and cause validation delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc5b9c5a-121b-493a-905a-48d7fdcee597",
+    "timestamp": "2025-12-23 07:50:21.389979",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 48: MAX_OUTPUTS_PER_PAYMENT_MESSAGE=128] [Output Storage DoS] With 128 outputs per message and 128 messages per unit, an attacker can create 16,384 outputs per unit - does this cause database storage or indexing bottlenecks when processing high-output units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_085fbaad-bd7e-4bc6-bf00-d46be0f3ae10",
+    "timestamp": "2025-12-23 07:50:35.083967",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 49: MAX_CHOICES_PER_POLL=128] [Poll Validation Complexity] Can an attacker exploit MAX_CHOICES_PER_POLL=128 to create polls with 128 choices, where validation must check choice uniqueness and format, causing O(n²) validation complexity and delaying unit acceptance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_292d9e71-c8a4-4f16-beb2-f22fb6e2c918",
+    "timestamp": "2025-12-23 07:50:49.252133",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 50: MAX_CHOICE_LENGTH=64] [Poll Choice Validation Bypass] If MAX_CHOICE_LENGTH=64 is not strictly enforced, can an attacker submit poll choices exceeding 64 bytes, potentially causing buffer overruns or string handling vulnerabilities in downstream poll processing code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bab73917-89b9-42e4-98ee-8d05f3dc39fa",
+    "timestamp": "2025-12-23 07:51:05.039021",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 51: MAX_DENOMINATIONS_PER_ASSET_DEFINITION=64] [Denomination Validation Amplification] For indivisible assets with 64 denominations, each requiring validation and storage, can an attacker issue assets with maximum denominations to amplify validation costs and slow down asset issuance processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05ebc941-e595-4ff3-b338-0a7fbac0c951",
+    "timestamp": "2025-12-23 07:51:22.078089",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 52: MAX_ATTESTORS_PER_ASSET=64] [Attestor Verification DoS] If an asset definition includes 64 attestors, each requiring address validation and attestation checks, can this create a validation bottleneck where asset transfers require 64x attestor verifications per transaction?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d042a94d-6115-472f-b32b-fd8f02beb6ae",
+    "timestamp": "2025-12-23 07:51:40.499488",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 53: MAX_DATA_FEED_NAME_LENGTH=64] [Data Feed Name Validation Bypass] Can an attacker craft data feed names exactly at the 64-byte boundary with special characters or encoding tricks to bypass downstream validation or cause string parsing errors in AA formulas that read feed names?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d2a15ca5-bd37-4903-9cba-74fc26ab7b0a",
+    "timestamp": "2025-12-23 07:51:59.725203",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 54: MAX_DATA_FEED_VALUE_LENGTH=64] [Data Feed Value Injection] With data feed values limited to 64 bytes, but potentially read by AAs as strings, numbers, or JSON, can an attacker craft payloads like '{",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63726594-07ae-40f5-9b76-241f3dbb26c2",
+    "timestamp": "2025-12-23 07:52:19.155257",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 55: MAX_AUTHENTIFIER_LENGTH=4096] [Authentifier Validation Resource Exhaustion] With authentifiers up to 4KB in size (e.g., large multi-sig scripts or complex definitions), can an attacker create units with maximum-size authentifiers for all 16 authors (64KB total), causing memory allocation spikes during validation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b9abc8a-9368-4cc9-a774-9a9d9677bd44",
+    "timestamp": "2025-12-23 07:52:40.565017",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 56: MAX_CAP=9e15] [Asset Cap Overflow Attack] The MAX_CAP of 9e15 is close to JavaScript's MAX_SAFE_INTEGER (9007199254740991) - can operations involving asset caps cause integer overflow when combined with other large numbers, potentially bypassing cap enforcement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7195a07b-50e0-49a7-986b-dfd309c44ab4",
+    "timestamp": "2025-12-23 07:53:03.118679",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 58: MAX_UNIT_LENGTH=5e6] [5MB Unit Processing Bottleneck] Can an attacker submit units approaching the 5MB limit with valid structure, causing JSON parsing, validation, and database insertion to consume excessive time and delay confirmation of other units for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_93fbc70d-a6d4-4dd4-919c-b36fcb1bee16",
+    "timestamp": "2025-12-23 07:53:26.029550",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 38: HASH_LENGTH=44] [Hash Length Validation Bypass] If hash validation only checks for 44-character length without verifying base64 validity, can an attacker submit invalid base64 hashes (e.g., with special characters) that pass length checks but fail later processing, causing validation inconsistencies?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3a72744b-6819-46cd-a849-e13864eed3fc",
+    "timestamp": "2025-12-23 07:53:50.687003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 39: PUBKEY_LENGTH=44] [Public Key Length Enforcement Weakness] Is PUBKEY_LENGTH=44 enforced before cryptographic operations, or can an attacker submit shorter/longer public keys that cause signature verification to fail silently or produce false positives?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ae5d786-e41e-43df-aef5-10370499ce60",
+    "timestamp": "2025-12-23 07:54:14.951102",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 40: SIG_LENGTH=88] [Signature Length Malleability] With SIG_LENGTH=88, can an attacker pad or truncate signatures to exactly 88 bytes while maintaining some validation properties, potentially exploiting signature malleability to create alternative valid signatures for the same unit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3bfe5f50-8116-4fba-8ea6-abe11c2e2fcd",
+    "timestamp": "2025-12-23 07:54:39.995293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 63: MAX_AA_STRING_LENGTH=4096] [AA String Memory Exhaustion] Can an attacker craft AA formulas with multiple 4096-byte string literals, potentially combined in operations, to cause string concatenation to exceed memory limits and crash the formula evaluation engine?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5f8437e2-436f-4966-b71a-f0b8c325cd2d",
+    "timestamp": "2025-12-23 07:55:07.239205",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 64: MAX_STATE_VAR_NAME_LENGTH=128] [State Variable Name Collision Attack] With 128-character state variable names, can an attacker create state variables with names differing only in the 127th character, causing confusion or collision in state storage that leads to incorrect state reads/writes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc66a857-7572-47d0-bcd6-5eb1735f0b3a",
+    "timestamp": "2025-12-23 07:55:34.368672",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 65: MAX_STATE_VAR_VALUE_LENGTH=1024] [State Value Serialization Issues] If state values are stored as JSON or other serialized format, can the 1024-byte limit be bypassed through encoding tricks (e.g., unicode escapes that expand during deserialization)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59e4e933-5986-44b7-950a-36e520a6b486",
+    "timestamp": "2025-12-23 07:56:03.256772",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 66: MAX_OPS=2000] [Operation Count Boundary Exploit] At exactly 2000 operations, can an attacker craft formulas that perform expensive operations (e.g., cryptographic functions) as the 1999th and 2000th ops, causing execution to consume maximum time while staying under the limit?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f1dd1286-6b4b-40b9-91b1-431927003b8d",
+    "timestamp": "2025-12-23 07:56:32.956608",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 67: MAX_RESPONSES_PER_PRIMARY_TRIGGER=10] [Secondary Trigger Cascade Amplification] If each of 10 secondary AA responses can itself trigger up to 10 more AAs, does this create a potential cascade of 10^n responses that bypasses the per-trigger limit through chaining?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2c777e8-5e05-43a8-bd11-bbdf6e247448",
+    "timestamp": "2025-12-23 07:57:03.649786",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 68: MAX_RESPONSE_VARS_LENGTH=4000] [Response Variable Size Attack] Can an attacker craft AA responses that store 4000 bytes in response variables, and if these are later read by another AA, does this amplify storage and retrieval costs across cascaded AA executions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffde756e-de6c-4efa-bf81-8fab34548d9a",
+    "timestamp": "2025-12-23 07:57:35.476255",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 57: MAX_COMPLEXITY=100] [Complexity Calculation Gaming] How is formula complexity calculated to reach MAX_COMPLEXITY=100? Can an attacker craft formulas that appear simple (low complexity score) but contain exponentially expensive operations (e.g., nested loops with 100 iterations each)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f8f4f721-3e54-4d33-a551-a8d6bd14996d",
+    "timestamp": "2025-12-23 07:58:08.076622",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 70: MIN_BYTES_BOUNCE_FEE=10000] [Bounce Fee Bypass via Rounding] If bounce fee calculation involves division or rounding, can an attacker craft AA triggers where computed bounce fees fall slightly below 10000 bytes due to rounding errors, allowing bounces with insufficient fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0b0134ef-c340-44e8-92a5-1d2f41510f04",
+    "timestamp": "2025-12-23 07:58:42.562117",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/constants.js] [Line 71: SYSTEM_VOTE_COUNT_FEE=1e9] [Vote Fee Overflow] The SYSTEM_VOTE_COUNT_FEE of 1 billion bytes - can operations involving this fee (e.g., calculating total fees for multiple votes) cause integer overflow when combined with other fee calculations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_47df3a5a-13aa-4301-ae9d-3ddd1df225c3",
+    "timestamp": "2025-12-23 07:59:15.163234",
+    "report_generated": false
   }
 ]
