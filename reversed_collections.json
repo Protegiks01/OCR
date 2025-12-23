@@ -8698,5 +8698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e66c91a9-0d1d-4f97-9050-dc57fe0261fa",
     "timestamp": "2025-12-23 13:56:03.832160",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Result Transformation Cordova] On Cordova, result.affectedRows is always 1 even for multi-row inserts. Can this cause validation logic that checks affectedRows to incorrectly conclude that only one row was inserted when multiple were, breaking balance calculations and allowing asset inflation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1e63e933-19f9-41a2-8f2f-dd21ae409c59",
+    "timestamp": "2025-12-23 13:57:12.563806",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [SELECT vs Non-SELECT Detection] The code uses regex /^\\\\s*SELECT/i to detect SELECT queries. Can an attacker craft queries that don't match this pattern but still perform reads (e.g., WITH ... SELECT, or /* comment */ SELECT), causing the wrong execution path (db.run vs db.all) and returning incorrect result formats?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45e7366c-76a0-477a-9aa0-89efcd648040",
+    "timestamp": "2025-12-23 13:57:26.213391",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Ready State Race] If takeConnectionFromPool() is called before onDbReady() fires, it queues the request on the eventEmitter. If the database initialization fails and onDbReady() never fires, do all queued requests leak memory and never execute, causing gradual memory exhaustion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9f788c7-5cda-450c-b42d-547acc4e1fd1",
+    "timestamp": "2025-12-23 13:57:38.898639",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: close()] [Incomplete Shutdown] The close() function only closes arrConnections[0] and shifts the array. If multiple connections are open, do the remaining connections stay open indefinitely with active queries, preventing clean shutdown and potentially corrupting the database when the process is forcefully terminated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4cc71c45-1f31-49cd-ade8-b2d639a9eed4",
+    "timestamp": "2025-12-23 13:57:52.225130",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [CurrentQuery Race Condition] The currentQuery field is set before query execution and cleared after. If printLongQuery() reads this field concurrently, can it capture a partially-written array, causing crashes when trying to log undefined elements or exposing memory addresses via toString() coercion?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a996275b-32dc-44ce-8aaa-93bb12c90509",
+    "timestamp": "2025-12-23 13:58:06.405411",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Queue Starvation] When all connections are busy, new requests are queued in arrQueue. If long-running queries monopolize all connections, can queued requests starve indefinitely, causing transaction confirmation delays >1 hour even though the queue isn't full?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_04f66332-b45d-4285-847c-2ed9b67c60b6",
+    "timestamp": "2025-12-23 13:58:21.651943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [bInUse Check Bypass] The query() method throws an error if !this.bInUse, but this check isn't atomic. Can an attacker race two threads where one calls release() and another calls query() simultaneously, bypassing the check and executing a query on a released connection that's being used elsewhere?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_22900973-4dc3-4538-a55a-3380b7003530",
+    "timestamp": "2025-12-23 13:58:37.876950",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.release()] [Double Release Attack] If connection.release() is called twice on the same connection, can the second call pop a handler from arrQueue and assign the same connection to two different operations, causing query interleaving where results from query A are returned to the callback for query B, corrupting validation logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_34d6e03e-8f55-408c-9590-11b4d00e6de2",
+    "timestamp": "2025-12-23 13:58:55.585707",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Migration Error Masking] If sqlite_migrations.migrateDb() encounters errors during schema upgrades, does it call the handleConnection callback anyway with a partially migrated database, causing subsequent queries to fail unpredictably and potentially accepting units that should be rejected?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c8583ee3-5288-42de-b6b3-0c65aa8fbe8b",
+    "timestamp": "2025-12-23 13:59:14.600810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Unhandled Promise Rejections] When using promises without callbacks, if the query fails, does the promise rejection propagate correctly, or can unhandled promise rejections cause silent failures where critical validation queries fail but the node continues processing, accepting invalid units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09c1743e-336d-4662-ada8-cd2d12440ae8",
+    "timestamp": "2025-12-23 13:59:34.285715",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Parameter Logging Security] When consumed_time > 25ms, the function logs query details including parameters. Can an attacker submit queries that deliberately exceed this threshold to force logging of sensitive data (e.g., private payment amounts, AA state variable keys) to disk, where it can be extracted later?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a131103-c8b9-4af3-9db1-880d046d7f99",
+    "timestamp": "2025-12-23 13:59:55.207289",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database Open Error Exposure] If database opening fails, the function throws Error(err) which may contain file system paths, permission details, or disk corruption information. Can an attacker intentionally corrupt the database file to trigger these errors and extract sensitive path information or system configuration?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c71c9c0-311e-4dc6-a64f-6744aa034c75",
+    "timestamp": "2025-12-23 14:00:16.968577",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [SQL Error Information Disclosure] When a query fails, the error is thrown with the full SQL string and parameters. Can an attacker trigger validation errors that expose database schema, table names, and constraint details, providing reconnaissance information for crafting more sophisticated attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a9b4612-0bb7-43be-9d83-682cffd6fdea",
+    "timestamp": "2025-12-23 14:00:39.952626",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: query()] [Callback vs Promise Inconsistency] The query() function supports both callbacks and promises. If a module mixes these patterns (e.g., uses promise for one query, callback for another), can error handling differences cause some database errors to be silently swallowed, allowing invalid units to be stored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5fe2c6c-2298-453e-9c83-6cf2862bba2d",
+    "timestamp": "2025-12-23 14:01:03.824373",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.release()] [Connection Release Before Commit] If a module calls connection.release() immediately after connection.query() without waiting for the callback, can the connection be reused for a different query before the first query's WAL buffer is flushed to disk, causing commits to be lost during crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2a3a759b-6a29-466e-b582-270e44495da7",
+    "timestamp": "2025-12-23 14:01:28.474711",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Non-Deterministic Query Ordering] If multiple connections execute queries concurrently without proper locking, can the order of operations (e.g., inserting unit A vs unit B) differ across nodes, causing non-deterministic MC index assignment and permanent chain splits?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3037cf1e-1233-40df-82c5-df899bdda4f2",
+    "timestamp": "2025-12-23 14:01:53.058394",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Autocommit Between Queries] SQLite in autocommit mode commits after each query. If a module executes multiple related queries on the same connection (e.g., validating inputs, then inserting outputs), can a crash between queries leave the database in a state where inputs are marked spent but outputs don't exist, permanently locking funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_483a4e68-02dc-4f15-90b1-8a0332ee1d81",
+    "timestamp": "2025-12-23 14:02:18.450582",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [No Explicit Transaction Support] The connection object doesn't expose BEGIN/COMMIT/ROLLBACK methods. Can calling modules like storage.js perform multi-step operations (e.g., inserting a unit + updating balances + marking inputs as spent) without transaction protection, causing partial commits during crashes that create inconsistent database state?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b7d28b93-f86c-4973-afeb-429e323914b7",
+    "timestamp": "2025-12-23 14:02:44.551977",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Migration Failure Recovery] If sqlite_migrations.migrateDb() fails partway through schema changes, does the connection remain in an inconsistent state where some tables have new schemas and others have old schemas, causing validation queries to return incorrect results and breaking double-spend prevention?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a1dc228-87bf-4ee4-9346-d7c4d5013498",
+    "timestamp": "2025-12-23 14:03:10.774757",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Temp Store Memory DoS] PRAGMA temp_store=MEMORY forces temporary tables into RAM. Can an attacker craft queries with large temporary result sets (e.g., complex JOINs or GROUP BY operations on millions of rows) that consume all available memory, crashing the node and preventing transaction confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ecfa4257-fa9b-4d8d-97f7-3fb21ec073f3",
+    "timestamp": "2025-12-23 14:03:36.355284",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Cache Size Memory Exhaustion] For full nodes, PRAGMA cache_size=-200000 sets a 200MB page cache. Can an attacker trigger queries that load massive amounts of data into the cache (e.g., scanning all historical units), exhausting system memory and causing OOM kills that halt the network?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_40503ba0-3475-49c7-a04d-5f48263fd7b2",
+    "timestamp": "2025-12-23 14:04:02.645978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Busy Timeout Deadlock] PRAGMA busy_timeout=30000 sets a 30-second timeout for lock acquisition. Can an attacker submit a long-running transaction (e.g., updating MC index for all units) that holds locks for >30 seconds, causing all other connections to timeout and throw errors that crash dependent modules like validation.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_81b470d6-fee2-47eb-8124-5f07f68daf38",
+    "timestamp": "2025-12-23 14:04:29.770666",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Synchronous FULL Performance DoS] PRAGMA synchronous=FULL forces disk sync after every transaction. Can an attacker flood the network with many small transactions that each trigger expensive fsync() calls, causing severe performance degradation where transaction confirmation takes >1 day, meeting the Immunefi medium severity criteria?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6894f4f1-e75c-4a0c-af9b-5786399367cd",
+    "timestamp": "2025-12-23 14:04:57.139179",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [WAL Mode Concurrency Issues] PRAGMA journal_mode=WAL enables Write-Ahead Logging. If multiple processes open the same database (e.g., during migration or backup), can conflicting WAL checkpoint operations cause database corruption where some transactions are lost, leading to double-spend vulnerabilities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad93fe2c-6826-47ae-9b71-9d2637201880",
+    "timestamp": "2025-12-23 14:05:26.540625",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Foreign Keys Disabled Window] PRAGMA foreign_keys=1 is set after database open. During the brief window before this pragma is executed, can an attacker insert records that violate foreign key constraints (e.g., units referencing non-existent parent units), causing permanent DAG corruption that breaks consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f2760c5a-5fb2-497a-bb5c-61c73ade3aa9",
+    "timestamp": "2025-12-23 14:05:53.289766",
+    "report_generated": false
   }
 ]
