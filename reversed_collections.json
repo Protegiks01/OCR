@@ -7348,5 +7348,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_eeb9fd0f-dc79-4113-aab2-d0d417ac5a2a",
     "timestamp": "2025-12-23 12:25:39.933641",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Timestamp Manipulation] Can an attacker set objUnit.timestamp to exactly conf.max_seconds_into_the_future_to_accept seconds in the future (line 158) to delay validation and cause transient errors for all other validators, allowing the attacker to gain timing advantages in double-spend attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6d5a8a5-9cf4-4cb5-a95e-3c89965281fa",
+    "timestamp": "2025-12-23 12:26:59.138525",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [AA Detection Bypass] Can an attacker craft a unit with exactly one author and no authentifiers (triggering 'possible AA' check at line 81) but include valid authentifiers in a race condition, bypassing AA validation requirements and submitting an improperly validated AA response?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_703ac938-d1dd-4e8b-8a0f-28832e304ff4",
+    "timestamp": "2025-12-23 12:27:11.968457",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Transaction Rollback] If validation advances the last stable MCI (bAdvancedLastStableMci=true) but then fails later validation steps, can the ROLLBACK at line 242 corrupt the stability point by rolling back only database changes while leaving in-memory caches updated?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d80086c8-1933-42bc-bf1a-3980eeb2c82c",
+    "timestamp": "2025-12-23 12:27:25.057627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Mutex Deadlock] Can an attacker craft units with circular author address dependencies that cause mutex.lock(arrAuthorAddresses) to deadlock when multiple units are validated concurrently, freezing all validation for those addresses and halting network progress?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e3a9245e-ff90-4f3f-a8cd-662bb6ef0442",
+    "timestamp": "2025-12-23 12:27:38.752278",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Hash Collision] If objectHash.getUnitHash() produces a collision (unit hash matches but content differs), can an attacker exploit the hash-first validation to bypass content validation and inject a malicious unit with the same hash as a legitimate one?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a121fed-555a-4532-af80-6403c0fd656d",
+    "timestamp": "2025-12-23 12:27:53.163495",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/validation.js] [Function: validate()] [Race Condition] Can two threads simultaneously validate the same unit before checkDuplicate() runs, both passing the duplicate check and causing the same unit to be stored twice with different validation states, leading to database inconsistency and potential double-spend?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa49ba64-bb3e-4673-8c70-a521589db32e",
+    "timestamp": "2025-12-23 12:28:08.601627",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Missing Content-Type validation] Fetched definition content isn't validated for Content-Type. Can an attacker serve executable content (e.g., text/html with XSS) that gets interpreted differently by downstream parsers, causing code execution vulnerabilities?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3cdec96a-c2cf-4626-b06b-048a6be6536a",
+    "timestamp": "2025-12-23 12:28:25.807497",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: fetchUrl()] [Missing TLS certificate validation] https.get() at line 262 may not validate TLS certificates by default. Can an attacker perform MITM attacks on definition fetching, injecting malicious AA definitions that steal funds when deployed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0702f50d-fc47-4f45-8cf8-375cdfc104db",
+    "timestamp": "2025-12-23 12:28:44.279431",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Missing amount feasibility check] Amounts are validated as positive integers but not checked against user's balance or maximum spendable amount. Can attacker create URIs requesting amounts >total_supply that pass validation but fail composition?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a12b77ec-b5b7-4abd-a4b5-fab66acf50e4",
+    "timestamp": "2025-12-23 12:29:03.436810",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Missing asset existence check] Assets validated at lines 176, 224 check format but not whether asset exists on the DAG. Can an attacker reference non-existent assets that pass validation but cause transaction to be rejected after user signs, wasting user time and fees?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a037644b-0c05-4fba-b696-bfdf4491060f",
+    "timestamp": "2025-12-23 12:29:23.214351",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Missing array length validation] For system_vote op_list (line 145), the array is split on newlines but no validation prevents empty newlines creating empty array elements. Can this cause array length mismatch between lines.length and valid addresses.length, bypassing COUNT_WITNESSES check?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5565be3d-a5e8-430d-a1cc-0a420e76a885",
+    "timestamp": "2025-12-23 12:29:44.510495",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Missing maximum URI length] No validation exists for total URI length. Can an attacker submit URIs >1MB that pass parsing but exhaust memory when stored in objRequest or processed by downstream modules, causing node crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a34f54e-387a-4c32-897b-0dc908022482",
+    "timestamp": "2025-12-23 12:30:07.311982",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Integration: uri.js → aa_composer.js] If data URIs with 'definition' app type allow arbitrary JSON in fetched definitions, can an attacker inject malicious AA formulas that execute during parsing, exploiting formula evaluation vulnerabilities for fund theft?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_63fd037c-e53a-4316-ade1-44622e8a1c49",
+    "timestamp": "2025-12-23 12:30:30.828773",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Integration: uri.js → validation.js] If address validation rules differ between ValidationUtils (used by uri.js) and definition.js (used by validation.js), can an attacker craft addresses that pass URI parsing but fail transaction validation after user commits funds?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4352b7b-649d-43e3-adfa-1e28e55e7844",
+    "timestamp": "2025-12-23 12:30:54.645436",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Integration: uri.js → device.js] If pairing secrets extracted by parseUri() aren't properly rate-limited in device.js, can an attacker submit millions of pairing URIs with different secrets to brute-force active pairing sessions and hijack device connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3219b4de-3a7f-45b2-9278-9473d533cf79",
+    "timestamp": "2025-12-23 12:31:19.608943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Integration: uri.js → wallet.js] If parseUri() extracts from_address and wallet.js doesn't verify user owns this address before signing, can an attacker create URIs that cause users to sign transactions spending from arbitrary addresses, enabling theft of any user's funds (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_db4c3586-c21c-440c-86ef-5da63fc53666",
+    "timestamp": "2025-12-23 12:31:45.849264",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Integration: uri.js → composer.js] If parseUri() allows amounts that pass validation but overflow when combined in composer.js (e.g., amount=MAX_INT and amount2=MAX_INT), can this cause integer overflow in total balance calculations, minting unlimited assets and direct fund theft (Critical severity)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_652030ef-0104-44bd-a967-720331fd85f3",
+    "timestamp": "2025-12-23 12:32:12.575647",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseAdditionalAssets()] [Zero additional assets] At line 232, empty additional_assets object returns {}. Does composer.js handle the case where additional_assets exists but is empty differently from when it's undefined, potentially causing amount/asset mismatch in transactions?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_186404fe-0218-442f-bed8-9135d7d9e39f",
+    "timestamp": "2025-12-23 12:32:41.124523",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseQueryString()] [Empty parameter name/value] If a query string contains '=value' or 'name=' (empty name or value), lines 244-246 still create assocParams entries. Can downstream code assume non-empty strings and crash when accessing assocParams[''] or processing empty values?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b2b91c07-6636-4329-9c21-1d7d02389809",
+    "timestamp": "2025-12-23 12:33:10.723041",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [decodeURIComponent double-decoding] At line 108, decodeURIComponent is called on main_part. If the URI was already decoded by the browser/OS before being passed to parseUri(), can double-decoding cause character corruption or injection attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e07eb81c-85c7-4403-957d-9226e351909d",
+    "timestamp": "2025-12-23 12:33:40.827917",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Three question marks bypass] At line 106, validation rejects URIs with >2 question marks. Can an attacker submit URIs with exactly 2 question marks in specific positions (e.g., 'obyte:address??amount=1') that cause query_string parsing to fail silently, allowing malicious parameters to be ignored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56da7c9d-6d08-49f4-82e9-4e03d345efff",
+    "timestamp": "2025-12-23 12:34:10.045641",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Empty query string handling] At lines 106-109, value.split('?') creates arrParts. If query_string is undefined or empty string, does downstream validation handle this correctly, or can it cause null dereference errors when accessing assocParams properties?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_141e43b0-87ad-429d-9738-3eb3ee2e88c6",
+    "timestamp": "2025-12-23 12:34:39.672059",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Hash length verification bypass] At lines 122, 176, hash lengths are validated with constants.HASH_LENGTH. If a different hash algorithm is introduced (e.g., SHA3-256 vs. SHA256), can length-only validation allow attacker to submit hashes from weaker algorithms, enabling collision attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_967224c6-64de-4f35-98eb-b45c601486f7",
+    "timestamp": "2025-12-23 12:35:08.671358",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: parseUri()] [Pubkey format confusion] At line 66, pubkey length is checked but not the format (base64 alphabet). Can an attacker submit pubkeys with invalid base64 characters that pass length check but fail during actual cryptographic operations, causing authentication bypass or pairing failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8c66341d-2346-4ac0-bd01-ba7cc38a2255",
+    "timestamp": "2025-12-23 12:35:36.660141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/uri.js] [Function: handleMnemonic()] [Mnemonic entropy reduction] The Mnemonic.isValid() check at line 79 validates BIP39 format but doesn't check entropy. Can an attacker submit low-entropy mnemonics (e.g., 'word1 word1 word1...') that pass validation but generate predictable keys, allowing attacker to steal textcoin funds before victim claims them?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ee93d48d-6240-46dc-9975-61a808d04aa1",
+    "timestamp": "2025-12-23 12:36:04.166879",
+    "report_generated": false
   }
 ]
