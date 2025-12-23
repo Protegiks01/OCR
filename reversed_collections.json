@@ -8248,5 +8248,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d4536d4-0853-45de-97a8-003907c46c5d",
     "timestamp": "2025-12-23 13:25:21.862555",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: encodeMci()] [Integer overflow] The function computes `0xFFFFFFFF - mci` at line 60. If `mci` is negative or exceeds 2^32-1, can this cause integer overflow or underflow, producing colliding encoded values? For example, would `encodeMci(-1)` produce the same result as `encodeMci(0xFFFFFFFF)`, breaking data feed ordering in main_chain.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09396904-f4ee-4029-bb30-712bb00a10a5",
+    "timestamp": "2025-12-23 13:26:40.262620",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Memory exhaustion] For very large arrays or objects with millions of keys, the `arrComponents` array at line 12 could grow unbounded. Can an attacker submit a unit with massive nested structures to exhaust node memory during hash calculation, causing OOM crashes and network halt?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a840009-8ab0-4bd2-b330-379ef9001dd4",
+    "timestamp": "2025-12-23 13:26:52.887759",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Circular reference handling] The function does not check for circular references. Can an attacker create a unit object where `obj.child = obj` or similar circular structure, causing infinite recursion at line 34 or 45, crashing all nodes that attempt to hash it and freezing network transactions for >24 hours?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4c13d985-fe0d-4c2e-bf08-5ba4d98e975b",
+    "timestamp": "2025-12-23 13:27:05.744920",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Recursive depth attack] The `extractComponents()` function at line 13 is recursive with no depth limit. Can an attacker submit a unit with deeply nested objects (e.g., 10,000+ levels deep) to cause stack overflow, crashing the node and enabling a total network shutdown via DoS?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0044e4fe-7173-465a-b6f9-534521cf7340",
+    "timestamp": "2025-12-23 13:27:19.018097",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [STRING_JOIN_CHAR collision] The function joins components with null byte `\\\\x00` at line 55. Can an attacker craft nested object structures where legitimate string values contain `\\\\x00` bytes, causing the join operation to produce ambiguous serializations where `{\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_259160a7-c47b-446c-ac46-19ac202b545f",
+    "timestamp": "2025-12-23 13:27:33.070830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Prototype pollution impact] If an attacker pollutes `Object.prototype` or `Array.prototype` with additional properties before a unit is hashed, will `Object.keys(variable).sort()` at line 38 include the polluted properties, changing the hash? Could this be exploited to create hash collisions or forge unit signatures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b0157ea-736e-4722-817a-4128eba37ceb",
+    "timestamp": "2025-12-23 13:27:48.442597",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Symbol property injection] The function uses `Object.keys()` at line 38, which doesn't enumerate Symbol properties. Can an attacker add Symbol-keyed properties to a unit object that get ignored during hash calculation but later affect unit validation or AA execution, causing state divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c4bebbfb-7641-4ced-96e0-68f30143671c",
+    "timestamp": "2025-12-23 13:28:05.395842",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Array hole handling] At line 33-34, the function iterates over array indices, but does it correctly handle sparse arrays with holes (e.g., `[1, , 3]` where index 1 is empty)? Could this cause different serializations depending on whether holes are skipped or serialized as undefined, breaking consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f8b7c63-e906-4100-adda-3449afbbf2c4",
+    "timestamp": "2025-12-23 13:28:22.882547",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Type confusion] At line 16-27, the function handles string, number, and boolean types with specific prefixes ('s', 'n', 'b'). Can an attacker exploit JavaScript type coercion by submitting a unit where a field is a boxed primitive (e.g., `new String(\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82f0561c-fc51-4505-92f2-a960a6915aca",
+    "timestamp": "2025-12-23 13:28:42.005658",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Infinity/NaN handling] The function rejects non-finite numbers at line 21-22, but what happens if an attacker encodes `Infinity` or `NaN` as a string (e.g., `\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0bc42bf-18aa-4d41-8fdc-f2ca5093ac2d",
+    "timestamp": "2025-12-23 13:29:02.213645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Number precision] At line 23, numbers are converted to strings using `toString()`. For very large integers near `Number.MAX_SAFE_INTEGER` (2^53-1), can floating-point precision loss cause the same numeric value to be serialized differently on 32-bit vs 64-bit systems, breaking hash determinism?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c78d37bd-6168-4a5b-84d4-08d3312ee3e0",
+    "timestamp": "2025-12-23 13:29:23.320763",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Undefined property handling] The function checks for undefined properties at line 42-43, but does this detect properties set to `undefined` via `Object.defineProperty()` with getter functions that return undefined conditionally? Could race conditions cause the same object to produce different hashes on different validation passes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b86b6189-c554-40dd-b686-09f1996eea1b",
+    "timestamp": "2025-12-23 13:29:45.362022",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Empty object rejection] At line 40, empty objects are rejected, but can an attacker craft a unit definition with an object that becomes empty after prototype pollution or property deletion in transit, causing some nodes to accept it during initial validation but reject it during hash recalculation, freezing fund withdrawals?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08fd8074-86b1-48ed-8511-f1c1e02fb99f",
+    "timestamp": "2025-12-23 13:30:07.702049",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Empty array rejection] The function rejects empty arrays at line 31, but does this check apply recursively to nested arrays? Can an attacker submit a unit with structure like `{\\",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e78ba80-ea81-4ab0-b5de-537bb4c8c7a8",
+    "timestamp": "2025-12-23 13:30:31.712830",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Null value handling] The function throws an error for null values at line 15, but what happens if an attacker constructs a unit where a critical field (e.g., parent unit hash, witness address) is set to null in a way that bypasses earlier validation? Could this cause some nodes to reject the unit while others process it with default values, causing chain divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3abc666-6fd6-4e04-8fbd-62918cf3907c",
+    "timestamp": "2025-12-23 13:30:56.429932",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/string_utils.js] [Function: getSourceString()] [Non-deterministic ordering] In the recursive object key sorting at line 38, if two JavaScript engines produce different sort orders for keys containing non-ASCII Unicode characters (e.g., emoji, CJK characters, or combining diacritics), could this cause different nodes to compute different unit hashes for the same unit content, leading to permanent chain split requiring hard fork?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d08f6ac9-2165-4b04-be48-ae78cf094d99",
+    "timestamp": "2025-12-23 13:31:22.372905",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: escape()] [Array Member Type Coercion] When escaping arrays, the function recursively calls escape() on members. Can non-string members (e.g., numbers, booleans) be coerced to strings in unexpected ways that bypass escaping, allowing SQL injection through numeric array parameters?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb080fac-e8b1-484e-a921-27ed1aba85d4",
+    "timestamp": "2025-12-23 13:31:48.098293",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Time Measurement Wrap Around] The consumed_time is calculated as Date.now() - start_ts. Can long-running queries (>24 days) cause integer overflow in the time calculation, resulting in incorrect performance metrics or missing long query detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_773528b3-2925-4298-8199-d336c364c519",
+    "timestamp": "2025-12-23 13:32:15.675729",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connect()] [Callback Queue Corruption] If handleConnection callback throws an exception, does this corrupt the connection object's state or the arrQueue, causing subsequent connection requests to fail or receive incorrect connection objects?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1b652fe0-97d3-49c1-bd2d-694400900825",
+    "timestamp": "2025-12-23 13:32:44.350305",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: takeConnectionFromPool()] [Starvation During Migration] If sqlite_migrations.migrateDb() takes a very long time (e.g., reindexing large tables), can requests that arrive during migration queue up indefinitely, causing a backlog that takes hours to clear even after migration completes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8e4d316-6079-476b-bf61-1023a7f3848f",
+    "timestamp": "2025-12-23 13:33:12.562811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Result Object Mutation] The callback receives a result object that may be modified by calling code. If the same result object is reused across multiple queries (e.g., due to caching), can mutations affect subsequent queries and cause data corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ab340d9b-7430-431c-9bb5-fae8926428c6",
+    "timestamp": "2025-12-23 13:33:39.455890",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: createDatabaseIfNecessary()] [Symbolic Link Attack] On desktop platforms, can an attacker create a symbolic link at the expected database path pointing to a sensitive system file? When the node attempts to initialize, would it overwrite the system file with the initial database, causing system instability?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c01598e-2002-4f47-b754-fc0d35292395",
+    "timestamp": "2025-12-23 13:34:07.453343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: openDb()] [Database File Descriptor Leak] If database opening succeeds but subsequent PRAGMA settings fail, is the database file descriptor properly closed, or does it leak, eventually exhausting file descriptors and preventing any new database connections?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b2b47ce-903a-40f7-aec5-7e120b41e8b5",
+    "timestamp": "2025-12-23 13:34:35.212295",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: expandArrayPlaceholders()] [Lodash _.flatten Depth] The function uses _.flatten(params) which flattens arrays one level by default. Can attackers pass nested arrays that aren't fully flattened, causing some parameters to be arrays instead of scalars, which SQLite parameter binding may handle incorrectly?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9de7e1c2-3b54-4f7b-a5d5-f101ff4f6761",
+    "timestamp": "2025-12-23 13:35:02.810467",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/sqlite_pool.js] [Function: connection.query()] [Arguments Object Mutation] The function modifies the arguments object by pushing new callbacks. Can this cause issues in strict mode or with certain JavaScript engine optimizations, leading to unexpected behavior or performance degradation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6760b5dc-fc19-48f6-87f8-1ef16373e767",
+    "timestamp": "2025-12-23 13:35:30.354326",
+    "report_generated": false
   }
 ]
