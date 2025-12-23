@@ -8098,5 +8098,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e4a5ef9-2032-4126-ba87-b29fc7a174bd",
     "timestamp": "2025-12-23 10:28:59.377871",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Symbol property bypass] Can an attacker define a Symbol-keyed property on global with a similar name, then manipulate require.cache to load a modified enforce_singleton.js that checks Symbol properties instead of string keys, bypassing the singleton protection entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5b1127e7-3271-4c76-af9a-fa919bd0d5c1",
+    "timestamp": "2025-12-23 10:30:10.590327",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Getter/setter manipulation] If an attacker defines a getter for `global._bOcoreLoaded` that always returns false, could this cause the check at line 4 to always pass, allowing infinite ocore re-loading attempts that exhaust memory or create race conditions in critical modules like storage.js or validation.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77383e10-2dc8-45d2-bfb1-955003a5b638",
+    "timestamp": "2025-12-23 10:30:23.023920",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Frozen global object] If an attacker calls Object.freeze(global) before ocore loads, the assignment at line 7 will fail silently (in non-strict mode) or throw TypeError (in strict mode with line 2's 'use strict') - does this prevent ocore from initializing properly, causing all nodes to fail startup and creating a network-wide outage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ca83deac-a57f-4e55-b214-ee5ece495fd5",
+    "timestamp": "2025-12-23 10:30:36.447254",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Sealed global object] If an attacker calls Object.seal(global) before ocore loads and `_bOcoreLoaded` doesn't already exist on global, can the assignment at line 7 fail, preventing the singleton flag from being set and allowing subsequent ocore loads to bypass protection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e602a529-18e1-4e9d-943e-51a23f09c425",
+    "timestamp": "2025-12-23 10:30:49.880694",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Non-strict mode behavior] Although line 2 declares 'use strict', if a calling module disables strict mode, can the error thrown at line 5 be caught and ignored more easily, or can silent failures in property assignment at line 7 occur without detection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bd1200db-7599-4d44-8682-1e967e90f410",
+    "timestamp": "2025-12-23 10:31:04.065173",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Error message information disclosure] The error message at line 5 reveals implementation details ('multiple copies of ocore') and suggests a remediation ('npm dedupe') - could an attacker use this information to infer the system is using npm (not yarn/pnpm), has dependency conflicts, or is running specific Node.js versions, aiding in targeted attacks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e360c56-26d1-4277-8829-94a908f93346",
+    "timestamp": "2025-12-23 10:31:19.899890",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Timing side-channel] Can an attacker measure the execution time difference between first ocore load (setting `global._bOcoreLoaded`) and subsequent failed loads (throwing error at line 5) to detect whether ocore is already loaded, potentially revealing information about node state or initialization sequence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b71e7da2-64d4-4ad0-9064-ed854d1038be",
+    "timestamp": "2025-12-23 10:31:36.876992",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Missing property existence check] The code only checks truthiness of `global._bOcoreLoaded` at line 4 - if an attacker sets this property to a truthy non-boolean value (e.g., object, array, function), could this cause unexpected type coercion issues in other ocore modules that might check this flag?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ac9c046-8007-4af1-8667-5dc5d1be01a1",
+    "timestamp": "2025-12-23 10:31:54.334075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Module resolution attack] Can an attacker manipulate NODE_PATH or package.json to cause different versions of ocore to be resolved by different require() calls, with each version having its own enforce_singleton.js that sets the same `global._bOcoreLoaded` flag, creating version conflicts that break protocol compatibility?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8ecc6786-3641-442c-96d8-26b6168066ea",
+    "timestamp": "2025-12-23 10:32:12.891236",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Dependency confusion] If an attacker publishes a malicious 'ocore' package to npm with higher version number, can they bypass the singleton check by having their malicious version loaded first, set `global._bOcoreLoaded = true`, then prevent the legitimate ocore from loading, effectively hijacking the entire node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c84e08e6-7174-4cef-b79e-08ae5f7c4e42",
+    "timestamp": "2025-12-23 10:32:32.345424",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Circular dependency bypass] If an attacker creates circular dependencies between ocore modules that include enforce_singleton.js, could the module loading order cause some modules to load before the singleton check executes, resulting in partial state initialization across multiple instances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_306cc2e1-eeda-4e03-a49f-bb365d2c1ca2",
+    "timestamp": "2025-12-23 10:32:52.880710",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Module wrapper manipulation] Can an attacker monkey-patch Node.js's internal Module._load or Module.prototype.require functions to intercept the loading of enforce_singleton.js and skip its execution or manipulate the global variable, allowing multiple ocore instances?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59f062a2-7cb8-4f65-a4f2-bcdbc94d6f2c",
+    "timestamp": "2025-12-23 10:33:13.707735",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Exception handling bypass] If the error thrown at line 5 is caught by a try-catch block in a parent module (e.g., if conf.js wraps its require in try-catch), could the second ocore instance partially initialize before failing, leaving corrupt global state in mutex.js or event_bus.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a83e1587-e16a-455e-952c-d3dac78e65d1",
+    "timestamp": "2025-12-23 10:33:35.865644",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Memory exhaustion via error loop] Can an attacker repeatedly attempt to require ocore modules after the singleton check fails, causing the error at line 5 to be thrown thousands of times per second, eventually exhausting memory with error stack traces or overwhelming error logging systems?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1c34256a-42be-4b32-83db-ce3401e121b0",
+    "timestamp": "2025-12-23 10:33:58.988141",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Process exit code manipulation] When the error at line 5 is thrown during node startup and not caught, Node.js will exit with non-zero code - could an attacker exploit this to prevent witness nodes from starting up after legitimate maintenance restarts, causing network instability or transaction processing delays?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3488a50b-8b10-420e-abc8-f1247b16a30c",
+    "timestamp": "2025-12-23 10:34:22.802969",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Global namespace pollution] By using a generic property name `_bOcoreLoaded` on the global object without namespacing, could this conflict with other libraries or application code that coincidentally uses the same property name, either causing false-positive singleton detections or allowing bypass if another library sets this property?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8752963c-907b-41a3-9227-650c1f363ab5",
+    "timestamp": "2025-12-23 10:34:47.293270",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Lack of cryptographic binding] The singleton flag is a simple boolean - can an attacker who gains code execution in the Node.js process trivially set `global._bOcoreLoaded = false` and reload ocore, whereas a cryptographically signed or tamper-evident flag would provide stronger protection?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ad2fc6a-fbb0-453e-b0e1-a7ff22436180",
+    "timestamp": "2025-12-23 10:35:10.927781",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Missing module identity verification] The check doesn't verify that the already-loaded ocore is the authentic version - if an attacker loads a malicious ocore fork first that sets `_bOcoreLoaded = true`, will the legitimate ocore check at line 4 pass and fail to load, leaving the system running entirely on malicious code?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c3e99f4b-bd5d-4626-991e-0913c7c3c38e",
+    "timestamp": "2025-12-23 10:35:33.371414",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Insufficient error context] The error at line 5 doesn't include details about which module triggered the duplicate load or the call stack - does this make debugging legitimate issues (like accidental duplicate dependencies in package.json) more difficult, potentially causing operators to disable the check entirely?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a28dcc10-08c5-4019-9806-2a24274f9cb7",
+    "timestamp": "2025-12-23 10:35:56.209768",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [No version checking] If an attacker manipulates dependencies to load two different versions of ocore sequentially, the first version sets `_bOcoreLoaded`, then the second version's singleton check passes because it uses the same flag name - could this cause protocol incompatibilities if the two versions have different validation rules or consensus logic?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82d560e2-0e9c-4144-94c0-237ea530d9a1",
+    "timestamp": "2025-12-23 10:36:19.070650",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Event_bus singleton dependency] Since event_bus.js requires enforce_singleton.js and exports a single EventEmitter instance, if the singleton check fails, could this cause multiple EventEmitter instances to be created across different ocore copies, leading to missed events for critical operations like new unit notifications or MC updates?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b79ff042-bb04-416e-a233-71aec797711e",
+    "timestamp": "2025-12-23 10:36:43.133530",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Mutex state divergence] Since mutex.js requires enforce_singleton.js and maintains global lock state in arrQueuedJobs and arrLockedKeyArrays, if multiple ocore instances load, could concurrent transactions acquire the same logical locks in different mutex instances, allowing race conditions in unit composition or AA execution?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb74a215-09ae-4636-b212-52c68b0832bd",
+    "timestamp": "2025-12-23 10:37:08.322792",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Conf.js configuration inconsistency] Since conf.js requires enforce_singleton.js and loads protocol configuration, if the singleton check is bypassed, could different parts of the application load different configurations (e.g., different witness lists, port numbers, or database paths), causing unpredictable behavior or database corruption?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_66c9a844-f310-4fe5-8c60-76f9de80fb36",
+    "timestamp": "2025-12-23 10:37:34.552786",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Hot reload vulnerability] In development or debugging scenarios where module reloading is used (e.g., nodemon, hot module replacement), does the singleton check prevent legitimate reloads, forcing developers to bypass it, which could accidentally remain disabled in production?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17aba4f2-a068-4bb9-9d78-a15e78c7fa2e",
+    "timestamp": "2025-12-23 10:38:00.672631",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/enforce_singleton.js] [Container orchestration issues] In containerized deployments where multiple container instances might share volumes or network namespaces, could improper volume mounting cause multiple containers to interfere with each other's `global._bOcoreLoaded` check if somehow sharing Node.js processes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dbd66d9d-0fa1-4dd6-97a5-f20928d2dffb",
+    "timestamp": "2025-12-23 10:38:28.090494",
+    "report_generated": false
   }
 ]
