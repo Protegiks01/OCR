@@ -9148,5 +9148,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7c68e91d-fd79-4f09-8a8b-2d77fb500d14",
     "timestamp": "2025-12-23 11:38:36.867651",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: throwError()] [Event Bus Dependency] At line 274, throwError() requires event_bus.js - if this module fails to load or the event bus is not initialized, could the error handling itself crash?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_789b4d0b-d47d-4303-99cf-4278c9586fed",
+    "timestamp": "2025-12-23 11:39:50.565302",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Zero Commission] If a parent unit has headers_commission=0 (e.g., a free unit), is it still processed by the queries at lines 31-64, wasting resources, or is there early filtering to skip zero-commission units?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0eeeb3db-174d-4d4e-a35f-6606e353b79c",
+    "timestamp": "2025-12-23 11:40:03.225697",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Negative MCI] If since_mc_index is somehow negative (due to a bug in initialization), could the queries at lines 41, 59, 79, 223 return incorrect results or cause database errors?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0203dd72-448e-4d01-8f0c-b6c1321a2a7b",
+    "timestamp": "2025-12-23 11:40:16.735639",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Large MCI Gap] If max_spendable_mci is 100 but the next stable MCI is 200 (due to network issues causing a long delay), does calcHeadersCommissions() process all 100 MCIs in a single invocation, potentially causing timeout or excessive resource usage?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea21741e-ae21-4140-afd6-a6d2e01ce455",
+    "timestamp": "2025-12-23 11:40:30.248007",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Index Selection] At line 222, the query joins units and headers_commission_contributions using CROSS JOIN USING(unit) - does the query optimizer use the proper index, or could this cause a full table scan on the units table?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5863665f-362a-4ed1-8cf5-3e95fdf8f258",
+    "timestamp": "2025-12-23 11:40:44.356163",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Subquery Performance] The MySQL query at line 46 uses a subquery (best_child_sql) in the WHERE clause - is this subquery executed once per row, causing O(n²) complexity, or is it optimized to execute once and cached?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f7d441a-4622-47ee-8326-b048d6fe4f43",
+    "timestamp": "2025-12-23 11:40:59.617645",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [UNION ALL Cost] At lines 32-64, the query uses UNION ALL to combine single-author and multi-author commissions - if the database doesn't optimize this correctly, could both branches scan the same tables, doubling query time?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a71eb997-c849-43ad-8635-6599f4235e2a",
+    "timestamp": "2025-12-23 11:41:16.341835",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Callback Order] The async.series at line 21 executes three steps sequentially - if step 2 (line 219) or step 3 (line 237) is slow, could this delay the onDone callback, blocking main chain stabilization and causing transaction delays >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_26de7df9-a80f-45ef-aa9b-e6c90e1189eb",
+    "timestamp": "2025-12-23 11:41:34.278543",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Missing Callback] At line 66, the MySQL query callback invokes cb() without parameters - if the calling code in async.series expects an error parameter, could null/undefined be misinterpreted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f72b0894-9965-4e69-8335-2006c8304c6e",
+    "timestamp": "2025-12-23 11:41:53.306943",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/headers_commission.js] [Function: calcHeadersCommissions()] [Early Exit] At line 16, if max_spendable_mci is null, initMaxSpendableMci() is called with a callback that recursively calls calcHeadersCommissions() - could this recursion cause stack overflow if there are many rapid invocations?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de336936-27a4-4537-85a0-dbfc876b0a71",
+    "timestamp": "2025-12-23 11:42:13.163978",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Spend Proof Bypass] If an attacker crafts two private payments with identical spend_proof values but different input amounts by manipulating the blinding factor, can they bypass the spend proof uniqueness check in the spend_proofs table and double-spend the same output in different private payment chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_92df6037-997d-4e8e-b3db-ace1f4bb6df5",
+    "timestamp": "2025-12-23 11:42:34.283923",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Address Mismatch] In the spend proof validation at lines 35-38, if objPrevPrivateElement.output.address differs from the spend_proof_address, the function returns an error. Can an attacker bypass this by providing a crafted objPrevPrivateElement with a matching address but invalid output data, allowing unauthorized spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a11f85af-088f-427e-92f7-2afd7bb62ee4",
+    "timestamp": "2025-12-23 11:42:55.955030",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Input Unit Inclusion] The validateSourceOutput() function at lines 44-52 checks if input.unit is included before objPrivateElement.unit. Can an attacker exploit a race condition where they submit a private payment referencing an input unit that gets orphaned after validation but before storage, causing permanent fund loss?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a81278d-af45-447b-a041-2e552b299c3a",
+    "timestamp": "2025-12-23 11:43:19.312470",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Light Client Bypass] At line 45, if conf.bLight is true, the function skips the graph.determineIfIncluded() check. Can a malicious light client vendor return false linkproofs, allowing the client to accept private payments with input units that are not actually included in the DAG?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8f9c586-0763-4c3f-a6f6-b8489dc60f83",
+    "timestamp": "2025-12-23 11:43:43.583801",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Output Hash Collision] At lines 72-73, the function validates that objectHash.getBase64Hash(objPrivateElement.output) matches our_hidden_output.output_hash. Can an attacker find a SHA256 collision or exploit hash truncation to create two different outputs with the same output_hash, allowing them to substitute recipient addresses?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0e87e12-2b92-4b0b-a6e3-f7bcd5381450",
+    "timestamp": "2025-12-23 11:44:08.825894",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Serial Number Reuse] For issue inputs at lines 130-142, the spend_proof includes serial_number to prevent duplicates. If max_issued_serial_number is not properly incremented atomically, can two concurrent issuances use the same serial_number, creating duplicate spend proofs and breaking uniqueness?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8799c4c1-3867-426c-8b94-ebf3c8fbd397",
+    "timestamp": "2025-12-23 11:44:34.704310",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Author Verification Bypass] At line 146, the function checks if input_address is among unit authors. Can an attacker exploit multi-authored units by providing an input_address that matches one author while using signatures from different authors to bypass ownership checks?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bc83571-b514-406c-a313-9f09f06257de",
+    "timestamp": "2025-12-23 11:45:01.348048",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validatePrivatePayment()] [Amount Substitution] In the spend proof calculation at lines 105-113 for transfers, the amount comes from prev_hidden_output.amount. Can an attacker manipulate objPrevPrivateElement to provide a false amount, creating a spend proof that validates but represents incorrect value, leading to inflation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9931cc2a-7be5-43ba-a588-af8b2376abb3",
+    "timestamp": "2025-12-23 11:45:27.807167",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: parsePrivatePaymentChain()] [Chain Integrity] The function validates chains in reverse chronological order (line 171). If an attacker provides arrPrivateElements with elements out of order or with broken references, can they cause the chain validation to pass incorrectly, allowing invalid payment chains to be accepted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_671e7228-2e74-4dd4-9e24-59ebcaa031eb",
+    "timestamp": "2025-12-23 11:45:56.120415",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: parsePrivatePaymentChain()] [Asset Consistency] At lines 189-192, the function checks that all elements have the same asset and denomination. Can an attacker exploit a race condition where they modify the issuePrivateElement after initial validation but before chain validation completes, causing mixed-asset chains?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_49f32127-abe5-4690-bc8d-4aa7faf0de7a",
+    "timestamp": "2025-12-23 11:46:25.234759",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: parsePrivatePaymentChain()] [Reference Validation] Lines 196-201 verify that each element correctly references the previous element's unit, message_index, and output_index. Can an attacker create a circular chain where element A references B, B references C, and C references A, causing infinite loops or validation bypass?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be278f5d-a053-490a-b321-b43353635e5d",
+    "timestamp": "2025-12-23 11:46:52.879075",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: parsePrivatePaymentChain()] [Stability Flag Manipulation] The function sets objPrivateElement.bStable based on validation results (lines 206-209). If an unstable private payment later becomes stable, but the chain was already processed as unstable, can this cause inconsistent is_serial flags and allow double-spending?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4aaa485-94c2-47bf-a51a-586e5d86689c",
+    "timestamp": "2025-12-23 11:47:21.269868",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validateAndSavePrivatePaymentChain()] [Atomic Insertion] At lines 237-249, inputs are inserted with INSERT IGNORE. If two concurrent transactions try to insert the same input (double-spend attempt), can both pass the INSERT IGNORE without detecting the conflict, allowing the double-spend to be stored?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0d7146e7-35f2-4e0e-a822-38c2c56d1fad",
+    "timestamp": "2025-12-23 11:47:49.163442",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validateAndSavePrivatePaymentChain()] [is_unique Flag Race] Lines 235 and 252 set is_unique and is_serial to NULL for unstable units. Can an attacker exploit the window between validation and stability update to spend an output twice: once while unstable (is_unique=NULL) and again after it becomes stable (is_unique=1)?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d106c022-9528-493a-91dd-ecf4c6070e02",
+    "timestamp": "2025-12-23 11:48:16.166194",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/indivisible_asset.js] [Function: validateAndSavePrivatePaymentChain()] [Output Update Condition] At line 271, outputs are updated with WHERE is_spent=0. If an output was already marked as spent by a concurrent transaction, this update will fail silently. Can this cause outputs to remain hidden (address/blinding not revealed) and become permanently unspendable?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_33b63a11-6339-462d-9a12-9b1e7126e6c4",
+    "timestamp": "2025-12-23 11:48:44.391877",
+    "report_generated": false
   }
 ]
