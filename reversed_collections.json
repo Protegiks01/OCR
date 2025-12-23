@@ -11698,5 +11698,155 @@
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef50acf3-77fb-42ed-ae53-a3733c10126c",
     "timestamp": "2025-12-23 17:15:58.121056",
     "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [File Operations] [Disk exhaustion] Lines 128-136 write profiling results to files every printOnFileMciPeriod without size limits or rotation - can an attacker spam the network to rapidly advance MCI and fill the disk with profiling files, causing node crashes when disk space is exhausted?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c56894d-56a5-477a-94ab-5c539c930992",
+    "timestamp": "2025-12-23 17:17:16.358525",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [File Operations] [Path injection] Line 128 writes files with name 'mci-' + mci + '-' + (total/count).toFixed(2) + ' ms' where mci comes from the blockchain - if an attacker can manipulate MCI values or the event bus, can they inject path traversal characters or overwrite critical system files?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5795915-065a-42dc-a0b5-e541daacc5c3",
+    "timestamp": "2025-12-23 17:17:28.831324",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [File Operations] [Directory traversal] Line 122 creates directory appDataDir + '/' + directoryName where directoryName is set to 'profiler' - if configuration allows directoryName to be user-controlled or modified, can an attacker use directory traversal sequences (../) to create directories outside appDataDir?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_789992a9-900a-41db-b868-1a101d339843",
+    "timestamp": "2025-12-23 17:17:41.793159",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Event Handler] [Unbounded accumulation] The mci_became_stable event handler writes files for every printOnFileMciPeriod MCI but fs.mkdir and fs.writeFile callbacks at lines 122-139 don't handle errors - can an attacker cause the file system to fill up by triggering frequent MCI advancement, leading to disk exhaustion and node crashes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e4a8850-3170-4cc6-9e03-2e1c1d4f11b0",
+    "timestamp": "2025-12-23 17:17:55.291800",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: setInterval] [Resource leak] Line 44 calls setInterval(print_on_screen, ...) but never stores the interval ID or clears it - if the node runs indefinitely or the profiler configuration changes, can this cause resource leaks with unclearable intervals consuming CPU?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e236b6e-6293-42e2-b580-ef7b67f64751",
+    "timestamp": "2025-12-23 17:18:09.429381",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Event Handler] [Memory leak] Line 123 registers an event listener on eventBus for 'mci_became_stable' but never removes it - if the profiler module is reloaded or disabled, does this event handler persist and cause memory leaks or unexpected behavior?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d87a8e19-1b0d-472f-be8c-c0d4ea5df416",
+    "timestamp": "2025-12-23 17:18:25.511344",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: mark_end()] [Memory leak] Line 61 pushes timing results into timers_results[tag] array but line 62 sets timers[tag][id] = 0 instead of deleting it - does this cause the timers object to accumulate entries indefinitely, leading to memory leaks over long-running nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d06f0b5-ef9f-407a-823d-227b57e1c4b1",
+    "timestamp": "2025-12-23 17:18:41.852525",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: add_result()] [Memory exhaustion] Line 70 pushes consumed_time values into timers_results[tag] array without any size limits - if validation.js or writer.js generates millions of results over time, can this cause memory exhaustion that crashes the node during peak network activity?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f0a2514-e72c-4520-87e2-d2ab74435fe1",
+    "timestamp": "2025-12-23 17:18:59.254811",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Global State] [Memory exhaustion] The times, counters, timers, times_sl1, counters_sl1, and timers_results objects are never bounded in size - can an attacker flood the network with diverse validation tag names to cause unbounded memory growth in these objects, eventually causing node crashes via OOM and network shutdown?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bde44839-c38e-4abf-b5ca-62d467b49204",
+    "timestamp": "2025-12-23 17:19:17.481378",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [Error propagation] Line 51 throws Error for multiple start marks - although the function has early return on line 47, if profiling is enabled and concurrent writer.js operations use the same mark_start ID, can this crash the unit writing process and block network confirmation?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_446e0b90-f161-4cb1-91bb-c05379428887",
+    "timestamp": "2025-12-23 17:19:36.370832",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: stop_sl1()] [Error propagation] Line 99 throws Error('profiler not started') - if main_chain.js calls this without matching start_sl1() due to early returns in conditional logic, can the thrown error cause main chain updates to abort and prevent MCI advancement?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3913410e-5209-4149-ac86-5eb81e9958af",
+    "timestamp": "2025-12-23 17:19:56.062799",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: start_sl1()] [Error propagation] Line 93 throws Error('profiler already started') for start_ts_sl1 - can this error be triggered in paid_witnessing.js or main_chain.js operations and cause witness payment calculations or MC updates to fail, disrupting consensus?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6faad581-b744-4e44-9fe3-98ab844449ed",
+    "timestamp": "2025-12-23 17:20:17.175003",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [Error propagation] Line 81 throws Error('profiler not started') if start_ts is 0 - if an exception occurs between profiler.start() and profiler.stop() in validation.js causing stop() to be called without start(), does this error crash the validation and prevent unit acceptance?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8107409-0d61-43e6-85d6-c2e3072c037a",
+    "timestamp": "2025-12-23 17:20:38.494942",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: start()] [Error propagation] Line 75 throws Error('profiler already started') if start_ts is already set - when this error is thrown during validation.js profiler.start() calls in the async.series pipeline, does it bypass the validation error handlers and crash the entire validation process?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2407aec5-03f7-49e0-8802-c2df3ee03ab1",
+    "timestamp": "2025-12-23 17:21:00.131680",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Global State] [Race condition] The global variables times, counters, timers, times_sl1, counters_sl1 are all accessed without locks - can concurrent modifications from parallel validation/storage/writer operations cause memory corruption or non-deterministic behavior that leads to chain splits between nodes?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ec54dee-0949-411e-82bb-31a08d565bdc",
+    "timestamp": "2025-12-23 17:21:21.005343",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [Race condition] The function checks if timers[tag][id] exists and throws an error for 'multiple start marks' - can an attacker trigger concurrent operations with the same tag/id combination to cause this error to be thrown during critical validation steps, crashing the node?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_237bf491-26d8-4c2a-baa6-08e174862dbe",
+    "timestamp": "2025-12-23 17:21:40.834494",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: stop_sl1()] [Race condition] When stop_sl1() updates times_sl1[tag] and counters_sl1[tag] without synchronization, can concurrent calls from different validation threads cause data races that result in corrupted timing statistics or lost counter increments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdcc6407-a2d3-4413-908b-9765dd57c17a",
+    "timestamp": "2025-12-23 17:22:00.322332",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: start_sl1()] [Race condition] The start_ts_sl1 variable is checked and set without atomic operations - if multiple concurrent operations call start_sl1() simultaneously, can this cause incorrect timing measurements or error throwing that disrupts critical protocol operations in main_chain.js or paid_witnessing.js?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2b84e3d-7cfc-40e0-a770-240b66312c64",
+    "timestamp": "2025-12-23 17:22:20.840379",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [Race condition] If profiler.stop(tag) is called without a prior profiler.start() due to race conditions or exception in validation code, it throws 'profiler not started' error - can this exception propagate to validation.js async.series() error handler and cause units to be incorrectly rejected, leading to consensus divergence?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d64d0812-0018-42d0-926e-58ce751f6355",
+    "timestamp": "2025-12-23 17:22:42.992853",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/profiler.js] [Function: start()] [Race condition] If two concurrent validation threads call profiler.start() simultaneously before either calls stop(), the second call throws 'profiler already started' error - can this crash the validation pipeline in validation.js during concurrent unit processing, causing a network halt by preventing new units from being confirmed?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e608b0d7-d302-4b65-b8ec-0c6ae6436a46",
+    "timestamp": "2025-12-23 17:23:05.153658",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Expensive filterNewOrUnstableUnits query] At line 19, storage.filterNewOrUnstableUnits() executes a database query with a potentially large IN clause (all units from all chains) - can an attacker send private payment chains with thousands of referenced units, causing this query to be extremely slow and blocking the validation thread, delaying all subsequent private payment processing?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4393c728-5438-4eab-8405-fffcef7920f5",
+    "timestamp": "2025-12-23 17:23:27.586700",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Storage.readAsset cache poisoning] If storage.readAsset() at line 36 uses a cache, can an attacker flood the network with private payments for many different assets, evicting legitimate asset definitions from cache and causing cache misses that slow down all private payment validation, delaying transaction processing for >1 hour?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc594734-fa37-4684-852c-e8a3b0937bd4",
+    "timestamp": "2025-12-23 17:23:50.502483",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Connection pool exhaustion] If an attacker sends many private payment chains that fail validation late in the process (after db.takeConnectionFromPool() at line 41 but during asset module validation at line 77), and these validations are slow, can they hold database connections for extended periods, exhausting the connection pool and preventing legitimate transactions from being processed for >1 day?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4468377a-9581-469a-9ee6-105dbe97dd37",
+    "timestamp": "2025-12-23 17:24:14.802292",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset definition leak via error messages] If storage.readAsset() fails at line 37, the error message is propagated to callbacks.ifError() - if this error contains sensitive information about the asset structure or ownership, can an attacker learn private asset details by intentionally triggering validation failures?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f38be086-2ef9-4a30-9166-2a0e302de8c3",
+    "timestamp": "2025-12-23 17:24:36.131358",
+    "report_generated": false
+  },
+  {
+    "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Private payment deanonymization via timing] The duplicate detection logic at lines 72-74 returns immediately if a duplicate is found with existing address - can an attacker probe the network by sending the same private payment multiple times with slight variations and measuring response times to determine if a specific output has already been revealed, breaking the privacy guarantee of private payments?",
+    "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72b7287a-4d5f-4cbf-ba30-421736c11519",
+    "timestamp": "2025-12-23 17:24:58.169700",
+    "report_generated": false
   }
 ]
