@@ -49,4 +49,4 @@ jobs:
           git add validated/*.md || echo "No audit files to add"
           
           git diff --staged --quiet || git commit -m "Auto-update: validated and reports [skip ci]"
-          git push
+          git push -f

@@ -53,7 +53,20 @@ jobs:
           echo "has_changes=true" >> $GITHUB_OUTPUT
           git commit -m "Auto-update: collections and reports"
           git pull origin master --no-rebase  # Pull any remote changes first
-          git push -f
+          if git push origin master; then
+            echo "Push succeeded"
+            exit 0
+          fi
+          
+          # try force-with-lease (safer than --force)
+          if git push --force-with-lease origin master; then
+            echo "Push succeeded with --force-with-lease"
+            exit 0
+          fi
+          
+          # final fallback: force (will overwrite remote)
+          git push --force origin master
+          echo "Push succeeded with --force (overwrote remote)"
 
       - name: Check if more questions remain
         id: check_remaining

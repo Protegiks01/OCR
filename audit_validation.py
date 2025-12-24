@@ -90,7 +90,7 @@ class Validator:
 
             textarea.send_keys(Keys.ENTER)
 
-            time.sleep(10)
+            time.sleep(30)
             current_url = self.driver.current_url
 
             # add the current url to validated

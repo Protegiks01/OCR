@@ -53,7 +53,7 @@ jobs:
           
           echo "has_changes=true" >> $GITHUB_OUTPUT
           git commit -m "Auto-update: collections and reports"
-          git push
+          git push -f
 
       - name: Check if more Reports remain
         id: check_remaining
