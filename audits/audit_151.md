@@ -1,332 +1,306 @@
+# Audit Report: Light Client Infinite Retry Loop via bRetrying Flag Reset in Signed Message Validation
+
 ## Title
-Catchup Synchronization Failure Due to Level Ordering Mismatch Between Main Chain Units and Off-Chain Units at Same MCI
+Infinite Retry Loop in Light Client Signed Message Validation Due to bRetrying Flag Reset
 
 ## Summary
-The catchup protocol in `catchup.js` fails when off-chain units at the same Main Chain Index (MCI) have higher levels than the on-chain unit. The `processCatchupChain()` function inserts only main chain balls into `catchup_chain_balls`, but `readHashTree()` returns ALL balls (including off-chain balls) at the requested MCI range ordered by level. When `processHashTree()` validates the hash tree, it expects the second catchup chain element to match the last (highest level) ball in the tree, causing a validation failure when off-chain units exist at higher levels.
+The `validateOrReadDefinition()` function in `signed_message.js` unconditionally resets the `bRetrying` flag to `false` when the `last_ball_unit` database query succeeds, even when called with `bRetrying=true` from a retry attempt. [1](#0-0)  This breaks the retry limiting logic at the definition lookup stage, [2](#0-1)  allowing light clients to enter an infinite loop when validating signed messages with missing address definitions, causing resource exhaustion and denial of service.
 
 ## Impact
-**Severity**: Medium
-**Category**: Temporary freezing of network transactions (≥1 hour delay)
+
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Network Resource Exhaustion
+
+**Affected Assets**: Light client node resources (CPU, memory, network bandwidth, validation queue)
+
+**Damage Severity**:
+- **Quantitative**: Each retry cycle consumes one database query and one network request to the light vendor with a 300-second timeout. [3](#0-2) [4](#0-3)  If an attacker sends N malicious messages concurrently, N validation threads enter infinite loops simultaneously.
+- **Qualitative**: The victim light client becomes unresponsive and unable to process legitimate validations. Memory accumulates with nested callback closures on each retry iteration.
+
+**User Impact**:
+- **Who**: Light client users who accept device messages via prosaic contracts or arbiter contracts
+- **Conditions**: Attacker must be paired with victim's device or able to send contract messages; requires a valid `last_ball_unit` that exists in the network but an address definition that doesn't exist or that the light vendor refuses to provide
+- **Recovery**: Client must be restarted and attacker must be blocked from sending further malicious messages
+
+**Systemic Risk**: Light clients are critical for mobile and resource-constrained deployments. Compromising their availability reduces overall network accessibility. Multiple concurrent attacks multiply resource consumption.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js` (functions `processCatchupChain()`, `readHashTree()`, `processHashTree()`)
+**Location**: `byteball/ocore/signed_message.js:157-212`, function `validateOrReadDefinition()`
 
-**Intended Logic**: The catchup protocol should allow syncing nodes to retrieve all historical units by following the last_ball chain and requesting hash trees for segments of the main chain. The `member_index` in `catchup_chain_balls` should order balls "in increasing level order" according to the schema comment. [1](#0-0) 
+**Intended Logic**: The `bRetrying` flag should limit light clients to one retry attempt after requesting history from the vendor. On the first call with `bRetrying=undefined` or `false`, if the definition is not found, the client requests history and retries with `bRetrying=true`. On the retry call with `bRetrying=true`, if the definition is still not found, the check at line 182 should error out.
 
-**Actual Logic**: The code inserts balls into `catchup_chain_balls` in last_ball chain order (oldest to newest by MCI), which only includes main chain units. [2](#0-1)  However, when an MCI becomes stable, ALL units at that MCI (both on-chain and off-chain) receive balls, not just the main chain unit. [3](#0-2) 
+**Actual Logic**: When the `last_ball_unit` query succeeds (line 160 returns rows.length > 0), line 176 unconditionally executes `bRetrying = false`, overwriting the parameter value. This occurs even when the function was called with `bRetrying=true` from a previous retry. When the subsequent definition lookup fails, the check at line 182 evaluates `!conf.bLight || bRetrying` as `false || false = false` (because `bRetrying` was reset to false), so it doesn't return an error and instead requests history again, creating an infinite loop.
 
-The `readHashTree()` function queries for ALL balls in the MCI range without filtering for `is_on_main_chain=1`, and orders them by level within each MCI. [4](#0-3) 
-
-Finally, `processHashTree()` validates that the second catchup chain element matches the LAST ball in the received hash tree. [5](#0-4) 
+**Code Evidence**: [5](#0-4) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - A syncing node requests catchup from a peer
-   - The DAG contains off-chain units at the same MCI as main chain units, where the off-chain units have higher levels
-   - This occurs naturally when a main chain unit has parent units at higher levels that haven't been assigned an MCI yet
+   - Victim runs a light client (`conf.bLight = true`)
+   - Attacker can send device messages (paired device or contract proposal)
+   - A valid `last_ball_unit` exists in the network
+   - Address definition for the signer doesn't exist or vendor won't provide it
 
-2. **Step 1**: The syncing node receives a catchup chain containing main chain balls only (via `processCatchupChain()`). The balls are inserted into `catchup_chain_balls` ordered by their position in the last_ball chain.
+2. **Step 1**: Attacker crafts and sends a signed message via `prosaic_contract_response` [6](#0-5)  or `arbiter_contract_response` [7](#0-6)  containing:
+   - Valid `last_ball_unit` that exists in the network
+   - `authors[0].address` set to an address with no definition in the database
+   - No `definition` field in the message
+   - Valid signature
 
-3. **Step 2**: The node requests the first hash tree using `requestNextHashTree()` by querying the first two balls from `catchup_chain_balls` ordered by `member_index`. [6](#0-5) 
+3. **Step 2**: First validation attempt:
+   - `validateOrReadDefinition(cb)` called with `bRetrying=undefined`
+   - Line 160: Query finds the `last_ball_unit` (rows.length > 0)
+   - Line 176: `bRetrying = false` (set from undefined)
+   - Line 179-180: Definition lookup fails, triggers `ifDefinitionNotFound` callback
+   - Line 182: Check `!conf.bLight || bRetrying` = `false || false` = `false`, doesn't error
+   - Line 185-186: Requests history from vendor and retries with `bRetrying=true`
 
-4. **Step 3**: The peer's `readHashTree()` returns ALL balls in the MCI range (including off-chain balls with higher levels), ordered by `main_chain_index, level`. If an off-chain unit at the target MCI has a higher level than the main chain unit, it becomes the last element in the returned array.
+4. **Step 3**: Second validation attempt (first retry):
+   - `validateOrReadDefinition(cb, true)` called with `bRetrying=true`
+   - Line 160: Query finds the unit again
+   - **Line 176: `bRetrying = false`** ← Bug: resets the retry counter!
+   - Line 179-180: Definition still not found
+   - Line 182: Check `!conf.bLight || bRetrying` = `false || false` = `false`, doesn't error (should error!)
+   - Line 185-186: Requests history again and retries with `bRetrying=true`
 
-5. **Step 4**: When `processHashTree()` validates the received tree, it checks that `rows[1].ball` (the second main chain ball from catchup_chain_balls) equals `arrBalls[arrBalls.length-1].ball` (the highest level ball at that MCI). If they differ, the validation fails with error "tree root doesn't match second chain element", preventing catchup from completing. [7](#0-6) 
+5. **Step 4**: Infinite loop continues:
+   - Each iteration makes a database query and network request (up to 300s timeout)
+   - Callback closures accumulate in memory
+   - Validation never completes
 
-**Security Property Broken**: Invariant #19 (Catchup Completeness): "Syncing nodes must retrieve all units on MC up to last stable point without gaps. Missing units cause validation failures and permanent desync."
+**Security Property Broken**: Validation operations must complete atomically and deterministically, either succeeding or failing within a bounded time. This infinite loop violates that invariant, causing indefinite resource consumption without resolution.
 
-**Root Cause Analysis**: 
-
-The root cause is a mismatch between three different orderings:
-1. **Last_ball chain order**: Follows main chain units only via the `last_ball_unit` reference, validated to be on main chain. [8](#0-7) 
-2. **MCI assignment order**: When a unit joins the main chain, ALL its parent units without an MCI are assigned the same MCI via the recursive `goUp()` function. [9](#0-8) 
-3. **Level ordering**: Units at the same MCI can have different levels because level is based on graph distance from genesis, independent of MCI.
-
-The catchup protocol assumes that at each MCI, only one ball exists (the main chain ball), or that the main chain ball has the highest level. This assumption is violated when off-chain parent units at higher levels are assigned the same MCI as their child main chain unit.
+**Root Cause Analysis**: The assignment at line 176 appears to be defensive programming to ensure `bRetrying` has a boolean value after the unit query succeeds. However, it inadvertently resets the retry counter when transitioning from the unit lookup phase to the definition lookup phase. The code conflates two distinct retry scenarios: (1) retrying unit lookup when the full node is catching up, and (2) retrying definition lookup after requesting history from the vendor. Setting `bRetrying = false` after a successful unit query allows unlimited retries of the definition lookup phase.
 
 ## Impact Explanation
 
-**Affected Assets**: Network synchronization capability, node availability
+**Affected Assets**: Light client node resources (CPU, memory, network bandwidth, validation queue)
 
 **Damage Severity**:
-- **Quantitative**: Any syncing node attempting to catchup past an MCI where an off-chain unit has a higher level than the main chain unit will fail indefinitely
-- **Qualitative**: Complete inability to sync with the network for affected nodes
+- **Quantitative**: Each retry consumes 1 database query (~milliseconds) and 1 network request with up to 300-second timeout. Memory grows with nested callback closures. With N concurrent malicious messages, N validation threads hang indefinitely.
+- **Qualitative**: Victim light client becomes unresponsive and cannot process legitimate validations or other operations.
 
 **User Impact**:
-- **Who**: Any node performing initial sync or recovering from downtime
-- **Conditions**: Occurs whenever the DAG structure naturally creates off-chain units at higher levels than main chain units at the same MCI (common in normal operation)
-- **Recovery**: Node must wait for the peer to potentially send a different catchup chain, or manually intervene to skip problematic MCIs
+- **Who**: Light client users accepting device messages via prosaic/arbiter contracts
+- **Conditions**: Attacker must pair with victim or send contract proposals; attack works during normal network operation
+- **Recovery**: Requires restarting the client and blocking the attacker
 
-**Systemic Risk**: If this condition occurs frequently in the DAG structure, new nodes cannot join the network and existing nodes cannot recover from downtime, effectively preventing network growth and resilience.
+**Systemic Risk**:
+- Attack can be automated and repeated continuously
+- Multiple concurrent attacks multiply impact
+- Light clients are essential for mobile/low-resource deployments
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not an intentional attack - this is a natural consequence of DAG structure
-- **Resources Required**: None - occurs during normal network operation
-- **Technical Skill**: None required
+- **Identity**: Any peer with device pairing capability
+- **Resources Required**: Ability to pair device or send contract messages; knowledge of a valid `last_ball_unit`
+- **Technical Skill**: Medium - requires understanding signed message format and device messaging protocol
 
 **Preconditions**:
-- **Network State**: Normal DAG operation where units have parents at various levels
-- **Attacker State**: N/A - no attacker required
-- **Timing**: Occurs whenever the main chain selection results in a unit whose parents have higher levels
+- **Network State**: Normal operation with at least one stable unit
+- **Attacker State**: Paired device or contract proposal acceptance
+- **Timing**: No specific timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: Zero - this is a protocol logic flaw, not an attack
+- **Transaction Count**: Single device message per attack
 - **Coordination**: None required
-- **Detection Risk**: N/A
+- **Detection Risk**: Low - appears as normal validation activity
 
 **Frequency**:
-- **Repeatability**: Occurs naturally whenever the DAG structure creates the described condition
-- **Scale**: Affects all syncing nodes attempting to catchup past the problematic MCI
+- **Repeatability**: Unlimited
+- **Scale**: Can target multiple light clients
 
-**Overall Assessment**: High likelihood - this is a natural occurrence in DAG-based systems where parent units can have higher levels than child units, and the main chain selection algorithm doesn't guarantee level monotonicity.
+**Overall Assessment**: Medium likelihood - requires device pairing but trivial to execute once paired; light clients are common targets.
 
 ## Recommendation
 
-**Immediate Mitigation**: Filter the hash tree results to only include main chain units, or adjust the validation logic to check against the correct ball.
+**Immediate Mitigation**:
+Remove the unconditional reset of `bRetrying` at line 176. The flag should only be initialized on first entry, not reset on subsequent calls:
 
-**Permanent Fix**: Modify `readHashTree()` to only return main chain balls, matching what the catchup chain contains.
-
-**Code Changes**:
-
-In `catchup.js`, modify the `readHashTree()` query to filter for main chain units only: [4](#0-3) 
-
-Change the WHERE clause to include `AND is_on_main_chain=1`:
 ```javascript
-"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-WHERE is_on_main_chain=1 AND main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`"
+// Change line 176 from:
+bRetrying = false;
+
+// To:
+if (bRetrying === undefined)
+    bRetrying = false;
+```
+
+**Permanent Fix**:
+Separate the retry logic for unit lookup and definition lookup into distinct flags or use a counter to track total retries across both phases:
+
+```javascript
+function validateOrReadDefinition(cb, retryState) {
+    if (!retryState)
+        retryState = {unitRetried: false, defRetried: false};
+    
+    // Unit lookup phase
+    if (rows.length === 0) {
+        if (retryState.unitRetried)
+            return handleResult("last_ball_unit not found");
+        // Request and retry with unitRetried=true
+    }
+    
+    // Definition lookup phase
+    if (definition not found) {
+        if (retryState.defRetried)
+            return handleResult("definition not found");
+        // Request and retry with defRetried=true
+    }
+}
 ```
 
 **Additional Measures**:
-- Add integration tests that create DAG structures with off-chain units at higher levels than main chain units
-- Add validation in `processHashTree()` to detect this condition and provide a clearer error message
-- Consider adding a database index on `(is_on_main_chain, main_chain_index, level)` for performance
+- Add test case verifying retry limit is enforced for light clients
+- Add timeout at the validation function level (not just network level)
+- Log warning when multiple retries occur for the same message
+- Consider rate limiting device messages from paired devices
 
 **Validation**:
-- [x] Fix prevents exploitation by ensuring only main chain balls are returned
-- [x] No new vulnerabilities introduced - the filter makes the results consistent with catchup_chain_balls
-- [x] Backward compatible - only changes server-side hash tree generation
-- [x] Performance impact acceptable - query becomes more selective, likely faster
+- Fix prevents infinite retry loop
+- Maintains backward compatibility
+- No performance impact on normal operations
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`test_catchup_level_mismatch.js`):
 ```javascript
-/*
- * Proof of Concept for Catchup Level Ordering Mismatch
- * Demonstrates: Hash tree validation failure when off-chain units have higher levels
- * Expected Result: processHashTree fails with "tree root doesn't match second chain element"
- */
+// Test: test/signed_message_retry_loop.test.js
+const signed_message = require('../signed_message.js');
+const conf = require('../conf.js');
+const db = require('../db.js');
 
-const db = require('./db.js');
-const catchup = require('./catchup.js');
-
-async function demonstrateVulnerability() {
-    // Scenario: MCI 100 has two units:
-    // - Unit A (main chain): level 50
-    // - Unit B (off-chain parent): level 60
+describe('Light client signed message validation retry limit', function() {
+    before(function() {
+        // Set up light client mode
+        conf.bLight = true;
+    });
     
-    // When readHashTree is called for MCI range 99 to 100:
-    // - It returns [Unit A (level 50), Unit B (level 60)] ordered by level
-    // - arrBalls[arrBalls.length-1] = Unit B
-    
-    // But catchup_chain_balls contains Unit A (main chain unit)
-    // - rows[1].ball = Unit A
-    
-    // Validation check: rows[1].ball !== arrBalls[arrBalls.length-1].ball
-    // Result: "tree root doesn't match second chain element" error
-    
-    console.log("This vulnerability occurs naturally in the DAG when:");
-    console.log("1. A main chain unit has parents at higher levels");
-    console.log("2. Those parents get assigned the same MCI via goUp() in main_chain.js");
-    console.log("3. readHashTree() returns both main chain and off-chain balls");
-    console.log("4. processHashTree() expects only the main chain ball");
-    
-    return true;
-}
-
-demonstrateVulnerability().then(success => {
-    console.log("\nVulnerability demonstration: " + (success ? "CONFIRMED" : "FAILED"));
-    process.exit(success ? 0 : 1);
+    it('should error after one retry when definition not found', function(done) {
+        this.timeout(10000); // Should complete quickly, not hang
+        
+        // Create signed message with valid last_ball_unit but missing definition
+        const objSignedMessage = {
+            signed_message: "test message",
+            authors: [{
+                address: "NONEXISTENT_ADDRESS_WITH_NO_DEFINITION",
+                authentifiers: {"r": "valid_signature_here"}
+            }],
+            last_ball_unit: "VALID_UNIT_HASH_IN_DATABASE",
+            version: "1.0"
+        };
+        
+        let retryCount = 0;
+        
+        // Mock network.requestHistoryFor to count retries
+        const network = require('../network.js');
+        const originalRequestHistoryFor = network.requestHistoryFor;
+        network.requestHistoryFor = function(units, addresses, callback) {
+            retryCount++;
+            if (retryCount > 2) {
+                // Should not reach here - indicates infinite loop
+                network.requestHistoryFor = originalRequestHistoryFor;
+                done(new Error('Infinite retry detected: ' + retryCount + ' retries'));
+                return;
+            }
+            // Simulate vendor not having the definition
+            callback();
+        };
+        
+        signed_message.validateSignedMessage(db, objSignedMessage, function(err) {
+            network.requestHistoryFor = originalRequestHistoryFor;
+            
+            // Should error after first retry (retryCount should be exactly 1)
+            if (!err) {
+                return done(new Error('Expected error after retry'));
+            }
+            if (retryCount !== 1) {
+                return done(new Error('Expected exactly 1 retry, got ' + retryCount));
+            }
+            if (!err.includes('definition expected')) {
+                return done(new Error('Wrong error: ' + err));
+            }
+            done();
+        });
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-This vulnerability occurs naturally in the DAG when:
-1. A main chain unit has parents at higher levels
-2. Those parents get assigned the same MCI via goUp() in main_chain.js
-3. readHashTree() returns both main chain and off-chain balls
-4. processHashTree() expects only the main chain ball
-
-Vulnerability demonstration: CONFIRMED
-
-Error in catchup: tree root doesn't match second chain element
-```
-
-**Expected Output** (after fix applied):
-```
-readHashTree now returns only main chain balls
-Catchup proceeds successfully
-All hash trees validate correctly
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the logic flaw in the catchup protocol
-- [x] Shows violation of Invariant #19 (Catchup Completeness)
-- [x] Impact is network synchronization failure
-- [x] Fix resolves the issue by filtering for main chain units only
-
 ## Notes
 
-This vulnerability is particularly insidious because:
+This vulnerability specifically affects light clients in the Obyte network. Full nodes that maintain complete transaction history are not affected because they use a different code path (lines 169-173) that doesn't rely on the `bRetrying` flag in the same way.
 
-1. **It occurs naturally**: The DAG structure commonly creates situations where parent units have higher levels than child units, especially when the main chain switches between different branches.
+The bug occurs at the intersection of two retry mechanisms: one for catching up on missing units and another for requesting missing definitions. The unconditional reset at line 176 was likely intended to handle the transition from unit lookup to definition lookup, but it breaks the retry limiting logic.
 
-2. **It's not malicious**: No attacker is required - this is a protocol design flaw that manifests during normal operation.
-
-3. **It affects availability**: While not causing fund loss, it prevents new nodes from joining and existing nodes from recovering, which is critical for network health.
-
-4. **Schema comment misleading**: The database schema comment states member_index should be "in increasing level order" [10](#0-9) , but the code inserts in last_ball chain order, creating confusion about the intended behavior.
-
-5. **Validation logic assumes single ball per MCI**: The check at line 442 in `processHashTree()` assumes only one ball exists at each MCI or that the main chain ball is the highest level, which is incorrect.
-
-The fix is straightforward: ensure `readHashTree()` only returns main chain balls to match what `catchup_chain_balls` contains, making the validation logic correct.
+The 300-second timeout per network request [3](#0-2)  means each retry iteration can hang for up to 5 minutes, making this a practical denial-of-service vector even with moderate numbers of malicious messages.
 
 ### Citations
 
-**File:** initial-db/byteball-sqlite.sql (L442-445)
-```sql
-CREATE TABLE catchup_chain_balls (
-	member_index INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, -- in increasing level order
-	ball CHAR(44) NOT NULL UNIQUE
-);
-```
-
-**File:** catchup.js (L173-193)
+**File:** signed_message.js (L157-187)
 ```javascript
-			// stable joints
-			var arrChainBalls = [];
-			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
-				var objJoint = catchupChain.stable_last_ball_joints[i];
-				var objUnit = objJoint.unit;
-				if (!objJoint.ball)
-					return callbacks.ifError("stable but no ball");
-				if (!validation.hasValidHashes(objJoint))
-					return callbacks.ifError("invalid hash");
-				if (objUnit.unit !== last_ball_unit)
-					return callbacks.ifError("not the last ball unit");
-				if (objJoint.ball !== last_ball)
-					return callbacks.ifError("not the last ball");
-				if (objUnit.last_ball_unit){
-					last_ball_unit = objUnit.last_ball_unit;
-					last_ball = objUnit.last_ball;
+	function validateOrReadDefinition(cb, bRetrying) {
+		var bHasDefinition = ("definition" in objAuthor);
+		if (bNetworkAware) {
+			conn.query("SELECT main_chain_index, timestamp FROM units WHERE unit=?", [objSignedMessage.last_ball_unit], function (rows) {
+				if (rows.length === 0) {
+					var network = require('./network.js');
+					if (!conf.bLight && !network.isCatchingUp() || bRetrying)
+						return handleResult("last_ball_unit " + objSignedMessage.last_ball_unit + " not found");
+					if (conf.bLight)
+						network.requestHistoryFor([objSignedMessage.last_ball_unit], [objAuthor.address], function () {
+							validateOrReadDefinition(cb, true);
+						});
+					else
+						eventBus.once('catching_up_done', function () {
+							// no retry flag, will retry multiple times until the catchup is over
+							validateOrReadDefinition(cb);
+						});
+					return;
 				}
-				arrChainBalls.push(objJoint.ball);
-			}
-			arrChainBalls.reverse();
-
+				bRetrying = false;
+				var last_ball_mci = rows[0].main_chain_index;
+				var last_ball_timestamp = rows[0].timestamp;
+				storage.readDefinitionByAddress(conn, objAuthor.address, last_ball_mci, {
+					ifDefinitionNotFound: function (definition_chash) { // first use of the definition_chash (in particular, of the address, when definition_chash=address)
+						if (!bHasDefinition) {
+							if (!conf.bLight || bRetrying)
+								return handleResult("definition expected but not provided");
+							var network = require('./network.js');
+							return network.requestHistoryFor([], [objAuthor.address], function () {
+								validateOrReadDefinition(cb, true);
+							});
 ```
 
-**File:** catchup.js (L289-292)
+**File:** network.js (L38-38)
 ```javascript
-			db.query(
-				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
-				[from_mci, to_mci], 
+var RESPONSE_TIMEOUT = 300*1000; // after this timeout, the request is abandoned
 ```
 
-**File:** catchup.js (L431-449)
+**File:** network.js (L259-264)
 ```javascript
-							conn.query(
-								"SELECT ball, main_chain_index \n\
-								FROM catchup_chain_balls LEFT JOIN balls USING(ball) LEFT JOIN units USING(unit) \n\
-								ORDER BY member_index LIMIT 2", 
-								function(rows){
-									
-									if (rows.length !== 2)
-										return finish("expecting to have 2 elements in the chain");
-									// removed: the main chain might be rebuilt if we are sending new units while syncing
-								//	if (max_mci !== null && rows[0].main_chain_index !== null && rows[0].main_chain_index !== max_mci)
-								//		return finish("max mci doesn't match first chain element: max mci = "+max_mci+", first mci = "+rows[0].main_chain_index);
-									if (rows[1].ball !== arrBalls[arrBalls.length-1].ball)
-										return finish("tree root doesn't match second chain element");
-									// remove the oldest chain element, we now have hash tree instead
-									conn.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-										
-										purgeHandledBallsFromHashTree(conn, finish);
-									});
-								}
-```
-
-**File:** main_chain.js (L175-196)
-```javascript
-								function goUp(arrStartUnits){
-									conn.cquery(
-										"SELECT DISTINCT unit \n\
-										FROM parenthoods JOIN units ON parent_unit=unit \n\
-										WHERE child_unit IN(?) AND main_chain_index IS NULL",
-										[arrStartUnits],
-										function(rows){
-											var arrNewStartUnits2 = [];
-											arrStartUnits.forEach(function(start_unit){
-												storage.assocUnstableUnits[start_unit].parent_units.forEach(function(parent_unit){
-													if (storage.assocUnstableUnits[parent_unit] && storage.assocUnstableUnits[parent_unit].main_chain_index === null && arrNewStartUnits2.indexOf(parent_unit) === -1)
-														arrNewStartUnits2.push(parent_unit);
-												});
-											});
-											var arrNewStartUnits = conf.bFaster ? arrNewStartUnits2 : rows.map(function(row){ return row.unit; });
-											if (!conf.bFaster && !_.isEqual(arrNewStartUnits.sort(), arrNewStartUnits2.sort()))
-												throwError("different new start units, arr: "+JSON.stringify(arrNewStartUnits2)+", db: "+JSON.stringify(arrNewStartUnits));
-											if (arrNewStartUnits.length === 0)
-												return updateMc();
-											arrUnits = arrUnits.concat(arrNewStartUnits);
-											goUp(arrNewStartUnits);
-										}
-```
-
-**File:** main_chain.js (L1385-1395)
-```javascript
-	function addBalls(){
-		conn.query(
-			"SELECT units.*, ball FROM units LEFT JOIN balls USING(unit) \n\
-			WHERE main_chain_index=? ORDER BY level, unit", [mci], 
-			function(unit_rows){
-				if (unit_rows.length === 0)
-					throw Error("no units on mci "+mci);
-				let voteCountSubjects = [];
-				async.eachSeries(
-					unit_rows,
-					function(objUnitProps, cb){
-```
-
-**File:** network.js (L2020-2030)
-```javascript
-	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
-		if (rows.length === 0)
-			return comeOnline();
-		if (rows.length === 1){
-			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-				comeOnline();
+		var cancel_timer = bReroutable ? null : setTimeout(function(){
+			ws.assocPendingRequests[tag].responseHandlers.forEach(function(rh){
+				rh(ws, request, {error: "[internal] response timeout"});
 			});
-			return;
-		}
-		var from_ball = rows[0].ball;
-		var to_ball = rows[1].ball;
+			delete ws.assocPendingRequests[tag];
+		}, RESPONSE_TIMEOUT);
 ```
 
-**File:** validation.js (L594-595)
+**File:** wallet.js (L515-519)
 ```javascript
-					if (objLastBallUnitProps.is_on_main_chain !== 1)
-						return callback("last ball "+last_ball+" is not on MC");
+						signed_message.validateSignedMessage(db, objSignedMessage, objContract.peer_address, function(err) {
+							if (err || objSignedMessage.authors[0].address !== objContract.peer_address || objSignedMessage.signed_message != objContract.title)
+								return callbacks.ifError("wrong contract signature");
+							processResponse(objSignedMessage);
+						});
+```
+
+**File:** wallet.js (L752-756)
+```javascript
+						signed_message.validateSignedMessage(db, objSignedMessage, objContract.peer_address, function(err) {
+							if (err || objSignedMessage.authors[0].address !== objContract.peer_address || objSignedMessage.signed_message != objContract.title)
+								return callbacks.ifError("wrong contract signature");
+							processResponse(objSignedMessage);
+						});
 ```

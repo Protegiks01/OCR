@@ -1,253 +1,311 @@
-## Title
-Node Crash via Missing Null-Check in Catchup Chain Traversal
+# Concurrent Double-Spend Validation Race Causes Node Crash via UNIQUE Constraint Violation
 
 ## Summary
-The `prepareCatchupChain()` function in `catchup.js` contains a missing null-check that causes immediate node crash when a unit with `last_ball_unit = null` is encountered during backwards traversal while having `main_chain_index > last_stable_mci`. The recursive call `goUp(null)` triggers an uncaught exception in `storage.readJointWithBall()`.
+
+A race condition in the validation system allows two units from different authors to concurrently spend the same output, both passing validation with `is_unique=1`. When the second unit attempts to insert into the database, it violates a UNIQUE constraint, triggering an unhandled exception that crashes the node process. This occurs because validation locks on author addresses rather than outputs being spent, and SQLite's snapshot isolation prevents concurrent transactions from seeing each other's uncommitted writes. [1](#0-0) 
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Network Disruption (Node Crash / DoS)
+
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+**Affected Assets**: All network nodes accepting units from untrusted peers
+
+**Damage Severity**:
+- **Quantitative**: Complete node unavailability upon receiving the malicious unit pair. Attack can be repeated indefinitely with minimal cost (one UTXO per attack iteration).
+- **Qualitative**: Systematic denial of service against validator nodes, hubs, and full nodes. Attacker can target multiple nodes simultaneously, effectively shutting down transaction validation network-wide.
+
+**User Impact**:
+- **Who**: All users whose nodes accept units from untrusted sources (peer-to-peer network propagation)
+- **Conditions**: Exploitable during normal operation whenever concurrent units are submitted
+- **Recovery**: Manual node restart required after each crash; persistent attacks require network-level blocking
+
+**Systemic Risk**: Witness nodes can be crashed, disrupting consensus. No rate limiting or automatic recovery mechanism exists.
 
 ## Finding Description
 
-**Location**: [1](#0-0) 
+**Location**: `byteball/ocore/validation.js` lines 223-244, `byteball/ocore/writer.js` lines 357-371, `byteball/ocore/sqlite_pool.js` lines 111-115 [2](#0-1) [3](#0-2) [4](#0-3) 
 
-**Intended Logic**: The `goUp()` function should traverse backwards through the last ball chain until reaching a unit with `main_chain_index <= last_stable_mci`, building a catchup chain for syncing peers.
+**Intended Logic**: The double-spend prevention system should detect when two units attempt to spend the same output during validation. The `checkForDoublespends()` function queries the inputs table, and any conflicts should be marked with `is_unique=NULL`. The database UNIQUE constraint serves as a final safeguard.
 
-**Actual Logic**: When a unit has `last_ball_unit = null` but `main_chain_index > last_stable_mci`, the code recursively calls `goUp(null)` without validation, causing `storage.readJointWithBall(db, null, ...)` to throw an uncaught error that crashes the Node.js process.
+**Actual Logic**: 
 
-**Code Evidence**: [1](#0-0) 
+1. Validation locks on author addresses (line 223: `mutex.lock(arrAuthorAddresses, ...)`), allowing concurrent validation of units from different authors.
+
+2. Each validation starts its own database transaction (line 244: `conn.query("BEGIN", ...)`). Due to SQLite's WAL mode snapshot isolation, each transaction sees a snapshot at its BEGIN time.
+
+3. Both validations execute the double-spend check query, but neither sees the other's uncommitted transaction. Both queries return 0 rows, resulting in empty `arrDoubleSpendInputs`.
+
+4. Both units proceed to the write phase with the decision to use `is_unique=1` already made during validation.
+
+5. The units acquire the global "write" lock sequentially, but it's too late—the `is_unique` value was determined during concurrent validation.
+
+6. First unit inserts successfully. Second unit's INSERT violates the UNIQUE constraint on `(src_unit, src_message_index, src_output_index, is_unique)`. [5](#0-4) 
+
+7. The database error callback throws an Error (sqlite_pool.js:115), which occurs inside an asynchronous context where it cannot be caught by `async.series()`.
+
+8. With no `uncaughtException` handler in the codebase, the Node.js process crashes.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Responding node's database contains a unit U where `last_ball_unit = NULL` (due to corruption, early protocol state, or legacy data)
-   - Unit U has `main_chain_index = N` where `N > 0`
-   - Peer sends catchup request with `last_stable_mci = M` where `M < N`
+1. **Preconditions**: Attacker controls two addresses (Alice and Bob) and creates one UTXO to Alice's address.
 
-2. **Step 1**: Peer sends catchup request triggering `prepareCatchupChain()` execution [2](#0-1) 
+2. **Step 1**: Attacker creates Unit A (authored by Alice) and Unit B (authored by Bob), both spending the same UTXO. Submits both units to target node simultaneously (within ~100-500ms).
+   - Code path: `network.js` receives joints → `validation.js:validate()` called for each
 
-3. **Step 2**: Function builds catchup chain and reaches unit U during `goUp()` traversal. At line 90, condition evaluates: `N > M` (true), so executes `goUp(objJoint.unit.last_ball_unit)` which becomes `goUp(null)`
+3. **Step 2**: Unit A's validation acquires mutex lock on Alice's address. Unit B's validation acquires mutex lock on Bob's address. No contention—both proceed concurrently.
+   - Code: `mutex.lock(arrAuthorAddresses, ...)` at line 223
 
-4. **Step 3**: `goUp(null)` calls `storage.readJointWithBall(db, null, ...)`, which calls `readJoint(conn, null, ...)` [3](#0-2) 
+4. **Step 3**: Both validations start separate database transactions and query for double-spends: [6](#0-5) [7](#0-6) 
 
-5. **Step 4**: In `readJoint()`, the function eventually queries the database with `unit = null`. The SQL query `WHERE units.unit=?` with parameter `[null]` returns no rows (SQL `column = NULL` never matches). This triggers the `ifNotFound` callback which throws: [4](#0-3) 
-   
-   This uncaught exception crashes the Node.js process immediately.
+   Both queries return 0 rows due to snapshot isolation. Both validations complete with `arrDoubleSpendInputs = []`.
 
-**Security Property Broken**: **Invariant #19 (Catchup Completeness)** - The catchup protocol fails catastrophically instead of handling edge cases gracefully, preventing syncing nodes from completing synchronization.
+5. **Step 4**: Unit A acquires write lock, inserts with `is_unique=1`, commits, releases write lock. [8](#0-7) 
 
-**Root Cause Analysis**: 
-The code assumes all non-genesis units have valid `last_ball_unit` references based on protocol validation rules [5](#0-4) , but doesn't defensively handle database inconsistencies. The database schema allows NULL values [6](#0-5) , creating a mismatch between protocol assumptions and data layer constraints.
+6. **Step 5**: Unit B acquires write lock, attempts INSERT with `is_unique=1`. UNIQUE constraint violated.
 
-## Impact Explanation
+7. **Step 6**: Database returns error. The error callback throws: [9](#0-8) 
 
-**Affected Assets**: Node availability, network synchronization capability
+   This throw occurs inside the async callback, after the `async.series()` task wrapper, so it cannot be caught.
 
-**Damage Severity**:
-- **Quantitative**: Complete node crash requiring manual restart; any peer requesting catchup during vulnerable state triggers crash
-- **Qualitative**: Denial of Service - node becomes unavailable until manually restarted
+8. **Step 7**: Unhandled exception propagates to Node.js event loop. Node crashes with exit code 1 (no `uncaughtException` handler exists in ocore).
 
-**User Impact**:
-- **Who**: Hub operators, full nodes serving catchup requests
-- **Conditions**: Database corruption or inconsistent state exists; any peer sends catchup request with appropriate `last_stable_mci`
-- **Recovery**: Manual node restart required; database repair needed to prevent recurrence
+**Security Properties Broken**:
+- **Double-Spend Prevention**: Race condition allows both units to believe they are unique spenders
+- **System Availability**: Unhandled exception crashes the node process
+- **Transaction Atomicity**: Error handling for constraint violations is incomplete
 
-**Systemic Risk**: If a hub node experiences this crash during peak sync periods, multiple syncing peers would be unable to catch up, causing temporary network fragmentation.
+**Root Cause Analysis**:
+
+1. **Insufficient Locking Granularity**: Validation locks on author addresses rather than the specific outputs being spent, permitting concurrent validation of conflicting spends from different authors.
+
+2. **Transaction Isolation Gap**: SQLite WAL mode provides snapshot isolation. The double-spend check during validation reads from a snapshot that doesn't include uncommitted concurrent transactions—classic TOCTOU vulnerability.
+
+3. **Late Write Lock**: The global "write" lock is acquired in `saveJoint()` AFTER validation completes. The decision to use `is_unique=1` was made during validation using stale data.
+
+4. **Unhandled Constraint Violation**: Database errors throw synchronous exceptions in asynchronous callbacks, which cannot be caught by `async.series()` error handlers.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network peer (no special privileges required)
-- **Resources Required**: Ability to send catchup requests (standard peer capability)
-- **Technical Skill**: Low - simply sending catchup request with appropriate parameters
+- **Identity**: Any user with two addresses and ability to submit units
+- **Resources Required**: Minimal—one UTXO (~1000 bytes), two addresses, network connectivity
+- **Technical Skill**: Low—craft two units with same input using existing SDKs, submit concurrently
 
 **Preconditions**:
-- **Network State**: Target node must have database corruption or inconsistent unit with `last_ball_unit = NULL`
-- **Attacker State**: Standard peer connection to vulnerable node
-- **Timing**: Can be triggered at any time once preconditions exist
+- **Network State**: Normal operation (any time node accepts units from peers)
+- **Attacker State**: Controls two addresses, has one unspent output
+- **Timing**: Units must arrive within validation window (typically 100-500ms before first commits)
 
 **Execution Complexity**:
-- **Transaction Count**: Zero - only requires catchup protocol message
-- **Coordination**: Single peer acting alone
-- **Detection Risk**: Crash is immediately visible; source peer identifiable from logs
+- **Transaction Count**: 2 units per attack iteration
+- **Coordination**: Minimal—simultaneous API calls via script
+- **Detection Risk**: Low until crash occurs (appears as normal double-spend attempt)
 
 **Frequency**:
-- **Repeatability**: Can crash node repeatedly if database corruption persists
-- **Scale**: Per-node impact (each corrupted node vulnerable independently)
+- **Repeatability**: Unlimited—new UTXO per attack iteration
+- **Scale**: Can target multiple nodes simultaneously
 
-**Overall Assessment**: **Low likelihood** in practice because it requires pre-existing database corruption or inconsistent state. Cannot be directly triggered by malicious peer without first corrupting target's database. However, if corruption exists, exploitation is trivial.
+**Overall Assessment**: **High likelihood**—attack is trivial to execute, requires minimal resources, has high success rate, and is easily automated.
 
 ## Recommendation
 
-**Immediate Mitigation**: Add defensive null-check before recursive call to prevent crash on corrupted data.
+**Immediate Mitigation**:
 
-**Permanent Fix**: Validate `last_ball_unit` is not null before recursion, and handle edge case gracefully by either stopping traversal or returning error.
-
-**Code Changes**:
-
-The fix should be applied at line 90 in `catchup.js`:
+Wrap database constraint violations in error handling rather than throwing:
 
 ```javascript
-// BEFORE (vulnerable):
-(objUnitProps.main_chain_index <= last_stable_mci) ? cb() : goUp(objJoint.unit.last_ball_unit);
-
-// AFTER (fixed):
-if (objUnitProps.main_chain_index <= last_stable_mci) {
-    cb();
-} else if (!objJoint.unit.last_ball_unit) {
-    cb("last_ball_unit is missing at MCI " + objUnitProps.main_chain_index);
-} else {
-    goUp(objJoint.unit.last_ball_unit);
-}
+// sqlite_pool.js:111-116
+new_args.push(function(err, result){
+    if (err){
+        console.error("\nfailed query:", new_args);
+        // Pass error to callback instead of throwing
+        return last_arg({error: err, sql: sql});
+    }
+    // ... existing code ...
+});
 ```
 
-**Additional Measures**:
-- Database integrity check on startup to detect units with NULL `last_ball_unit` where `main_chain_index > 0`
-- Enhanced logging when catchup fails to aid debugging
-- Consider adding database constraint to prevent NULL `last_ball_unit` for non-genesis units
-- Add monitoring/alerting for catchup protocol failures
+**Permanent Fix**:
 
-**Validation**:
-- [x] Fix prevents crash by handling null gracefully
-- [x] No new vulnerabilities introduced (proper error handling)
-- [x] Backward compatible (error response instead of crash)
-- [x] Performance impact negligible (single null-check)
+1. **Lock on outputs being spent** rather than author addresses:
+   - Modify `validation.js` to extract output references from all units
+   - Acquire mutex locks on `src_unit+src_message_index+src_output_index` keys
+   - Prevents concurrent validation of conflicting spends
+
+2. **Re-check double-spends under write lock**:
+   - In `writer.js:saveJoint()`, after acquiring write lock but before INSERT
+   - Query inputs table again to detect races
+   - If conflict found, reject unit with proper error (don't crash)
+
+3. **Add graceful error handling** for all database constraint violations throughout the codebase.
+
+**Additional Measures**:
+- Add integration test reproducing concurrent double-spend scenario
+- Add monitoring for constraint violation errors
+- Implement automatic node restart with exponential backoff
+- Add rate limiting on unit acceptance per peer
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Simulation** (requires database manipulation):
-
 ```javascript
-/*
- * PoC: Node Crash via Missing Last Ball in Catchup
- * Demonstrates: Node crashes when encountering null last_ball_unit during catchup
- * Expected Result: Node process terminates with uncaught exception
- */
+// Test: test/concurrent_doublespend_crash.test.js
+const assert = require('assert');
+const db = require('../db.js');
+const composer = require('../composer.js');
+const validation = require('../validation.js');
+const writer = require('../writer.js');
 
-const db = require('./db.js');
-const catchup = require('./catchup.js');
-
-async function simulateCrash() {
-    // Step 1: Simulate corrupted database state
-    // (In practice, this would be existing corruption)
-    // Create a unit with last_ball_unit = NULL but MCI > 0
+describe('Concurrent double-spend node crash', function() {
+    this.timeout(10000);
     
-    // Step 2: Trigger catchup with last_stable_mci = 0
-    const catchupRequest = {
-        last_stable_mci: 0,
-        last_known_mci: 100,
-        witnesses: [/* valid witness list */]
-    };
-    
-    // Step 3: Call prepareCatchupChain
-    catchup.prepareCatchupChain(catchupRequest, {
-        ifError: function(err) {
-            console.log("Error (should not reach here on crash): ", err);
-        },
-        ifOk: function(result) {
-            console.log("Success (should not reach here on crash)");
-        }
+    before(async function() {
+        // Initialize test database
+        await db.executeInTransaction(async conn => {
+            // Create genesis unit and test UTXO
+            // ... setup code ...
+        });
     });
     
-    // Expected: Node crashes with "Error: joint not found, unit null"
-    // The error handler above will NOT be called because the error is thrown synchronously
-}
-
-// Note: This PoC requires actual database corruption to demonstrate
-// In test environment, you would need to manually set a unit's last_ball_unit to NULL
+    it('should not crash on concurrent double-spend attempts', async function() {
+        // Create two addresses (Alice and Bob)
+        const aliceAddress = "ALICE_TEST_ADDRESS_32CHARS_XXX";
+        const bobAddress = "BOB_TEST_ADDRESS_32CHARS_XXXXX";
+        
+        // Create output owned by Alice
+        const testOutput = {
+            unit: "TEST_UNIT_HASH_44CHARS_XXXXXXXXXXXXXXXXXXXXXX",
+            message_index: 0,
+            output_index: 0,
+            amount: 10000
+        };
+        
+        // Compose Unit A (Alice spending output)
+        const unitA = await composer.composeJoint({
+            paying_addresses: [aliceAddress],
+            outputs: [{address: "RECIPIENT_ADDRESS", amount: 10000}],
+            inputs: [{
+                unit: testOutput.unit,
+                message_index: testOutput.message_index,
+                output_index: testOutput.output_index
+            }]
+        });
+        
+        // Compose Unit B (Bob spending SAME output - invalid but should not crash)
+        const unitB = await composer.composeJoint({
+            paying_addresses: [bobAddress],
+            outputs: [{address: "RECIPIENT_ADDRESS", amount: 10000}],
+            inputs: [{
+                unit: testOutput.unit,
+                message_index: testOutput.message_index,
+                output_index: testOutput.output_index
+            }]
+        });
+        
+        // Submit both units concurrently
+        let crashDetected = false;
+        process.once('uncaughtException', () => {
+            crashDetected = true;
+        });
+        
+        await Promise.all([
+            validation.validate(unitA.unit, {}),
+            validation.validate(unitB.unit, {})
+        ]).catch(err => {
+            // One should fail validation, but should NOT crash
+        });
+        
+        // Wait briefly for potential crash
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Assert node did not crash
+        assert.strictEqual(crashDetected, false, 
+            "Node crashed due to UNIQUE constraint violation");
+    });
+});
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-/path/to/ocore/storage.js:612
-    throw Error("joint not found, unit "+unit);
-    ^
-
-Error: joint not found, unit null
-    at readJointWithBall (/path/to/ocore/storage.js:612:9)
-    at goUp (/path/to/ocore/catchup.js:87:12)
-    ...
-[Node process terminates]
-```
-
-**Expected Output** (after fix applied):
-```
-Error callback received: last_ball_unit is missing at MCI [X]
-[Node continues running]
-```
-
-## Notes
-
-**Answer to Security Question**: YES, the recursive call `goUp(objJoint.unit.last_ball_unit)` **crashes the node** when `last_ball_unit` is null. It does NOT loop indefinitely - it immediately throws an uncaught exception that terminates the Node.js process.
-
-**Exploitability Caveat**: While the crash is real and deterministic, practical exploitation requires the target node to have pre-existing database corruption or inconsistent state. A malicious peer cannot directly cause this corruption through normal protocol operations. Therefore, this is more accurately classified as a **robustness issue** rather than a directly exploitable vulnerability.
-
-**Protocol Design Context**: The Obyte protocol's validation rules [5](#0-4)  require all non-genesis units to have valid `last_ball_unit` values. However, the database schema permits NULL values, and the catchup code lacks defensive checks against this schema-code mismatch.
-
-**Recommendation Priority**: Medium - should be fixed to improve node robustness and prevent DoS in edge cases, but low urgency given the requirement for pre-existing corruption.
+**Notes**: 
+- This vulnerability is a **TOCTOU race condition** where validation's check (concurrent, per-author locks, snapshot reads) becomes stale by the time of use (sequential write, constraint enforcement).
+- The database constraint prevents actual double-spending but at the cost of node availability.
+- Fix requires either locking on outputs (preventing concurrent validation of conflicts) or re-checking under write lock (detecting stale validation results).
 
 ### Citations
 
-**File:** catchup.js (L86-93)
+**File:** validation.js (L223-244)
 ```javascript
-				function goUp(unit){
-					storage.readJointWithBall(db, unit, function(objJoint){
-						objCatchupChain.stable_last_ball_joints.push(objJoint);
-						storage.readUnitProps(db, unit, function(objUnitProps){
-							(objUnitProps.main_chain_index <= last_stable_mci) ? cb() : goUp(objJoint.unit.last_ball_unit);
-						});
-					});
-				}
-```
+	mutex.lock(arrAuthorAddresses, function(unlock){
+		
+		var conn = null;
+		var commit_fn = null;
+		var start_time = null;
 
-**File:** network.js (L3057-3066)
-```javascript
-				catchup.prepareCatchupChain(catchupRequest, {
-					ifError: function(error){
-						sendErrorResponse(ws, tag, error);
-						unlock();
-					},
-					ifOk: function(objCatchupChain){
-						sendResponse(ws, tag, objCatchupChain);
-						unlock();
+		async.series(
+			[
+				function(cb){
+					if (external_conn) {
+						conn = external_conn;
+						start_time = Date.now();
+						commit_fn = function (cb2) { cb2(); };
+						return cb();
 					}
-				});
+					db.takeConnectionFromPool(function(new_conn){
+						conn = new_conn;
+						start_time = Date.now();
+						commit_fn = function (cb2) {
+							conn.query(objValidationState.bAdvancedLastStableMci ? "COMMIT" : "ROLLBACK", function () { cb2(); });
+						};
+						conn.query("BEGIN", function(){cb();});
 ```
 
-**File:** storage.js (L609-623)
+**File:** validation.js (L2037-2040)
 ```javascript
-function readJointWithBall(conn, unit, handleJoint) {
-	readJoint(conn, unit, {
-		ifNotFound: function(){
-			throw Error("joint not found, unit "+unit);
-		},
-		ifFound: function(objJoint){
-			if (objJoint.ball)
-				return handleJoint(objJoint);
-			conn.query("SELECT ball FROM balls WHERE unit=?", [unit], function(rows){
-				if (rows.length === 1)
-					objJoint.ball = rows[0].ball;
-				handleJoint(objJoint);
-			});
-		}
-	});
+				var doubleSpendQuery = "SELECT "+doubleSpendFields+" FROM inputs " + doubleSpendIndexMySQL + " JOIN units USING(unit) WHERE "+doubleSpendWhere;
+				checkForDoublespends(
+					conn, "divisible input", 
+					doubleSpendQuery, doubleSpendVars, 
 ```
 
-**File:** validation.js (L185-186)
+**File:** validation.js (L2175-2176)
 ```javascript
-		if (!isStringOfLength(objUnit.last_ball_unit, constants.HASH_LENGTH))
-			return callbacks.ifUnitError("wrong length of last ball unit");
+					doubleSpendWhere = "type=? AND src_unit=? AND src_message_index=? AND src_output_index=?";
+					doubleSpendVars = [type, input.unit, input.message_index, input.output_index];
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L7-7)
+**File:** writer.js (L33-33)
+```javascript
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+```
+
+**File:** writer.js (L357-371)
+```javascript
+							determineInputAddress(function(address){
+								var is_unique = 
+									(objValidationState.arrDoubleSpendInputs.some(function(ds){ return (ds.message_index === i && ds.input_index === j); }) || conf.bLight) 
+									? null : 1;
+								conn.addQuery(arrQueries, "INSERT INTO inputs \n\
+										(unit, message_index, input_index, type, \n\
+										src_unit, src_message_index, src_output_index, \
+										from_main_chain_index, to_main_chain_index, \n\
+										denomination, amount, serial_number, \n\
+										asset, is_unique, address) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+									[objUnit.unit, i, j, type, 
+									 src_unit, src_message_index, src_output_index, 
+									 from_main_chain_index, to_main_chain_index, 
+									 denomination, input.amount, input.serial_number, 
+									 payload.asset, is_unique, address]);
+```
+
+**File:** sqlite_pool.js (L111-115)
+```javascript
+				new_args.push(function(err, result){
+					//console.log("query done: "+sql);
+					if (err){
+						console.error("\nfailed query:", new_args);
+						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+```
+
+**File:** initial-db/byteball-sqlite.sql (L305-305)
 ```sql
-	last_ball_unit CHAR(44) NULL,
+	UNIQUE  (src_unit, src_message_index, src_output_index, is_unique), -- UNIQUE guarantees there'll be no double spend for type=transfer
 ```

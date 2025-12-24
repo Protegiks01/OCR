@@ -1,274 +1,286 @@
+# Audit Report
+
 ## Title
-Light Client Orphaned Parent References Due to Missing Foreign Key Constraints During Archiving
+Context Leakage in Function Declaration Validation: `bInIf` Flag Not Saved/Restored
 
 ## Summary
-The light client database schema lacks foreign key constraints on the `parenthoods` table, allowing unit archiving to create orphaned parent references that violate DAG referential integrity (Invariant #20). When `generateQueriesToRemoveJoint()` archives a unit, it deletes the unit from the `units` table but only removes parenthood records where the unit is the child, leaving dangling references where the archived unit is referenced as a parent.
+The `bInIf` context flag in `formula/validation.js` is not saved and restored when parsing function declarations inside conditional blocks. This causes the `freeze` statement validation to incorrectly skip marking variables as frozen, allowing code that passes validation to fail during execution with "variable is frozen" errors, violating the AA deterministic validation principle.
 
 ## Impact
 **Severity**: Medium  
-**Category**: Unintended behavior with potential for database corruption and validation failures in light clients
+**Category**: Unintended AA Behavior Without Direct Fund Risk
+
+**Affected Parties**: AA developers who unknowingly deploy buggy code; users triggering affected AAs who lose bounce fees (typically 10,000 bytes per transaction)
+
+**Quantified Loss**: Per-transaction bounce fee loss (~10,000 bytes); no direct theft of user funds or AA balances
 
 ## Finding Description
 
 **Location**: [1](#0-0) 
 
-**Intended Logic**: When archiving a unit, all references to that unit should be cleanly removed from the database, maintaining referential integrity of the DAG structure.
+**Intended Logic**: Function bodies should be validated in an independent scope where `bInIf` reflects conditional context *within the function*, not whether the function declaration itself is inside a conditional. The freeze statement should mark variables as frozen during validation if the freeze is unconditional within its validation scope.
 
-**Actual Logic**: The archiving function only deletes `WHERE child_unit=?` from parenthoods, but does not delete records where the archived unit appears as `parent_unit`. In full nodes, foreign key constraints prevent orphaned references. In light clients, these constraints are absent.
+**Actual Logic**: When `parseFunctionDeclaration` is called, it saves and restores `bInFunction`, `complexity`, `count_ops`, `bStateVarAssignmentAllowed`, and `locals` [2](#0-1) , but does NOT save or restore `bInIf`. If a function is declared inside an if-else block, the `bInIf = true` flag set by the outer conditional [3](#0-2)  leaks into function body validation.
 
-**Database Schema Comparison**:
+**Code Evidence**:
 
-Full node schema: [2](#0-1) 
+The freeze statement only marks variables as frozen when `!bInIf`: [4](#0-3) 
 
-Light client schema: [3](#0-2) 
+During runtime evaluation, freeze ALWAYS executes: [5](#0-4) 
 
-The light client schema is missing the `CONSTRAINT parenthoodsByChild FOREIGN KEY (child_unit) REFERENCES units(unit)` and `CONSTRAINT parenthoodsByParent FOREIGN KEY (parent_unit) REFERENCES units(unit)` declarations.
-
-**Light Client Archiving Usage**: [4](#0-3) 
+Variable mutation checks frozen state during evaluation: [6](#0-5) 
 
 **Exploitation Path**:
-1. **Preconditions**: Light client has units A and B stored, where B is a child of A (parenthood record: `child_unit=B, parent_unit=A`)
-2. **Step 1**: Light client syncs history and receives notification that unit A is `final-bad` or should be voided
-3. **Step 2**: Light client calls `archiving.generateQueriesToArchiveJoint()` which executes `DELETE FROM parenthoods WHERE child_unit=A` (removes edges where A is child) followed by `DELETE FROM units WHERE unit=A`
-4. **Step 3**: Without foreign key constraint enforcement, both deletions succeed
-5. **Step 4**: Orphaned parenthood record remains: `(child_unit=B, parent_unit=A)` where A no longer exists in `units` table
 
-**Security Property Broken**: Invariant #20 - Database Referential Integrity: "Foreign keys (unit → parents, messages → units, inputs → outputs) must be enforced. Orphaned records corrupt DAG structure."
+1. **Preconditions**: Attacker can deploy AA with arbitrary code; AA2 upgrade activated (functions enabled)
 
-**Root Cause Analysis**: The light client database schema was designed without foreign key constraints, likely for performance or simplicity reasons. However, the archiving logic assumes either (a) all descendants are archived together, or (b) foreign key constraints prevent incomplete archiving. Neither holds true for light clients.
+2. **Step 1**: Attacker deploys AA with function declared inside if-else:
+   ```javascript
+   if (trigger.data.mode == 'A') {
+       $compute = () => {
+           $data = {value: 100};
+           freeze $data;
+           $data.value = 200;
+           return $data;
+       };
+   }
+   ```
+   Code path: AA deployment → `formula/validation.js:validate()` → `evaluate()` at line 266
+
+3. **Step 2**: Validation evaluates if-else block
+   - `ifelse` case sets `bInIf = true` [7](#0-6) 
+   - Evaluates if_block containing function assignment
+
+4. **Step 3**: Function declaration parsed with inherited `bInIf = true`
+   - `parseFunctionDeclaration` called at line 603
+   - Does NOT save/restore `bInIf` [2](#0-1) 
+   - Function body validated with `bInIf = true` from outer scope
+
+5. **Step 4**: Freeze statement validation skips marking frozen
+   - Freeze statement evaluated in function body
+   - Check `if (!bInIf)` evaluates to false (since `bInIf = true`)
+   - Variable `$data` NOT marked as `frozen` [4](#0-3) 
+   - Subsequent mutation `$data.value = 200` passes validation (line 576-577 doesn't trigger)
+
+6. **Step 5**: AA passes validation and is deployed
+
+7. **Step 6**: Runtime execution fails unexpectedly
+   - User triggers AA; function executes
+   - Freeze statement executes unconditionally, sets `locals['$data'].frozen = true` [5](#0-4) 
+   - Mutation attempt checks frozen state [6](#0-5) 
+   - Error: "variable $data is frozen"
+   - Transaction bounces; user loses bounce fee
+
+**Security Property Broken**: AA Deterministic Validation - The validation layer should deterministically catch all execution errors before deployment, but code that will fail at runtime passes validation.
+
+**Root Cause**: When `bInIf` was introduced to track conditional context, it was not added to the save/restore logic in `parseFunctionDeclaration`. The function was designed to create isolated validation contexts by saving state variables, but this new context variable was overlooked.
 
 ## Impact Explanation
 
-**Affected Assets**: Light client database integrity, DAG traversal correctness
+**Affected Assets**: User bounce fees, AA developer reputation
 
 **Damage Severity**:
-- **Quantitative**: All light clients that archive units are potentially affected
-- **Qualitative**: Database corruption with orphaned references, potential validation errors when traversing or querying parent relationships
+- **Quantitative**: Users lose bounce fees (~10,000 bytes per failed trigger); cumulative loss limited by number of users interacting with affected AA
+- **Qualitative**: Validation layer incompleteness; user experience degradation; developer confusion
 
 **User Impact**:
-- **Who**: Light client operators and users
-- **Conditions**: When a unit is archived (marked final-bad) but units referencing it as parent are not simultaneously archived
-- **Recovery**: Database cleanup or re-sync required
+- **Who**: Users triggering affected AAs; AA developers who deploy code with this pattern
+- **Conditions**: AA contains function declared inside if-else with freeze + subsequent mutation pattern
+- **Recovery**: No recovery of lost bounce fees; AA must be redeployed with corrected code
 
-**Systemic Risk**: If parent traversal functions encounter orphaned references, they may fail with "unit not found" errors, potentially causing light client crashes or incorrect validation of new units.
+**Systemic Risk**: Validation gap undermines trust in validation layer; could be exploited for griefing by intentionally deploying AAs that appear functional but fail in specific conditions
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: No direct attacker needed - occurs through normal protocol operations
-- **Resources Required**: Ability to cause units to be marked as final-bad (e.g., via double-spend)
-- **Technical Skill**: Low - exploits existing protocol behavior
+- **Identity**: AA developer (malicious for griefing, or careless)
+- **Resources**: Minimal - just AA deployment cost
+- **Technical Skill**: Intermediate - requires understanding of AA functions, conditionals, and freeze semantics
 
 **Preconditions**:
-- **Network State**: Light client has received and stored units with parent-child relationships
-- **Attacker State**: Ability to create conditions causing unit archiving (or occurs naturally)
-- **Timing**: Occurs during normal history synchronization
+- **Network State**: Normal operation; AA2 upgrade activated
+- **Attacker State**: Ability to deploy AA
+- **Timing**: None
 
 **Execution Complexity**:
-- **Transaction Count**: Varies - depends on normal network operations
-- **Coordination**: None required
-- **Detection Risk**: Low visibility - manifests as database inconsistency
+- **Transaction Count**: 1 (deployment) + N (victim triggers)
+- **Coordination**: None
+- **Detection Risk**: Low during deployment (passes validation); medium during exploitation (visible bounce errors)
 
 **Frequency**:
-- **Repeatability**: Occurs whenever light clients archive units with unarchived descendants
-- **Scale**: Potentially affects all light client instances
+- **Repeatability**: Per-AA (each malformed AA can affect unlimited users)
+- **Scale**: Limited to users of specific AAs
 
-**Overall Assessment**: Medium likelihood - occurs through normal protocol operations rather than active exploitation
+**Overall Assessment**: Medium likelihood - specific pattern unlikely to occur accidentally; could be used intentionally for griefing with minimal cost
 
 ## Recommendation
 
-**Immediate Mitigation**: Add explicit cleanup of orphaned parent references before deleting units in archiving logic for light clients.
+**Immediate Mitigation**:
+Add `bInIf` to the save/restore logic in `parseFunctionDeclaration`:
 
-**Permanent Fix**: Add foreign key constraints to light client database schema or implement explicit orphaned reference cleanup.
-
-**Code Changes**:
-
-Add to `archiving.js` before the unit deletion: [5](#0-4) 
-
-Insert after line 24:
 ```javascript
-// For light clients without FK constraints, also delete where this unit is parent
-if (conf.bLight)
-    conn.addQuery(arrQueries, "DELETE FROM parenthoods WHERE parent_unit=?", [unit]);
+// In formula/validation.js, function parseFunctionDeclaration
+var saved_complexity = complexity;
+var saved_count_ops = count_ops;
+var saved_sva = bStateVarAssignmentAllowed;
+var saved_infunction = bInFunction;
+var saved_in_if = bInIf;  // ADD THIS LINE
+var saved_locals = _.cloneDeep(locals);
+```
+
+And restore it:
+
+```javascript
+// After function body evaluation
+complexity = saved_complexity;
+count_ops = saved_count_ops;
+bStateVarAssignmentAllowed = saved_sva;
+bInFunction = saved_infunction;
+bInIf = saved_in_if;  // ADD THIS LINE
+assignObject(locals, saved_locals);
 ```
 
 **Additional Measures**:
-- Add foreign key constraints to light client schema in future versions
-- Add database integrity check function to detect orphaned references
-- Log warnings when orphaned references are detected during DAG traversal
-
-**Validation**:
-- [x] Fix prevents orphaned references in light clients
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible (cleanup is additive)
-- [x] Minimal performance impact
+- Add test case verifying freeze statements in functions declared inside conditionals behave correctly
+- Review other context flags to ensure complete isolation in function scope
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Configure as light client: conf.bLight = true
-```
-
-**Exploit Script** (`test_orphaned_refs.js`):
 ```javascript
-/*
- * Proof of Concept for Orphaned Parent References in Light Clients
- * Demonstrates: Light client archiving leaves orphaned parenthood records
- * Expected Result: Parenthood records remain after parent unit is deleted
- */
+// test/freeze_in_conditional_function.test.js
+var test = require('ava');
+var formulaParser = require('../formula/index');
 
-const db = require('./db.js');
-const archiving = require('./archiving.js');
-
-async function testOrphanedReferences() {
-    // Simulate light client environment
-    await db.query("BEGIN");
-    
-    // Create test units A and B
-    await db.query("INSERT INTO units (unit, sequence) VALUES ('A', 'final-bad')");
-    await db.query("INSERT INTO units (unit, sequence) VALUES ('B', 'good')");
-    await db.query("INSERT INTO parenthoods (child_unit, parent_unit) VALUES ('B', 'A')");
-    
-    console.log("Before archiving:");
-    let rows = await db.query("SELECT * FROM parenthoods WHERE parent_unit='A'");
-    console.log("Parenthoods with A as parent:", rows.length);
-    
-    // Archive unit A
-    let arrQueries = [];
-    await new Promise(resolve => {
-        archiving.generateQueriesToRemoveJoint(db, 'A', arrQueries, resolve);
-    });
-    
-    for (let q of arrQueries) {
-        await q();
-    }
-    
-    console.log("\nAfter archiving:");
-    let unitsCheck = await db.query("SELECT * FROM units WHERE unit='A'");
-    console.log("Unit A exists:", unitsCheck.length > 0);
-    
-    let parenthoodCheck = await db.query("SELECT * FROM parenthoods WHERE parent_unit='A'");
-    console.log("Orphaned parenthoods with A as parent:", parenthoodCheck.length);
-    
-    await db.query("ROLLBACK");
-    
-    return parenthoodCheck.length > 0; // Returns true if orphaned refs exist
+function validateFormula(formula, cb) {
+    var opts = {
+        formula,
+        complexity: 0,
+        count_ops: 0,
+        mci: Number.MAX_SAFE_INTEGER,
+        bAA: true,
+        bStateVarAssignmentAllowed: true,
+        bStatementsOnly: true,
+        readGetterProps: () => {},
+        locals: {}
+    };
+    formulaParser.validate(opts, cb);
 }
 
-testOrphanedReferences().then(hasOrphans => {
-    console.log(hasOrphans ? "\n✗ VULNERABILITY CONFIRMED: Orphaned references exist" : "\n✓ No orphaned references");
-    process.exit(hasOrphans ? 1 : 0);
+test('freeze in function inside conditional should fail validation on subsequent mutation', t => {
+    const formula = `
+        if (trigger.data.mode == 'A') {
+            $compute = () => {
+                $data = {value: 100};
+                freeze $data;
+                $data.value = 200;
+                return $data;
+            };
+        }
+    `;
+    
+    validateFormula(formula, res => {
+        // Currently passes validation due to bug (bInIf leakage)
+        // Should fail with "local var $data is frozen"
+        t.is(res.error, false); // Bug: validation incorrectly passes
+        
+        // After fix, this should change to:
+        // t.truthy(res.error);
+        // t.regex(res.error, /frozen/);
+    });
+});
+
+test('freeze in function outside conditional should properly fail validation', t => {
+    const formula = `
+        $compute = () => {
+            $data = {value: 100};
+            freeze $data;
+            $data.value = 200;
+            return $data;
+        };
+    `;
+    
+    validateFormula(formula, res => {
+        // This correctly fails validation
+        t.truthy(res.error);
+        t.regex(res.error, /frozen/);
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Before archiving:
-Parenthoods with A as parent: 1
-
-After archiving:
-Unit A exists: false
-Orphaned parenthoods with A as parent: 1
-
-✗ VULNERABILITY CONFIRMED: Orphaned references exist
-```
-
-**Expected Output** (after fix applied):
-```
-Before archiving:
-Parenthoods with A as parent: 1
-
-After archiving:
-Unit A exists: false
-Orphaned parenthoods with A as parent: 0
-
-✓ No orphaned references
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates light client database behavior
-- [x] Shows clear violation of Invariant #20 (Database Referential Integrity)
-- [x] Demonstrates measurable impact (orphaned database records)
-- [x] Would pass with proposed fix
+**Expected Test Result**: First test currently passes (demonstrating bug); should fail after fix. Second test correctly fails validation in both cases.
 
 ## Notes
 
-This vulnerability specifically affects light clients due to their simplified database schema. Full nodes are protected by foreign key constraints that prevent the `DELETE FROM units` operation from succeeding if orphaned parenthood references would remain. The issue represents a deviation from the principle that "Database Referential Integrity: Foreign keys must be enforced. Orphaned records corrupt DAG structure."
+This is a validation completeness issue rather than a fund theft vulnerability. While the financial impact is limited to bounce fees, it violates the principle that validation should deterministically catch all runtime errors. The bug affects a specific code pattern (function declarations inside conditionals with freeze statements) that is unlikely to occur accidentally but could be exploited for griefing.
 
-While this is classified as Medium severity (unintended behavior), it could escalate if DAG traversal algorithms fail when encountering orphaned references, potentially causing light client crashes or validation errors.
+The fix is straightforward: add `bInIf` to the list of saved/restored variables in `parseFunctionDeclaration` [2](#0-1) , ensuring function bodies are validated with independent conditional context.
 
 ### Citations
 
-**File:** archiving.js (L15-44)
+**File:** formula/validation.js (L689-690)
 ```javascript
-function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=? OR response_unit=?", [unit, unit]);
-		conn.addQuery(arrQueries, "DELETE FROM original_addresses WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM sent_mnemonics WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM unit_witnesses WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM unit_authors WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM parenthoods WHERE child_unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM spend_proofs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM attested_fields WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM attestations WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_metadata WHERE asset=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_denominations WHERE asset=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_attestors WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM assets WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM messages WHERE unit=?", [unit]);
-	//	conn.addQuery(arrQueries, "DELETE FROM balls WHERE unit=?", [unit]); // if it has a ball, it can't be uncovered
-		conn.addQuery(arrQueries, "DELETE FROM units WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM joints WHERE unit=?", [unit]);
-		cb();
-	});
-}
+					var prev_in_if = bInIf;
+					bInIf = true;
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L65-73)
-```sql
--- must be sorted by parent_unit
-CREATE TABLE parenthoods (
-	child_unit CHAR(44) NOT NULL,
-	parent_unit CHAR(44) NOT NULL,
-	PRIMARY KEY (parent_unit, child_unit),
-	CONSTRAINT parenthoodsByChild FOREIGN KEY (child_unit) REFERENCES units(unit),
-	CONSTRAINT parenthoodsByParent FOREIGN KEY (parent_unit) REFERENCES units(unit)
-);
-CREATE INDEX byChildUnit ON parenthoods(child_unit);
-```
-
-**File:** initial-db/byteball-sqlite-light.sql (L63-69)
-```sql
--- must be sorted by parent_unit
-CREATE TABLE parenthoods (
-	child_unit CHAR(44) NOT NULL,
-	parent_unit CHAR(44) NOT NULL,
-	PRIMARY KEY (parent_unit, child_unit)
-);
-CREATE INDEX byChildUnit ON parenthoods(child_unit);
-```
-
-**File:** light.js (L316-323)
+**File:** formula/validation.js (L915-916)
 ```javascript
-										// void the final-bad
-										breadcrumbs.add('will void '+unit);
-										db.executeInTransaction(function doWork(conn, cb3){
-											var arrQueries = [];
-											archiving.generateQueriesToArchiveJoint(conn, objJoint, 'voided', arrQueries, function(){
-												async.series(arrQueries, cb3);
-											});
-										}, cb2);
+						if (!bInIf)
+							locals[var_name_expr].state = 'frozen';
+```
+
+**File:** formula/validation.js (L1281-1321)
+```javascript
+	function parseFunctionDeclaration(args, body, cb) {
+		var scopeVarNames = Object.keys(locals);
+		if (_.intersection(args, scopeVarNames).length > 0)
+			return cb("some args would shadow some local vars");
+		var count_args = args.length;
+		if (_.uniq(args).length !== count_args)
+			return cb("duplicate arguments");
+		var saved_complexity = complexity;
+		var saved_count_ops = count_ops;
+		var saved_sva = bStateVarAssignmentAllowed;
+		var saved_infunction = bInFunction;
+		var saved_locals = _.cloneDeep(locals);
+		complexity = 0;
+		count_ops = 0;
+		//	bStatementsOnly is ignored in functions
+		bStateVarAssignmentAllowed = true;
+		bInFunction = true;
+		// if a var was conditinally assigned, treat it as assigned when parsing the function body
+		finalizeLocals(locals);
+		// arguments become locals within function body
+		args.forEach(name => {
+			assignField(locals, name, { state: 'assigned', type: 'data' });
+		});
+		evaluate(body, function (err) {
+			if (err)
+				return cb(err);
+			var funcProps = { complexity, count_args, count_ops };
+			// restore the saved values
+			complexity = saved_complexity;
+			count_ops = saved_count_ops;
+			bStateVarAssignmentAllowed = saved_sva;
+			bInFunction = saved_infunction;
+			assignObject(locals, saved_locals);
+
+			if (funcProps.complexity > constants.MAX_COMPLEXITY)
+				return cb("function exceeds complexity: " + funcProps.complexity);
+			if (funcProps.count_ops > constants.MAX_OPS)
+				return cb("function exceeds max ops: " + funcProps.count_ops);
+			cb(null, funcProps);
+		});
+	}
+```
+
+**File:** formula/evaluation.js (L1159-1160)
+```javascript
+						if (locals[var_name].frozen)
+							return setFatalError("variable " + var_name + " is frozen", cb, false);
+```
+
+**File:** formula/evaluation.js (L2138-2138)
+```javascript
+						locals[var_name].frozen = true;
 ```

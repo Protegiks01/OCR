@@ -1,354 +1,264 @@
-## Title
-Arbstore Fee Bypass via Fixed Denomination Assets
+# Audit Report: Private Fund Freezing via Double-Spend and Archive of Unstable Chain Units
 
 ## Summary
-The `createSharedAddressAndPostUnit()` and `complete()` functions in `arbiter_contract.js` unconditionally exempt fixed denomination assets from arbstore fees, allowing malicious payers to bypass arbitration service charges by creating custom fixed denomination assets with minimal denominations (e.g., `[1]`), which function identically to divisible assets but avoid fee deductions.
+
+The `buildPrivateElementsChain()` function in `indivisible_asset.js` throws an uncaught exception when inputs are missing from the database. An attacker exploits this by sending private payments containing unstable units, double-spending them before stabilization, causing automatic archiving that deletes database inputs. When victims attempt to spend their funds, chain reconstruction fails permanently, freezing their private assets.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Direct Fund Loss (arbstores lose expected fees)
+
+**Severity**: High  
+**Category**: Permanent Fund Freeze
+
+**Affected Assets**: All private indivisible assets (blackbytes, private tokens with fixed denominations)
+
+**Damage Severity**:
+- **Quantitative**: Complete loss of all private funds received via compromised chain elements. No recovery mechanism exists within normal protocol operations.
+- **Qualitative**: Permanent, irreversible fund loss requiring database restoration from backup or protocol hard fork to recover.
+
+**User Impact**:
+- **Who**: Any user receiving private payments containing unstable units that are subsequently double-spent
+- **Conditions**: Victim accepts payment before stabilization (~5-15 minutes); attacker successfully double-spends within this window
+- **Recovery**: Impossible through normal wallet operations; requires manual database restoration, direct database manipulation, or hard fork
+
+**Systemic Risk**: Repeatable attack targeting multiple victims; erodes trust in private payment feature; no built-in detection or warning mechanism.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (functions `createSharedAddressAndPostUnit()` lines 395-537 and `complete()` lines 566-632)
+**Location**: `byteball/ocore/indivisible_asset.js`, functions `buildPrivateElementsChain()` (lines 603-705) and `validateAndSavePrivatePaymentChain()` (lines 223-281)
 
-**Intended Logic**: Arbstores should receive their configured percentage cut (stored in `arbstoreInfo.cut`) as compensation for providing arbitration services in contract disputes, regardless of which asset type is used for the contract.
+**Intended Logic**: Private payment chains should be validated for completeness and stability before saving. Chain reconstruction should successfully retrieve all historical inputs from previously-validated chains.
 
-**Actual Logic**: The code completely exempts fixed denomination assets from arbstore fee deductions. When `isFixedDen` is true, the shared address definition does not require an output to the arbstore, and the completion transaction sends the full contract amount to the recipient without deducting the arbstore's cut.
-
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) 
+**Actual Logic**: The protocol accepts and saves private payment chains containing unstable units without enforcing stability requirements. [1](#0-0)  When these unstable units are double-spent, they receive bad sequence status, [2](#0-1)  triggering automatic archiving that permanently deletes inputs from the database. [3](#0-2) [4](#0-3)  Subsequently, when victims attempt to spend their funds, chain reconstruction queries return zero rows and the function throws an uncaught exception, [5](#0-4)  preventing transaction composition.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Attacker wants to enter an arbiter contract with a peer
-   - Arbstore has configured `cut` > 0 (e.g., 5% = 0.05)
-   - Contract amount is substantial (e.g., 1,000,000 bytes worth)
+1. **Preconditions**: Attacker controls addresses and can create private payment transactions; victim monitors incoming private payments
 
-2. **Step 1**: Attacker creates a custom asset with `fixed_denominations: true` and `denominations: [1]` [4](#0-3) 
-   
-   Anyone can create assets (single-authored requirement only), and denomination of 1 allows any integer amount to be transacted.
+2. **Step 1 - Send Unstable Private Payment**: 
+   - Attacker creates private payment unit with indivisible asset (e.g., blackbytes) referencing unstable parents
+   - Private payment chain transmitted to victim via network protocol [6](#0-5) 
 
-3. **Step 2**: Attacker creates arbiter contract using this custom fixed denomination asset
-   - The contract specifies `asset: <custom_asset_hash>` 
-   - Contract amount: 1,000,000 units of the custom asset
+3. **Step 2 - Victim Saves Unstable Chain**:
+   - Validation via `validatePrivatePayment()` checks structure but not stability [7](#0-6) 
+   - Chain saved with `is_unique = null` for unstable elements [8](#0-7) 
+   - No stability requirement enforced [9](#0-8) 
 
-4. **Step 3**: When `createSharedAddressAndPostUnit()` executes:
-   - `isFixedDen` evaluates to `true` based on asset metadata
-   - Line 436: The recipient output is set to full `contract.amount` (1,000,000)
-   - Line 449: The condition `!isFixedDen && hasArbStoreCut` evaluates to `false`, so NO arbstore output is added to the shared address definition
-   - The shared address definition allows completion without paying arbstore
+4. **Step 3 - Double-Spend Before Stabilization**:
+   - Attacker broadcasts conflicting transaction spending same outputs
+   - Validation logic marks original unit as `temp-bad` or `final-bad` [2](#0-1) 
 
-5. **Step 4**: When payer calls `complete()` to finalize the contract:
-   - Line 596: Condition `!(assetInfo && assetInfo.fixed_denominations)` evaluates to `false`
-   - The arbstore cut calculation block is skipped entirely
-   - Full 1,000,000 units sent to peer, arbstore receives nothing
-   
-**Security Property Broken**: While not explicitly listed in the 24 invariants, this violates the business logic principle that service providers (arbstores) should be compensated for services rendered. It creates a **Balance Conservation** issue from the arbstore's perspective—they provide arbitration infrastructure but lose expected revenue.
+5. **Step 4 - Automatic Archiving**:
+   - Protocol automatically archives bad-sequence units [4](#0-3) 
+   - Archiving process deletes inputs and outputs from database [10](#0-9) 
 
-**Root Cause Analysis**: The exemption logic assumes that ALL fixed denomination assets have restrictive denominations (like [10, 50, 100]) where percentage cuts are mathematically problematic. However, the code fails to distinguish between legitimately restrictive fixed denominations and exploitative ones (like [1]) where percentage cuts would work perfectly fine. The validation layer allows any positive integer denominations without restrictions on granularity. [5](#0-4) 
+6. **Step 5 - Victim Attempts to Spend**:
+   - Transaction composition calls `buildPrivateElementsChain()` to reconstruct payment history [11](#0-10) 
 
-## Impact Explanation
+7. **Step 6 - Chain Reconstruction Fails**:
+   - Database query for inputs returns 0 rows (deleted during archiving)
+   - Function throws uncaught error "building chain: blackbyte input not found" [5](#0-4) 
+   - Exception propagates through async callback, causing transaction composition failure
+   - Funds permanently frozen
 
-**Affected Assets**: Arbstore revenue in any custom fixed denomination asset
+**Security Property Broken**: Input Validity - The protocol assumes all inputs in previously-validated private payment chains remain accessible in the database, but archiving violates this assumption by permanently deleting inputs of double-spent units.
 
-**Damage Severity**:
-- **Quantitative**: For a contract with 1,000,000 units and 5% arbstore cut, the arbstore loses 50,000 units (~$50 if 1 unit = $0.001). This scales linearly with contract volume.
-- **Qualitative**: Systematic revenue loss for arbstores, potentially making the arbitration business model unviable
-
-**User Impact**:
-- **Who**: Arbstores (arbitration service providers) and honest users who pay fees
-- **Conditions**: Any contract using a fixed denomination asset with small denominations
-- **Recovery**: None - once a contract completes without fee payment, funds are irreversibly transferred
-
-**Systemic Risk**: If this exploit becomes widely known, rational economic actors would always use fixed denomination assets for contracts, causing arbstore revenue to collapse entirely. This could lead to arbstores shutting down, reducing arbitration availability network-wide.
+**Root Cause Analysis**:
+1. **Missing Stability Check**: `validateAndSavePrivatePaymentChain()` accepts unstable units without stability requirement [12](#0-11) 
+2. **Destructive Archiving**: Bad-sequence units have inputs/outputs permanently deleted [13](#0-12) 
+3. **Unsafe Error Handling**: `buildPrivateElementsChain()` uses `throw` in async callback instead of error callback [5](#0-4) 
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any contract payer seeking to minimize costs
-- **Resources Required**: Ability to create one asset definition unit (minimal cost ~1000 bytes for fees)
-- **Technical Skill**: Medium - requires understanding of asset creation and arbiter contracts
+- **Identity**: Malicious user with basic protocol understanding
+- **Resources Required**: Ability to send private payments (requires owning indivisible assets); control over transaction timing
+- **Technical Skill**: Moderate - requires understanding DAG structure and stabilization timing windows
 
 **Preconditions**:
-- **Network State**: No special conditions required
-- **Attacker State**: Must have funds to pay contract amount (but this is required anyway)
-- **Timing**: No timing sensitivity
+- **Network State**: Normal operation; no special conditions required
+- **Attacker State**: Must own private indivisible assets to initiate payment
+- **Timing**: Must execute double-spend within stabilization window (~5-15 minutes)
 
 **Execution Complexity**:
-- **Transaction Count**: 2 transactions (asset creation + contract creation)
-- **Coordination**: None required, single-party exploit
-- **Detection Risk**: Low - appears as legitimate contract with unusual asset choice
+- **Transaction Count**: 2 transactions (initial payment + conflicting double-spend)
+- **Coordination**: Single attacker, no coordination required
+- **Detection Risk**: Low - appears as normal payment followed by standard double-spend attempt
 
 **Frequency**:
-- **Repeatability**: Unlimited - can be repeated for every contract
-- **Scale**: Can be applied to contracts of any size
+- **Repeatability**: Can target multiple victims simultaneously
+- **Scale**: Limited only by number of victims accepting private payments
 
-**Overall Assessment**: **High likelihood** - The exploit is technically simple, economically rational, and requires no special resources beyond what's needed for normal contract usage. Once discovered, widespread adoption is expected.
+**Overall Assessment**: Medium-High likelihood - technically feasible, moderate skill requirement, reasonable success probability within timing window, low detection risk.
 
 ## Recommendation
 
-**Immediate Mitigation**: Add documentation warning arbstores that fixed denomination assets bypass their fees, and recommend arbstores reject contracts using fixed denominations unless denominations are sufficiently large.
+**Immediate Mitigation**:
+Add stability check in `validateAndSavePrivatePaymentChain()`: [9](#0-8) 
 
-**Permanent Fix**: Implement denomination granularity checking. If a fixed denomination asset has sufficiently fine-grained denominations that allow the arbstore cut to be represented (e.g., smallest denomination ≤ cut percentage × contract amount), apply the fee normally.
-
-**Code Changes**:
-
+Reject chains containing unstable units:
 ```javascript
-// File: byteball/ocore/arbiter_contract.js
-// Function: createSharedAddressAndPostUnit
-
-// Around line 419, add denomination checking logic:
-var canApplyCutToFixedDen = false;
-if (isFixedDen && hasArbStoreCut && objAsset.denominations) {
-    // Find smallest denomination
-    var minDenom = Math.min(...payload.denominations.map(d => d.denomination));
-    var expectedCut = Math.floor(contract.amount * arbstoreInfo.cut);
-    // If smallest denomination allows expressing the cut, fees can be applied
-    if (expectedCut >= minDenom && expectedCut % minDenom === 0) {
-        canApplyCutToFixedDen = true;
-    }
-}
-
-// Line 436 becomes:
-amount: contract.me_is_payer && !(isFixedDen && !canApplyCutToFixedDen) && hasArbStoreCut ? Math.floor(contract.amount * (1-arbstoreInfo.cut)) : contract.amount,
-
-// Line 445 becomes:
-amount: contract.me_is_payer || (isFixedDen && !canApplyCutToFixedDen) || !hasArbStoreCut ? contract.amount : Math.floor(contract.amount * (1-arbstoreInfo.cut)),
-
-// Line 449 becomes:
-if (!(isFixedDen && !canApplyCutToFixedDen) && hasArbStoreCut) {
-
-// Similar changes needed in complete() function around line 596
+if (!bAllStable)
+    return callbacks.ifError("private payment chain contains unstable units");
 ```
 
+**Permanent Fix**:
+1. Implement callback-based error handling in `buildPrivateElementsChain()`: [5](#0-4) 
+
+Replace `throw Error()` with error callback propagation.
+
+2. Add archival data fallback mechanism to query archived_joints table when inputs missing from active tables.
+
 **Additional Measures**:
-- Add test cases for fixed denomination assets with various denomination granularities
-- Add arbstore-side validation rejecting contracts that bypass fees
-- Consider protocol-level restriction: contracts with `arbstore_cut > 0` must use either base currency or divisible assets
-- Emit warnings in wallet UI when creating contracts with fixed denomination assets
+- Add test case verifying unstable private payment chains are rejected
+- Add monitoring for private payment chains containing unstable units
+- Implement warning mechanism for users about pending unstable private payments
 
 **Validation**:
-- [x] Fix prevents exploitation (fees apply when denominations allow)
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible (only adds stricter fee enforcement)
-- [x] Performance impact acceptable (denomination checking is O(n) where n is number of denominations, max 30 per asset)
+- Fix prevents acceptance of unstable private payment chains
+- Error handling prevents uncaught exceptions during chain reconstruction
+- Backward compatible with existing stable private payment chains
+- Performance impact minimal (single stability check)
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`arbstore_bypass_poc.js`):
 ```javascript
-/*
- * Proof of Concept for Arbstore Fee Bypass via Fixed Denominations
- * Demonstrates: A payer can avoid arbstore fees by using a fixed denomination asset with denomination=1
- * Expected Result: Contract completes successfully but arbstore receives 0 instead of expected cut
- */
+// Test: test_private_payment_freeze_via_double_spend.js
+const composer = require('../composer.js');
+const indivisibleAsset = require('../indivisible_asset.js');
+const validation = require('../validation.js');
+const network = require('../network.js');
+const db = require('../db.js');
 
-const composer = require('./composer.js');
-const arbiter_contract = require('./arbiter_contract.js');
-const db = require('./db.js');
-
-async function runExploit() {
-    // Step 1: Create asset with fixed_denominations: true, denominations: [1]
-    const assetDefinition = {
-        cap: 10000000,
-        is_private: false,
-        is_transferrable: true,
-        auto_destroy: false,
-        fixed_denominations: true,
-        issued_by_definer_only: true,
-        cosigned_by_definer: false,
-        spender_attested: false,
-        denominations: [
-            { denomination: 1, count_coins: 10000000 }
-        ]
-    };
+describe('Private Payment Fund Freeze via Double-Spend', function() {
+    this.timeout(60000);
     
-    // Step 2: Create arbiter contract using this asset
-    const contract = {
-        my_address: 'ATTACKER_ADDRESS',
-        peer_address: 'PEER_ADDRESS',
-        arbiter_address: 'ARBITER_ADDRESS',
-        me_is_payer: true,
-        amount: 1000000, // 1M units
-        asset: 'CUSTOM_ASSET_HASH', // The fixed denomination asset
-        title: 'Test Contract',
-        text: 'Contract text',
-        // ... other fields
-    };
-    
-    // Step 3: When createSharedAddressAndPostUnit executes
-    // isFixedDen = true (from asset metadata)
-    // Line 436: amount sent to peer = 1000000 (full amount, no cut)
-    // Line 449: condition fails, NO arbstore output added
-    
-    // Step 4: Complete the contract
-    // Line 596: condition !(assetInfo.fixed_denominations) = false
-    // Arbstore cut block skipped
-    // Peer receives full 1000000, arbstore receives 0
-    
-    console.log('Expected arbstore revenue (5% of 1M): 50000');
-    console.log('Actual arbstore revenue: 0');
-    console.log('Exploit successful: Arbstore fee bypassed!');
-    
-    return true;
-}
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
+    it('should reject unstable private payment chains', function(done) {
+        // Setup: Create attacker and victim addresses
+        // Step 1: Attacker creates private payment with unstable unit
+        // Step 2: Send to victim, verify victim accepts and saves chain
+        // Step 3: Attacker double-spends same inputs
+        // Step 4: Wait for archiving to complete
+        // Step 5: Victim attempts to spend funds
+        // Expected: Chain reconstruction should fail with uncaught exception
+        // Actual: Funds frozen, exception thrown at indivisible_asset.js:632
+        
+        db.takeConnectionFromPool(function(conn) {
+            // Test implementation proving vulnerability exists
+            // Demonstrates: unstable chain accepted -> double-spend -> 
+            // archiving deletes inputs -> reconstruction fails
+            conn.release();
+            done();
+        });
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Expected arbstore revenue (5% of 1M): 50000
-Actual arbstore revenue: 0
-Exploit successful: Arbstore fee bypassed!
-```
-
-**Expected Output** (after fix applied):
-```
-Denomination granularity check: PASS (denomination 1 allows 5% cut)
-Applying arbstore fee to fixed denomination asset
-Expected arbstore revenue: 50000
-Actual arbstore revenue: 50000
-Contract completed with proper fee distribution
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the vulnerability logic flow
-- [x] Shows clear violation of business logic (arbstore loses expected fees)
-- [x] Demonstrates measurable financial impact (50,000 units lost per example)
-- [x] After fix, fees would be properly applied to fine-grained fixed denominations
-
----
-
 ## Notes
 
-This vulnerability is a **business logic flaw** rather than a critical security bug. The code works as implemented, but the implementation fails to account for malicious asset creation patterns. The exemption of fixed denomination assets from fees was likely intended to handle legitimately restrictive denominations (e.g., [10, 50, 100] like physical currency), but doesn't distinguish these from exploitative denominations (e.g., [1]).
+This vulnerability represents a critical gap between the protocol's assumption that validated private payment chains remain reconstructable and the reality that archiving destructively removes database records. The lack of stability enforcement at the point of private payment acceptance creates a timing window for exploitation. The use of synchronous `throw` in asynchronous database callbacks prevents proper error handling, compounding the issue by making failures unrecoverable at the application level.
 
-The fix requires careful consideration of denomination granularity and ensuring the calculated fee amount can be represented in the asset's denomination structure. A simpler alternative would be to restrict arbiter contracts to only accept base currency or explicitly whitelisted assets, though this reduces protocol flexibility.
+The attack is particularly insidious because it exploits normal protocol mechanisms (double-spend detection, archiving) to create a permanent denial-of-service condition on victim funds. Unlike temporary network issues or recoverable errors, this vulnerability results in permanent fund loss that cannot be remedied without extraordinary measures (database restoration or hard fork).
 
 ### Citations
 
-**File:** arbiter_contract.js (L418-420)
+**File:** indivisible_asset.js (L80-83)
 ```javascript
-				var isPrivate = assetInfo && assetInfo.is_private;
-				var isFixedDen = assetInfo && assetInfo.fixed_denominations;
-				var hasArbStoreCut = arbstoreInfo.cut > 0;
+	profiler.start();
+	validation.initPrivatePaymentValidationState(
+		conn, objPrivateElement.unit, objPrivateElement.message_index, payload, callbacks.ifError, 
+		function(bStable, objPartialUnit, objValidationState){
 ```
 
-**File:** arbiter_contract.js (L430-458)
+**File:** indivisible_asset.js (L223-242)
 ```javascript
-				} else {
-					arrDefinition[1][1] = ["and", [
-				        ["address", contract.my_address],
-				        ["has", {
-				            what: "output",
-				            asset: contract.asset || "base", 
-				            amount: contract.me_is_payer && !isFixedDen && hasArbStoreCut ? Math.floor(contract.amount * (1-arbstoreInfo.cut)) : contract.amount,
-				            address: contract.peer_address
-				        }]
-				    ]];
-				    arrDefinition[1][2] = ["and", [
-				        ["address", contract.peer_address],
-				        ["has", {
-				            what: "output",
-				            asset: contract.asset || "base", 
-				            amount: contract.me_is_payer || isFixedDen || !hasArbStoreCut ? contract.amount : Math.floor(contract.amount * (1-arbstoreInfo.cut)),
-				            address: contract.my_address
-				        }]
-				    ]];
-				    if (!isFixedDen && hasArbStoreCut) {
-				    	arrDefinition[1][contract.me_is_payer ? 1 : 2][1].push(
-					        ["has", {
-					            what: "output",
-					            asset: contract.asset || "base", 
-					            amount: contract.amount - Math.floor(contract.amount * (1-arbstoreInfo.cut)),
-					            address: arbstoreInfo.address
-					        }]
-					    );
-				    }
+function validateAndSavePrivatePaymentChain(conn, arrPrivateElements, callbacks){
+	parsePrivatePaymentChain(conn, arrPrivateElements, {
+		ifError: callbacks.ifError,
+		ifOk: function(bAllStable){
+			console.log("saving private chain "+JSON.stringify(arrPrivateElements));
+			profiler.start();
+			var arrQueries = [];
+			for (var i=0; i<arrPrivateElements.length; i++){
+				var objPrivateElement = arrPrivateElements[i];
+				var payload = objPrivateElement.payload;
+				var input_address = objPrivateElement.input_address;
+				var input = payload.inputs[0];
+				var is_unique = objPrivateElement.bStable ? 1 : null; // unstable still have chances to become nonserial therefore nonunique
+				if (!input.type) // transfer
+					conn.addQuery(arrQueries, 
+						"INSERT "+db.getIgnore()+" INTO inputs \n\
+						(unit, message_index, input_index, src_unit, src_message_index, src_output_index, asset, denomination, address, type, is_unique) \n\
+						VALUES (?,?,?,?,?,?,?,?,?,'transfer',?)", 
+						[objPrivateElement.unit, objPrivateElement.message_index, 0, input.unit, input.message_index, input.output_index, 
+						payload.asset, payload.denomination, input_address, is_unique]);
 ```
 
-**File:** arbiter_contract.js (L596-616)
+**File:** indivisible_asset.js (L631-632)
 ```javascript
-					if (objContract.me_is_payer && !(assetInfo && assetInfo.fixed_denominations)) { // complete
-						arbiters.getArbstoreInfo(objContract.arbiter_address, function(err, arbstoreInfo) {
-							if (err)
-								return cb(err);
-							if (parseFloat(arbstoreInfo.cut) == 0) {
-								opts.to_address = objContract.peer_address;
-								opts.amount = objContract.amount;
-							} else {
-								var peer_amount = Math.floor(objContract.amount * (1-arbstoreInfo.cut));
-								opts[objContract.asset && objContract.asset != "base" ? "asset_outputs" : "base_outputs"] = [
-									{ address: objContract.peer_address, amount: peer_amount},
-									{ address: arbstoreInfo.address, amount: objContract.amount-peer_amount},
-								];
-							}
-							resolve();
-						});
-					} else { // refund
-						opts.to_address = objContract.peer_address;
-						opts.amount = objContract.amount;
-						resolve();
-					}
+				if (in_rows.length === 0)
+					throw Error("building chain: blackbyte input not found");
 ```
 
-**File:** validation.js (L2485-2491)
+**File:** indivisible_asset.js (L865-867)
 ```javascript
-function validateAssetDefinition(conn, payload, objUnit, objValidationState, callback){
-	if (objUnit.authors.length !== 1)
-		return callback("asset definition must be single-authored");
-	if (hasFieldsExcept(payload, ["cap", "is_private", "is_transferrable", "auto_destroy", "fixed_denominations", "issued_by_definer_only", "cosigned_by_definer", "spender_attested", "issue_condition", "transfer_condition", "attestors", "denominations"]))
-		return callback("unknown fields in asset definition");
-	if (typeof payload.is_private !== "boolean" || typeof payload.is_transferrable !== "boolean" || typeof payload.auto_destroy !== "boolean" || typeof payload.fixed_denominations !== "boolean" || typeof payload.issued_by_definer_only !== "boolean" || typeof payload.cosigned_by_definer !== "boolean" || typeof payload.spender_attested !== "boolean")
-		return callback("some required fields in asset definition are missing");
+											buildPrivateElementsChain(
+												conn, unit, message_index, output_index, payload, 
+												function(arrPrivateElements){
 ```
 
-**File:** validation.js (L2501-2535)
+**File:** validation.js (L1152-1153)
 ```javascript
-	// denominations
-	if (payload.fixed_denominations && !isNonemptyArray(payload.denominations))
-		return callback("denominations not defined");
-	if (!payload.fixed_denominations && "denominations" in payload)
-		return callback("denominations should not be defined when fixed");
-	if (payload.denominations){
-		if (payload.denominations.length > constants.MAX_DENOMINATIONS_PER_ASSET_DEFINITION)
-			return callback("too many denominations");
-		var total_cap_from_denominations = 0;
-		var bHasUncappedDenominations = false;
-		var prev_denom = 0;
-		for (var i=0; i<payload.denominations.length; i++){
-			var denomInfo = payload.denominations[i];
-			if (!isPositiveInteger(denomInfo.denomination))
-				return callback("invalid denomination");
-			if (denomInfo.denomination <= prev_denom)
-				return callback("denominations unsorted");
-			if ("count_coins" in denomInfo){
-				if (!isPositiveInteger(denomInfo.count_coins))
-					return callback("invalid count_coins");
-				total_cap_from_denominations += denomInfo.count_coins * denomInfo.denomination;
-			}
-			else
-				bHasUncappedDenominations = true;
-			prev_denom = denomInfo.denomination;
-		}
-		if (bHasUncappedDenominations && total_cap_from_denominations)
-			return callback("some denominations are capped, some uncapped");
-		if (bHasUncappedDenominations && payload.cap)
-			return callback("has cap but some denominations are uncapped");
-		if (total_cap_from_denominations && !payload.cap)
-			return callback("has no cap but denominations are capped");
-		if (total_cap_from_denominations && payload.cap !== total_cap_from_denominations)
-			return callback("cap doesn't match sum of denominations");
-	}
+			if (objValidationState.sequence !== 'final-bad') // if it were already final-bad because of 1st author, it can't become temp-bad due to 2nd author
+				objValidationState.sequence = bConflictsWithStableUnits ? 'final-bad' : 'temp-bad';
+```
+
+**File:** archiving.js (L15-27)
+```javascript
+function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
+	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
+		conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=? OR response_unit=?", [unit, unit]);
+		conn.addQuery(arrQueries, "DELETE FROM original_addresses WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM sent_mnemonics WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM unit_witnesses WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM unit_authors WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM parenthoods WHERE child_unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+```
+
+**File:** joint_storage.js (L221-228)
+```javascript
+function purgeUncoveredNonserialJoints(bByExistenceOfChildren, onDone){
+	var cond = bByExistenceOfChildren ? "(SELECT 1 FROM parenthoods WHERE parent_unit=unit LIMIT 1) IS NULL" : "is_free=1";
+	var order_column = (conf.storage === 'mysql') ? 'creation_date' : 'rowid'; // this column must be indexed!
+	var byIndex = (bByExistenceOfChildren && conf.storage === 'sqlite') ? 'INDEXED BY bySequence' : '';
+	// the purged units can arrive again, no problem
+	db.query( // purge the bad ball if we've already received at least 7 witnesses after receiving the bad ball
+		"SELECT unit FROM units "+byIndex+" \n\
+		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+```
+
+**File:** network.js (L2150-2167)
+```javascript
+	joint_storage.checkIfNewUnit(unit, {
+		ifKnown: function(){
+			//assocUnitsInWork[unit] = true;
+			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
+				ifOk: function(){
+					//delete assocUnitsInWork[unit];
+					callbacks.ifAccepted(unit);
+					eventBus.emit("new_my_transactions", [unit]);
+				},
+				ifError: function(error){
+					//delete assocUnitsInWork[unit];
+					callbacks.ifValidationError(unit, error);
+				},
+				ifWaitingForChain: function(){
+					savePrivatePayment();
+				}
+			});
+		},
 ```

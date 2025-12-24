@@ -1,397 +1,269 @@
-## Title
-Permanent Contract Deadlock via Lost Unit Update Message in Arbiter Contract Payment Flow
+# Database Connection and Write Lock Ordering Deadlock in Stability Point Advancement
 
 ## Summary
-In `byteball/ocore/arbiter_contract.js`, when payment is received for a contract in 'accepted' status, the code registers an event listener waiting indefinitely for a unit field update message from the peer. If this device message is permanently lost due to sender device failure, database corruption, or correspondent removal, the contract remains permanently stuck in 'accepted' status with funds locked in the shared address, with no timeout or recovery mechanism.
+
+The `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` function in `main_chain.js` violates its own documented lock ordering principle ("write lock first, then db connection") by calling `handleResult()` which returns to validation code that still holds an active database connection, then immediately attempting to acquire the write lock. This creates a circular wait condition with the unit writer (which holds the write lock while waiting for a database connection), causing permanent node deadlock with the default single-connection pool configuration. [1](#0-0) 
 
 ## Impact
-**Severity**: High  
-**Category**: Permanent Fund Freeze
+
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+**Affected Assets**: All node operations - validation, unit writing, consensus advancement, stability point updates
+
+**Damage Severity**:
+- **Quantitative**: Complete node freeze - 0 transactions processed until manual restart. With default `max_connections=1`, deadlock is guaranteed under concurrent validation and writing.
+- **Qualitative**: Permanent circular wait deadlock requiring operator intervention. No automatic recovery mechanism exists.
+
+**User Impact**:
+- **Who**: Any node operator running default configuration
+- **Conditions**: Occurs during normal network operation when unit validation determines stability in parent view while another async context is writing a unit
+- **Recovery**: Manual node restart required
+
+**Systemic Risk**: 
+- Multiple nodes experiencing simultaneous deadlock significantly reduces network throughput
+- Witness nodes affected by this delay stability point advancement across entire network
+- Local deadlock (per-node), but widespread impact if multiple nodes freeze
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (lines 671-679 in `new_my_transactions` event handler)
+**Location**: `byteball/ocore/main_chain.js:1151-1198`, function `determineIfStableInLaterUnitsAndUpdateStableMcFlag()`
 
-**Intended Logic**: When payment is received for a contract that has been accepted but the signature unit hasn't been created yet (status='accepted'), the code should wait for the peer to create the signature unit and send the unit field update, then transition to 'paid' status.
+**Intended Logic**: The code explicitly documents the lock ordering protocol to prevent deadlocks: [2](#0-1) 
 
-**Actual Logic**: The code registers an event listener that waits indefinitely for an `arbiter_contract_update` event that may never fire if the device message is permanently lost, leaving the contract stuck in 'accepted' status forever with no timeout, fallback, or recovery mechanism.
+The intended sequence is: acquire write lock → take database connection → perform operations → release connection → release lock.
 
-**Code Evidence**: [1](#0-0) 
+**Actual Logic**: The function violates this ordering by:
+
+1. Being called with an already-held database connection parameter `conn` (from validation)
+2. Calling `handleResult(bStable, true)` which synchronously returns to validation code
+3. The validation code still holds the database connection and issues an async COMMIT/ROLLBACK
+4. Then attempting to acquire the write lock while the connection remains held [3](#0-2) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - User A initiates arbiter contract with User B
-   - User B accepts contract (status changes to 'accepted')
-   - User A has not yet called `createSharedAddressAndPostUnit` to create signature unit
+   - Database connection pool configured with default `max_connections = 1`
+   - Two concurrent async contexts: unit validation and unit writing [4](#0-3) 
 
-2. **Step 1**: User A pays to the shared address before the signature unit is created
-   - Payment transaction is confirmed on the DAG
-   - `new_my_transactions` event fires on User B's node
-   - Query at line 664 detects payment for contract with status='accepted'
+2. **Step 1 - Async Context A (Validation) acquires DB connection**:
+   
+   Validation takes a connection from pool and starts a BEGIN transaction. [5](#0-4) 
 
-3. **Step 2**: Event listener registered at line 672 waiting for unit field update
-   - Contract status is 'accepted' (line 671 check passes)
-   - Event listener registered globally with no timeout
-   - Contract remains in 'accepted' status, payment not marked as 'paid'
+3. **Step 2 - Async Context A calls stability check**:
+   
+   During validation (in `validateParents`), if the last ball unit becomes stable in view of parents, `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` is called with the validation's database connection. [6](#0-5) 
 
-4. **Step 3**: User A's device experiences permanent failure before sending unit update
-   - User A's device crashes after creating signature unit locally
-   - OR User A's database is wiped, clearing the outbox table
-   - OR User A manually removes User B as correspondent: [2](#0-1) 
-   - The unit update message in outbox is lost permanently
+4. **Step 3 - Async Context A calls handleResult and initiates async COMMIT/ROLLBACK**:
+   
+   The function calls `handleResult(bStable, true)`, triggering the validation error handler which calls `commit_fn()`. The commit function issues an async COMMIT or ROLLBACK query but returns immediately without waiting for completion. [7](#0-6) [8](#0-7) 
 
-5. **Step 4**: Contract permanently deadlocked
-   - Unit update message never delivered to User B
-   - Event listener never fires, `newtxs()` never retried
-   - Contract remains in 'accepted' status indefinitely
-   - Funds stuck in shared_address with no automatic recovery
-   - Event listener remains registered forever, consuming memory
+5. **Step 4 - Async Context A tries to acquire write lock while holding DB connection**:
+   
+   After `handleResult()` returns, execution continues in `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` at line 1163 and attempts to acquire the write lock. The mutex implementation queues this request. [9](#0-8) 
 
-**Security Property Broken**: 
-- **Invariant 21 (Transaction Atomicity)**: The multi-step contract state transition (payment detection → unit field update → status='paid') lacks atomicity and fault tolerance
-- **Systemic Design Flaw**: No timeout mechanism for inter-device message dependencies creates permanent stuck states
+   At this point, Async Context A is suspended waiting for the write lock, but its database connection is still held (COMMIT/ROLLBACK query pending but not yet complete).
+
+6. **Step 5 - Async Context B (Writer) holds write lock and tries to get DB connection**:
+   
+   The writer acquires the write lock first (following correct ordering), then attempts to get a database connection from the pool. [10](#0-9) 
+
+7. **Step 6 - Deadlock occurs**:
+   
+   With `max_connections = 1`, the single connection is held by Async Context A (COMMIT/ROLLBACK pending). The connection pool queues Async Context B's request. [11](#0-10) 
+
+**Deadlock State:**
+- **Async Context A (Validation)**: Holds database connection → waiting for write lock (queued in mutex)
+- **Async Context B (Writer)**: Holds write lock → waiting for database connection (queued in pool)
+- **Circular dependency**: Neither can proceed → Node permanently frozen
+
+**Security Property Broken**: The documented lock ordering invariant in `main_chain.js:1162` is violated, creating the exact deadlock scenario the principle was designed to prevent.
 
 **Root Cause Analysis**: 
-
-The vulnerability exists because:
-
-1. **Message Delivery Assumption**: The code assumes device messages are eventually delivered, but `device.js` only retries if messages remain in the sender's outbox. [3](#0-2) 
-
-2. **Outbox Volatility**: Messages can be permanently deleted from outbox via correspondent removal [2](#0-1)  or database wipe, breaking the retry mechanism.
-
-3. **No Timeout**: The event listener registered at line 672 has no timeout or TTL, waiting indefinitely.
-
-4. **No Fallback**: There's no alternative code path to transition from 'accepted' → 'paid' if the unit message is lost. Only two places set status='paid': [4](#0-3)  (requires status='signed') and [5](#0-4)  (unreachable if event never fires).
-
-5. **Event Listener Leak**: The listener is only removed on successful trigger [6](#0-5) , never on timeout or error.
-
-## Impact Explanation
-
-**Affected Assets**: 
-- Bytes or custom assets locked in the contract's shared_address
-- Both contract parties lose access to funds
-- All contracts in 'accepted' status vulnerable to this race condition
-
-**Damage Severity**:
-- **Quantitative**: Entire contract amount (can range from small amounts to substantial sums) locked permanently
-- **Qualitative**: Permanent fund freeze requiring hard fork or manual database intervention to resolve
-
-**User Impact**:
-- **Who**: Both payer (User A) and payee (User B) in the arbiter contract
-- **Conditions**: Occurs when payment is sent while status='accepted' AND the unit update message is lost
-- **Recovery**: No automatic recovery. Requires:
-  - Manual database manipulation (risky, may violate database constraints)
-  - OR Hard fork to add recovery mechanism
-  - OR Rebuilding wallet from seed (may not help if peer's device permanently offline)
-
-**Systemic Risk**: 
-- Affects all arbiter contracts using the shared address payment model
-- Can occur naturally (device crashes, network issues) without malicious intent
-- No monitoring or alerting exists to detect stuck contracts
-- Cascading effect: Users lose trust in arbiter contract system
+1. The function design allows `handleResult()` to return control to calling code before completing stability advancement
+2. The calling validation code holds a database transaction that initiates COMMIT/ROLLBACK asynchronously  
+3. The async query means the connection remains held while write lock acquisition is attempted
+4. This reverses the documented lock ordering: "write lock first, then db connection"
+5. The mutex queues lock requests rather than failing immediately
+6. The database pool queues connection requests rather than failing immediately  
+7. With single-connection pools (default), the circular wait is guaranteed
+8. Deadlock detection exists but is disabled [12](#0-11) 
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not an attack - this is an accidental failure scenario affecting legitimate users
-- **Resources Required**: None (occurs naturally due to device/network failures)
-- **Technical Skill**: No attacker involvement needed
+- **Identity**: No attacker required - this is a race condition in normal operations
+- **Resources Required**: None - occurs naturally during concurrent validation and writing
+- **Technical Skill**: None - happens automatically
 
 **Preconditions**:
-- **Network State**: Normal operation
-- **Attacker State**: N/A
-- **Timing**: Payment must arrive while contract is in 'accepted' status (before signature unit created)
+- **Network State**: Active network with units being validated and written concurrently (normal operation)
+- **Attacker State**: No attacker required
+- **Timing**: Race condition where validation calls `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` while writer is acquiring write lock
 
 **Execution Complexity**:
-- **Transaction Count**: Single payment transaction
-- **Coordination**: None required
-- **Detection Risk**: Users will notice funds missing and contract stuck, but no alerting mechanism exists
+- **Transaction Count**: Occurs during normal operation (any unit that triggers stability advancement while another unit is being written)
+- **Coordination**: None required - natural concurrent operations
+- **Detection Risk**: High - node stops processing transactions, logs show queued lock/connection requests
 
 **Frequency**:
-- **Repeatability**: Can occur with any arbiter contract where payment races with signature unit creation
-- **Scale**: Individual contracts affected, but can accumulate over time as device failures occur
+- **Repeatability**: Will occur repeatedly on busy nodes
+- **Scale**: Per-node deadlock (local freeze)
 
-**Overall Assessment**: Medium-to-High likelihood. While the specific timing window (payment during 'accepted' status before unit creation) may be narrow, device crashes, database corruption, and network issues are common operational realities. The lack of any timeout or recovery mechanism means once it occurs, funds are permanently frozen.
+**Overall Assessment**: High likelihood - With default `max_connections=1` and concurrent validation/writing operations, this race condition will occur during normal network operation on active nodes.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add a TTL check before the event listener registration to reject contracts where the TTL has expired
-2. Implement a periodic background job to detect and alert on contracts stuck in 'accepted' status with received payments
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
-Implement a timeout-based fallback mechanism with explicit error handling:
+Increase `max_connections` in configuration to reduce deadlock probability (not a complete fix, only mitigation):
 
-**Code Changes**: [1](#0-0) 
-
-**BEFORE (vulnerable code)**: Lines 671-679 register an event listener with no timeout.
-
-**AFTER (fixed code)**:
 ```javascript
-if (contract.status === 'accepted') {
-    // Set a timeout for unit message arrival (e.g., 1 hour)
-    const UNIT_MESSAGE_TIMEOUT = 3600000; // 1 hour in ms
-    const timeoutKey = 'unit_wait_' + contract.hash;
-    
-    // Check if unit field was already set while query was running
-    db.query("SELECT unit, status FROM wallet_arbiter_contracts WHERE hash=?", [contract.hash], function(checkRows){
-        if (checkRows.length && checkRows[0].unit) {
-            // Unit already set, retry immediately
-            return newtxs(arrNewUnits);
-        }
-        if (checkRows.length && checkRows[0].status !== 'accepted') {
-            // Status changed, retry immediately
-            return newtxs(arrNewUnits);
-        }
-        
-        let timeoutHandle = setTimeout(function(){
-            eventBus.emit('nonfatal_error', 
-                `Contract ${contract.hash} stuck waiting for unit message after timeout. Manual intervention required.`, 
-                new Error('unit_message_timeout'));
-            // Optionally: transition to an 'error' status or alert operators
-        }, UNIT_MESSAGE_TIMEOUT);
-        
-        eventBus.once('arbiter_contract_update', function retryPaymentCheck(objContract, field, value){
-            if (objContract.hash === contract.hash && field === 'unit') {
-                clearTimeout(timeoutHandle);
-                newtxs(arrNewUnits);
-            }
-        });
-    });
-    return;
-}
+// In conf.js or user configuration
+exports.database.max_connections = 5;
 ```
 
-**Additional Measures**:
-- Add a database column to track when payment was received for contracts in 'accepted' status
-- Implement a monitoring query to detect contracts stuck in 'accepted' with payments older than TTL
-- Add manual recovery function that allows operators to transition stuck contracts after verification
-- Consider changing the flow to require signature unit creation BEFORE accepting payment (status='signed' only)
-- Add unit tests simulating message loss scenarios
+**Permanent Fix**:
+
+Refactor `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` to follow the documented lock ordering. The function should:
+1. Call `handleResult()` to return result immediately
+2. NOT attempt any further operations that require the write lock in the same execution context
+3. If stability point advancement is needed, queue it as a separate async operation that properly acquires write lock first, then connection
+
+Alternative: Have validation release its connection before stability advancement begins, or pass a flag to defer stability advancement until after validation completes and releases its connection.
 
 **Validation**:
-- [x] Fix prevents indefinite waiting with timeout mechanism
-- [x] No new vulnerabilities introduced (timeout doesn't bypass validation)
-- [x] Backward compatible (only adds timeout for new stuck scenarios)
-- [x] Performance impact acceptable (single setTimeout per affected contract)
+- [ ] Fix ensures write lock is acquired before any database connection
+- [ ] No circular wait conditions remain between mutex and connection pool
+- [ ] Validation can complete without triggering deadlock
+- [ ] Performance impact acceptable
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`poc_stuck_contract.js`):
 ```javascript
-/*
- * Proof of Concept: Contract Deadlock via Lost Unit Message
- * Demonstrates: Contract permanently stuck in 'accepted' status when unit message lost
- * Expected Result: Contract remains in 'accepted' status indefinitely, funds locked
- */
+// Test demonstrating the deadlock scenario
+// This would require actual test setup with Obyte modules
 
 const db = require('./db.js');
-const eventBus = require('./event_bus.js');
-const arbiter_contract = require('./arbiter_contract.js');
+const mutex = require('./mutex.js');
+const validation = require('./validation.js');
+const writer = require('./writer.js');
 
-async function simulateStuckContract() {
-    // 1. Create a contract in 'accepted' status
-    const testContract = {
-        hash: 'test_hash_12345',
-        peer_address: 'PEER_ADDRESS',
-        peer_device_address: 'PEER_DEVICE',
-        my_address: 'MY_ADDRESS',
-        arbiter_address: 'ARBITER_ADDRESS',
-        me_is_payer: 0,
-        amount: 1000000,
-        asset: null,
-        shared_address: 'SHARED_ADDRESS',
-        status: 'accepted',
-        unit: null, // No unit yet
-        creation_date: new Date().toISOString()
-    };
-    
-    // Insert test contract
-    await db.query(
-        "INSERT INTO wallet_arbiter_contracts (hash, peer_address, peer_device_address, my_address, arbiter_address, me_is_payer, amount, asset, is_incoming, status, shared_address, creation_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        [testContract.hash, testContract.peer_address, testContract.peer_device_address, 
-         testContract.my_address, testContract.arbiter_address, testContract.me_is_payer,
-         testContract.amount, testContract.asset, 1, testContract.status, 
-         testContract.shared_address, testContract.creation_date]
-    );
-    
-    // 2. Insert a payment output to the shared address
-    const testUnit = 'TEST_PAYMENT_UNIT';
-    await db.query(
-        "INSERT INTO outputs (unit, message_index, output_index, address, amount, asset) VALUES (?,?,?,?,?,?)",
-        [testUnit, 0, 0, testContract.shared_address, testContract.amount, testContract.asset]
-    );
-    
-    console.log('[1] Contract created in accepted status');
-    console.log('[2] Payment output inserted to shared address');
-    
-    // 3. Trigger new_my_transactions event
-    console.log('[3] Triggering new_my_transactions event...');
-    eventBus.emit('new_my_transactions', [testUnit]);
-    
-    // 4. Wait and check status
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const rows = await db.query(
-        "SELECT status FROM wallet_arbiter_contracts WHERE hash=?",
-        [testContract.hash]
-    );
-    
-    console.log('[4] Contract status after payment detected:', rows[0].status);
-    console.log('[RESULT] Expected: "paid", Actual:', rows[0].status);
-    
-    if (rows[0].status === 'accepted') {
-        console.log('[VULNERABILITY CONFIRMED] Contract stuck in accepted status!');
-        console.log('Event listener registered but will never fire without unit message.');
-        console.log('Funds are locked in shared address with no recovery mechanism.');
-        return true;
-    }
-    
-    return false;
-}
-
-simulateStuckContract()
-    .then(vulnerable => {
-        process.exit(vulnerable ? 0 : 1);
-    })
-    .catch(err => {
-        console.error('Test failed:', err);
-        process.exit(1);
+// Simulate concurrent validation and writing
+async function testDeadlock() {
+    // Context A: Start validation (acquires connection)
+    const validationPromise = new Promise((resolve) => {
+        db.takeConnectionFromPool(async function(conn) {
+            await conn.query("BEGIN");
+            // Simulate reaching stability check point
+            // This will call handleResult, issue async COMMIT,
+            // then try to acquire write lock while connection held
+            // ... validation logic that triggers determineIfStableInLaterUnitsAndUpdateStableMcFlag
+            resolve('validation attempted');
+        });
     });
+    
+    // Context B: Start writing (acquires write lock first, then needs connection)
+    const writerPromise = new Promise((resolve) => {
+        mutex.lock(["write"], async function(unlock) {
+            // Now try to get connection - will be queued
+            db.takeConnectionFromPool(function(conn) {
+                // This never executes due to deadlock
+                resolve('writer completed');
+            });
+        });
+    });
+    
+    // Both will deadlock - neither promise resolves
+    // Node freezes permanently
+    await Promise.race([validationPromise, writerPromise]);
+}
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-[1] Contract created in accepted status
-[2] Payment output inserted to shared address
-[3] Triggering new_my_transactions event...
-[4] Contract status after payment detected: accepted
-[RESULT] Expected: "paid", Actual: accepted
-[VULNERABILITY CONFIRMED] Contract stuck in accepted status!
-Event listener registered but will never fire without unit message.
-Funds are locked in shared address with no recovery mechanism.
-```
+**Notes**
 
-**Expected Output** (after fix applied):
-```
-[1] Contract created in accepted status
-[2] Payment output inserted to shared address
-[3] Triggering new_my_transactions event...
-[4] After 1 hour timeout: Error emitted for manual intervention
-[RESULT] Timeout triggered, operators alerted to stuck contract
-```
+This is a critical concurrency bug in the core consensus mechanism. The vulnerability exists because the code violates its own documented lock ordering principle. The deadlock is deterministic with `max_connections=1` (the default) when validation and writing occur concurrently - a normal operational scenario. The disabled deadlock detection in `mutex.js` (line 116) means the deadlock persists indefinitely until manual intervention.
 
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of transaction atomicity invariant
-- [x] Shows measurable impact (funds locked, status inconsistent)
-- [x] Would work correctly after fix applied (timeout alerts operators)
-
----
-
-## Notes
-
-This vulnerability represents a **critical gap in fault tolerance** for the arbiter contract system. While the device messaging layer has retry mechanisms [3](#0-2) , these only work if messages remain in the sender's outbox. Once messages are deleted (due to database wipe, correspondent removal, or manual intervention), there's no recovery path.
-
-The issue is particularly insidious because:
-1. It can occur naturally without any malicious actor
-2. Users may not immediately notice (they think payment is "in progress")
-3. No monitoring exists to detect stuck contracts
-4. The table schema includes a `ttl` field [7](#0-6)  but it's not used for automatic cleanup or expiry checks
-
-The recommended fix adds a timeout mechanism to detect stuck states and alert operators, allowing manual recovery before funds are permanently lost. A more robust long-term solution would redesign the flow to eliminate the race condition entirely by requiring the signature unit to exist before accepting payments.
+The fix requires careful refactoring of the stability advancement logic to ensure proper lock ordering is maintained at all times.
 
 ### Citations
 
-**File:** arbiter_contract.js (L553-553)
+**File:** main_chain.js (L1159-1163)
 ```javascript
-				return cb(err);
+		handleResult(bStable, true);
+
+		// result callback already called, we leave here to move the stability point forward.
+		// To avoid deadlocks, we always first obtain a "write" lock, then a db connection
+		mutex.lock(["write"], async function(unlock){
 ```
 
-**File:** arbiter_contract.js (L671-679)
+**File:** conf.js (L122-130)
 ```javascript
-					if (contract.status === 'accepted') { // we received payment already but did not yet receive signature unit message, wait for unit to be received
-						eventBus.on('arbiter_contract_update', function retryPaymentCheck(objContract, field, value){
-							if (objContract.hash === contract.hash && field === 'unit') {
-								newtxs(arrNewUnits);
-								eventBus.removeListener('arbiter_contract_update', retryPaymentCheck);
-							}
-						});
-						return;
-					}
-```
-
-**File:** arbiter_contract.js (L680-680)
-```javascript
-					setField(contract.hash, "status", "paid", function(objContract) {
-```
-
-**File:** device.js (L484-531)
-```javascript
-function resendStalledMessages(delay){
-	var delay = delay || 0;
-	console.log("resending stalled messages delayed by "+delay+" minute");
-	if (!network.isStarted())
-		return console.log("resendStalledMessages: network not started yet");
-	if (!objMyPermanentDeviceKey)
-		return console.log("objMyPermanentDeviceKey not set yet, can't resend stalled messages");
-	mutex.lockOrSkip(['stalled'], function(unlock){
-		db.query(
-			"SELECT "+(bCordova ? "LENGTH(message) AS len" : "message")+", message_hash, `to`, pubkey, hub \n\
-			FROM outbox JOIN correspondent_devices ON `to`=device_address \n\
-			WHERE outbox.creation_date<="+db.addTime("-"+delay+" MINUTE")+" ORDER BY outbox.creation_date", 
-			function(rows){
-				console.log(rows.length+" stalled messages");
-				async.eachSeries(
-					rows, 
-					function(row, cb){
-						if (!row.hub){ // weird error
-							eventBus.emit('nonfatal_error', "no hub in resendStalledMessages: "+JSON.stringify(row)+", l="+rows.length, new Error('no hub'));
-							return cb();
-						}
-						//	throw Error("no hub in resendStalledMessages: "+JSON.stringify(row));
-						var send = async function(message) {
-							if (!message) // the message is already gone
-								return cb();
-							var objDeviceMessage = JSON.parse(message);
-							//if (objDeviceMessage.to !== row.to)
-							//    throw "to mismatch";
-							console.log('sending stalled '+row.message_hash);
-							try {
-								const err = await asyncCallWithTimeout(sendPreparedMessageToHub(row.hub, row.pubkey, row.message_hash, objDeviceMessage), 60e3);
-								console.log('sending stalled ' + row.message_hash, 'err =', err);
-							}
-							catch (e) {
-								console.log(`sending stalled ${row.message_hash} failed`, e);
-							}
-							cb();
-						};
-						bCordova ? readMessageInChunksFromOutbox(row.message_hash, row.len, send) : send(row.message);
-					},
-					unlock
-				);
-			}
-		);
-	});
+if (exports.storage === 'mysql'){
+	exports.database.max_connections = exports.database.max_connections || 1;
+	exports.database.host = exports.database.host || 'localhost';
+	exports.database.name = exports.database.name || 'byteball';
+	exports.database.user = exports.database.user || 'byteball';
 }
-
-setInterval(function(){ resendStalledMessages(1); }, SEND_RETRY_PERIOD);
+else if (exports.storage === 'sqlite'){
+	exports.database.max_connections = exports.database.max_connections || 1;
+	exports.database.filename = exports.database.filename || (exports.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
 ```
 
-**File:** device.js (L880-880)
+**File:** validation.js (L238-245)
 ```javascript
-	db.addQuery(arrQueries, "DELETE FROM outbox WHERE `to`=?", [device_address]);
+					db.takeConnectionFromPool(function(new_conn){
+						conn = new_conn;
+						start_time = Date.now();
+						commit_fn = function (cb2) {
+							conn.query(objValidationState.bAdvancedLastStableMci ? "COMMIT" : "ROLLBACK", function () { cb2(); });
+						};
+						conn.query("BEGIN", function(){cb();});
+					});
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L905-905)
-```sql
-	ttl INT NOT NULL DEFAULT 168, -- 168 hours = 24 * 7 = 1 week \n\
+**File:** validation.js (L317-317)
+```javascript
+					commit_fn(function(){
+```
+
+**File:** validation.js (L657-658)
+```javascript
+						// Last ball is not stable yet in our view. Check if it is stable in view of the parents
+						main_chain.determineIfStableInLaterUnitsAndUpdateStableMcFlag(conn, last_ball_unit, objUnit.parent_units, objLastBallUnitProps.is_stable, function(bStable, bAdvancedLastStableMci){
+```
+
+**File:** mutex.js (L80-82)
+```javascript
+	if (isAnyOfKeysLocked(arrKeys)){
+		console.log("queuing job held by keys", arrKeys);
+		arrQueuedJobs.push({arrKeys: arrKeys, proc: proc, next_proc: next_proc, ts:Date.now()});
+```
+
+**File:** mutex.js (L116-116)
+```javascript
+//setInterval(checkForDeadlocks, 1000);
+```
+
+**File:** writer.js (L33-42)
+```javascript
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+	console.log("got lock to write " + objUnit.unit);
+
+	function initConnection(handleConnection) {
+		if (bInLargerTx) {
+			profiler.start();
+			commit_fn = function (sql, cb) { cb(); };
+			return handleConnection(objValidationState.conn);
+		}
+		db.takeConnectionFromPool(function (conn) {
+```
+
+**File:** sqlite_pool.js (L77-81)
+```javascript
+				if (arrQueue.length === 0)
+					return;
+				var connectionHandler = arrQueue.shift();
+				this.bInUse = true;
+				connectionHandler(this);
 ```

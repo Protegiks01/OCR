@@ -1,285 +1,212 @@
+# Audit Report: Case-Sensitivity Mismatch in AA Address Validation
+
 ## Title
-Case-Sensitivity Mismatch in AA Address Validation Bypasses Bounce Fee Checks, Causing Permanent Fund Loss
+Case-Sensitivity Mismatch in AA Bounce Fee Validation Causes Permanent Fund Loss
 
 ## Summary
-A case-sensitivity discrepancy between unit validation and AA bounce fee validation allows attackers to send payments to Autonomous Agent addresses with insufficient bounce fees. When the validation layer accepts addresses in any case but the bounce fee checker filters to uppercase-only addresses, lowercase/mixed-case AA addresses are silently excluded from validation, allowing the payment to proceed. Upon AA execution failure, insufficient bounce fees prevent refund issuance, permanently locking the funds in the AA address.
+A critical inconsistency between address validation functions allows payments to Autonomous Agent (AA) addresses with insufficient bounce fees. The validation layer accepts addresses in any case using `isValidAddressAnyCase`, but the bounce fee checker filters addresses using `isValidAddress` (uppercase-only). This causes lowercase/mixed-case AA addresses to bypass bounce fee validation entirely, resulting in permanent fund loss when AA execution fails.
 
 ## Impact
 **Severity**: Critical  
 **Category**: Permanent Fund Freeze
 
+Funds sent to AA addresses in lowercase/mixed-case format with insufficient bounce fees become permanently locked. The vulnerability affects:
+- **Quantitative Impact**: Any amount sent to an AA with insufficient bounce fees (minimum 10,000 bytes) is permanently lost
+- **Affected Users**: Any user sending payments to AA addresses, particularly those using case-insensitive address entry
+- **Recovery**: Impossible without hard fork intervention
+
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_addresses.js` (function `readAADefinitions`, line 37) and `byteball/ocore/validation.js` (lines 1945, 1955)
+**Location**: 
+- `byteball/ocore/aa_addresses.js:37` (function `readAADefinitions`)
+- `byteball/ocore/validation.js:1945, 1955` (function `validatePaymentInputsAndOutputs`)
+- `byteball/ocore/wallet.js:1966` (function `sendMultiPayment`)
 
-**Intended Logic**: The system should validate that all payments to AA addresses include sufficient bounce fees (minimum 10,000 bytes) to ensure failed executions can refund the sender. The bounce fee validation in `sendMultiPayment` should check all AA addresses in payment outputs before allowing the transaction.
+**Intended Logic**: 
+The system should validate that all payments to AA addresses include sufficient bounce fees before allowing the transaction. The `checkAAOutputs` function should identify all AA addresses in payment outputs and verify bounce fee requirements.
 
-**Actual Logic**: Due to case-sensitivity mismatch, the bounce fee validation silently excludes lowercase/mixed-case AA addresses from checking. The validation layer accepts addresses using `isValidAddressAnyCase` (case-insensitive), but the AA address filter uses `isValidAddress` (uppercase-only). When an AA address is provided in lowercase, it passes validation but gets filtered out during bounce fee checking, causing the check to return success for an empty array.
-
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) [4](#0-3) [5](#0-4) [6](#0-5) [7](#0-6) 
+**Actual Logic**: 
+The bounce fee validation silently excludes non-uppercase addresses due to inconsistent validation function usage: [1](#0-0) [2](#0-1) [3](#0-2) [4](#0-3) [5](#0-4) [6](#0-5) [7](#0-6) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker has an Obyte wallet with funds; target AA address exists on network requiring bounce fees (e.g., 10,000 bytes minimum)
+1. **Preconditions**: User has funds and wants to send payment to an AA address
+   
+2. **Step 1**: User provides AA address in lowercase format (e.g., "abcdef..." instead of "ABCDEF...") with payment amount less than bounce fee requirement
+   - Code path: User calls `wallet.js:sendMultiPayment(opts)` with lowercase AA address in outputs
 
-2. **Step 1**: Attacker constructs payment to AA address in lowercase format (e.g., `abcdefghijklmnopqrstuvwxyz123456` instead of `ABCDEFGHIJKLMNOPQRSTUVWXYZ123456`) with amount less than bounce fee (e.g., 5,000 bytes)
+3. **Step 2**: Wallet invokes bounce fee validation
+   - `wallet.js:1966` calls `aa_addresses.checkAAOutputs(arrPayments, function(err){...})`
+   - `checkAAOutputs` extracts addresses and calls `readAADefinitions(arrAddresses)`
 
-3. **Step 2**: Payment passes validation because `validation.js` uses `isValidAddressAnyCase` which accepts lowercase addresses
+4. **Step 3**: Address filtering silently excludes lowercase addresses
+   - `aa_addresses.js:37`: `arrAddresses = arrAddresses.filter(isValidAddress);`
+   - `isValidAddress` only accepts uppercase addresses (checks `address === address.toUpperCase()`)
+   - Lowercase addresses are filtered out, resulting in empty array
 
-4. **Step 3**: In `wallet.js` `sendMultiPayment`, the function calls `aa_addresses.checkAAOutputs(arrPayments)` which invokes `readAADefinitions(arrAddresses)` 
+5. **Step 4**: Empty result bypasses validation
+   - `aa_addresses.js:38-39`: `if (arrAddresses.length === 0) return handleRows([]);`
+   - Returns empty array to `checkAAOutputs`
+   - `aa_addresses.js:125-126`: `if (rows.length === 0) return handleResult();`
+   - Calls `handleResult()` WITHOUT error, allowing payment to proceed
 
-5. **Step 4**: `readAADefinitions` filters addresses with `isValidAddress` (uppercase-only), excluding the lowercase AA address. Returns empty array `[]`
+6. **Step 5**: Unit passes validation and enters DAG
+   - `validation.js:1945, 1955` uses `isValidAddressAnyCase(output.address)`
+   - Accepts lowercase addresses, unit is validated and stored
 
-6. **Step 5**: `checkAAOutputs` sees `rows.length === 0` and calls `handleResult()` without error, bypassing bounce fee validation entirely
+7. **Step 6**: Permanent fund loss occurs
+   - Database collation determines outcome:
+     - **Case-insensitive DB**: AA trigger detected with lowercase address, execution occurs but insufficient bounce fees prevent refund (per `aa_composer.js:880`)
+     - **Case-sensitive DB**: AA trigger NOT detected (JOIN fails on address mismatch), funds sent to non-existent address
+   - Either way: Funds permanently locked with no recovery mechanism
 
-7. **Step 6**: Payment transaction is composed and submitted to network with insufficient bounce fee
+**Security Property Broken**: 
+Bounce Correctness Invariant - Failed AA executions must refund inputs minus bounce fees via bounce response. This vulnerability allows AA execution failures without proper refunds.
 
-8. **Step 7**: AA receives payment and attempts execution, which fails (e.g., due to formula error or intentional trigger failure)
-
-9. **Step 8**: AA bounce logic in `aa_composer.js` checks if received amount covers bounce fee. Since 5,000 < 10,000, condition `(trigger.outputs.base || 0) < bounce_fees.base` evaluates true, calling `finish(null)` without creating bounce response
-
-10. **Step 9**: Funds remain permanently locked in AA address with no refund mechanism
-
-**Security Property Broken**: Invariant #12 (Bounce Correctness) - Failed AA executions must refund inputs minus bounce fees via bounce response. This vulnerability allows AA execution failures without proper refunds.
-
-**Root Cause Analysis**: The root cause is inconsistent use of address validation functions across the codebase. The validation layer was designed to be case-insensitive for broader compatibility (accepting addresses in any case format), while the AA-specific logic assumes addresses are always uppercase. This creates a validation gap where addresses can pass general validation but bypass AA-specific checks. The issue likely arose from incomplete refactoring when `isValidAddressAnyCase` was introduced, leaving some subsystems still dependent on the stricter uppercase requirement.
+**Root Cause Analysis**:
+Inconsistent address validation function usage across the codebase. The validation layer uses `isValidAddressAnyCase` for broad compatibility, but AA-specific logic uses `isValidAddress` expecting uppercase-only. This architectural inconsistency creates a validation gap where addresses pass general validation but bypass AA-specific safety checks.
 
 ## Impact Explanation
 
 **Affected Assets**: 
 - Bytes (native currency)
-- Custom divisible and indivisible assets
-- Any funds sent to AA addresses with insufficient bounce fees
+- Custom divisible and indivisible assets  
+- All funds sent to AA addresses with insufficient bounce fees in non-uppercase format
 
 **Damage Severity**:
-- **Quantitative**: Unlimited - any amount sent to an AA with insufficient bounce fee is permanently lost. Minimum loss per attack is the bounce fee amount (10,000 bytes or equivalent in custom assets). Maximum loss is unbounded based on transaction amount.
-- **Qualitative**: Permanent, irreversible fund loss requiring hard fork to recover. Funds become permanently locked in AA address with no mechanism for extraction.
+- **Quantitative**: Unlimited - any payment to lowercase AA address with insufficient bounce fees is permanently lost. No upper bound on loss amount.
+- **Qualitative**: Permanent and irreversible. Requires hard fork to recover funds. Even AA owners cannot extract locked funds without withdrawal mechanisms in their AA logic.
 
 **User Impact**:
-- **Who**: Any user sending payments to AA addresses, particularly new users unfamiliar with address format requirements, wallet developers implementing case-insensitive address input, users copy-pasting addresses from case-insensitive sources
-- **Conditions**: Exploitable whenever an AA address is specified in non-uppercase format and payment amount is less than required bounce fee. Does not require attacker to control the AA - victim's own wallet can trigger the bug through normal usage with improperly formatted addresses
-- **Recovery**: Impossible without hard fork. Funds are permanently locked in AA address. Even AA owner cannot extract funds if AA logic doesn't provide withdrawal mechanism.
+- **Who**: All users sending to AA addresses, especially those using case-insensitive wallet implementations or copy-pasting addresses from mixed-case sources
+- **Conditions**: Occurs when AA address provided in non-uppercase format AND payment amount < required bounce fee
+- **Recovery**: None - funds permanently inaccessible
 
 **Systemic Risk**: 
-- This creates a "foot-gun" scenario where honest users can accidentally lose funds through normal wallet usage
-- Malicious actors can intentionally exploit this to drain funds from unsuspecting users by providing AA addresses in lowercase in social engineering attacks
-- Wallet implementations that auto-normalize addresses to lowercase for consistency would systematically trigger this bug
-- Light clients that cache addresses in mixed case could silently introduce this vulnerability
+- Silent failure mode - no error returned to user despite critical validation bypass
+- Wallet implementations normalizing addresses to lowercase would systematically trigger this bug
+- Social engineering attacks possible by providing lowercase AA addresses
+- Creates "footgun" scenario where honest users lose funds through normal operation
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with basic understanding of address formats; no special privileges required
-- **Resources Required**: Minimal - only standard wallet with network connectivity and small amount of funds to cover transaction fees
-- **Technical Skill**: Low - requires only ability to format addresses in lowercase and construct basic payment transaction
+- **Identity**: Any user with basic wallet access
+- **Resources Required**: Minimal - only transaction fees
+- **Technical Skill**: Low - requires only providing lowercase address
 
 **Preconditions**:
-- **Network State**: Normal operation; no special network state required
-- **Attacker State**: Standard user wallet with funds for transaction fees; no special position required
-- **Timing**: Anytime; no timing constraints
+- **Network State**: Normal operation
+- **Attacker State**: Standard wallet with funds
+- **Timing**: No timing constraints
 
 **Execution Complexity**:
-- **Transaction Count**: Single transaction sufficient to permanently lock funds
-- **Coordination**: None required; single-actor attack
-- **Detection Risk**: Low - transaction appears normal, indistinguishable from legitimate payment
+- **Transaction Count**: Single transaction
+- **Coordination**: None required
+- **Detection Risk**: Low - appears as normal payment
 
 **Frequency**:
-- **Repeatability**: Unlimited - attack can be repeated against any AA address, multiple times
-- **Scale**: Per-address - each AA address can be targeted independently
+- **Repeatability**: Unlimited
+- **Scale**: Per-transaction basis
 
-**Overall Assessment**: **High Likelihood** - This vulnerability is easily exploitable with minimal technical skill, no coordination, and no special resources. The attack is undetectable and can occur accidentally through normal wallet usage. Given that many UI implementations may normalize addresses to lowercase for consistency or accept user input in any case, this bug could trigger frequently in production without malicious intent.
+**Overall Assessment**: High likelihood due to:
+- Low technical barrier
+- Can occur accidentally (user error with case)
+- Wallet UIs may accept/normalize lowercase addresses
+- Silent failure provides no warning to users
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Issue urgent advisory warning users to only send to AA addresses in uppercase format
-2. Add client-side validation in wallet UIs to reject non-uppercase addresses when sending to known AA addresses
-3. Implement monitoring for transactions to AA addresses with case-mismatched addresses
-
-**Permanent Fix**: Normalize all addresses to uppercase before bounce fee validation
-
-**Code Changes**:
-
-File: `byteball/ocore/aa_addresses.js`, Function: `readAADefinitions`
-
-**BEFORE (vulnerable code):** [4](#0-3) 
-
-**AFTER (fixed code):**
-```javascript
-function readAADefinitions(arrAddresses, handleRows) {
-	if (!handleRows)
-		return new Promise(resolve => readAADefinitions(arrAddresses, resolve));
-	// Normalize addresses to uppercase to ensure case-insensitive matching
-	arrAddresses = arrAddresses.map(addr => typeof addr === 'string' ? addr.toUpperCase() : addr).filter(isValidAddress);
-	if (arrAddresses.length === 0)
-		return handleRows([]);
-```
-
-Alternative fix location: `byteball/ocore/aa_addresses.js`, Function: `checkAAOutputs`
+**Immediate Mitigation**:
+Normalize all addresses to uppercase before AA validation checks, or consistently use `isValidAddressAnyCase` throughout AA bounce fee validation:
 
 ```javascript
-function checkAAOutputs(arrPayments, handleResult) {
-	var assocAmounts = {};
-	arrPayments.forEach(function (payment) {
-		var asset = payment.asset || 'base';
-		payment.outputs.forEach(function (output) {
-			// Normalize address to uppercase for consistent AA lookup
-			var normalizedAddress = output.address.toUpperCase();
-			if (!assocAmounts[normalizedAddress])
-				assocAmounts[normalizedAddress] = {};
-			if (!assocAmounts[normalizedAddress][asset])
-				assocAmounts[normalizedAddress][asset] = 0;
-			assocAmounts[normalizedAddress][asset] += output.amount;
-		});
-	});
-	var arrAddresses = Object.keys(assocAmounts);
-	// arrAddresses now contains uppercase addresses only
-	readAADefinitions(arrAddresses, function (rows) {
-		// ... rest unchanged
+// In aa_addresses.js, line 37:
+// Change from:
+arrAddresses = arrAddresses.filter(isValidAddress);
+// To:
+arrAddresses = arrAddresses.filter(isValidAddressAnyCase);
 ```
+
+**Permanent Fix**:
+Implement consistent address validation strategy across entire codebase:
+
+1. **Option A**: Normalize all addresses to uppercase at entry points (recommended)
+2. **Option B**: Use `isValidAddressAnyCase` consistently everywhere
 
 **Additional Measures**:
-- Add unit test cases verifying bounce fee validation works with lowercase, uppercase, and mixed-case AA addresses
-- Add integration test demonstrating the fix prevents fund loss scenario
-- Update validation.js to normalize all addresses to uppercase during validation for consistency
-- Add database constraint or index on AA addresses table requiring uppercase format
-- Add pre-flight check in wallet UI warning users when sending to AA addresses
+- Add validation test case verifying bounce fee checks work with lowercase AA addresses
+- Add database constraint/index ensuring case-insensitive address matching
+- Update wallet UI to warn users when AA address case doesn't match canonical format
+- Add monitoring to detect payments to non-uppercase AA addresses
 
 **Validation**:
-- [x] Fix prevents exploitation - Address normalization ensures AA addresses are always checked regardless of input case
-- [x] No new vulnerabilities introduced - Simple string transformation without side effects
-- [x] Backward compatible - Uppercase addresses continue working; lowercase addresses now work correctly
-- [x] Performance impact acceptable - Single string operation per address with negligible overhead
+- Fix ensures bounce fee validation works regardless of address case
+- No breaking changes to existing valid transactions
+- Maintains backward compatibility with uppercase addresses
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_bounce_fee_bypass.js`):
 ```javascript
-/*
- * Proof of Concept for Case-Sensitivity Bounce Fee Bypass
- * Demonstrates: Lowercase AA address bypasses bounce fee validation
- * Expected Result: Payment to AA with insufficient bounce fee succeeds when address is lowercase
- */
-
-const ValidationUtils = require('./validation_utils.js');
+const composer = require('./composer.js');
+const wallet = require('./wallet.js');
+const validation = require('./validation.js');
 const aa_addresses = require('./aa_addresses.js');
+const db = require('./db.js');
 
-// Simulate an AA address (this would be a real AA address on the network)
-const AA_ADDRESS_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456';
-const AA_ADDRESS_LOWERCASE = 'abcdefghijklmnopqrstuvwxyz123456';
-
-// Test 1: Verify both formats pass basic validation
-console.log('Test 1: Basic address validation');
-console.log('Uppercase valid (any case):', ValidationUtils.isValidAddressAnyCase(AA_ADDRESS_UPPERCASE));
-console.log('Lowercase valid (any case):', ValidationUtils.isValidAddressAnyCase(AA_ADDRESS_LOWERCASE));
-console.log('Uppercase valid (strict):', ValidationUtils.isValidAddress(AA_ADDRESS_UPPERCASE));
-console.log('Lowercase valid (strict):', ValidationUtils.isValidAddress(AA_ADDRESS_LOWERCASE));
-
-// Test 2: Simulate readAADefinitions filtering behavior
-console.log('\nTest 2: Address filtering in readAADefinitions');
-const mixedAddresses = [AA_ADDRESS_UPPERCASE, AA_ADDRESS_LOWERCASE];
-const filteredAddresses = mixedAddresses.filter(ValidationUtils.isValidAddress);
-console.log('Input addresses:', mixedAddresses);
-console.log('Filtered addresses:', filteredAddresses);
-console.log('Lowercase address filtered out:', filteredAddresses.length < mixedAddresses.length);
-
-// Test 3: Simulate checkAAOutputs with lowercase AA address
-console.log('\nTest 3: Bounce fee validation bypass');
-const paymentWithLowercaseAA = [{
-    asset: null,
-    outputs: [{
-        address: AA_ADDRESS_LOWERCASE,
-        amount: 5000 // Less than MIN_BYTES_BOUNCE_FEE (10000)
-    }]
-}];
-
-console.log('Payment to:', AA_ADDRESS_LOWERCASE);
-console.log('Amount:', 5000, 'bytes (insufficient bounce fee)');
-console.log('Expected: Should fail bounce fee validation');
-console.log('Actual: Will bypass validation due to case-sensitivity bug');
-
-// Demonstrate the vulnerability
-aa_addresses.checkAAOutputs(paymentWithLowercaseAA, function(err) {
-    if (err) {
-        console.log('\n✓ Validation FAILED (correct behavior):', err.toString());
-    } else {
-        console.log('\n✗ Validation PASSED (VULNERABILITY CONFIRMED)');
-        console.log('Payment would proceed without sufficient bounce fee!');
-        console.log('Funds would be permanently locked if AA execution fails.');
-    }
+describe('AA Address Case-Sensitivity Vulnerability', function() {
+    it('should reject payment to lowercase AA address with insufficient bounce fee', async function() {
+        // Setup: Create AA with uppercase address "ABCD...123"
+        const uppercaseAAAddress = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456";
+        const lowercaseAAAddress = uppercaseAAAddress.toLowerCase();
+        
+        // Insert AA definition into database
+        await db.query(
+            "INSERT INTO aa_addresses (address, definition, unit, mci, base_aa) VALUES (?, ?, ?, ?, ?)",
+            [uppercaseAAAddress, '["autonomous agent",{"bounce_fees":{"base":10000}}]', 'unit1', 1, null]
+        );
+        
+        // Attempt payment with lowercase address and insufficient bounce fee
+        const opts = {
+            paying_addresses: ['PAYER_ADDRESS'],
+            base_outputs: [{
+                address: lowercaseAAAddress,  // lowercase AA address
+                amount: 5000  // Less than 10,000 bounce fee
+            }],
+            aa_addresses_checked: false
+        };
+        
+        // This should fail but currently succeeds
+        await new Promise((resolve, reject) => {
+            wallet.sendMultiPayment(opts, function(err) {
+                if (err) {
+                    resolve(); // Expected behavior: error returned
+                } else {
+                    reject(new Error('VULNERABILITY: Payment bypassed bounce fee validation'));
+                }
+            });
+        });
+    });
+    
+    it('should detect bounce fee validation bypass', async function() {
+        const lowercaseAAAddress = "abcdefghijklmnopqrstuvwxyz123456";
+        
+        // Test readAADefinitions with lowercase address
+        const result = await aa_addresses.readAADefinitions([lowercaseAAAddress]);
+        
+        // Bug: Returns empty array instead of finding the AA
+        if (result.length === 0) {
+            throw new Error('CONFIRMED: Lowercase address filtered out by isValidAddress check');
+        }
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Test 1: Basic address validation
-Uppercase valid (any case): true
-Lowercase valid (any case): true
-Uppercase valid (strict): true
-Lowercase valid (strict): false
-
-Test 2: Address filtering in readAADefinitions
-Input addresses: [ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456', 'abcdefghijklmnopqrstuvwxyz123456' ]
-Filtered addresses: [ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456' ]
-Lowercase address filtered out: true
-
-Test 3: Bounce fee validation bypass
-Payment to: abcdefghijklmnopqrstuvwxyz123456
-Amount: 5000 bytes (insufficient bounce fee)
-Expected: Should fail bounce fee validation
-Actual: Will bypass validation due to case-sensitivity bug
-
-✗ Validation PASSED (VULNERABILITY CONFIRMED)
-Payment would proceed without sufficient bounce fee!
-Funds would be permanently locked if AA execution fails.
-```
-
-**Expected Output** (after fix applied):
-```
-Test 1: Basic address validation
-Uppercase valid (any case): true
-Lowercase valid (any case): true
-Uppercase valid (strict): true
-Lowercase valid (strict): false
-
-Test 2: Address filtering in readAADefinitions (FIXED)
-Input addresses: [ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456', 'abcdefghijklmnopqrstuvwxyz123456' ]
-Normalized and filtered addresses: [ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456' ]
-All addresses properly normalized: true
-
-Test 3: Bounce fee validation (FIXED)
-Payment to: abcdefghijklmnopqrstuvwxyz123456
-Amount: 5000 bytes (insufficient bounce fee)
-Expected: Should fail bounce fee validation
-Actual: Properly validates after normalization
-
-✓ Validation FAILED (correct behavior): The amounts are less than bounce fees, required: 10000 bytes
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of invariant #12 (Bounce Correctness)
-- [x] Shows measurable impact (permanent fund loss)
-- [x] Fails gracefully after fix applied (validation properly rejects insufficient bounce fees)
-
 ## Notes
 
-This vulnerability represents a critical business logic flaw arising from inconsistent validation across different subsystems. The discrepancy between `isValidAddressAnyCase` and `isValidAddress` creates a validation gap specifically for AA addresses, which have special requirements (bounce fees) not applicable to regular addresses.
+This vulnerability represents a fundamental architectural inconsistency in address validation. The protocol implements two validation functions with different case-sensitivity requirements, but applies them inconsistently across critical security boundaries. The MySQL schema shows addresses without explicit COLLATE directives on the `address` column [8](#0-7) , meaning collation behavior depends on server defaults, adding another layer of unpredictability.
 
-The impact is particularly severe because:
-1. The bug can trigger accidentally through normal wallet usage without malicious intent
-2. Funds are permanently and irreversibly lost
-3. The validation bypass is silent - no warning or error is generated
-4. The issue affects the core AA interaction model, which is fundamental to Obyte's smart contract functionality
-
-The fix is straightforward (address normalization) but requires careful testing to ensure all code paths properly handle case-insensitive address inputs while maintaining the uppercase requirement for database lookups and AA validation.
+The vulnerability is particularly severe because it creates a **silent failure mode** - the bounce fee validation returns success (no error) when it should either validate properly or return an error. This violates the principle of secure defaults and creates a dangerous trap for users and wallet developers who reasonably expect case-insensitive address handling given the existence of `isValidAddressAnyCase` in the validation layer.
 
 ### Citations
 
@@ -306,65 +233,36 @@ function isValidAddress(address){
 				return callback("output address "+output.address+" invalid");
 ```
 
-**File:** aa_addresses.js (L34-39)
+**File:** aa_addresses.js (L37-39)
 ```javascript
-function readAADefinitions(arrAddresses, handleRows) {
-	if (!handleRows)
-		return new Promise(resolve => readAADefinitions(arrAddresses, resolve));
 	arrAddresses = arrAddresses.filter(isValidAddress);
 	if (arrAddresses.length === 0)
 		return handleRows([]);
 ```
 
-**File:** aa_addresses.js (L111-126)
+**File:** aa_addresses.js (L124-126)
 ```javascript
-function checkAAOutputs(arrPayments, handleResult) {
-	var assocAmounts = {};
-	arrPayments.forEach(function (payment) {
-		var asset = payment.asset || 'base';
-		payment.outputs.forEach(function (output) {
-			if (!assocAmounts[output.address])
-				assocAmounts[output.address] = {};
-			if (!assocAmounts[output.address][asset])
-				assocAmounts[output.address][asset] = 0;
-			assocAmounts[output.address][asset] += output.amount;
-		});
-	});
-	var arrAddresses = Object.keys(assocAmounts);
 	readAADefinitions(arrAddresses, function (rows) {
 		if (rows.length === 0)
 			return handleResult();
 ```
 
-**File:** wallet.js (L1965-1973)
+**File:** wallet.js (L1966-1970)
 ```javascript
-	if (!opts.aa_addresses_checked) {
 		aa_addresses.checkAAOutputs(arrPayments, function (err) {
 			if (err)
 				return handleResult(err);
 			opts.aa_addresses_checked = true;
 			sendMultiPayment(opts, handleResult);
-		});
-		return;
-	}
 ```
 
-**File:** aa_composer.js (L880-895)
+**File:** aa_composer.js (L880-881)
 ```javascript
 		if ((trigger.outputs.base || 0) < bounce_fees.base)
 			return finish(null);
-		var messages = [];
-		for (var asset in trigger.outputs) {
-			var amount = trigger.outputs[asset];
-			var fee = bounce_fees[asset] || 0;
-			if (fee > amount)
-				return finish(null);
-			if (fee === amount)
-				continue;
-			var bounced_amount = amount - fee;
-			messages.push({app: 'payment', payload: {asset: asset, outputs: [{address: trigger.address, amount: bounced_amount}]}});
-		}
-		if (messages.length === 0)
-			return finish(null);
-		sendUnit(messages);
+```
+
+**File:** initial-db/byteball-mysql.sql (L313-313)
+```sql
+	address CHAR(32) NULL, -- NULL if hidden by output_hash
 ```

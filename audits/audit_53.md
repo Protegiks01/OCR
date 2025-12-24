@@ -1,283 +1,239 @@
 ## Title
-Multiple Unit Posting Vulnerability in `createSharedAddressAndPostUnit()` Due to Missing Idempotency Guard
+Denial of Service via Stack Overflow in Lodash cloneDeep on Untrusted Private Payment Payloads
 
 ## Summary
-The `createSharedAddressAndPostUnit()` function in `arbiter_contract.js` lacks an idempotency check to prevent multiple executions for the same contract. When called repeatedly (e.g., due to retry logic or race conditions), the function posts multiple units with CHARGE_AMOUNT (4000 bytes each) to the shared address, but only tracks the last unit hash in the database, causing permanent loss of funds from earlier units.
+An attacker can crash nodes by sending private indivisible asset payments with deeply nested objects in the payload. The vulnerability exists in `indivisible_asset.js:validatePrivatePayment()` where `_.cloneDeep()` is called on external input before structural validation, causing stack overflow when processing objects nested thousands of levels deep.
 
 ## Impact
-**Severity**: Critical  
-**Category**: Direct Fund Loss
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Network Disruption
+
+The attacker can crash any node processing their malicious private payment. With automated retries, this could keep targeted nodes offline for extended periods. Coordinated attacks against multiple nodes could cause temporary network degradation. Witness nodes could be targeted to delay consensus, and light client hubs could be disrupted, affecting connected users.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (function `createSharedAddressAndPostUnit`, lines 395-537)
+**Location**: `byteball/ocore/indivisible_asset.js:154`, function `validatePrivatePayment()`
 
-**Intended Logic**: The function should create a shared address for an arbiter contract and post a single unit containing contract metadata. It should be idempotent, meaning calling it multiple times for the same contract should not cause duplicate operations.
+**Intended Logic**: Private payment payloads should be validated before processing to reject malformed or malicious structures that could cause resource exhaustion.
 
-**Actual Logic**: The function has no guard to check if the shared address and unit have already been created. Each invocation will:
-1. Create/reuse the same deterministic shared address
-2. Post a new unit with 4000 bytes to that address
-3. Overwrite the `contract.unit` field with the new unit hash
-4. Leave previous units' funds untracked and unrecoverable
+**Actual Logic**: The payload is cloned using `_.cloneDeep()` before comprehensive structural validation occurs. Initial validation only checks top-level types, not object depth. [1](#0-0) 
 
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) 
+The initial validation checks that `payload.outputs` is an array and that the indexed element is an object, but does not validate internal structure or depth. The `isNonemptyObject` check only verifies: [2](#0-1) 
+
+At line 154, `_.cloneDeep(payload)` is invoked on this partially-validated structure: [3](#0-2) 
+
+The comprehensive validation that would reject deeply nested objects occurs at line 158 via `validation.validatePayment()`, which checks: [4](#0-3) 
+
+However, this validation executes AFTER the vulnerable cloning operation.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - User has created an arbiter contract with status "accepted" and no `shared_address` or `unit` set yet
-   - Contract exists in `wallet_arbiter_contracts` table
+1. **Preconditions**: Node is running and processing private payments through hub/wallet messaging system
 
-2. **Step 1 - First Call**: External wallet code calls `createSharedAddressAndPostUnit(contractHash, walletInstance, callback)`
-   - Function creates shared address (deterministic based on contract parameters)
-   - Updates `contract.shared_address` in database
-   - Posts unit1 with 4000 bytes to shared address
-   - Updates `contract.unit = unit1_hash`
-   - Updates `contract.status = "signed"`
-   - Returns success
+2. **Step 1**: Attacker crafts malicious private payment with deeply nested object in payload
+   - Creates payload where `outputs[0].amount` is a 10,000-level nested object instead of number
+   - Sends via hub/wallet messaging (not direct P2P, which is disabled)
+   - Code path: WebSocket → `network.js:onWebsocketMessage()` → `wallet.js:handlePrivatePaymentChains()` → `network.js:handleOnlinePrivatePayment()` [5](#0-4) [6](#0-5) 
 
-3. **Step 2 - Second Call (Retry)**: Due to timeout, network error, or UI retry, the function is called again with same `contractHash`
-   - Function retrieves contract (now has `shared_address` and `unit` already set)
-   - **No guard check** - proceeds anyway
-   - Reuses same shared address (deterministic)
-   - Posts unit2 with another 4000 bytes to same shared address
-   - **Overwrites** `contract.unit = unit2_hash` (losing reference to unit1)
-   - Updates `contract.status = "signed"` again
+3. **Step 2**: Message reaches `parsePrivatePaymentChain()` → `validatePrivatePayment()`
+   - Initial validation (lines 54-78) checks top-level structure only
+   - Deeply nested `amount` field passes because `isNonemptyObject` only checks if outputs[0] exists and is an object
+   
+4. **Step 3**: At line 154, `_.cloneDeep(payload)` attempts recursive clone
+   - Lodash cloneDeep uses recursion to traverse object tree
+   - Attempts to clone all 10,000 nested levels
+   - Node.js hits maximum call stack size
+   
+5. **Step 4**: Node crashes with "RangeError: Maximum call stack size exceeded"
+   - Validation at line 158 that would reject malformed `amount` never executes
+   - Node becomes unavailable until restart
+   - Attacker can repeatedly send malicious payloads
 
-4. **Step 3 - Fund Loss**: 
-   - unit1's 4000 bytes remain in shared address but are no longer tracked
-   - Only unit2 is referenced in `contract.unit`
-   - When contract is completed/cancelled, only funds from unit2 onwards are considered
-   - unit1's 4000 bytes are permanently lost (8000 total sent, only 4000 recoverable)
-
-**Security Property Broken**: 
-- **Invariant #5 (Balance Conservation)**: Funds are sent but not properly tracked for recovery, effectively causing loss
-- **Invariant #21 (Transaction Atomicity)**: Multiple atomic operations (posting units) occur when only one should
+**Security Property Broken**: Network Unit Propagation - Valid nodes should process incoming private payments without crashing. This vulnerability allows selective node crashes through malicious private payments.
 
 **Root Cause Analysis**: 
-The function directly proceeds to create shared address and post unit without checking if these operations have already been completed. Unlike the `pay()` function which has a status guard, `createSharedAddressAndPostUnit()` has no such protection. [4](#0-3) 
+- Validation ordering flaw: comprehensive validation occurs after expensive cloning operation
+- `isNonemptyObject()` utility only checks surface-level properties, not depth
+- No depth limit enforcement before recursive operations
+- Lodash cloneDeep's recursion-based implementation vulnerable to stack overflow
 
 ## Impact Explanation
 
-**Affected Assets**: Native bytes sent to arbiter contract shared addresses
+**Affected Assets**: Node availability, network reliability
 
 **Damage Severity**:
-- **Quantitative**: 4000 bytes lost per duplicate call (could be 8000, 12000, or more bytes if called 2, 3, or more times)
-- **Qualitative**: Permanent and unrecoverable loss as the unit hash reference is overwritten
+- **Quantitative**: Any node processing the malicious private payment will crash. Attacker can target specific nodes or broadcast widely
+- **Qualitative**: Temporary disruption of targeted nodes. If coordinated against witness nodes or hubs, could cause network-wide delays
 
 **User Impact**:
-- **Who**: Any user creating arbiter contracts through external wallet applications
-- **Conditions**: When wallet implements retry logic, experiences network delays, or has race conditions
-- **Recovery**: None - funds in lost units cannot be recovered without the unit hash
+- **Who**: Node operators processing private payments, light clients connected to compromised hubs
+- **Conditions**: Node receives and processes crafted private payment through hub/wallet messaging
+- **Recovery**: Automatic restart possible, but attacker can repeatedly crash with new payloads
 
-**Systemic Risk**: While limited to arbiter contract creation, the 4000 byte charge is mandatory, making this exploitable on every contract that experiences retry logic.
+**Systemic Risk**: Coordinated attacks could temporarily degrade network performance by targeting multiple nodes simultaneously, delaying transaction confirmations.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not necessarily malicious - can occur through legitimate retry logic
-- **Resources Required**: Minimal - just needs to create arbiter contracts
-- **Technical Skill**: Low - unintentional trigger through normal wallet operations
+- **Identity**: Any actor with ability to send messages through hub/wallet system
+- **Resources Required**: Minimal - ability to construct deeply nested JSON and send via Obyte messaging
+- **Technical Skill**: Low - create nested JSON structure and send through standard messaging channels
 
 **Preconditions**:
-- **Network State**: Any state - more likely with network congestion/delays
-- **Attacker State**: Must have wallet creating arbiter contracts
-- **Timing**: Network timeouts, UI retries, or race conditions
+- **Network State**: Normal operation with nodes processing private payments
+- **Attacker State**: No special permissions or positions required
+- **Timing**: Can execute at any time
 
 **Execution Complexity**:
-- **Transaction Count**: 2+ calls to `createSharedAddressAndPostUnit()` for same contract
-- **Coordination**: None required - can happen accidentally
-- **Detection Risk**: Difficult to detect as both units are valid transactions
+- **Transaction Count**: Single malicious private payment per target
+- **Coordination**: None required for individual node targeting
+- **Detection Risk**: Low - appears as normal private payment until crash occurs
 
 **Frequency**:
-- **Repeatability**: Every arbiter contract creation with retry logic
-- **Scale**: Per-contract (4000-12000+ bytes per incident)
+- **Repeatability**: Unlimited - attacker can craft multiple malicious payloads
+- **Scale**: Can target individual nodes or broadcast to multiple nodes
 
-**Overall Assessment**: High likelihood in production environments with retry logic or network instability
+**Overall Assessment**: High likelihood - trivial to execute, requires no resources, repeatable without cost.
 
 ## Recommendation
 
-**Immediate Mitigation**: Add idempotency guard at function entry to check if contract has already been processed
+**Immediate Mitigation**:
+Validate payload structure depth before cloning. Add check before line 154:
 
-**Permanent Fix**: Implement comprehensive state validation before proceeding with unit posting
-
-**Code Changes**:
-
-The fix should add a guard check immediately after retrieving the contract: [5](#0-4) 
-
-Add after line 396:
 ```javascript
-// Guard against multiple calls - ensure idempotency
-if (contract.shared_address || contract.unit || contract.status === "signed") {
-    return cb(null, contract); // Already processed
+// Add depth validation before cloneDeep
+function checkObjectDepth(obj, maxDepth, currentDepth = 0) {
+    if (currentDepth > maxDepth) return false;
+    if (typeof obj !== 'object' || obj === null) return true;
+    return Object.values(obj).every(val => 
+        checkObjectDepth(val, maxDepth, currentDepth + 1)
+    );
 }
+
+// Before line 154
+if (!checkObjectDepth(payload, 100)) // reasonable depth limit
+    return callbacks.ifError("payload structure too deeply nested");
+```
+
+**Permanent Fix**:
+Restructure validation to occur before cloning, or use non-recursive cloning approach:
+
+```javascript
+// Move comprehensive validation before cloning
+// Or use structured cloning with depth limits
+// Or avoid cloning entirely by careful property access
 ```
 
 **Additional Measures**:
-- Add unit tests verifying idempotency behavior
-- Review other exported functions for similar missing guards
-- Add logging/metrics to detect duplicate calls in production
-- Consider database-level unique constraints on `(hash, unit)` pairs
+- Add integration test verifying deeply nested payloads are rejected
+- Add monitoring for stack overflow crashes in private payment processing
+- Document depth limits in protocol specification
+- Consider rate limiting private payment processing per peer
 
 **Validation**:
-- [x] Fix prevents duplicate unit posting
-- [x] No new vulnerabilities introduced (early return is safe)
-- [x] Backward compatible (returns same callback signature)
-- [x] Performance impact negligible (single read check)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_poc.js`):
-```javascript
-/*
- * Proof of Concept for Multiple Unit Posting in createSharedAddressAndPostUnit
- * Demonstrates: Calling the function twice posts two units but only tracks the last one
- * Expected Result: 8000 bytes sent, only 4000 tracked, 4000 permanently lost
- */
-
-const arbiterContract = require('./arbiter_contract.js');
-const db = require('./db.js');
-
-async function runExploit() {
-    const contractHash = 'test_contract_hash_123'; // Example contract hash
-    
-    // Mock wallet instance
-    const mockWallet = {
-        spendUnconfirmed: false,
-        sendMultiPayment: function(opts, callback) {
-            // Simulate unit posting - would actually send 4000 bytes
-            const fakeUnitHash = 'unit_' + Date.now();
-            console.log(`[EXPLOIT] Posted unit ${fakeUnitHash} with ${opts.amount} bytes`);
-            setTimeout(() => callback(null, fakeUnitHash), 100);
-        }
-    };
-    
-    // First call - legitimate
-    console.log('[EXPLOIT] First call to createSharedAddressAndPostUnit()');
-    arbiterContract.createSharedAddressAndPostUnit(contractHash, mockWallet, (err, contract) => {
-        if (err) return console.error('First call error:', err);
-        console.log(`[EXPLOIT] First call succeeded. Unit: ${contract.unit}`);
-        
-        // Second call - retry/duplicate (THIS IS THE VULNERABILITY)
-        console.log('[EXPLOIT] Second call to createSharedAddressAndPostUnit() (simulating retry)');
-        arbiterContract.createSharedAddressAndPostUnit(contractHash, mockWallet, (err2, contract2) => {
-            if (err2) return console.error('Second call error:', err2);
-            console.log(`[EXPLOIT] Second call succeeded. Unit: ${contract2.unit}`);
-            console.log('[EXPLOIT] VULNERABILITY CONFIRMED: Two units posted, only last one tracked!');
-            console.log('[EXPLOIT] Fund loss: 4000 bytes from first unit are now unrecoverable');
-        });
-    });
-}
-
-runExploit();
-```
-
-**Expected Output** (when vulnerability exists):
-```
-[EXPLOIT] First call to createSharedAddressAndPostUnit()
-[EXPLOIT] Posted unit unit_1234567890123 with 4000 bytes
-[EXPLOIT] First call succeeded. Unit: unit_1234567890123
-[EXPLOIT] Second call to createSharedAddressAndPostUnit() (simulating retry)
-[EXPLOIT] Posted unit unit_1234567890456 with 4000 bytes
-[EXPLOIT] Second call succeeded. Unit: unit_1234567890456
-[EXPLOIT] VULNERABILITY CONFIRMED: Two units posted, only last one tracked!
-[EXPLOIT] Fund loss: 4000 bytes from first unit are now unrecoverable
-```
-
-**Expected Output** (after fix applied):
-```
-[EXPLOIT] First call to createSharedAddressAndPostUnit()
-[EXPLOIT] Posted unit unit_1234567890123 with 4000 bytes
-[EXPLOIT] First call succeeded. Unit: unit_1234567890123
-[EXPLOIT] Second call to createSharedAddressAndPostUnit() (simulating retry)
-[EXPLOIT] Second call succeeded. Unit: unit_1234567890123
-[FIX] Idempotency guard prevented duplicate posting. Same unit returned.
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of balance conservation invariant
-- [x] Shows measurable impact (4000+ bytes permanent loss)
-- [x] Fails gracefully after fix applied (returns existing contract without duplicate posting)
+- Fix prevents stack overflow with deeply nested objects
+- No performance degradation for normal payloads
+- Backward compatible with existing valid private payments
+- Proper error message returned to sender
 
 ## Notes
 
-This vulnerability affects the arbiter contract functionality specifically, where users establish smart contracts with peer-to-peer dispute resolution. The CHARGE_AMOUNT of 4000 bytes is mandatory for contract initialization. While the shared address itself is deterministic (always produces the same address for the same contract definition), the lack of idempotency checking allows multiple units to be posted to this address when the function is retried.
+**Attack Vector Correction**: The claim states exploitation is "via the P2P network," but direct P2P private payment sending is disabled at [7](#0-6) . The actual attack vector is through the hub/wallet messaging system, which still allows exploitation via [8](#0-7) .
 
-The database schema has a UNIQUE constraint on `shared_address` across different contracts, but this does not prevent the same contract from posting multiple units to its own shared address. [6](#0-5)
+The core vulnerability remains valid despite this inaccuracy - the malicious payload reaches the vulnerable code through an active messaging path, and the stack overflow occurs exactly as described.
 
 ### Citations
 
-**File:** arbiter_contract.js (L17-17)
+**File:** indivisible_asset.js (L54-78)
 ```javascript
-exports.CHARGE_AMOUNT = 4000;
+	var payload = objPrivateElement.payload;
+	if (!ValidationUtils.isStringOfLength(payload.asset, constants.HASH_LENGTH))
+		return callbacks.ifError("invalid asset in private payment");
+	if (!ValidationUtils.isPositiveInteger(payload.denomination))
+		return callbacks.ifError("invalid denomination in private payment");
+	if (!ValidationUtils.isNonemptyObject(objPrivateElement.output))
+		return callbacks.ifError("no output");
+	if (!ValidationUtils.isNonnegativeInteger(objPrivateElement.output_index))
+		return callbacks.ifError("invalid output index");
+	if (!ValidationUtils.isNonemptyArray(payload.outputs))
+		return callbacks.ifError("invalid outputs");
+	var our_hidden_output = payload.outputs[objPrivateElement.output_index];
+	if (!ValidationUtils.isNonemptyObject(payload.outputs[objPrivateElement.output_index]))
+		return callbacks.ifError("no output at output_index");
+	if (!ValidationUtils.isValidAddress(objPrivateElement.output.address))
+		return callbacks.ifError("bad address in output");
+	if (!ValidationUtils.isNonemptyString(objPrivateElement.output.blinding))
+		return callbacks.ifError("bad blinding in output");
+	if (objectHash.getBase64Hash(objPrivateElement.output) !== our_hidden_output.output_hash)
+		return callbacks.ifError("output hash doesn't match, output="+JSON.stringify(objPrivateElement.output)+", hash="+our_hidden_output.output_hash);
+	if (!ValidationUtils.isArrayOfLength(payload.inputs, 1))
+		return callbacks.ifError("inputs array must be 1 element long");
+	var input = payload.inputs[0];
+	if (!ValidationUtils.isNonemptyObject(input))
+		return callbacks.ifError("no inputs[0]");
 ```
 
-**File:** arbiter_contract.js (L395-400)
+**File:** indivisible_asset.js (L152-159)
 ```javascript
-function createSharedAddressAndPostUnit(hash, walletInstance, cb) {
-	getByHash(hash, function(contract) {
-		arbiters.getArbstoreInfo(contract.arbiter_address, function(err, arbstoreInfo) {
-			if (err)
-				return cb(err);
-			storage.readAssetInfo(db, contract.asset, function(assetInfo) {
+			arrFuncs.push(function(cb){
+				// we need to unhide the single output we are interested in, other outputs stay partially hidden like {amount: 300, output_hash: "base64"}
+				var partially_revealed_payload = _.cloneDeep(payload);
+				var our_output = partially_revealed_payload.outputs[objPrivateElement.output_index];
+				our_output.address = objPrivateElement.output.address;
+				our_output.blinding = objPrivateElement.output.blinding;
+				validation.validatePayment(conn, partially_revealed_payload, objPrivateElement.message_index, objPartialUnit, objValidationState, cb);
+			});
 ```
 
-**File:** arbiter_contract.js (L496-531)
+**File:** validation_utils.js (L76-78)
 ```javascript
-					ifOk: function(shared_address){
-						setField(contract.hash, "shared_address", shared_address, function(contract) {
-							// share this contract to my cosigners for them to show proper ask dialog
-							shareContractToCosigners(contract.hash);
-							shareUpdateToPeer(contract.hash, "shared_address");
-
-							// post a unit with contract text hash and send it for signing to correspondent
-							var value = {"contract_text_hash": contract.hash, "arbiter": contract.arbiter_address};
-							var objContractMessage = {
-								app: "data",
-								payload_location: "inline",
-								payload_hash: objectHash.getBase64Hash(value, true),
-								payload: value
-							};
-
-							walletInstance.sendMultiPayment({
-								spend_unconfirmed: walletInstance.spendUnconfirmed ? 'all' : 'own',
-								asset: "base",
-								to_address: shared_address,
-								amount: exports.CHARGE_AMOUNT,
-								arrSigningDeviceAddresses: contract.cosigners.length ? contract.cosigners.concat([contract.peer_device_address, device.getMyDeviceAddress()]) : [],
-								signing_addresses: [shared_address],
-								messages: [objContractMessage]
-							}, function(err, unit) { // can take long if multisig
-								if (err)
-									return cb(err);
-
-								// set contract's unit field
-								setField(contract.hash, "unit", unit, function(contract) {
-									shareUpdateToPeer(contract.hash, "unit");
-									setField(contract.hash, "status", "signed", function(contract) {
-										cb(null, contract);
-									});
-								});
-							});
-						});
+function isNonemptyObject(obj){
+	return (obj && typeof obj === "object" && !Array.isArray(obj) && Object.keys(obj).length > 0);
+}
 ```
 
-**File:** arbiter_contract.js (L540-542)
+**File:** validation.js (L1926-1929)
 ```javascript
-	getByHash(hash, function(objContract) {
-		if (!objContract.shared_address || objContract.status !== "signed" || !objContract.me_is_payer)
-			return cb("contract can't be paid");
+		if (hasFieldsExcept(output, ["address", "amount", "blinding", "output_hash"]))
+			return callback("unknown fields in payment output");
+		if (!isPositiveInteger(output.amount))
+			return callback("amount must be positive integer, found "+output.amount);
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L912-912)
-```sql
-	shared_address CHAR(32) NULL UNIQUE,
+**File:** network.js (L2114-2126)
+```javascript
+function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
+	if (!ValidationUtils.isNonemptyArray(arrPrivateElements))
+		return callbacks.ifError("private_payment content must be non-empty array");
+	
+	var unit = arrPrivateElements[0].unit;
+	var message_index = arrPrivateElements[0].message_index;
+	var output_index = arrPrivateElements[0].payload.denomination ? arrPrivateElements[0].output_index : -1;
+	if (!ValidationUtils.isValidBase64(unit, constants.HASH_LENGTH))
+		return callbacks.ifError("invalid unit " + unit);
+	if (!ValidationUtils.isNonnegativeInteger(message_index))
+		return callbacks.ifError("invalid message_index " + message_index);
+	if (!(ValidationUtils.isNonnegativeInteger(output_index) || output_index === -1))
+		return callbacks.ifError("invalid output_index " + output_index);
+```
+
+**File:** network.js (L2613-2614)
+```javascript
+		case 'private_payment':
+			return sendError(`direct sending of private payments disabled, use chat instead`);
+```
+
+**File:** wallet.js (L383-385)
+```javascript
+			case 'private_payments':
+				handlePrivatePaymentChains(ws, body, from_address, callbacks);
+				break;
+```
+
+**File:** wallet.js (L770-773)
+```javascript
+function handlePrivatePaymentChains(ws, body, from_address, callbacks){
+	var arrChains = body.chains;
+	if (!ValidationUtils.isNonemptyArray(arrChains))
+		return callbacks.ifError("no chains found");
 ```

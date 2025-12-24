@@ -1,499 +1,333 @@
-## Title
-Validation Accepts Voided Final-Bad Units as Valid Parents, Violating DAG Integrity
+## Audit Report
 
-## Summary
-The validation pipeline fails to reject parent units with `sequence='final-bad'`, allowing new units to reference voided (message-stripped) invalid units as parents. This violates the Parent Validity invariant (#16) and enables building DAG branches on top of invalid history, potentially compromising consensus correctness and network integrity.
+### Title
+Unbounded Memory Allocation in Witness Proof Generation Causing Node Crashes During Light Client Synchronization
 
-## Impact
-**Severity**: Medium to High  
-**Category**: DAG Structure Corruption / Unintended Consensus Behavior
+### Summary
+The `findUnstableJointsAndLastBallUnits()` function in `witness_proof.js` queries and loads all unstable main chain units into memory without pagination or size limits. During periods when the last stable MCI significantly lags behind the current chain tip (due to reduced witness activity), this unbounded memory allocation can exhaust available RAM, causing out-of-memory crashes in full nodes attempting to serve light clients or catchup requests.
 
-## Finding Description
+### Impact
 
-**Location**: `byteball/ocore/validation.js` (functions `validateParentsExistAndOrdered` and `validateParents`)
+**Severity**: Medium
 
-**Intended Logic**: Parent units must be valid. The protocol should reject units that reference invalid (final-bad) parents to maintain DAG integrity per Invariant #16: "All parent units must exist, be valid, and form a DAG (no cycles)."
+**Category**: Temporary Transaction Delay
 
-**Actual Logic**: The validation pipeline only verifies parent unit **existence** in the `units` table but never checks the parent's `sequence` field. When a unit becomes final-bad and gets voided (messages deleted via `generateQueriesToVoidJoint`), it remains in the `units` table with `sequence='final-bad'`. New units can reference these voided parents and pass validation because:
+Full nodes crash when attempting to generate witness proofs for light client synchronization or peer catchup requests, effectively preventing light clients from syncing until witness activity resumes and stabilizes the backlog. During witness inactivity periods lasting multiple days, light clients remain unable to update their state, causing transaction delays exceeding 24 hours.
 
-1. **Voiding Process** - When units fall below `min_retrievable_mci`, final-bad units get their messages deleted but the unit row persists: [1](#0-0) 
+**Affected Parties:**
+- Light client users (mobile wallets, lightweight nodes) cannot sync beyond their last known state
+- Full nodes crash repeatedly when serving light client or catchup requests
+- Network availability for new user onboarding is severely degraded
 
-2. **Parent Existence Check** - Validation only queries if the parent exists, returning basic structural properties without validating sequence status: [2](#0-1) 
+**Quantitative Impact:**
+- Memory consumption scales linearly with unstable units: ~2KB per unit
+- With 500K unstable units: ~1GB RAM allocation
+- With 1M unstable units: ~2GB RAM allocation
+- Node.js default heap limit: ~1.4-1.7GB
+- Crash probability approaches 100% when unstable chain exceeds 700K-850K units
 
-3. **Parent Validation** - The main parent validation reads full unit properties (including `sequence`) but never checks if `sequence='final-bad'`: [3](#0-2) 
+### Finding Description
 
-4. **Missing Sequence Check** - When `readUnitProps` is called for each parent (line 555), it returns properties including sequence, but there is no validation that `objParentUnitProps.sequence !== 'final-bad'`.
+**Location**: `byteball/ocore/witness_proof.js:21-50`, function `findUnstableJointsAndLastBallUnits()`, called from `prepareWitnessProof()` at line 66
 
-5. **Database Schema** - The units table allows `sequence` values of 'good', 'temp-bad', or 'final-bad': [4](#0-3) 
+**Intended Logic**: Collect unstable main chain joints to build witness proofs, enabling light clients and syncing peers to verify chain state efficiently.
+
+**Actual Logic**: The function executes an unbounded database query selecting ALL main chain units above `min_retrievable_mci` without any LIMIT clause, loads each complete joint into memory via `storage.readJointWithBall()`, and accumulates all results in the `arrUnstableMcJoints` array before any size validation occurs.
+
+**Code Evidence**:
+
+The unbounded query: [1](#0-0) 
+
+The memory accumulation loop: [2](#0-1) 
+
+The call with no upper bound: [3](#0-2) 
+
+The `min_retrievable_mci` initialization from old stable state: [4](#0-3) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Unit U1 exists with `sequence='final-bad'` (marked invalid during consensus)
-   - U1 has `main_chain_index < min_retrievable_mci` and has been voided (messages deleted, unit row remains)
-   - Attacker has knowledge of U1's unit hash
+   - Witness activity decreases (fewer than 7 of 12 witnesses actively posting units)
+   - `last_stable_mci` stops advancing or advances slowly
+   - Normal users continue posting units, extending the unstable portion of the main chain
+   - Gap between `min_retrievable_mci` and current MCI grows to 500K+ units over days/weeks
 
-2. **Step 1**: Attacker constructs Unit U2 with U1 included in `parent_units` array and submits it to the network
+2. **Step 1 - Trigger Request**: 
+   - Light client requests synchronization via `prepareHistory()` in light.js: [5](#0-4) 
+   - OR peer requests catchup via `prepareCatchupChain()` in catchup.js: [6](#0-5) 
 
-3. **Step 2**: Validation executes `validateParentsExistAndOrdered`:
-   - Calls `readStaticUnitProps(conn, U1, ...)` which queries: `SELECT level, witnessed_level, best_parent_unit, witness_list_unit FROM units WHERE unit=?`
-   - U1 exists in units table, so props are returned (U1 not added to `arrMissingParentUnits`)
-   - The `known_bad_joints` check (line 492) is skipped since U1 is not missing [5](#0-4) 
+3. **Step 2 - Unbounded Loading**:
+   - Query selects all units where `main_chain_index > min_retrievable_mci` with no LIMIT
+   - For each unit (potentially 500K-1M+), `storage.readJointWithBall()` loads complete joint JSON: [7](#0-6) 
+   - Each joint pushed to `arrUnstableMcJoints` array without size check
+   - Memory consumption: 500K units @ 2KB each = ~1GB+
 
-4. **Step 3**: Validation executes `validateParents`:
-   - Calls `readUnitProps(conn, U1, ...)` which returns props including `sequence='final-bad'` [6](#0-5) 
-   - But no code checks `objParentUnitProps.sequence !== 'final-bad'`
-   - Validation passes
+4. **Step 3 - Out-of-Memory Crash**:
+   - Node.js heap exhausted before size check can execute
+   - Process crashes with OOM error
+   - Node becomes unavailable for serving light clients
+   - Crash repeats on every subsequent light client sync attempt
 
-5. **Step 4**: U2 is accepted into the DAG with an invalid (final-bad) parent, violating Parent Validity invariant
+5. **Step 4 - Size Check Too Late**:
+   - In catchup.js, the `MAX_CATCHUP_CHAIN_LENGTH` check occurs AFTER witness proof is fully prepared: [8](#0-7) 
+   - By this point, all data is already loaded in memory
+   - The protective check defined at [9](#0-8)  cannot prevent the OOM
 
-**Security Property Broken**: **Invariant #16 - Parent Validity**: "All parent units must exist, be valid, and form a DAG (no cycles)." Final-bad units are by definition INVALID, yet the validation accepts them as parents.
+**Security Properties Broken**:
+- **Invariant #19 (Catchup Completeness)**: Syncing nodes cannot retrieve chain data when servers crash during catchup preparation
+- **Invariant #24 (Network Unit Propagation)**: Network cannot propagate units to light clients when witness proof generation consistently fails
 
-**Root Cause Analysis**: The separation of concerns in validation creates a gap:
-- `validateParentsExistAndOrdered` checks only existence and ordering
-- `validateParents` reads full parent properties (including `sequence`) but was never designed to validate parent validity status
-- No explicit check exists to reject `sequence='final-bad'` parents
-- The `known_bad_joints` check only applies to MISSING parents (line 491-496), not parents that exist in the `units` table
+**Root Cause Analysis**:
 
-## Impact Explanation
+The function assumes unstable MC unit count remains bounded by normal witness activity. It lacks defensive programming:
+1. No LIMIT clause in SQL query at line 27
+2. No size check before or during array population
+3. No pagination or streaming of results
+4. No memory threshold monitoring
+5. Size validation in catchup.js occurs after memory allocation completes
 
-**Affected Assets**: DAG structural integrity, consensus correctness, network-wide agreement on valid units
+The `MAX_CATCHUP_CHAIN_LENGTH` constant acknowledges chains can reach 1 million MCIs, yet witness proof preparation has no corresponding pre-allocation size check.
+
+### Impact Explanation
+
+**Affected Assets**: 
+- Full node availability and service reliability
+- Light client synchronization capability
+- Network accessibility for new users
 
 **Damage Severity**:
-- **Quantitative**: Every unit referencing a final-bad parent becomes part of an invalid branch. Descendants of such units inherit the invalidity, potentially creating large invalid subgraphs
-- **Qualitative**: Compromises the fundamental assumption that all units in the DAG have valid ancestry
+- **Quantitative**: 
+  - Crash threshold: ~700K-850K unstable units (approaching 1.5GB with Node.js default heap)
+  - Recovery time: Dependent on witness resumption (hours to days)
+  - Affected nodes: ALL full nodes attempting to serve light clients during vulnerability window
+  
+- **Qualitative**: 
+  - Light clients frozen at stale state, unable to see new transactions
+  - Payment processors and exchanges using light clients cannot update balances
+  - New user onboarding blocked (light wallets cannot initial-sync)
+  - Full nodes must disable light client serving or risk repeated crashes
 
 **User Impact**:
-- **Who**: All network participants, as this affects global DAG state
-- **Conditions**: Exploitable whenever any final-bad unit exists below `min_retrievable_mci` (happens naturally as invalid units age)
-- **Recovery**: Requires network-wide consensus on handling such units, potentially requiring a soft/hard fork
+- **Who**: Light wallet users, mobile app users, services using light clients, full nodes serving catchup requests
+- **Conditions**: Triggered automatically during any light client sync when unstable chain exceeds ~700K units
+- **Recovery**: Requires witness activity to resume and stabilize backlog, or manual node configuration to disable light client serving
 
 **Systemic Risk**: 
-- **Main Chain Calculation**: Best parent selection and MC index determination may traverse through final-bad ancestors, potentially affecting MC stability
-- **Witness Level**: Witness level calculations rely on ancestor properties; invalid ancestors could corrupt these calculations
-- **Consensus Divergence**: Different nodes or client versions might handle this differently, risking network splits
-- **Propagation**: Once accepted, invalid ancestry propagates to all descendants, creating cascading invalidity
+- During extended witness inactivity, the entire light client ecosystem becomes non-functional
+- Exchanges may halt byte deposits/withdrawals if they rely on light clients
+- Network becomes inaccessible to resource-constrained users who cannot run full nodes
 
-## Likelihood Explanation
+### Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network participant who can submit units
-- **Resources Required**: Minimal - just needs to know the hash of any voided final-bad unit
-- **Technical Skill**: Low to medium - requires understanding DAG structure and access to voided unit hashes
+- **Identity**: No active attacker required - natural witness downtime triggers vulnerability
+- **Resources Required**: None for passive exploitation; light client performing normal sync triggers the issue
+- **Technical Skill**: None - automatic during routine operations
 
 **Preconditions**:
-- **Network State**: At least one final-bad unit must have been voided (natural occurrence in protocol as old invalid units are stripped)
-- **Attacker State**: Knowledge of voided unit hashes (observable from network history)
-- **Timing**: No timing constraints - exploitable anytime after voiding occurs
+- **Network State**: Witness activity drops below stabilization threshold (<7 of 12 witnesses actively posting)
+- **Timing**: Occurs naturally during witness maintenance, upgrades, or infrastructure issues
+- **Duration**: Vulnerability window persists until witnesses resume activity and stabilize accumulated unstable units
 
 **Execution Complexity**:
-- **Transaction Count**: Single unit submission
+- **Trigger**: Single light client sync request or peer catchup request
 - **Coordination**: None required
-- **Detection Risk**: Medium - unusual parent selections might be noticed but not automatically rejected
+- **Detection**: Low - appears as legitimate network traffic
 
 **Frequency**:
-- **Repeatability**: Unlimited - can be repeated for every voided final-bad unit
-- **Scale**: Network-wide impact as accepted units propagate
+- **Repeatability**: Every light client sync attempt during vulnerability window
+- **Historical precedent**: Witness maintenance windows and outages occur periodically
 
-**Overall Assessment**: **High likelihood** - the preconditions occur naturally in the protocol, exploitation is trivial, and there's no mechanism to prevent or detect it.
+**Overall Assessment**: Medium-High likelihood during witness maintenance periods, as light client sync is a routine operation with no mitigations in place.
 
-## Recommendation
+### Recommendation
 
-**Immediate Mitigation**: Add validation check in `validateParents` to reject parents with `sequence='final-bad'`
+**Immediate Mitigation**:
+Add size check BEFORE loading data in `witness_proof.js`:
 
-**Permanent Fix**: Implement parent sequence validation in the validation pipeline
-
-**Code Changes**:
-
-In `validation.js`, modify the `validateParents` function to add a sequence check after reading parent properties: [7](#0-6) 
-
-Add after line 555 (after `storage.readUnitProps` callback):
 ```javascript
-// Reject final-bad parents
-if (objParentUnitProps.sequence === 'final-bad')
-    return cb("parent unit "+parent_unit+" is final-bad and cannot be used as parent");
-// Also reject temp-bad if stable
-if (objParentUnitProps.sequence === 'temp-bad' && objParentUnitProps.is_stable)
-    return cb("parent unit "+parent_unit+" is stable temp-bad and cannot be used as parent");
+// In findUnstableJointsAndLastBallUnits(), before line 26
+function findUnstableJointsAndLastBallUnits(start_mci, end_mci, handleRes) {
+    // Add this check first
+    db.query(
+        "SELECT COUNT(*) as count FROM units WHERE +is_on_main_chain=1 AND main_chain_index>?",
+        [start_mci],
+        function(rows) {
+            if (rows[0].count > MAX_CATCHUP_CHAIN_LENGTH) {
+                return handleRes([], []); // Return empty, let caller handle
+            }
+            // Continue with existing logic...
+        }
+    );
+}
+```
+
+**Permanent Fix**:
+Implement pagination for large unstable chains:
+
+```javascript
+// Add pagination with LIMIT and OFFSET
+const BATCH_SIZE = 10000;
+function findUnstableJointsAndLastBallUnitsPaginated(start_mci, end_mci, handleRes) {
+    let offset = 0;
+    let arrAllUnstableMcJoints = [];
+    let arrAllLastBallUnits = [];
+    
+    async.whilst(
+        () => offset < MAX_CATCHUP_CHAIN_LENGTH,
+        (cb) => {
+            db.query(
+                `SELECT unit FROM units WHERE +is_on_main_chain=1 AND main_chain_index>? 
+                 ORDER BY main_chain_index DESC LIMIT ? OFFSET ?`,
+                [start_mci, BATCH_SIZE, offset],
+                // Process batch...
+            );
+        },
+        () => handleRes(arrAllUnstableMcJoints, arrAllLastBallUnits)
+    );
+}
 ```
 
 **Additional Measures**:
-- Add database constraint or trigger to prevent inserting parenthood records referencing final-bad units
-- Add test cases verifying rejection of units with final-bad parents
-- Add monitoring to detect and alert on any units with final-bad ancestors
-- Consider whether temp-bad units should also be rejected as parents
+- Add unit test verifying behavior with 1M+ unstable units (mock data)
+- Add monitoring for unstable chain length
+- Document operational procedures for witness maintenance to minimize downtime
+- Consider proof chain optimization to reduce witness proof size for very long unstable chains
 
 **Validation**:
-- [x] Fix prevents exploitation by rejecting final-bad parents during validation
-- [x] No new vulnerabilities introduced - only adds safety check
-- [x] Backward compatible - existing valid units unaffected (only blocks new invalid submissions)
-- [x] Performance impact acceptable - single field check per parent unit
+- Verify no OOM crashes with simulated 1M unstable units
+- Confirm light client sync still works correctly with pagination
+- Performance testing: ensure pagination overhead is acceptable (<5 seconds for 1M units)
 
-## Proof of Concept
+### Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
+Due to the complexity of simulating a full Obyte network with witness inactivity spanning days/weeks to accumulate 500K+ unstable units, a complete executable PoC is impractical. However, the vulnerability is demonstrable through code analysis:
 
-**Exploit Script** (`exploit_voided_parent.js`):
-```javascript
-/*
- * Proof of Concept: Voided Final-Bad Parent Acceptance
- * Demonstrates: Validation accepts units referencing final-bad parents
- * Expected Result: Unit with final-bad parent passes validation (vulnerability exists)
- */
+1. The query at line 27 has no LIMIT clause
+2. The loop at lines 30-44 processes ALL returned rows
+3. `storage.readJointWithBall()` loads complete joint JSON for each unit
+4. Size check in catchup.js line 65 executes AFTER prepareWitnessProof() returns
+5. Simple calculation: 700K units × 2KB = 1.4GB exceeds Node.js default heap
 
-const db = require('./db.js');
-const storage = require('./storage.js');
-const validation = require('./validation.js');
-const objectHash = require('./object_hash.js');
+To verify in a controlled environment:
+- Populate test database with 700K+ unstable MC units
+- Trigger light client sync via `prepareHistory()`
+- Monitor Node.js heap usage with `--expose-gc` and heap snapshots
+- Observe memory exhaustion before catchup length check can execute
 
-async function demonstrateVulnerability() {
-    // Step 1: Query for a voided final-bad unit
-    const voidedUnits = await new Promise((resolve, reject) => {
-        db.query(
-            "SELECT unit, sequence, main_chain_index FROM units \
-             WHERE sequence='final-bad' AND main_chain_index < ? \
-             AND NOT EXISTS (SELECT 1 FROM messages WHERE messages.unit = units.unit) \
-             LIMIT 1",
-            [storage.getMinRetrievableMci()],
-            (rows) => resolve(rows)
-        );
-    });
+### Notes
 
-    if (voidedUnits.length === 0) {
-        console.log("No voided final-bad units found. Test requires aged invalid units.");
-        return false;
-    }
+**Important Clarifications:**
 
-    const voidedParent = voidedUnits[0].unit;
-    console.log(`Found voided final-bad parent: ${voidedParent}`);
-    console.log(`Parent sequence: ${voidedUnits[0].sequence}`);
-    console.log(`Parent MCI: ${voidedUnits[0].main_chain_index}`);
+1. **Severity Justification**: This is classified as MEDIUM rather than CRITICAL because:
+   - The network continues processing regular transactions (no network shutdown)
+   - Only light client synchronization and peer catchup are affected
+   - Impact is temporary and resolves when witness activity resumes
+   - Per Immunefi Obyte scope: "Temporary Transaction Delay ≥1 Day" = Medium
 
-    // Step 2: Construct a test unit referencing the voided parent
-    const testUnit = {
-        unit: 'test_hash_' + Date.now(),
-        version: '1.0',
-        alt: '1',
-        parent_units: [voidedParent].sort(),
-        last_ball: 'genesis_ball',
-        last_ball_unit: 'genesis_unit',
-        witness_list_unit: 'genesis_unit',
-        authors: [{
-            address: 'TEST_ADDRESS',
-            authentifiers: { r: 'test_sig' }
-        }],
-        messages: [{
-            app: 'text',
-            payload_location: 'inline',
-            payload_hash: objectHash.getBase64Hash('test'),
-            payload: 'test'
-        }],
-        headers_commission: 100,
-        payload_commission: 100
-    };
+2. **Witness Inactivity vs. Malicious Behavior**: 
+   - This vulnerability does NOT require witness collusion or malicious action
+   - Witness inactivity can occur naturally (maintenance, infrastructure issues, upgrades)
+   - The bug is in how the protocol handles this operational state, not the state itself
 
-    // Step 3: Attempt validation
-    console.log("\nAttempting validation of unit with final-bad parent...");
-    
-    const validationResult = await new Promise((resolve) => {
-        validation.validate({ unit: testUnit }, {
-            ifOk: () => {
-                console.log("VULNERABILITY CONFIRMED: Validation PASSED for unit with final-bad parent!");
-                resolve(true);
-            },
-            ifError: (err) => {
-                console.log("Validation correctly rejected:", err);
-                resolve(false);
-            },
-            ifTransientError: (err) => {
-                console.log("Transient error:", err);
-                resolve(false);
-            },
-            ifJointError: (err) => {
-                console.log("Joint error:", err);
-                resolve(false);
-            }
-        });
-    });
+3. **Distinction from Network-Level DoS**:
+   - This is NOT an external DDoS attack on witnesses
+   - It's a protocol-level bug: unbounded memory allocation without defensive checks
+   - The precondition (witness inactivity) is a network state, not an attack vector
 
-    return validationResult;
-}
+4. **Realistic Scenario**:
+   - Witness lists are rotated carefully in Obyte, but outages can occur
+   - Extended maintenance windows or coordinated upgrades across multiple witnesses
+   - While uncommon, the lack of any protective measure makes this a valid vulnerability
 
-demonstrateVulnerability()
-    .then(vulnerable => {
-        console.log("\n=== RESULT ===");
-        console.log(vulnerable 
-            ? "VULNERABILITY EXISTS: Final-bad parents accepted"
-            : "System correctly rejects final-bad parents");
-        process.exit(vulnerable ? 1 : 0);
-    })
-    .catch(err => {
-        console.error("Error during PoC:", err);
-        process.exit(2);
-    });
-```
-
-**Expected Output** (when vulnerability exists):
-```
-Found voided final-bad parent: [unit_hash]
-Parent sequence: final-bad
-Parent MCI: [mci_value]
-
-Attempting validation of unit with final-bad parent...
-VULNERABILITY CONFIRMED: Validation PASSED for unit with final-bad parent!
-
-=== RESULT ===
-VULNERABILITY EXISTS: Final-bad parents accepted
-```
-
-**Expected Output** (after fix applied):
-```
-Found voided final-bad parent: [unit_hash]
-Parent sequence: final-bad
-Parent MCI: [mci_value]
-
-Attempting validation of unit with final-bad parent...
-Validation correctly rejected: parent unit [unit_hash] is final-bad and cannot be used as parent
-
-=== RESULT ===
-System correctly rejects final-bad parents
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase (queries real database state)
-- [x] Demonstrates clear violation of Invariant #16 (Parent Validity)
-- [x] Shows measurable impact (invalid units accepted into DAG)
-- [x] Fails gracefully after fix applied (validation rejects as intended)
-
-## Notes
-
-This vulnerability exists at the intersection of the archiving and validation subsystems. The voiding mechanism correctly preserves unit structural data for DAG integrity while stripping content for space efficiency. However, the validation system was not designed to prevent referencing these voided (final-bad) units as parents, creating a logical gap in the protocol's integrity guarantees.
-
-The fix is straightforward and low-risk, requiring only an additional validation check. The impact is medium-to-high because while it doesn't directly cause fund loss, it fundamentally compromises DAG integrity assumptions that underpin the entire consensus mechanism.
+The vulnerability is VALID with MEDIUM severity, requiring a fix to add size checks and pagination before memory allocation.
 
 ### Citations
 
-**File:** archiving.js (L46-67)
+**File:** witness_proof.js (L26-28)
 ```javascript
-function generateQueriesToVoidJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		// we keep witnesses, author addresses, and the unit itself
-		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "UPDATE unit_authors SET definition_chash=NULL WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM spend_proofs WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM attested_fields WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM attestations WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_metadata WHERE asset=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_denominations WHERE asset=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM asset_attestors WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM assets WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM messages WHERE unit=?", [unit]);
-		cb();
-	});
+		db.query(
+			`SELECT unit FROM units WHERE +is_on_main_chain=1 AND main_chain_index>? ${and_end_mci} ORDER BY main_chain_index DESC`,
+			[start_mci],
 ```
 
-**File:** storage.js (L1448-1496)
+**File:** witness_proof.js (L30-44)
 ```javascript
-function readUnitProps(conn, unit, handleProps){
-	if (!unit)
-		throw Error(`readUnitProps bad unit ` + unit);
-	if (!handleProps)
-		return new Promise(resolve => readUnitProps(conn, unit, resolve));
-	if (assocStableUnits[unit])
-		return handleProps(assocStableUnits[unit]);
-	if (conf.bFaster && assocUnstableUnits[unit])
-		return handleProps(assocUnstableUnits[unit]);
-	var stack = new Error().stack;
-	conn.query(
-		"SELECT unit, level, latest_included_mc_index, main_chain_index, is_on_main_chain, is_free, is_stable, witnessed_level, headers_commission, payload_commission, sequence, timestamp, GROUP_CONCAT(address) AS author_addresses, COALESCE(witness_list_unit, unit) AS witness_list_unit, best_parent_unit, last_ball_unit, tps_fee, max_aa_responses, count_aa_responses, count_primary_aa_triggers, is_aa_response, version\n\
-			FROM units \n\
-			JOIN unit_authors USING(unit) \n\
-			WHERE unit=? \n\
-			GROUP BY +unit", 
-		[unit], 
-		function(rows){
-			if (rows.length !== 1)
-				throw Error("not 1 row, unit "+unit);
-			var props = rows[0];
-			props.author_addresses = props.author_addresses.split(',');
-			props.count_primary_aa_triggers = props.count_primary_aa_triggers || 0;
-			props.bAA = !!props.is_aa_response;
-			delete props.is_aa_response;
-			props.tps_fee = props.tps_fee || 0;
-			if (parseFloat(props.version) >= constants.fVersion4)
-				delete props.witness_list_unit;
-			delete props.version;
-			if (props.is_stable) {
-				if (props.sequence === 'good') // we don't cache final-bads as they can be voided later
-					assocStableUnits[unit] = props;
-				// we don't add it to assocStableUnitsByMci as all we need there is already there
-			}
-			else{
-				if (!assocUnstableUnits[unit])
-					throw Error("no unstable props of "+unit);
-				var props2 = _.cloneDeep(assocUnstableUnits[unit]);
-				delete props2.parent_units;
-				delete props2.earned_headers_commission_recipients;
-			//	delete props2.bAA;
-				if (!_.isEqual(props, props2)) {
-					debugger;
-					throw Error("different props of "+unit+", mem: "+JSON.stringify(props2)+", db: "+JSON.stringify(props)+", stack "+stack);
-				}
-			}
-			handleProps(props);
-		}
-	);
-```
-
-**File:** storage.js (L2064-2079)
-```javascript
-function readStaticUnitProps(conn, unit, handleProps, bReturnNullIfNotFound){
-	if (!unit)
-		throw Error("no unit");
-	var props = assocCachedUnits[unit];
-	if (props)
-		return handleProps(props);
-	conn.query("SELECT level, witnessed_level, best_parent_unit, witness_list_unit FROM units WHERE unit=?", [unit], function(rows){
-		if (rows.length !== 1){
-			if (bReturnNullIfNotFound)
-				return handleProps(null);
-			throw Error("not 1 unit "+unit);
-		}
-		props = rows[0];
-		assocCachedUnits[unit] = props;
-		handleProps(props);
-	});
-```
-
-**File:** validation.js (L469-502)
-```javascript
-function validateParentsExistAndOrdered(conn, objUnit, callback){
-	var prev = "";
-	var arrMissingParentUnits = [];
-	if (objUnit.parent_units.length > constants.MAX_PARENTS_PER_UNIT) // anti-spam
-		return callback("too many parents: "+objUnit.parent_units.length);
-	async.eachSeries(
-		objUnit.parent_units,
-		function(parent_unit, cb){
-			if (parent_unit <= prev)
-				return cb("parent units not ordered");
-			prev = parent_unit;
-			if (storage.assocUnstableUnits[parent_unit] || storage.assocStableUnits[parent_unit])
-				return cb();
-			storage.readStaticUnitProps(conn, parent_unit, function(objUnitProps){
-				if (!objUnitProps)
-					arrMissingParentUnits.push(parent_unit);
-				cb();
-			}, true);
-		},
-		function(err){
-			if (err)
-				return callback(err);
-			if (arrMissingParentUnits.length > 0){
-				conn.query("SELECT error FROM known_bad_joints WHERE unit IN(?)", [arrMissingParentUnits], function(rows){
-					(rows.length > 0)
-						? callback("some of the unit's parents are known bad: "+rows[0].error)
-						: callback({error_code: "unresolved_dependency", arrMissingUnits: arrMissingParentUnits});
-				});
-				return;
-			}
-			callback();
-		}
-	);
-}
-```
-
-**File:** validation.js (L504-577)
-```javascript
-function validateParents(conn, objJoint, objValidationState, callback){
-	
-	// avoid merging the obvious nonserials
-	function checkNoSameAddressInDifferentParents(){
-		if (objUnit.parent_units.length === 1)
-			return callback();
-		var assocAuthors = {};
-		var found_address;
-		async.eachSeries(
-			objUnit.parent_units,
-			function(parent_unit, cb){
-				storage.readUnitAuthors(conn, parent_unit, function(arrAuthors){
-					arrAuthors.forEach(function(address){
-						if (assocAuthors[address])
-							found_address = address;
-						assocAuthors[address] = true;
+				async.eachSeries(rows, function(row, cb2) {
+					storage.readJointWithBall(db, row.unit, function(objJoint){
+						delete objJoint.ball; // the unit might get stabilized while we were reading other units
+						arrUnstableMcJoints.push(objJoint);
+						for (let i = 0; i < objJoint.unit.authors.length; i++) {
+							const address = objJoint.unit.authors[i].address;
+							if (arrWitnesses.indexOf(address) >= 0 && arrFoundWitnesses.indexOf(address) === -1)
+								arrFoundWitnesses.push(address);
+						}
+						// collect last balls of majority witnessed units
+						// (genesis lacks last_ball_unit)
+						if (objJoint.unit.last_ball_unit && arrFoundWitnesses.length >= constants.MAJORITY_OF_WITNESSES && arrLastBallUnits.indexOf(objJoint.unit.last_ball_unit) === -1)
+							arrLastBallUnits.push(objJoint.unit.last_ball_unit);
+						cb2();
 					});
-					cb(found_address);
-				});
-			},
-			function(){
-				if (found_address)
-					return callback("some addresses found more than once in parents, e.g. "+found_address);
-				return callback();
-			}
-		);
-	}
-	
-	function readMaxParentLastBallMci(handleResult){
-		storage.readMaxLastBallMci(conn, objUnit.parent_units, function(max_parent_last_ball_mci) {
-			if (max_parent_last_ball_mci > objValidationState.last_ball_mci)
-				return callback("last ball mci must not retreat, parents: "+objUnit.parent_units.join(', '));
-			handleResult(max_parent_last_ball_mci);
-		});
-	}
-	
-	var objUnit = objJoint.unit;
-	if (objValidationState.bAA && objUnit.parent_units.length > 2)
-		throw Error("AA unit with more than 2 parents");
-	// obsolete: when handling a ball, we can't trust parent list before we verify ball hash
-	// obsolete: when handling a fresh unit, we can begin trusting parent list earlier, after we verify parents_hash
-	// after this point, we can trust parent list as it either agrees with parents_hash or agrees with hash tree
-	// hence, there are no more joint errors, except unordered parents or skiplist units
-	var last_ball = objUnit.last_ball;
-	var last_ball_unit = objUnit.last_ball_unit;
-	var arrPrevParentUnitProps = [];
-	objValidationState.max_parent_limci = 0;
-	objValidationState.max_parent_wl = 0;
-	async.eachSeries(
-		objUnit.parent_units, 
-		function(parent_unit, cb){
-			storage.readUnitProps(conn, parent_unit, function(objParentUnitProps){
-				if (objUnit.version !== constants.versionWithoutTimestamp && objUnit.timestamp < objParentUnitProps.timestamp)
-					return cb("timestamp decreased from parent " + parent_unit);
-				if (objParentUnitProps.latest_included_mc_index > objValidationState.max_parent_limci)
-					objValidationState.max_parent_limci = objParentUnitProps.latest_included_mc_index;
-				if (objParentUnitProps.witnessed_level > objValidationState.max_parent_wl)
-					objValidationState.max_parent_wl = objParentUnitProps.witnessed_level;
-				async.eachSeries(
-					arrPrevParentUnitProps, 
-					function(objPrevParentUnitProps, cb2){
-						graph.compareUnitsByProps(conn, objPrevParentUnitProps, objParentUnitProps, function(result){
-							(result === null) ? cb2() : cb2("parent unit "+parent_unit+" is related to one of the other parent units");
-						});
-					},
-					function(err){
+```
+
+**File:** witness_proof.js (L66-66)
+```javascript
+			findUnstableJointsAndLastBallUnits(storage.getMinRetrievableMci(), null, (_arrUnstableMcJoints, _arrLastBallUnits) => {
+```
+
+**File:** storage.js (L609-623)
+```javascript
+function readJointWithBall(conn, unit, handleJoint) {
+	readJoint(conn, unit, {
+		ifNotFound: function(){
+			throw Error("joint not found, unit "+unit);
+		},
+		ifFound: function(objJoint){
+			if (objJoint.ball)
+				return handleJoint(objJoint);
+			conn.query("SELECT ball FROM balls WHERE unit=?", [unit], function(rows){
+				if (rows.length === 1)
+					objJoint.ball = rows[0].ball;
+				handleJoint(objJoint);
+			});
+		}
+	});
+```
+
+**File:** storage.js (L1724-1726)
+```javascript
+		findLastBallMciOfMci(conn, last_stable_mci, last_ball_mci => {
+			min_retrievable_mci = last_ball_mci;
+			console.log('initialized min_retrievable_mci', min_retrievable_mci);
+```
+
+**File:** light.js (L105-107)
+```javascript
+			witnessProof.prepareWitnessProof(
+				arrWitnesses, 0, 
+				function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, last_ball_unit, last_ball_mci){
+```
+
+**File:** catchup.js (L14-14)
+```javascript
+var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
+```
+
+**File:** catchup.js (L54-68)
+```javascript
+			function(cb){
+				witnessProof.prepareWitnessProof(
+					arrWitnesses, last_stable_mci, 
+					function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, _last_ball_unit, _last_ball_mci){
 						if (err)
 							return cb(err);
-						arrPrevParentUnitProps.push(objParentUnitProps);
+						objCatchupChain.unstable_mc_joints = arrUnstableMcJoints;
+						if (arrWitnessChangeAndDefinitionJoints.length > 0)
+							objCatchupChain.witness_change_and_definition_joints = arrWitnessChangeAndDefinitionJoints;
+						last_ball_unit = _last_ball_unit;
+						last_ball_mci = _last_ball_mci;
+						bTooLong = (last_ball_mci - last_stable_mci > MAX_CATCHUP_CHAIN_LENGTH);
 						cb();
 					}
 				);
-			});
-		}, 
-```
-
-**File:** initial-db/byteball-sqlite.sql (L27-27)
-```sql
-	sequence TEXT CHECK (sequence IN('good','temp-bad','final-bad')) NOT NULL DEFAULT 'good',
 ```

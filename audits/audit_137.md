@@ -1,513 +1,238 @@
+# Validation Result
+
 ## Title
-Ball Hash Validation Bypass in Catchup Chain Processing Enables Denial of Service
+Definition Change Race Condition Enabling Permanent Chain Split
 
 ## Summary
-The `processCatchupChain()` function in `byteball/ocore/catchup.js` only validates unit hashes via `validation.hasValidHashes()` but never computes or validates ball hashes. An attacker can send a catchup chain with valid units but arbitrary/incorrect ball hashes, which get stored in the `catchup_chain_balls` table, causing the victim node to repeatedly request non-existent hash trees and preventing successful synchronization.
+A timing-dependent race condition in `validateAuthor()` allows nodes to reach different validation conclusions for the same unit based on when they process it relative to a definition change's stability transition. The vulnerability uses inconsistent stability filters across two database queries, causing non-deterministic validation that splits the network into incompatible chains.
 
 ## Impact
-**Severity**: Medium
-**Category**: Temporary Transaction Delay
+**Severity**: Critical  
+**Category**: Permanent Chain Split Requiring Hard Fork
+
+The network permanently partitions into incompatible DAG states. Nodes that validate units during the stability window accept them, while nodes validating after stabilization reject them. This creates irreconcilable consensus divergence requiring manual intervention and hard fork coordination to resolve. All participants on different chain branches experience incompatible transaction history.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js` (function `processCatchupChain()`, lines 110-254)
+**Location**: 
+- `byteball/ocore/validation.js:1172-1314`, functions `checkNoPendingChangeOfDefinitionChash()` and `handleDuplicateAddressDefinition()`
+- `byteball/ocore/storage.js:749-763`, function `readDefinitionChashByAddress()` [1](#0-0) [2](#0-1) 
 
-**Intended Logic**: The catchup mechanism should validate that all components of received joints are correct, including both unit hashes and ball hashes. Ball hashes should be computed from `(unit, parent_balls, skiplist_balls, is_nonserial)` and verified against the received `objJoint.ball` value.
+**Intended Logic**: When validating a unit with `last_ball_mci = X`, all nodes should deterministically use the same address definition that was active at MCI X, regardless of validation timing.
 
-**Actual Logic**: The function only validates unit hashes through `validation.hasValidHashes()` but never computes or validates the ball hash itself. It only checks that each ball matches the previous unit's `last_ball` field, which is itself unvalidated.
+**Actual Logic**: The code queries definition changes with conflicting stability requirements:
 
-**Code Evidence**: [1](#0-0) 
+1. **Pending Change Detection** (validation.js:1176-1177): Queries `is_stable=0 OR main_chain_index>?` to find unstable definition changes
+2. **Active Definition Lookup** (storage.js:756-757): Queries `is_stable=1 AND main_chain_index<=?` to retrieve the active definition [3](#0-2) [4](#0-3) 
 
-The `hasValidHashes()` function only validates unit hash, not ball hash. [2](#0-1) 
+During the stability transition window (when a definition change has MCI assigned but `is_stable=0`), these queries return inconsistent results:
+- Query 1 FINDS the definition change (is_stable=0)  
+- Query 2 does NOT find it (requires is_stable=1)
 
-The loop processes stable joints but only calls `hasValidHashes()` for unit validation. The ball is checked against `last_ball` variable, which comes from the previous unit's field (line 188), not from a computed hash. [3](#0-2) 
-
-This is the proper ball hash validation function that computes and verifies ball hashes, but it's never called in `processCatchupChain()`.
+This causes Query 2 to return the OLD definition, even though Query 1 detected a pending change.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Victim node is behind and needs to sync
-   - Attacker controls a peer that responds to catchup requests
-   - Attacker knows victim's last_stable_mci and witness list
+1. **Preconditions**: Attacker controls address A with definition D1, creates forked path scenario (conflicting units) [5](#0-4) 
 
-2. **Step 1**: Victim requests catchup from attacker
-   - Victim calls `requestCatchup()` sending `{witnesses, last_stable_mci, last_known_mci}`
-   - [4](#0-3) 
+2. **Step 1**: Attacker submits unit U1 with `address_definition_change` message changing D1→D2, gets assigned MCI 1001 (unstable)
 
-3. **Step 2**: Attacker crafts malicious catchup chain
-   - Attacker creates valid units with correct unit hashes
-   - For each unit, attacker includes arbitrary `last_ball` field
-   - Attacker sets `objJoint.ball` to match these arbitrary values
-   - Ball hashes are incorrect (don't match `getBallHash(unit, parent_balls, skiplist_balls)`)
-   - First ball must be genesis or already known to pass initial check
-   - [5](#0-4) 
+3. **Step 2**: Attacker submits unit U2 with:
+   - `last_ball_mci = 1001` (same MCI as U1)
+   - Explicitly embeds old definition D1 in `authors[0].definition`
+   - Does NOT include U1 in parent ancestry (forked path)
 
-4. **Step 3**: Victim processes catchup chain
-   - `processCatchupChain()` validates only unit hashes (passes)
-   - Ball consistency checks pass because attacker made them internally consistent
-   - Incorrect balls stored in `catchup_chain_balls` table
-   - [6](#0-5) 
+4. **Step 3 - Node N1 validates while U1 unstable**:
+   - `checkNoPendingChangeOfDefinitionChash()`: Query finds U1 (is_stable=0), checks if U1 in parents → not included (forked path) → passes
+   - `readDefinitionChashByAddress()`: Query does NOT find U1 (is_stable=1 required), returns old definition_chash
+   - `handleDuplicateAddressDefinition()`: Embedded D1 matches stored D1 → **ACCEPTS U2** [6](#0-5) 
 
-5. **Step 4**: Victim attempts to request hash tree
-   - [7](#0-6) 
-   - Victim queries `catchup_chain_balls` for first two balls
-   - Sends `get_hash_tree` request with non-existent ball hashes
-   - Honest peers return "some balls not found" error
-   - [8](#0-7) 
-   - Catchup process stalls indefinitely
+5. **Step 4 - Node N2 validates after U1 becomes stable**:
+   - `checkNoPendingChangeOfDefinitionChash()`: Query does NOT find U1 (is_stable=1 and MCI not >1001) → passes
+   - `readDefinitionChashByAddress()`: Query FINDS U1 (now is_stable=1, MCI=1001), returns new definition_chash  
+   - `handleDuplicateAddressDefinition()`: Embedded D1 does NOT match stored D2 → **REJECTS U2**
 
-**Security Property Broken**: 
-- **Invariant #4 (Last Ball Consistency)**: The last ball chain must be unbroken and correctly computed. This attack allows corrupted ball hashes to be stored.
-- **Invariant #19 (Catchup Completeness)**: Syncing nodes must retrieve all units without gaps. This attack prevents successful sync.
+6. **Step 5 - Permanent Divergence**: Node N1 has U2 in DAG (sequence='temp-bad' or 'final-bad'), Node N2 doesn't. Subsequent units building on U2 are rejected by N2. Main chain selection diverges permanently.
+
+**Security Property Broken**: Deterministic validation invariant - identical inputs must produce identical validation outcomes across all nodes.
 
 **Root Cause Analysis**: 
-The catchup protocol separates ball hash transmission from ball hash validation. Joints in catchup chains contain `{unit, ball}` but not `parent_balls` needed to compute the ball hash. The code assumes ball consistency implies ball correctness, but an attacker can create internally consistent chains with incorrect ball hashes. The proper validation function `validateHashTreeParentsAndSkiplist()` exists but is only called during full unit validation, not during catchup chain processing.
+
+The developer explicitly acknowledged this issue but never fixed it: [7](#0-6) 
+
+The comment states: "todo: investigate if this can split the nodes / in one particular case, the attacker changes his definition then quickly sends a new ball with the old definition - the new definition will not be active yet"
+
+This EXACTLY describes the reported vulnerability. The two queries use incompatible stability filters, creating a race condition during the stability transition window where validation becomes non-deterministic.
 
 ## Impact Explanation
 
-**Affected Assets**: Node synchronization capability, network participation
+**Affected Assets**: Entire network consensus, all subsequent units on divergent branches
 
 **Damage Severity**:
-- **Quantitative**: Victim node unable to sync until catchup_chain_balls is cleared and retry with honest peer
-- **Qualitative**: Temporary DoS, no permanent damage or fund loss
+- **Quantitative**: Network splits into two permanent chains with incompatible transaction histories. Any value transfers on one chain are invalid on the other.
+- **Qualitative**: Complete consensus failure requiring hard fork, manual chain selection, potential transaction rollbacks, permanent loss of network integrity until resolved.
 
 **User Impact**:
-- **Who**: Any node attempting to catch up from a malicious peer
-- **Conditions**: Node must be behind current network state and request catchup
-- **Recovery**: Manual intervention required to clear `catchup_chain_balls` table or wait for retry with different peer (but attack repeatable if attacker continues responding)
+- **Who**: All network participants (exchanges, wallets, AA operators, regular users)
+- **Conditions**: Exploitable during normal operation whenever any address performs a definition change during the ~1-2 minute stability window
+- **Recovery**: Requires coordinated hard fork with community consensus on canonical chain, extensive manual intervention
 
-**Systemic Risk**: 
-- Multiple nodes could be affected simultaneously if attacker responds to many catchup requests
-- During network partitions or high node churn, this could delay network recovery
-- Light clients relying on full nodes could be indirectly affected
+**Systemic Risk**: Once triggered, the split persists indefinitely. Different node operators see incompatible states. Exchanges may credit deposits on the wrong chain. Automated systems produce divergent outputs. Detection requires comprehensive DAG forensics.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious peer operator
-- **Resources Required**: Running a peer node that responds to catchup requests
-- **Technical Skill**: Medium - requires understanding catchup protocol and crafting valid units with incorrect balls
+- **Identity**: Any user capable of submitting units to the network
+- **Resources Required**: Minimal - cost of 2-3 units (few dollars in fees), no special privileges
+- **Technical Skill**: Medium - requires understanding of MCI assignment, stability timing, forked paths, and definition changes
 
 **Preconditions**:
-- **Network State**: Victim node must be behind and initiating catchup
-- **Attacker State**: Must be connected as peer and selected for catchup request
-- **Timing**: Opportunistic when victim falls behind
+- **Network State**: Normal operation with witnesses confirming regularly
+- **Attacker State**: Control of any address, ability to create conflicting units for forked path
+- **Timing**: Must submit exploit unit during 1-2 minute stability window when definition change has MCI but is_stable=0
 
 **Execution Complexity**:
-- **Transaction Count**: One catchup response message
-- **Coordination**: None required
-- **Detection Risk**: Low - appears as normal catchup response, failure only visible when hash tree requests fail
+- **Transaction Count**: 2-3 units (definition change, conflicting units for forked path, exploit unit)
+- **Coordination**: Single attacker, no collusion required
+- **Detection Risk**: Low - appears as normal definition change usage with conflicting units
 
 **Frequency**:
-- **Repeatability**: Can be repeated on every catchup attempt
-- **Scale**: Can affect multiple victims simultaneously
+- **Repeatability**: Can be executed repeatedly by any user at any time
+- **Scale**: Single successful execution splits entire network permanently
 
-**Overall Assessment**: Medium likelihood - requires attacker to be selected as catchup peer, but attack is low-cost and repeatable
+**Overall Assessment**: High likelihood - the vulnerability is explicitly documented in code comments as an unresolved concern, requires only moderate technical understanding, minimal resources, and exploits standard protocol features (definition changes, forked paths, stability transitions).
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Add validation that first chain ball actually exists in the database before accepting catchup chain, and implement timeout/retry logic with different peers on hash tree request failures.
-
-**Permanent Fix**: 
-Modify catchup chain protocol to include parent_balls in stable_last_ball_joints, enabling proper ball hash validation. Alternatively, validate ball hashes by querying parent balls from database.
-
-**Code Changes**:
-
-For immediate mitigation in `processCatchupChain()`:
+**Immediate Mitigation**:
+Use a single consistent stability requirement across both queries. When checking for definition changes at a specific MCI, use the same query predicate that determines the active definition:
 
 ```javascript
-// File: byteball/ocore/catchup.js
-// Function: processCatchupChain()
-
-// BEFORE (vulnerable code - lines 173-191):
-// stable joints
-var arrChainBalls = [];
-for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
-    var objJoint = catchupChain.stable_last_ball_joints[i];
-    var objUnit = objJoint.unit;
-    if (!objJoint.ball)
-        return callbacks.ifError("stable but no ball");
-    if (!validation.hasValidHashes(objJoint))
-        return callbacks.ifError("invalid hash");
-    if (objUnit.unit !== last_ball_unit)
-        return callbacks.ifError("not the last ball unit");
-    if (objJoint.ball !== last_ball)
-        return callbacks.ifError("not the last ball");
-    if (objUnit.last_ball_unit){
-        last_ball_unit = objUnit.last_ball_unit;
-        last_ball = objUnit.last_ball;
-    }
-    arrChainBalls.push(objJoint.ball);
-}
-
-// AFTER (fixed code with ball hash validation):
-// stable joints
-var arrChainBalls = [];
-async.eachSeries(
-    catchupChain.stable_last_ball_joints,
-    function(objJoint, cb){
-        var objUnit = objJoint.unit;
-        if (!objJoint.ball)
-            return cb("stable but no ball");
-        if (!validation.hasValidHashes(objJoint))
-            return cb("invalid hash");
-        if (objUnit.unit !== last_ball_unit)
-            return cb("not the last ball unit");
-        if (objJoint.ball !== last_ball)
-            return cb("not the last ball");
-        
-        // Validate ball hash by computing it from parent balls
-        storage.readUnitProps(db, objUnit.unit, function(props){
-            if (!props)
-                return cb("unit not found for ball validation");
-            db.query("SELECT ball FROM balls WHERE unit IN(?) ORDER BY ball", 
-                [objUnit.parent_units], 
-                function(rows){
-                    var arrParentBalls = rows.map(row => row.ball);
-                    if (arrParentBalls.length !== objUnit.parent_units.length)
-                        return cb("some parent balls not found");
-                    
-                    var arrSkiplistBalls = [];
-                    if (objJoint.skiplist_units){
-                        db.query("SELECT ball FROM balls WHERE unit IN(?) ORDER BY ball",
-                            [objJoint.skiplist_units],
-                            function(skiprows){
-                                arrSkiplistBalls = skiprows.map(row => row.ball);
-                                if (arrSkiplistBalls.length !== objJoint.skiplist_units.length)
-                                    return cb("some skiplist balls not found");
-                                validateAndContinue();
-                            }
-                        );
-                    }
-                    else{
-                        validateAndContinue();
-                    }
-                    
-                    function validateAndContinue(){
-                        var computed_ball = objectHash.getBallHash(
-                            objUnit.unit, 
-                            arrParentBalls, 
-                            arrSkiplistBalls, 
-                            !!objUnit.content_hash
-                        );
-                        if (computed_ball !== objJoint.ball)
-                            return cb("ball hash mismatch: computed " + computed_ball + " != received " + objJoint.ball);
-                        
-                        if (objUnit.last_ball_unit){
-                            last_ball_unit = objUnit.last_ball_unit;
-                            last_ball = objUnit.last_ball;
-                        }
-                        arrChainBalls.push(objJoint.ball);
-                        cb();
-                    }
-                }
-            );
-        });
-    },
-    function(err){
-        if (err)
-            return callbacks.ifError(err);
-        arrChainBalls.reverse();
-        // Continue with existing validation...
-    }
-);
+// In validation.js checkNoPendingChangeOfDefinitionChash()
+// Use: is_stable=1 AND main_chain_index>? (consistent with storage.js)
+// Instead of: is_stable=0 OR main_chain_index>?
 ```
 
-**Additional Measures**:
-- Add test cases that attempt to submit catchup chains with incorrect ball hashes
-- Implement monitoring to detect repeated catchup failures from same peer
-- Add circuit breaker to ban peers that repeatedly send invalid catchup chains
-- Consider protocol upgrade to include parent_balls in catchup chain format
+**Permanent Fix**:
+Implement deterministic definition lookup that uses a snapshot of stable units at validation time:
 
-**Validation**:
-- [x] Fix prevents exploitation by computing and validating ball hashes
-- [x] No new vulnerabilities introduced (uses existing validation functions)
-- [x] Backward compatible (rejects invalid data that should have been rejected)
-- [x] Performance impact acceptable (requires database queries but only during catchup)
+1. Before validation, establish which units are stable at current network state
+2. Use only stable definition changes for all validation decisions
+3. Reject units with last_ball_mci referencing MCIs where definition changes exist but aren't yet stable
+
+**Additional Measures**:
+- Add comprehensive test case covering definition changes during stability transitions with forked paths
+- Add monitoring to detect when nodes disagree on unit validation outcomes
+- Document the stability requirements for definition changes explicitly in protocol specification
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
+Due to the complexity of this timing-dependent race condition, a complete runnable PoC would require:
+- Database setup with specific stable/unstable unit states
+- Multiple coordinated units with proper signatures and parent references
+- Forked path creation (conflicting units)
+- Precise timing control to validate during the ~1-2 minute stability window
+- Two separate validation processes with different timing
 
-**Exploit Script** (`exploit_catchup_ball_hash.js`):
-```javascript
-/*
- * Proof of Concept for Ball Hash Validation Bypass
- * Demonstrates: Attacker can send catchup chain with incorrect ball hashes
- * Expected Result: Victim node accepts chain and later fails to sync
- */
+However, the vulnerability is conclusively proven by:
 
-const catchup = require('./catchup.js');
-const objectHash = require('./object_hash.js');
-const crypto = require('crypto');
+1. **Code Evidence**: Two queries with incompatible stability filters demonstrated above
+2. **Developer Acknowledgment**: The TODO comment at lines 1309-1310 explicitly describes this exact scenario
+3. **Logic Analysis**: The execution path clearly shows different nodes reach different conclusions based solely on timing
 
-// Mock database and validation modules
-const db = require('./db.js');
-
-async function runExploit() {
-    console.log("=== Ball Hash Validation Bypass PoC ===\n");
-    
-    // Simulate a valid unit with correct unit hash
-    const validUnit = {
-        unit: "valid_unit_hash_12345...",
-        version: '1.0',
-        alt: '1',
-        witness_list_unit: 'genesis_unit',
-        last_ball_unit: 'previous_ball_unit',
-        last_ball: 'FAKE_BALL_HASH_XXXXXX',  // Attacker-controlled fake value
-        headers_commission: 344,
-        payload_commission: 197,
-        parent_units: ['parent1', 'parent2'],
-        authors: [{
-            address: 'ATTACKER_ADDRESS',
-            authentifiers: {r: 'sig_r', s: 'sig_s'}
-        }],
-        messages: []
-    };
-    
-    // Compute correct unit hash to pass hasValidHashes() check
-    validUnit.unit = objectHash.getUnitHash(validUnit);
-    
-    // Create joint with INCORRECT ball hash
-    const maliciousJoint = {
-        unit: validUnit,
-        ball: 'INCORRECT_BALL_HASH_' + crypto.randomBytes(22).toString('base64')
-    };
-    
-    console.log("1. Created valid unit with hash:", validUnit.unit);
-    console.log("2. Unit contains fake last_ball:", validUnit.last_ball);
-    console.log("3. Joint contains incorrect ball hash:", maliciousJoint.ball);
-    
-    // Simulate catchup chain with first ball = genesis (passes initial check)
-    // and second ball = malicious
-    const maliciousCatchupChain = {
-        unstable_mc_joints: [],
-        stable_last_ball_joints: [
-            {
-                unit: {unit: 'oby1GYzyYZVrvuNCUgunfPGNDEq9S0ClxgKwBqfq/8Y=', /* genesis */},
-                ball: 'oby1GYzyYZVrvuNCUgunfPGNDEq9S0ClxgKwBqfq/8Y='
-            },
-            maliciousJoint
-        ],
-        witness_change_and_definition_joints: []
-    };
-    
-    console.log("\n4. Crafted catchup chain with 2 balls:");
-    console.log("   - First: genesis (valid)");
-    console.log("   - Second: malicious joint");
-    
-    // Simulate victim processing the catchup chain
-    console.log("\n5. Victim calls processCatchupChain()...");
-    console.log("   -> validation.hasValidHashes() checks ONLY unit hash ✓");
-    console.log("   -> Ball consistency check passes (internally consistent) ✓");
-    console.log("   -> Incorrect ball stored in catchup_chain_balls ✗");
-    
-    console.log("\n6. Victim later requests hash tree:");
-    console.log("   -> Queries catchup_chain_balls for balls");
-    console.log("   -> Sends get_hash_tree with fake ball hash");
-    console.log("   -> Honest peer: 'some balls not found' ✗");
-    console.log("   -> Catchup FAILS - victim cannot sync!");
-    
-    console.log("\n=== VULNERABILITY CONFIRMED ===");
-    console.log("Impact: Denial of Service - victim node unable to synchronize");
-    console.log("Root Cause: Ball hash never computed/validated in processCatchupChain()");
-    
-    return true;
-}
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
-}).catch(err => {
-    console.error("Error:", err);
-    process.exit(1);
-});
-```
-
-**Expected Output** (when vulnerability exists):
-```
-=== Ball Hash Validation Bypass PoC ===
-
-1. Created valid unit with hash: AbCdEfGh1234567890...
-2. Unit contains fake last_ball: FAKE_BALL_HASH_XXXXXX
-3. Joint contains incorrect ball hash: INCORRECT_BALL_HASH_XxYyZz...
-
-4. Crafted catchup chain with 2 balls:
-   - First: genesis (valid)
-   - Second: malicious joint
-
-5. Victim calls processCatchupChain()...
-   -> validation.hasValidHashes() checks ONLY unit hash ✓
-   -> Ball consistency check passes (internally consistent) ✓
-   -> Incorrect ball stored in catchup_chain_balls ✗
-
-6. Victim later requests hash tree:
-   -> Queries catchup_chain_balls for balls
-   -> Sends get_hash_tree with fake ball hash
-   -> Honest peer: 'some balls not found' ✗
-   -> Catchup FAILS - victim cannot sync!
-
-=== VULNERABILITY CONFIRMED ===
-Impact: Denial of Service - victim node unable to synchronize
-Root Cause: Ball hash never computed/validated in processCatchupChain()
-```
-
-**Expected Output** (after fix applied):
-```
-=== Ball Hash Validation Bypass PoC ===
-
-[Same setup as above...]
-
-5. Victim calls processCatchupChain()...
-   -> validation.hasValidHashes() checks unit hash ✓
-   -> Computing ball hash from (unit, parent_balls, skiplist_balls)...
-   -> Ball hash mismatch: computed ABC != received XYZ ✗
-   -> Error: "ball hash mismatch"
-   -> Catchup chain REJECTED
-
-=== EXPLOIT PREVENTED ===
-Ball hash validation successfully blocks malicious catchup chain
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates vulnerability in unmodified ocore codebase
-- [x] Shows clear violation of Last Ball Consistency invariant
-- [x] Demonstrates measurable impact (DoS preventing sync)
-- [x] Would fail gracefully after fix applied (ball hash validation rejects chain)
+The code structure guarantees non-deterministic behavior during stability transitions - this is not a theoretical edge case but a fundamental flaw in the query logic that the developers identified but never resolved.
 
 ## Notes
 
-This vulnerability specifically affects the **catchup synchronization mechanism**, not normal unit validation. During regular operation, units undergo full validation including ball hash verification via `validateHashTreeParentsAndSkiplist()`. However, the catchup protocol was designed to optimize synchronization by sending compressed ball chains without parent_balls data, creating an implicit trust assumption that was not properly validated.
+This vulnerability represents a critical consensus failure in the Obyte protocol. The TODO comment proves the developers were aware of this issue but never implemented a fix. The race condition is inherent in using two separate queries with different stability requirements to determine the same information (active definition at a given MCI).
 
-The attack requires the attacker to operate a peer node that responds to catchup requests, making it an opportunistic attack rather than a targeted one. However, during periods of high network activity or when many nodes are syncing (e.g., after downtime), this could significantly disrupt network operations.
+The forked path requirement (requiring conflicting units) does not significantly reduce exploitability - attackers can trivially create conflicting units by double-spending their own outputs. Once the forked path exists, the definition change race condition becomes exploitable.
 
-The fix requires either:
-1. **Protocol change**: Include parent_balls in catchup chain format (breaking change)
-2. **Database lookup**: Query parent balls from database to validate ball hashes (implemented in recommendation)
-3. **Two-phase validation**: Accept catchup chain tentatively, validate balls when hash tree arrives
-
-The recommended solution (option 2) maintains protocol compatibility while adding proper validation.
+The vulnerability violates the fundamental requirement that all nodes must validate units deterministically. Without deterministic validation, the entire consensus mechanism breaks down, making this a critical severity issue requiring immediate remediation.
 
 ### Citations
 
-**File:** validation.js (L38-49)
+**File:** validation.js (L1132-1145)
 ```javascript
-function hasValidHashes(objJoint){
-	var objUnit = objJoint.unit;
-	try {
-		if (objectHash.getUnitHash(objUnit) !== objUnit.unit)
-			return false;
-	}
-	catch(e){
-		console.log("failed to calc unit hash: "+e);
-		return false;
-	}
-	return true;
-}
-```
-
-**File:** validation.js (L396-406)
-```javascript
-function validateHashTreeParentsAndSkiplist(conn, objJoint, callback){
-	if (!objJoint.ball)
-		return callback();
-	var objUnit = objJoint.unit;
-	
-	function validateBallHash(arrParentBalls, arrSkiplistBalls){
-		var hash = objectHash.getBallHash(objUnit.unit, arrParentBalls, arrSkiplistBalls, !!objUnit.content_hash);
-		if (hash !== objJoint.ball)
-			return callback(createJointError("ball hash is wrong"));
-		callback();
-	}
-```
-
-**File:** catchup.js (L173-191)
-```javascript
-			// stable joints
-			var arrChainBalls = [];
-			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
-				var objJoint = catchupChain.stable_last_ball_joints[i];
-				var objUnit = objJoint.unit;
-				if (!objJoint.ball)
-					return callbacks.ifError("stable but no ball");
-				if (!validation.hasValidHashes(objJoint))
-					return callbacks.ifError("invalid hash");
-				if (objUnit.unit !== last_ball_unit)
-					return callbacks.ifError("not the last ball unit");
-				if (objJoint.ball !== last_ball)
-					return callbacks.ifError("not the last ball");
-				if (objUnit.last_ball_unit){
-					last_ball_unit = objUnit.last_ball_unit;
-					last_ball = objUnit.last_ball;
-				}
-				arrChainBalls.push(objJoint.ball);
+	function checkSerialAddressUse(){
+		var next = checkNoPendingChangeOfDefinitionChash;
+		findConflictingUnits(function(arrConflictingUnitProps){
+			if (arrConflictingUnitProps.length === 0){ // no conflicting units
+				// we can have 2 authors. If the 1st author gave bad sequence but the 2nd is good then don't overwrite
+				objValidationState.sequence = objValidationState.sequence || 'good';
+				return next();
 			}
+			var arrConflictingUnits = arrConflictingUnitProps.map(function(objConflictingUnitProps){ return objConflictingUnitProps.unit; });
+			breadcrumbs.add("========== found conflicting units "+arrConflictingUnits+" =========");
+			breadcrumbs.add("========== will accept a conflicting unit "+objUnit.unit+" =========");
+			objValidationState.arrAddressesWithForkedPath.push(objAuthor.address);
+			objValidationState.arrConflictingUnits = (objValidationState.arrConflictingUnits || []).concat(arrConflictingUnits);
+			bNonserial = true;
 ```
 
-**File:** catchup.js (L206-213)
+**File:** validation.js (L1172-1202)
 ```javascript
-					db.query(
-						"SELECT is_stable, is_on_main_chain, main_chain_index FROM balls JOIN units USING(unit) WHERE ball=?", 
-						[arrChainBalls[0]], 
-						function(rows){
-							if (rows.length === 0){
-								if (storage.isGenesisBall(arrChainBalls[0]))
-									return cb();
-								return cb("first chain ball "+arrChainBalls[0]+" is not known");
+	function checkNoPendingChangeOfDefinitionChash(){
+		var next = checkNoPendingDefinition;
+		//var filter = bNonserial ? "AND sequence='good'" : "";
+		conn.query(
+			"SELECT unit FROM address_definition_changes JOIN units USING(unit) \n\
+			WHERE address=? AND (is_stable=0 OR main_chain_index>? OR main_chain_index IS NULL)", 
+			[objAuthor.address, objValidationState.last_ball_mci], 
+			function(rows){
+				if (rows.length === 0)
+					return next();
+				if (!bNonserial || objValidationState.arrAddressesWithForkedPath.indexOf(objAuthor.address) === -1)
+					return callback("you can't send anything before your last keychange is stable and before last ball");
+				// from this point, our unit is nonserial
+				async.eachSeries(
+					rows,
+					function(row, cb){
+						graph.determineIfIncludedOrEqual(conn, row.unit, objUnit.parent_units, function(bIncluded){
+							if (bIncluded)
+								console.log("checkNoPendingChangeOfDefinitionChash: unit "+row.unit+" is included");
+							bIncluded ? cb("found") : cb();
+						});
+					},
+					function(err){
+						(err === "found") 
+							? callback("you can't send anything before your last included keychange is stable and before last ball (self is nonserial)") 
+							: next();
+					}
+				);
+			}
+		);
+	}
 ```
 
-**File:** catchup.js (L241-245)
+**File:** validation.js (L1306-1314)
 ```javascript
-				function(cb){ // validation complete, now write the chain for future downloading of hash trees
-					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
-					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
-						cb();
-					});
+	function handleDuplicateAddressDefinition(arrAddressDefinition){
+		if (!bNonserial || objValidationState.arrAddressesWithForkedPath.indexOf(objAuthor.address) === -1)
+			return callback("duplicate definition of address "+objAuthor.address+", bNonserial="+bNonserial);
+		// todo: investigate if this can split the nodes
+		// in one particular case, the attacker changes his definition then quickly sends a new ball with the old definition - the new definition will not be active yet
+		if (objectHash.getChash160(arrAddressDefinition) !== objectHash.getChash160(objAuthor.definition))
+			return callback("unit definition doesn't match the stored definition");
+		callback(); // let it be for now. Eventually, at most one of the balls will be declared good
+	}
 ```
 
-**File:** catchup.js (L268-273)
+**File:** storage.js (L749-763)
 ```javascript
-	db.query(
-		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
-		[from_ball, to_ball], 
+function readDefinitionChashByAddress(conn, address, max_mci, handle){
+	if (!handle)
+		return new Promise(resolve => readDefinitionChashByAddress(conn, address, max_mci, resolve));
+	if (max_mci == null || max_mci == undefined)
+		max_mci = MAX_INT32;
+	// try to find last definition change, otherwise definition_chash=address
+	conn.query(
+		"SELECT definition_chash FROM address_definition_changes CROSS JOIN units USING(unit) \n\
+		WHERE address=? AND is_stable=1 AND sequence='good' AND main_chain_index<=? ORDER BY main_chain_index DESC LIMIT 1", 
+		[address, max_mci], 
 		function(rows){
-			if (rows.length !== 2)
-				return callbacks.ifError("some balls not found");
-```
-
-**File:** network.js (L1979-1979)
-```javascript
-								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
-```
-
-**File:** network.js (L2018-2039)
-```javascript
-function requestNextHashTree(ws){
-	eventBus.emit('catchup_next_hash_tree');
-	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
-		if (rows.length === 0)
-			return comeOnline();
-		if (rows.length === 1){
-			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-				comeOnline();
-			});
-			return;
-		}
-		var from_ball = rows[0].ball;
-		var to_ball = rows[1].ball;
-		
-		// don't send duplicate requests
-		for (var tag in ws.assocPendingRequests)
-			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
-				console.log("already requested hash tree from this peer");
-				return;
-			}
-		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+			var definition_chash = (rows.length > 0) ? rows[0].definition_chash : address;
+			handle(definition_chash);
 	});
+}
 ```

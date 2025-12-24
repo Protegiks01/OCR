@@ -1,310 +1,235 @@
-## Title
-AA Execution History Loss via Premature Response Record Deletion
+## Audit Report: Type Validation Bypass in AA Definition Cases Array Causes Network-Wide Node Crash
 
-## Summary
-The `generateQueriesToRemoveJoint()` function in `archiving.js` unconditionally deletes AA response records when archiving response units, even when the trigger units remain valid. This causes permanent loss of AA execution history for valid triggers, breaking audit trails and preventing users from determining the outcome of their AA transactions.
+### Summary
 
-## Impact
-**Severity**: Medium
-**Category**: Unintended AA Behavior
+The `hasCases()` function in `formula/common.js` validates only that `value.cases` is a non-empty array without checking element types. When an attacker submits an AA definition with non-object case elements (e.g., `null`), the synchronous validation loop in `validateFieldWrappedInCases()` attempts property access operations that throw uncaught TypeErrors, crashing all nodes that process the malicious unit.
 
-## Finding Description
+### Impact
 
-**Location**: `byteball/ocore/archiving.js` (function `generateQueriesToRemoveJoint`, line 17)
+**Severity**: Critical  
+**Category**: Network Shutdown / DoS
 
-**Intended Logic**: The `aa_responses` table is documented as "basically a log" [1](#0-0)  that maintains a permanent historical record of all AA trigger-response pairs for auditing, wallet display, and light client synchronization.
+**Affected Assets**: All network nodes receiving and validating the malicious unit
 
-**Actual Logic**: When a response unit is archived (due to being marked as 'temp-bad' or 'final-bad'), the archiving logic unconditionally deletes the `aa_responses` record linking the trigger to its response, even when the trigger unit remains valid and stable.
+**Damage Severity**:
+- **Quantitative**: Single malicious unit crashes every node that processes it within seconds of network propagation
+- **Qualitative**: Complete network outage requiring manual node restart; persistent crash loops if malicious unit remains in processing queue
 
-**Code Evidence**: [2](#0-1) 
+**User Impact**:
+- **Who**: All network participants (validators, wallets, users)
+- **Conditions**: Attack succeeds whenever the malicious unit reaches validation stage
+- **Recovery**: Manual node restart required; may need database cleanup for persistent crash loops
 
-The DELETE statement uses an OR condition that removes aa_responses records where either the unit was a trigger OR where it was a response. When archiving a response unit, this deletes the historical record even though the trigger unit may still be valid.
+**Systemic Risk**: Network-wide DoS from single attacker-controlled unit; no rate limiting or validation caching prevents repeated exploitation
+
+### Finding Description
+
+**Location**: 
+- `byteball/ocore/formula/common.js:90-92`, function `hasCases()`
+- `byteball/ocore/aa_validation.js:469-514`, function `validateFieldWrappedInCases()`
+
+**Intended Logic**: Validation should reject AA definitions with malformed case structures before runtime errors occur. Each case element must be validated as an object with proper structure before property access operations.
+
+**Actual Logic**: The `hasCases()` function performs only shallow array validation without element type checking. [1](#0-0) 
+
+Subsequently, `validateFieldWrappedInCases()` enters a synchronous for loop that directly accesses properties on case elements without type guards. [2](#0-1) 
+
+When a case element is `null`, line 483 executes `hasOwnProperty(acase, field)` which internally calls `Object.prototype.hasOwnProperty.call(null, field)`, throwing `TypeError: Cannot convert undefined or null to object`. [3](#0-2) 
+
+The `hasOwnProperty` implementation confirms this behavior: [4](#0-3) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - User submits trigger unit T to an AA at address AA1
-   - T becomes stable with sequence='good', mci=1000
-   - AA processes T and creates response unit R
-   - Record inserted into aa_responses: (trigger_unit=T, response_unit=R, aa_address=AA1)
+1. **Preconditions**: Attacker can submit units to the Obyte network (any user capability)
 
-2. **Step 1**: Another trigger causes the AA to create response unit R2 that conflicts with R (e.g., both try to spend the same AA output, creating a double-spend scenario)
+2. **Step 1**: Attacker crafts unit with AA definition containing `messages: { cases: [null, {...}] }`
 
-3. **Step 2**: Network consensus marks R as sequence='temp-bad' due to the conflict. T remains sequence='good'. R2 becomes sequence='good'.
+3. **Step 2**: Unit is broadcast via network propagation. When received, `network.handleJoint()` acquires mutex and calls `validation.validate()` [5](#0-4) 
 
-4. **Step 3**: The `purgeUncoveredNonserialJoints` function in `joint_storage.js` identifies R as eligible for archiving (sequence='temp-bad', no dependencies, >10 seconds old)
+4. **Step 3**: For AA definition validation, `aa_validation.validateAADefinition()` is invoked [6](#0-5) 
 
-5. **Step 4**: `generateQueriesToRemoveJoint` executes, deleting the aa_responses record via: `DELETE FROM aa_responses WHERE trigger_unit=R OR response_unit=R`. This removes the record where response_unit=R, breaking the T→R link.
+5. **Step 4**: The validation flow reaches `validateFieldWrappedInCases(template, 'messages', validateMessages, ...)` [7](#0-6) 
 
-6. **Step 5**: User's wallet queries for AA execution history: [3](#0-2) 
-   This query returns zero rows even though T is valid, causing the wallet to display the trigger without any response information.
+6. **Step 5**: `hasCases()` returns `true` because it only verifies array structure, not element types [1](#0-0) 
 
-**Security Property Broken**: This violates the **Database Referential Integrity** invariant (Invariant #20) by creating orphaned historical records where valid trigger units have no associated response records, and breaks the implied **AA State Consistency** principle that execution history must be queryable.
+7. **Step 6**: Synchronous for loop executes at line 479-491. When `acase = null`, line 483 throws TypeError [3](#0-2) 
+
+8. **Step 7**: No try-catch blocks exist in the call chain. The callback-based error handling pattern cannot catch synchronous exceptions. The TypeError propagates uncaught.
+
+9. **Step 8**: No global `uncaughtException` handler exists in the codebase (verified via grep search showing zero matches)
+
+10. **Step 9**: Node.js process crashes. All nodes receiving the unit experience identical crash.
+
+**Security Property Broken**: 
+- Validation errors should be handled gracefully through error callbacks, not via uncaught exceptions
+- Network resilience requires validation to reject malformed inputs without process termination
 
 **Root Cause Analysis**: 
+Incomplete validation at two levels:
+1. `hasCases()` delegates to `ValidationUtils.isNonemptyArray()` which only checks `Array.isArray()` and length [8](#0-7) 
+2. `validateFieldWrappedInCases()` assumes all case elements are objects and performs direct property access without defensive type checking
 
-The root cause is the lack of validation in `generateQueriesToRemoveJoint()` before deleting aa_responses records. The function should distinguish between:
-1. Deleting records where the unit being archived was a **trigger** (appropriate - the trigger is gone)
-2. Deleting records where the unit being archived was a **response** (inappropriate if the trigger is still valid)
-
-Additionally, the foreign key constraint from response_unit to units is explicitly commented out in the schema [4](#0-3) , which would have prevented this issue through database-level enforcement.
-
-## Impact Explanation
-
-**Affected Assets**: AA execution history records, user transaction visibility, audit trails
-
-**Damage Severity**:
-- **Quantitative**: Affects all AA triggers whose responses are archived while the trigger remains valid. Given that archiving occurs for conflicting responses, this could impact 5-10% of AA transactions during high-activity periods.
-- **Qualitative**: Loss of critical historical data that cannot be recovered. Users cannot determine if their AA triggers succeeded, bounced, or produced responses.
-
-**User Impact**:
-- **Who**: Any user who triggered an AA whose response was later archived
-- **Conditions**: Occurs when response units conflict and get marked as bad, while triggers remain valid
-- **Recovery**: No recovery possible - the aa_responses record is permanently deleted. Users must check blockchain explorers or maintain off-chain logs.
-
-**Systemic Risk**: 
-- Light clients using [5](#0-4)  lose ability to reconstruct complete AA history
-- Audit trails are broken, making compliance and forensic analysis impossible
-- Wallet UIs show incomplete transaction history, confusing users about AA execution outcomes
-- Secondary systems relying on aa_responses for analytics or monitoring will have gaps
-
-## Likelihood Explanation
+### Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not directly exploitable by attackers, but occurs naturally during network operation. A malicious AA developer could intentionally create conflicting responses to trigger this issue.
-- **Resources Required**: Minimal - just ability to trigger AAs under normal network conditions
-- **Technical Skill**: Low - occurs without active exploitation
+- **Identity**: Any user with ability to create and broadcast units
+- **Resources Required**: Minimal (~1000 bytes for unit fees)
+- **Technical Skill**: Low (craft JSON with `null` in cases array)
 
 **Preconditions**:
-- **Network State**: Multiple users triggering the same AA concurrently, creating response conflicts
-- **Attacker State**: N/A - this is a system design flaw, not an active exploit
-- **Timing**: Occurs whenever response units conflict and one gets marked as bad
+- **Network State**: Normal operation
+- **Attacker State**: Possession of bytes for unit fees
+- **Timing**: No specific timing required
 
 **Execution Complexity**:
-- **Transaction Count**: 2+ triggers to the same AA creating conflicting responses
-- **Coordination**: None required - happens organically during normal AA usage
-- **Detection Risk**: Issue is silent - users don't receive error messages, just missing data
+- **Transaction Count**: Single malicious unit
+- **Coordination**: None required
+- **Detection Risk**: Low until crash occurs
 
 **Frequency**:
-- **Repeatability**: Occurs every time a response unit is archived while its trigger remains valid
-- **Scale**: Could affect 5-10% of AA transactions during high activity, more during congestion
+- **Repeatability**: Unlimited
+- **Scale**: Network-wide from single unit
 
-**Overall Assessment**: **Medium likelihood** - This naturally occurs during normal network operation when AAs have concurrent triggers that create conflicting responses. While not actively exploited, it's a systematic issue affecting data integrity.
+**Overall Assessment**: High likelihood - trivial execution, minimal cost, immediate network-wide impact
 
-## Recommendation
+### Recommendation
 
-**Immediate Mitigation**: Document the issue in release notes and advise users to maintain off-chain logs of AA interactions. Implement monitoring to detect when aa_responses records are deleted for triggers that remain valid.
-
-**Permanent Fix**: Modify the DELETE logic to preserve aa_responses records when the trigger unit is still valid:
-
-**Code Changes**:
-
-The fix should update `archiving.js` line 17 to conditionally delete aa_responses records:
+**Immediate Mitigation**:
+Add type validation in `hasCases()` or at the start of the for loop in `validateFieldWrappedInCases()`:
 
 ```javascript
-// BEFORE (vulnerable code):
-conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=? OR response_unit=?", [unit, unit]);
-
-// AFTER (fixed code):
-// Only delete aa_responses where the unit was a trigger
-// For responses, only delete if the trigger is also being archived or is already invalid
-conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=?", [unit]);
-conn.addQuery(arrQueries, 
-    "DELETE FROM aa_responses WHERE response_unit=? AND trigger_unit NOT IN (SELECT unit FROM units WHERE sequence='good')", 
-    [unit]);
-```
-
-**Alternative approach**: Never delete aa_responses records, treating them as immutable logs. Add a `response_archived` flag instead:
-
-```javascript
-// Mark the response as archived without deleting the log entry
-conn.addQuery(arrQueries, "UPDATE aa_responses SET response_archived=1 WHERE response_unit=?", [unit]);
-```
-
-**Additional Measures**:
-- Add database schema migration to add `response_archived` BOOLEAN column to aa_responses table
-- Update wallet.js and light.js queries to handle archived responses appropriately
-- Add unit tests verifying aa_responses persistence when trigger remains valid
-- Re-enable the foreign key constraint on response_unit (line 862 of byteball-sqlite.sql) with ON DELETE SET NULL to preserve logs
-
-**Validation**:
-- [x] Fix prevents loss of aa_responses records for valid triggers
-- [x] No new vulnerabilities introduced (immutable logs improve security)
-- [x] Backward compatible (existing queries continue to work)
-- [x] Performance impact acceptable (minimal - one additional WHERE clause)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`test_aa_response_loss.js`):
-```javascript
-/*
- * Proof of Concept for AA Execution History Loss
- * Demonstrates: Response unit archival deletes aa_responses record while trigger remains valid
- * Expected Result: wallet.js query for trigger returns no response even though trigger is valid
- */
-
-const db = require('./db.js');
-const storage = require('./storage.js');
-const archiving = require('./archiving.js');
-
-async function demonstrateVulnerability() {
-    // Step 1: Simulate a trigger unit T that is valid
-    const trigger_unit = 'TRIGGER_UNIT_HASH_AAAAAAAAAAAAAAAAAAAAAAA';
-    const response_unit = 'RESPONSE_UNIT_HASH_BBBBBBBBBBBBBBBBBBBBBBB';
-    const aa_address = 'AA_ADDRESS_CCCCCCCCCCCCCCCCCCCC';
-    
-    // Step 2: Insert aa_responses record (simulating AA execution)
-    await db.query(
-        "INSERT INTO aa_responses (mci, trigger_address, aa_address, trigger_unit, bounced, response_unit, response) VALUES (1000, 'USER_ADDR', ?, ?, 0, ?, '{}')",
-        [aa_address, trigger_unit, response_unit]
-    );
-    
-    console.log("✓ AA response record created for trigger:", trigger_unit);
-    
-    // Step 3: Verify record exists
-    const before = await db.query(
-        "SELECT * FROM aa_responses WHERE trigger_unit=? AND aa_address=?",
-        [trigger_unit, aa_address]
-    );
-    console.log("✓ Before archival - records found:", before.length); // Should be 1
-    
-    // Step 4: Archive the response unit (simulating it being marked as temp-bad)
-    const conn = await db.takeConnectionFromPool();
-    const arrQueries = [];
-    
-    await new Promise((resolve) => {
-        archiving.generateQueriesToRemoveJoint(conn, response_unit, arrQueries, resolve);
-    });
-    
-    console.log("✓ Generated", arrQueries.length, "archival queries");
-    
-    // Step 5: Execute the DELETE query (the vulnerable code path)
-    for (const query of arrQueries) {
-        if (query.sql && query.sql.includes('DELETE FROM aa_responses')) {
-            await conn.query(query.sql, query.params);
-            console.log("✗ VULNERABILITY: Executed DELETE on aa_responses");
-        }
+// Option 1: Enhance hasCases() in formula/common.js
+function hasCases(value) {
+    if (typeof value !== 'object' || Object.keys(value).length !== 1 || !ValidationUtils.isNonemptyArray(value.cases))
+        return false;
+    // Validate each case element is an object
+    for (var i = 0; i < value.cases.length; i++) {
+        if (typeof value.cases[i] !== 'object' || value.cases[i] === null || Array.isArray(value.cases[i]))
+            return false;
     }
-    
-    conn.release();
-    
-    // Step 6: Try to query for the AA response (as wallet.js does)
-    const after = await db.query(
-        "SELECT bounced, response, response_unit FROM aa_responses WHERE trigger_unit=? AND aa_address=?",
-        [trigger_unit, aa_address]
-    );
-    
-    console.log("\n=== VULNERABILITY DEMONSTRATED ===");
-    console.log("After archival - records found:", after.length); // Should be 0
-    console.log("Trigger unit is still valid, but response history is LOST");
-    console.log("User cannot see what happened to their AA trigger!");
-    
-    return after.length === 0; // Returns true if vulnerability is present
+    return true;
 }
 
-demonstrateVulnerability().then(vulnerable => {
-    if (vulnerable) {
-        console.log("\n✗ VULNERABILITY CONFIRMED: AA execution history lost");
-        process.exit(1);
-    } else {
-        console.log("\n✓ No vulnerability: AA execution history preserved");
-        process.exit(0);
-    }
-}).catch(err => {
-    console.error("Error:", err);
-    process.exit(2);
+// Option 2: Add validation in validateFieldWrappedInCases() before line 481
+for (var i = 0; i < cases.length; i++){
+    var acase = cases[i];
+    if (typeof acase !== 'object' || acase === null || Array.isArray(acase))
+        return cb('case ' + i + ' must be an object');
+    // ... existing validation
+}
+```
+
+**Permanent Fix**:
+Add comprehensive type validation for case array elements before property access operations. Wrap synchronous validation in try-catch as defense-in-depth.
+
+**Additional Measures**:
+- Add test case verifying rejection of `null`, primitives, and arrays as case elements
+- Add monitoring for validation crashes
+- Consider wrapping all synchronous validation loops in try-catch to convert unexpected errors to error callbacks
+
+**Validation**:
+- [ ] Fix rejects all non-object case elements before property access
+- [ ] No performance regression from additional type checks
+- [ ] Backward compatible (existing valid AA definitions unaffected)
+- [ ] Test coverage includes edge cases (null, undefined, primitives, arrays)
+
+### Proof of Concept
+
+```javascript
+// Test case demonstrating the vulnerability
+const validation = require('./validation.js');
+const aa_validation = require('./aa_validation.js');
+
+describe('AA Definition Case Type Validation', function() {
+    it('should reject null case elements without crashing', function(done) {
+        const maliciousDefinition = ['autonomous agent', {
+            messages: {
+                cases: [
+                    null, // This will cause crash
+                    {
+                        messages: [{
+                            app: 'payment',
+                            payload: {
+                                outputs: [{
+                                    address: 'VALIDADDRESS000000000000000000',
+                                    amount: 1000
+                                }]
+                            }
+                        }],
+                        if: '{trigger.data.test}'
+                    }
+                ]
+            }
+        }];
+
+        aa_validation.validateAADefinition(maliciousDefinition, function(err) {
+            // Should receive validation error, not crash
+            expect(err).to.exist;
+            expect(err).to.match(/case.*must be.*object/i);
+            done();
+        });
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-✓ AA response record created for trigger: TRIGGER_UNIT_HASH_AAAAAAAAAAAAAAAAAAAAAAA
-✓ Before archival - records found: 1
-✓ Generated 42 archival queries
-✗ VULNERABILITY: Executed DELETE on aa_responses
+### Notes
 
-=== VULNERABILITY DEMONSTRATED ===
-After archival - records found: 0
-Trigger unit is still valid, but response history is LOST
-User cannot see what happened to their AA trigger!
+This vulnerability represents a critical gap in input validation where type assumptions are not enforced before property access operations. The synchronous nature of the validation loop combined with callback-based error handling creates a crash vector that affects all network nodes simultaneously.
 
-✗ VULNERABILITY CONFIRMED: AA execution history lost
-```
-
-**Expected Output** (after fix applied):
-```
-✓ AA response record created for trigger: TRIGGER_UNIT_HASH_AAAAAAAAAAAAAAAAAAAAAAA
-✓ Before archival - records found: 1
-✓ Generated 43 archival queries
-✓ DELETE query preserved records for valid triggers
-
-=== VERIFICATION ===
-After archival - records found: 1
-Trigger unit is still valid, and response history is PRESERVED
-
-✓ No vulnerability: AA execution history preserved
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of database integrity invariant
-- [x] Shows measurable impact (loss of historical records)
-- [x] Fails gracefully after fix applied (records preserved)
-
-## Notes
-
-This vulnerability represents a **systematic data loss issue** rather than an active exploit. The `aa_responses` table serves as an immutable audit log for AA executions, and its integrity is critical for:
-
-1. **User Experience**: Wallet UIs rely on this data to show transaction outcomes
-2. **Compliance**: Businesses using AAs need complete audit trails
-3. **Light Clients**: [6](#0-5)  depend on aa_responses for history synchronization
-4. **Debugging**: Developers need complete execution logs to diagnose AA issues
-
-The commented-out foreign key constraint [4](#0-3)  suggests this may have been a known issue or design decision, but the impact on historical data integrity was likely underestimated.
-
-While this doesn't directly cause fund loss or network shutdown, it significantly degrades the protocol's transparency and auditability—key properties for a public ledger system. The fix is straightforward and should be implemented to preserve AA execution history integrity.
+The fix is straightforward: add explicit type validation for case array elements before accessing their properties. This aligns with the defensive programming pattern used elsewhere in the validation codebase where type checks precede property access.
 
 ### Citations
 
-**File:** initial-db/byteball-sqlite.sql (L848-848)
-```sql
--- this is basically a log.  It has many indexes to be searchable by various fields
-```
-
-**File:** initial-db/byteball-sqlite.sql (L862-862)
-```sql
---	FOREIGN KEY (response_unit) REFERENCES units(unit)
-```
-
-**File:** archiving.js (L15-17)
+**File:** formula/common.js (L90-92)
 ```javascript
-function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
-	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
-		conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=? OR response_unit=?", [unit, unit]);
+function hasCases(value) {
+	return (typeof value === 'object' && Object.keys(value).length === 1 && ValidationUtils.isNonemptyArray(value.cases));
+}
 ```
 
-**File:** wallet.js (L1452-1455)
+**File:** aa_validation.js (L479-491)
 ```javascript
-										db.query(
-											"SELECT bounced, response, response_unit FROM aa_responses \n\
-											WHERE trigger_unit=? AND aa_address=?",
-											[unit, payee.address],
+		for (var i = 0; i < cases.length; i++){
+			var acase = cases[i];
+			if (hasFieldsExcept(acase, [field, 'if', 'init']))
+				return cb('foreign fields in case ' + i + ' of ' + field);
+			if (!hasOwnProperty(acase, field))
+				return cb('case ' + i + ' has no field ' + field);
+			if ('if' in acase && !isNonemptyString(acase.if))
+				return cb('bad if in case: ' + acase.if);
+			if (!('if' in acase) && i < cases.length - 1)
+				return cb('if required in all but the last cases');
+			if ('init' in acase && !isNonemptyString(acase.init))
+				return cb('bad init in case: ' + acase.init);
+		}
 ```
 
-**File:** light.js (L86-87)
+**File:** aa_validation.js (L740-740)
 ```javascript
-		arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM aa_responses JOIN units ON trigger_unit=unit \n\
-			WHERE aa_address IN(" + strAddressList + ")" + mciCond);
+	validateFieldWrappedInCases(template, 'messages', validateMessages, function (err) {
 ```
 
-**File:** light.js (L149-149)
+**File:** validation_utils.js (L68-70)
 ```javascript
-							db.query("SELECT mci, trigger_address, aa_address, trigger_unit, bounced, response_unit, response, timestamp, aa_responses.creation_date FROM aa_responses LEFT JOIN units ON mci=main_chain_index AND +is_on_main_chain=1 WHERE trigger_unit IN(" + arrUnits.map(db.escape).join(', ') + ") AND +aa_response_id<=? ORDER BY aa_response_id", [last_aa_response_id], function (aa_rows) {
+function isNonemptyArray(arr){
+	return (Array.isArray(arr) && arr.length > 0);
+}
+```
+
+**File:** validation_utils.js (L103-105)
+```javascript
+function hasOwnProperty(obj, prop) {
+	return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+```
+
+**File:** network.js (L1026-1027)
+```javascript
+		mutex.lock(['handleJoint'], function(unlock){
+			validation.validate(objJoint, {
+```
+
+**File:** validation.js (L1577-1577)
+```javascript
+			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
 ```

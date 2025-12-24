@@ -1,574 +1,414 @@
-## Title
-Non-Deterministic Unstable Input Selection Causing Permanent AA State Divergence and Chain Split
+# NoVulnerability found for this question.
 
-## Summary
-The `readUnstableOutputsSentByAAs()` function in `aa_composer.js` selects unstable outputs sent by other AAs to use as inputs for AA response units. While the SQL ordering is deterministic for a given set of units, different nodes processing the same stable trigger may see different sets of unstable units or units with different LIMCI/level values, causing them to independently compose different response units with different inputs, leading to permanent AA state divergence and chain split.
+## Validation Analysis
 
-## Impact
-**Severity**: Critical  
-**Category**: Chain Split / AA State Divergence
+After performing ruthless technical validation of this security claim against the Obyte codebase, I must reject it based on multiple critical failures in the validation framework.
 
-## Finding Description
+### Code Evidence Verification (Accurate)
 
-**Location**: `byteball/ocore/aa_composer.js` (function `readUnstableOutputsSentByAAs()`, lines 1053-1067)
+The claim's code references are technically **correct**:
+- [1](#0-0) 
+- [2](#0-1) 
+- [3](#0-2) 
+- [4](#0-3) 
+- [5](#0-4) 
+- [6](#0-5) 
 
-**Intended Logic**: All full nodes should deterministically create identical AA response units when processing the same trigger, ensuring consistent AA state across the network.
+The execution path described is also technically accurate. However, accuracy of code references does not make a vulnerability valid.
 
-**Actual Logic**: When composing AA responses, nodes query unstable outputs (units with `main_chain_index > trigger_mci OR NULL`) and order them by `latest_included_mc_index, level, outputs.unit, output_index`. However, different nodes may have received different unstable units at the time they process the trigger, or the same units may have different LIMCI/level values due to DAG state differences beyond the stable MCI, causing different input selection and therefore different response units.
+### Critical Disqualifications
 
-**Code Evidence**: [1](#0-0) 
+#### 1. **NO PROOF OF CONCEPT PROVIDED** ❌
 
-**Exploitation Path**:
+The validation framework explicitly requires: *"PoC is realistic, runnable Node.js code without modifying protocol files"*
 
-1. **Preconditions**: 
-   - AA "TargetAA" is deployed and has received funds
-   - Attacker controls AA "AttackerAA" that can send outputs to TargetAA
-   - Network has multiple full nodes processing AA triggers
+The claim provides:
+- No runnable test code
+- No setup instructions  
+- No demonstration of the attack
+- No evidence the partition actually occurs
 
-2. **Step 1**: Attacker creates multiple unstable units (U1, U2, U3) from AttackerAA sending outputs to TargetAA
-   - U1 propagates to Node A at time T1
-   - U2 propagates to Node B at time T2 (slightly later)
-   - These units remain unstable (not yet on stable main chain)
+This alone is **grounds for immediate rejection** per Phase 4 validation criteria.
 
-3. **Step 2**: A trigger unit T targeting TargetAA becomes stable at MCI 100
-   - Both nodes call `handlePrimaryAATrigger()` independently [2](#0-1) 
+#### 2. **INTENTIONAL DESIGN, NOT VULNERABILITY** ❌
 
-4. **Step 3**: During response composition, each node queries for inputs
-   - First attempts stable outputs (line 1117) [3](#0-2) 
-   - If insufficient, queries unstable outputs via `readUnstableOutputsSentByAAs()`
-   - **Node A sees only U1** (U2 hasn't propagated yet)
-   - **Node B sees both U1 and U2** (or U2 has lower LIMCI and is selected first)
+Examining the codebase reveals that **multiple consensus-critical parameters** are configurable via environment variables [7](#0-6) :
+- `COUNT_WITNESSES` (line 13)
+- `TOTAL_WHITEBYTES` (line 15)
+- `MAX_UNIT_LENGTH` (line 58)
+- `MAX_OPS` (line 66)
+- `MAX_RESPONSES_PER_PRIMARY_TRIGGER` (line 67)
+- `MIN_BYTES_BOUNCE_FEE` (line 70)
 
-5. **Step 4**: Different input selection leads to divergent outcomes
-   - Node A composes response R_A with inputs: [stable_outputs, U1]
-   - Node B composes response R_B with inputs: [stable_outputs, U2]
-   - R_A ≠ R_B (different unit hashes due to different inputs)
-   - Each node validates and saves its response locally [4](#0-3) 
+The code explicitly loads `.env` configuration [8](#0-7) , and devnet mode intentionally modifies these parameters [9](#0-8) .
 
-6. **Step 5**: Both nodes broadcast their different response units
-   - Each response is valid (passes validation as AA-authored unit) [5](#0-4) 
-   - No mechanism exists to resolve conflicting AA responses
-   - The database constraint `UNIQUE (trigger_unit, aa_address)` only prevents duplicates within one node [6](#0-5) 
+This demonstrates **intentional design** for:
+- Testnet/devnet deployments
+- Research networks
+- Testing scenarios
+- Gradual parameter rollouts
 
-7. **Step 6**: Permanent state divergence occurs
-   - Different nodes have permanently different AA response units for trigger T
-   - AA state variables diverge
-   - Future triggers building on this state compound the divergence
-   - Network permanently splits into incompatible state branches
+If `MAX_COMPLEXITY` configurability were a vulnerability, then **every configurable constant would be a vulnerability**, making the entire configuration approach invalid—which is inappropriate for a bug bounty claim.
 
-**Security Property Broken**: 
-- Invariant #10: **AA Deterministic Execution** - "Autonomous Agent formula evaluation must produce identical results on all nodes for same input state. Non-determinism causes state divergence and chain splits."
+#### 3. **UNREALISTIC PRECONDITION** ❌
 
-**Root Cause Analysis**: 
+The attack requires: *"At least one node must have `MAX_COMPLEXITY` configured differently than standard (100)"*
 
-The root cause is the assumption that unstable units visible to all nodes are identical when processing a stable trigger. The protocol treats stable triggers as synchronization points but does not ensure that the unstable DAG beyond that point is consistent across nodes. The key issues are:
+This precondition is **unrealistic** because:
+- Default value is 100 (safe) [1](#0-0) 
+- Requires explicit environment variable override
+- No documented reason to change this on mainnet [10](#0-9) 
+- No evidence of actual misconfiguration in the wild
+- Claim provides **zero evidence** that any Obyte nodes run with non-standard MAX_COMPLEXITY
 
-1. **Unstable Unit Visibility**: The query selects units where `main_chain_index > mci OR main_chain_index IS NULL`, but different nodes may have received different unstable units due to network propagation delays [7](#0-6) 
+The claim states *"Misconfiguration is common in distributed systems"* but provides no data specific to Obyte.
 
-2. **No Synchronization**: When triggers are processed via `handleAATriggers()`, there's no waiting period or synchronization to ensure all nodes see the same unstable units [8](#0-7) 
+#### 4. **OPERATOR RESPONSIBILITY, NOT PROTOCOL BUG** ❌
 
-3. **Independent Composition**: Each full node independently composes AA responses without consensus [9](#0-8) 
+This is analogous to running:
+- Bitcoin Core with modified consensus rules
+- Ethereum with different gas limits
+- Any blockchain with forked protocol parameters
 
-4. **LIMCI Variability**: The `latest_included_mc_index` field used for ordering can differ for the same unit if nodes have different views of the DAG beyond the stable MCI [10](#0-9) 
+When operators change consensus parameters, they are **intentionally creating a private fork**. This is operator choice, not a protocol vulnerability. The network trusts operators—especially witness operators—to run compatible configurations.
 
-## Impact Explanation
+### Additional Observations
 
-**Affected Assets**: All AA state variables, AA balances, user funds locked in AAs, integrity of the entire DAG consensus
+A validation tool exists [11](#0-10)  that validates all AA definitions in the database against the current MAX_COMPLEXITY. This suggests the parameter is meant to be uniform across the network but configurable for different network types (mainnet/testnet/devnet).
 
-**Damage Severity**:
-- **Quantitative**: Network-wide permanent split affecting all AAs that use unstable inputs. Every subsequent trigger to the affected AA compounds the divergence.
-- **Qualitative**: Complete breakdown of AA determinism guarantee. Nodes become incompatible and cannot reach consensus on AA state.
+Protocol version checking exists [12](#0-11)  but validates code versions, not environment variable configurations—confirming that parameter configuration is considered an operator-level decision, not protocol-level enforcement.
 
-**User Impact**:
-- **Who**: All AA users, node operators, anyone relying on AA state
-- **Conditions**: Triggered whenever an AA needs to use unstable outputs for response composition and network propagation timing creates different views
-- **Recovery**: Requires hard fork and manual state reconciliation - no automatic recovery possible
+### Notes
 
-**Systemic Risk**: 
-- Cascading effect: Once one AA diverges, any AAs that depend on it also diverge
-- Network fragmentation: Different node groups follow different state branches
-- Loss of trust: Undermines the fundamental determinism guarantee of AAs
-- Potential fund loss: Users transacting with AAs may see different balances/states on different nodes
+While the technical analysis of how different MAX_COMPLEXITY values could cause divergence is accurate, this represents a **configuration management concern**, not an exploitable security vulnerability. The validation framework requires overwhelming evidence and a working POC to validate Critical severity claims. Neither is provided here.
 
-## Likelihood Explanation
-
-**Attacker Profile**:
-- **Identity**: Any user who can create units and has basic understanding of network propagation
-- **Resources Required**: Ability to create AA units and control timing of unit broadcast to different network peers
-- **Technical Skill**: Medium - requires understanding of DAG propagation and AA trigger timing
-
-**Preconditions**:
-- **Network State**: Target AA must need inputs from unstable units (insufficient stable outputs)
-- **Attacker State**: Control of an AA that can send outputs to target AA, or ability to influence network propagation
-- **Timing**: Trigger must be processed while attacker's units are still unstable and propagating
-
-**Execution Complexity**:
-- **Transaction Count**: 3-4 units (attacker's unstable outputs + trigger unit)
-- **Coordination**: Requires timing control over unit propagation to different nodes
-- **Detection Risk**: Low - appears as normal AA operation, divergence only noticed when nodes compare responses
-
-**Frequency**:
-- **Repeatability**: Can be triggered on every AA that uses unstable inputs
-- **Scale**: Affects entire network once triggered for a popular AA
-
-**Overall Assessment**: High likelihood - the vulnerability is inherent in the design and will manifest naturally whenever network propagation delays cause different nodes to see different unstable units during trigger processing. No special attack is needed; normal network conditions can trigger it.
-
-## Recommendation
-
-**Immediate Mitigation**: 
-1. Disable use of unstable outputs in AA response composition by modifying the query condition
-2. Force AAs to wait for sufficient stable inputs before composing responses
-3. Add bounce response if insufficient stable inputs available
-
-**Permanent Fix**: 
-Modify `readUnstableOutputsSentByAAs()` to exclude unstable units entirely, or implement a consensus mechanism for unstable unit selection.
-
-**Code Changes**:
-
-The safest fix is to remove unstable output selection entirely and require AAs to use only stable inputs:
-
-File: `byteball/ocore/aa_composer.js`
-
-**BEFORE (vulnerable code):** [11](#0-10) 
-
-**AFTER (fixed code):**
-```javascript
-readStableOutputs(function (rows) {
-    iterateUnspentOutputs(rows);
-    if (bFound && !send_all_output)
-        return sortOutputsAndReturn();
-    // REMOVED: readUnstableOutputsSentByAAs() call
-    // AA must have sufficient stable inputs or will bounce
-    if (!asset)
-        return cb('not enough funds for ' + target_amount + ' bytes');
-    var bSelfIssueForSendAll = mci < (constants.bTestnet ? 2080483 : constants.aa3UpgradeMci);
-    if (!bSelfIssueForSendAll && send_all_output && payload.outputs.length === 1)
-        return sortOutputsAndReturn();
-    issueAsset(function (err) {
-        if (err) {
-            console.log("issue failed: " + err);
-            return cb('not enough funds for ' + target_amount + ' of asset ' + asset);
-        }
-        sortOutputsAndReturn();
-    });
-});
-```
-
-**Additional Measures**:
-1. Add database index to efficiently query only stable outputs
-2. Update AA documentation to specify that only stable inputs are used
-3. Add monitoring to detect when AAs bounce due to insufficient stable inputs
-4. Consider adding a configurable "stability delay" parameter for AAs that need it
-
-**Validation**:
-- [x] Fix prevents exploitation by ensuring all nodes see identical stable input set
-- [x] No new vulnerabilities introduced - removes non-determinism source
-- [x] Backward compatible - existing AAs will bounce if they relied on unstable inputs, but network remains consistent
-- [x] Performance impact acceptable - may increase bounce rate but ensures correctness
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_divergence_poc.js`):
-```javascript
-/*
- * Proof of Concept for AA State Divergence via Unstable Input Selection
- * Demonstrates: Different nodes selecting different unstable inputs for same trigger
- * Expected Result: Nodes create different response units with different hashes
- */
-
-const db = require('./db.js');
-const aa_composer = require('./aa_composer.js');
-const storage = require('./storage.js');
-
-async function simulateNodeA() {
-    // Node A has only seen unstable unit U1 (output_id=1, amount=600)
-    console.log("=== Node A Processing ===");
-    const conn = await db.takeConnectionFromPool();
-    
-    // Simulate query results with only U1 visible
-    const unstable_outputs_A = [
-        { unit: 'U1_HASH', message_index: 0, output_index: 0, 
-          amount: 600, output_id: 1, 
-          latest_included_mc_index: 95, level: 200 }
-    ];
-    
-    console.log("Node A sees unstable outputs:", unstable_outputs_A);
-    console.log("Node A would select U1 (600 bytes)");
-    console.log("Response unit hash: " + objectHash({inputs: ['stable', 'U1_HASH']}));
-    
-    conn.release();
-}
-
-async function simulateNodeB() {
-    // Node B has seen both U1 and U2, with U2 having lower LIMCI
-    console.log("\n=== Node B Processing ===");
-    const conn = await db.takeConnectionFromPool();
-    
-    // Simulate query results with both units, U2 ordered first
-    const unstable_outputs_B = [
-        { unit: 'U2_HASH', message_index: 0, output_index: 0, 
-          amount: 700, output_id: 2,
-          latest_included_mc_index: 94, level: 199 },  // Lower LIMCI, selected first
-        { unit: 'U1_HASH', message_index: 0, output_index: 0, 
-          amount: 600, output_id: 1,
-          latest_included_mc_index: 95, level: 200 }
-    ];
-    
-    console.log("Node B sees unstable outputs:", unstable_outputs_B);
-    console.log("Node B would select U2 (700 bytes) due to lower LIMCI");
-    console.log("Response unit hash: " + objectHash({inputs: ['stable', 'U2_HASH']}));
-    
-    conn.release();
-}
-
-async function demonstrateDivergence() {
-    console.log("=== AA State Divergence PoC ===\n");
-    console.log("Scenario: Trigger T becomes stable at MCI 100");
-    console.log("Target AA needs 1000 bytes for response");
-    console.log("Stable outputs available: 500 bytes");
-    console.log("Unstable unit U1: 600 bytes (propagated to Node A)");
-    console.log("Unstable unit U2: 700 bytes (propagated to Node B first)\n");
-    
-    await simulateNodeA();
-    await simulateNodeB();
-    
-    console.log("\n=== RESULT ===");
-    console.log("Node A creates response R_A with different inputs than Node B's response R_B");
-    console.log("Different inputs → Different unit hashes → PERMANENT DIVERGENCE");
-    console.log("Network split: Node A rejects R_B, Node B rejects R_A");
-}
-
-demonstrateDivergence()
-    .then(() => {
-        console.log("\n✓ PoC demonstrates AA state divergence vulnerability");
-        process.exit(0);
-    })
-    .catch(err => {
-        console.error("Error:", err);
-        process.exit(1);
-    });
-```
-
-**Expected Output** (when vulnerability exists):
-```
-=== AA State Divergence PoC ===
-
-Scenario: Trigger T becomes stable at MCI 100
-Target AA needs 1000 bytes for response
-Stable outputs available: 500 bytes
-Unstable unit U1: 600 bytes (propagated to Node A)
-Unstable unit U2: 700 bytes (propagated to Node B first)
-
-=== Node A Processing ===
-Node A sees unstable outputs: [ { unit: 'U1_HASH', ... } ]
-Node A would select U1 (600 bytes)
-Response unit hash: 8f3a9b2c1d4e5f6a...
-
-=== Node B Processing ===
-Node B sees unstable outputs: [ { unit: 'U2_HASH', ... }, { unit: 'U1_HASH', ... } ]
-Node B would select U2 (700 bytes) due to lower LIMCI
-Response unit hash: 7e2a8b1c0d3e4f5a...
-
-=== RESULT ===
-Node A creates response R_A with different inputs than Node B's response R_B
-Different inputs → Different unit hashes → PERMANENT DIVERGENCE
-Network split: Node A rejects R_B, Node B rejects R_A
-
-✓ PoC demonstrates AA state divergence vulnerability
-```
-
-**Expected Output** (after fix applied):
-```
-=== AA State Divergence PoC ===
-Node A: Using only stable inputs (500 bytes)
-Node B: Using only stable inputs (500 bytes)
-Both nodes: Insufficient funds, bouncing with identical bounce response
-Response unit hash (Node A): 9f4a0b3c2d5e6f7a...
-Response unit hash (Node B): 9f4a0b3c2d5e6f7a...
-
-✓ After fix: Both nodes create identical response units
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates clear violation of AA Deterministic Execution invariant
-- [x] Shows measurable impact: different unit hashes proving divergence
-- [x] Realistic scenario with feasible network propagation timing
-- [x] After fix: deterministic behavior restored
-
----
-
-## Notes
-
-This vulnerability is particularly severe because:
-
-1. **Silent Failure**: The divergence occurs silently - each node believes it has created the correct response
-2. **Irreversible**: Once divergence occurs, there's no automatic reconciliation mechanism
-3. **Compounding**: Each subsequent AA trigger on the diverged AA increases the divergence
-4. **Network-Wide**: Affects the entire network when popular AAs diverge
-5. **Trust Destruction**: Undermines the fundamental guarantee of deterministic AA execution
-
-The fix requires removing unstable inputs entirely, which may increase bounce rates but is necessary to maintain network consensus.
+The absence of a POC is particularly damning—if this were a real vulnerability, demonstrating it with a simple test script would be trivial. The failure to provide one suggests the claim is theoretical rather than practical.
 
 ### Citations
 
-**File:** aa_composer.js (L54-80)
+**File:** constants.js (L4-8)
 ```javascript
-function handleAATriggers(onDone) {
-	if (!onDone)
-		return new Promise(resolve => handleAATriggers(resolve));
-	mutex.lock(['aa_triggers'], function (unlock) {
-		db.query(
-			"SELECT aa_triggers.mci, aa_triggers.unit, address, definition \n\
-			FROM aa_triggers \n\
-			CROSS JOIN units USING(unit) \n\
-			CROSS JOIN aa_addresses USING(address) \n\
-			ORDER BY aa_triggers.mci, level, aa_triggers.unit, address",
-			function (rows) {
-				var arrPostedUnits = [];
-				async.eachSeries(
-					rows,
-					function (row, cb) {
-						console.log('handleAATriggers', row.unit, row.mci, row.address);
-						var arrDefinition = JSON.parse(row.definition);
-						handlePrimaryAATrigger(row.mci, row.unit, row.address, arrDefinition, arrPostedUnits, cb);
-					},
-					function () {
-						arrPostedUnits.forEach(function (objUnit) {
-							eventBus.emit('new_aa_unit', objUnit);
-						});
-						unlock();
-						onDone();
-					}
-				);
+if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node !== 'undefined') { // desktop
+	var desktopApp = require('./desktop_app.js');
+	var appRootDir = desktopApp.getAppRootDir();
+	require('dotenv').config({path: appRootDir + '/.env'});
+}
 ```
 
-**File:** aa_composer.js (L86-96)
+**File:** constants.js (L13-70)
 ```javascript
-function handlePrimaryAATrigger(mci, unit, address, arrDefinition, arrPostedUnits, onDone) {
-	db.takeConnectionFromPool(function (conn) {
-		conn.query("BEGIN", function () {
-			var batch = kvstore.batch();
-			readMcUnit(conn, mci, function (objMcUnit) {
-				readUnit(conn, unit, function (objUnit) {
-					var arrResponses = [];
-					var trigger = getTrigger(objUnit, address);
-					trigger.initial_address = trigger.address;
-					trigger.initial_unit = trigger.unit;
-					handleTrigger(conn, batch, trigger, {}, {}, arrDefinition, address, mci, objMcUnit, false, arrResponses, function(){
+exports.COUNT_WITNESSES = process.env.COUNT_WITNESSES || 12;
+exports.MAX_WITNESS_LIST_MUTATIONS = 1;
+exports.TOTAL_WHITEBYTES = process.env.TOTAL_WHITEBYTES || 1e15;
+exports.MAJORITY_OF_WITNESSES = (exports.COUNT_WITNESSES%2===0) ? (exports.COUNT_WITNESSES/2+1) : Math.ceil(exports.COUNT_WITNESSES/2);
+exports.COUNT_MC_BALLS_FOR_PAID_WITNESSING = process.env.COUNT_MC_BALLS_FOR_PAID_WITNESSING || 100;
+exports.EMERGENCY_OP_LIST_CHANGE_TIMEOUT = 3 * 24 * 3600;
+exports.EMERGENCY_COUNT_MIN_VOTE_AGE = 3600;
+
+exports.bTestnet = !!process.env.testnet;
+console.log('===== testnet = ' + exports.bTestnet);
+
+exports.version = exports.bTestnet ? '4.0t' : '4.0';
+exports.alt = exports.bTestnet ? '2' : '1';
+
+exports.supported_versions = exports.bTestnet ? ['1.0t', '2.0t', '3.0t', '4.0t'] : ['1.0', '2.0', '3.0', '4.0'];
+exports.versionWithoutTimestamp = exports.bTestnet ? '1.0t' : '1.0';
+exports.versionWithoutKeySizes = exports.bTestnet ? '2.0t' : '2.0';
+exports.version3 = exports.bTestnet ? '3.0t' : '3.0';
+exports.fVersion4 = 4;
+
+//exports.bTestnet = (exports.alt === '2' && exports.version === '1.0t');
+
+exports.GENESIS_UNIT = process.env.GENESIS_UNIT || (exports.bTestnet ? 'TvqutGPz3T4Cs6oiChxFlclY92M2MvCvfXR5/FETato=' : 'oj8yEksX9Ubq7lLc+p6F2uyHUuynugeVq4+ikT67X6E=');
+exports.BLACKBYTES_ASSET = process.env.BLACKBYTES_ASSET || (exports.bTestnet ? 'LUQu5ik4WLfCrr8OwXezqBa+i3IlZLqxj2itQZQm8WY=' : 'qO2JsiuDMh/j+pqJYZw3u82O71WjCDf0vTNvsnntr8o=');
+
+exports.HASH_LENGTH = 44;
+exports.PUBKEY_LENGTH = 44;
+exports.SIG_LENGTH = 88;
+
+// anti-spam limits
+exports.MAX_AUTHORS_PER_UNIT = 16;
+exports.MAX_PARENTS_PER_UNIT = 16;
+exports.MAX_MESSAGES_PER_UNIT = 128;
+exports.MAX_SPEND_PROOFS_PER_MESSAGE = 128;
+exports.MAX_INPUTS_PER_PAYMENT_MESSAGE = 128;
+exports.MAX_OUTPUTS_PER_PAYMENT_MESSAGE = 128;
+exports.MAX_CHOICES_PER_POLL = 128;
+exports.MAX_CHOICE_LENGTH = 64;
+exports.MAX_DENOMINATIONS_PER_ASSET_DEFINITION = 64;
+exports.MAX_ATTESTORS_PER_ASSET = 64;
+exports.MAX_DATA_FEED_NAME_LENGTH = 64;
+exports.MAX_DATA_FEED_VALUE_LENGTH = 64;
+exports.MAX_AUTHENTIFIER_LENGTH = 4096;
+exports.MAX_CAP = 9e15;
+exports.MAX_COMPLEXITY = process.env.MAX_COMPLEXITY || 100;
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+
+exports.MAX_PROFILE_FIELD_LENGTH = 50;
+exports.MAX_PROFILE_VALUE_LENGTH = 100;
+
+exports.MAX_AA_STRING_LENGTH = 4096;
+exports.MAX_STATE_VAR_NAME_LENGTH = 128;
+exports.MAX_STATE_VAR_VALUE_LENGTH = 1024;
+exports.MAX_OPS = process.env.MAX_OPS || 2000;
+exports.MAX_RESPONSES_PER_PRIMARY_TRIGGER = process.env.MAX_RESPONSES_PER_PRIMARY_TRIGGER || 10;
+exports.MAX_RESPONSE_VARS_LENGTH = 4000;
+
+exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
 ```
 
-**File:** aa_composer.js (L1053-1067)
+**File:** constants.js (L100-114)
 ```javascript
-			function readUnstableOutputsSentByAAs(handleRows) {
-			//	console.log('--- readUnstableOutputsSentByAAs');
-				conn.query(
-					"SELECT outputs.unit, message_index, output_index, amount, output_id \n\
-					FROM outputs \n\
-					CROSS JOIN units USING(unit) \n\
-					CROSS JOIN unit_authors USING(unit) \n\
-					CROSS JOIN aa_addresses ON unit_authors.address=aa_addresses.address \n\
-					WHERE outputs.address=? AND asset"+(asset ? "="+conn.escape(asset) : " IS NULL AND amount>="+FULL_TRANSFER_INPUT_SIZE)+" AND is_spent=0 \n\
-						AND sequence='good' AND (main_chain_index>? OR main_chain_index IS NULL) \n\
-						AND output_id NOT IN("+(arrUsedOutputIds.length === 0 ? "-1" : arrUsedOutputIds.join(', '))+") \n\
-					ORDER BY latest_included_mc_index, level, outputs.unit, output_index", // sort order must be deterministic
-					[address, mci], handleRows
-				);
-			}
+if (process.env.devnet) {
+	console.log('===== devnet');
+	exports.bDevnet = true;
+	exports.version = '4.0dev';
+	exports.alt = '3';
+	exports.supported_versions = ['1.0dev', '2.0dev', '3.0dev', '4.0dev'];
+	exports.versionWithoutTimestamp = '1.0dev';
+	exports.versionWithoutKeySizes = '2.0dev';
+	exports.version3 = '3.0dev';
+	exports.GENESIS_UNIT = 'OaUcH6sSxnn49wqTAQyyxYk4WLQfpBeW7dQ1o2MvGC8='; // THIS CHANGES WITH EVERY UNIT VERSION / ALT CHANGE!!!
+	exports.BLACKBYTES_ASSET = 'ilSnUeVTEK6ElgY9k1tZmV/w4gsLCAIEgUbytS6KfAQ='; // THIS CHANGES WITH EVERY UNIT VERSION / ALT CHANGE!!!
+
+	exports.COUNT_WITNESSES = 1;
+	exports.MAJORITY_OF_WITNESSES = (exports.COUNT_WITNESSES%2===0) ? (exports.COUNT_WITNESSES/2+1) : Math.ceil(exports.COUNT_WITNESSES/2);
+}
 ```
 
-**File:** aa_composer.js (L1117-1138)
+**File:** aa_validation.js (L542-543)
 ```javascript
-			readStableOutputs(function (rows) {
-				iterateUnspentOutputs(rows);
-				if (bFound && !send_all_output)
-					return sortOutputsAndReturn();
-				readUnstableOutputsSentByAAs(function (rows2) {
-					iterateUnspentOutputs(rows2);
-					if (bFound)
-						return sortOutputsAndReturn();
-					if (!asset)
-						return cb('not enough funds for ' + target_amount + ' bytes');
-					var bSelfIssueForSendAll = mci < (constants.bTestnet ? 2080483 : constants.aa3UpgradeMci);
-					if (!bSelfIssueForSendAll && send_all_output && payload.outputs.length === 1) // send-all is the only output - don't issue for it
-						return sortOutputsAndReturn();
-					issueAsset(function (err) {
-						if (err) {
-							console.log("issue failed: " + err);
-							return cb('not enough funds for ' + target_amount + ' of asset ' + asset);
-						}
-						sortOutputsAndReturn();
+			if (complexity > constants.MAX_COMPLEXITY)
+				return cb('complexity exceeded: ' + complexity);
+```
+
+**File:** validation.js (L1577-1577)
+```javascript
+			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
+```
+
+**File:** network.js (L1034-1038)
+```javascript
+					purgeJointAndDependenciesAndNotifyPeers(objJoint, error, function(){
+						delete assocUnitsInWork[unit];
 					});
-				});
-			});
+					if (ws && error !== 'authentifier verification failed' && !error.match(/bad merkle proof at path/) && !bPosted)
+						writeEvent('invalid', ws.host);
 ```
 
-**File:** aa_composer.js (L1631-1668)
+**File:** network.js (L1776-1776)
 ```javascript
-	function validateAndSaveUnit(objUnit, cb) {
-		var objJoint = { unit: objUnit, aa: true };
-		validation.validate(objJoint, {
-			ifJointError: function (err) {
-				throw Error("AA validation joint error: " + err);
-			},
-			ifUnitError: function (err) {
-				console.log("AA validation unit error: " + err);
-				return cb(err);
-			},
-			ifTransientError: function (err) {
-				throw Error("AA validation transient error: " + err);
-			},
-			ifNeedHashTree: function () {
-				throw Error("AA validation unexpected need hash tree");
-			},
-			ifNeedParentUnits: function (arrMissingUnits) {
-				throw Error("AA validation unexpected dependencies: " + arrMissingUnits.join(", "));
-			},
-			ifOkUnsigned: function () {
-				throw Error("AA validation returned ok unsigned");
-			},
-			ifOk: function (objAAValidationState, validation_unlock) {
-				if (objAAValidationState.sequence !== 'good')
-					throw Error("nonserial AA");
-				validation_unlock();
-				objAAValidationState.bUnderWriteLock = true;
-				objAAValidationState.conn = conn;
-				objAAValidationState.batch = batch;
-				objAAValidationState.initial_trigger_mci = mci;
-				writer.saveJoint(objJoint, objAAValidationState, null, function(err){
-					if (err)
-						throw Error('AA writer returned error: ' + err);
-					cb();
-				});
-			}
-		}, conn);
-	}
+			assocBlockedPeers[host] = Date.now();
 ```
 
-**File:** validation.js (L956-1004)
+**File:** network.js (L1792-1792)
 ```javascript
-function validateAuthors(conn, arrAuthors, objUnit, objValidationState, callback) {
-	if (objValidationState.bAA && arrAuthors.length !== 1)
-		throw Error("AA unit with multiple authors");
-	if (arrAuthors.length > constants.MAX_AUTHORS_PER_UNIT) // this is anti-spam. Otherwise an attacker would send nonserial balls signed by zillions of authors.
-		return callback("too many authors");
-	objValidationState.arrAddressesWithForkedPath = [];
-	var prev_address = "";
-	for (var i=0; i<arrAuthors.length; i++){
-		var objAuthor = arrAuthors[i];
-		if (objAuthor.address <= prev_address)
-			return callback("author addresses not sorted");
-		prev_address = objAuthor.address;
-	}
-	
-	objValidationState.unit_hash_to_sign = objectHash.getUnitHashToSign(objUnit);
-	
-	async.eachSeries(arrAuthors, function(objAuthor, cb){
-		validateAuthor(conn, objAuthor, objUnit, objValidationState, cb);
-	}, callback);
+		if (assocBlockedPeers[host] < Date.now() - 3600*1000)
+```
+
+**File:** network.js (L2492-2582)
+```javascript
+function version2int(version){
+	var arr = version.split('.');
+	return arr[0]*1000000 + arr[1]*1000 + arr[2]*1;
 }
 
-function validateAuthor(conn, objAuthor, objUnit, objValidationState, callback){
-	if (!isStringOfLength(objAuthor.address, 32))
-		return callback("wrong address length");
-	if (objValidationState.bAA && hasFieldsExcept(objAuthor, ["address"]))
-		throw Error("unknown fields in AA author");
-	if (!objValidationState.bAA) {
-		if (hasFieldsExcept(objAuthor, ["address", "authentifiers", "definition"]))
-			return callback("unknown fields in author");
-		if (!ValidationUtils.isNonemptyObject(objAuthor.authentifiers) && !objUnit.content_hash)
-			return callback("no authentifiers");
-		for (var path in objAuthor.authentifiers) {
-			if (!isNonemptyString(objAuthor.authentifiers[path]))
-				return callback("authentifiers must be nonempty strings");
-			if (objAuthor.authentifiers[path].length > constants.MAX_AUTHENTIFIER_LENGTH)
-				return callback("authentifier too long");
-		}
-	}
-	
-	var bNonserial = false;
-	var bInitialDefinition = false;
 
-	if (objValidationState.bAA) {
-		storage.readAADefinition(conn, objAuthor.address, function (arrDefinition) {
-			if (!arrDefinition)
-				throw Error("AA definition not found");
-			checkSerialAddressUse();
-		});
-		return;
-```
+// switch/case different message types
 
-**File:** initial-db/byteball-sqlite.sql (L859-863)
-```sql
-	UNIQUE (trigger_unit, aa_address),
-	FOREIGN KEY (aa_address) REFERENCES aa_addresses(address),
-	FOREIGN KEY (trigger_unit) REFERENCES units(unit)
---	FOREIGN KEY (response_unit) REFERENCES units(unit)
-);
-```
-
-**File:** writer.js (L711-715)
-```javascript
-								if (bStabilizedAATriggers) {
-									if (bInLargerTx || objValidationState.bUnderWriteLock)
-										throw Error(`saveJoint stabilized AA triggers while in larger tx or under write lock`);
-									const aa_composer = require("./aa_composer.js");
-									await aa_composer.handleAATriggers();
-```
-
-**File:** main_chain.js (L300-346)
-```javascript
-		function calcLIMCIs(onUpdated){
-			console.log("will calcLIMCIs for " + Object.keys(assocChangedUnits).length + " changed units");
-			var arrFilledUnits = [];
-			async.forEachOfSeries(
-				assocChangedUnits,
-				function(props, unit, cb){
-					var max_limci = -1;
-					async.eachSeries(
-						props.parent_units,
-						function(parent_unit, cb2){
-							loadUnitProps(parent_unit, function(parent_props){
-								if (parent_props.is_on_main_chain){
-									props.latest_included_mc_index = parent_props.main_chain_index;
-									assocLimcisByUnit[unit] = props.latest_included_mc_index;
-									arrFilledUnits.push(unit);
-									return cb2('done');
-								}
-								if (parent_props.latest_included_mc_index === null)
-									return cb2('parent limci not known yet');
-								if (parent_props.latest_included_mc_index > max_limci)
-									max_limci = parent_props.latest_included_mc_index;
-								cb2();
-							});
-						},
-						function(err){
-							if (err)
-								return cb();
-							if (max_limci < 0)
-								throw Error("max limci < 0 for unit "+unit);
-							props.latest_included_mc_index = max_limci;
-							assocLimcisByUnit[unit] = props.latest_included_mc_index;
-							arrFilledUnits.push(unit);
-							cb();
-						}
-					);
-				},
-				function(){
-					arrFilledUnits.forEach(function(unit){
-						delete assocChangedUnits[unit];
-					});
-					if (Object.keys(assocChangedUnits).length > 0)
-						calcLIMCIs(onUpdated);
-					else
-						onUpdated();
+function handleJustsaying(ws, subject, body){
+	switch (subject){
+		case 'refresh':
+			if (bCatchingUp)
+				return;
+			var mci = body;
+			if (ValidationUtils.isNonnegativeInteger(mci))
+				return sendJointsSinceMci(ws, mci);
+			else
+				return sendFreeJoints(ws);
+			
+		case 'version':
+			if (!body)
+				return;
+			ws.library_version = body.library_version;
+			if (typeof ws.library_version !== 'string') {
+				sendError(ws, "invalid library_version: " + ws.library_version);
+				return ws.close(1000, "invalid library_version");
+			}
+			if (version2int(ws.library_version) < version2int(constants.minCoreVersion)){
+				ws.old_core = true;
+				ws.bSubscribed = false;
+				sendJustsaying(ws, 'upgrade_required');
+				sendJustsaying(ws, "old core");
+				return ws.close(1000, "old core");
+			}
+			if (version2int(ws.library_version) < version2int(constants.minCoreVersionForFullNodes)){
+				ws.old_core = true;
+				if (ws.bSubscribed){
+					ws.bSubscribed = false;
+					sendJustsaying(ws, 'upgrade_required');
+					sendJustsaying(ws, "old core (full)");
+					return ws.close(1000, "old core (full)");
 				}
-			);
+			}
+			if (constants.supported_versions.indexOf(body.protocol_version) === -1){
+				sendError(ws, 'Incompatible versions, I support '+constants.supported_versions.join(', ')+', yours '+body.protocol_version);
+				ws.close(1000, 'incompatible versions');
+				return;
+			}
+			if (body.alt !== constants.alt){
+				sendError(ws, 'Incompatible alts, mine '+constants.alt+', yours '+body.alt);
+				ws.close(1000, 'incompatible alts');
+				return;
+			}
+			if (version2int(ws.library_version) < version2int(constants.minCoreVersionToSharePeers)){
+				ws.dontSharePeers = true;
+				sendJustsaying(ws, "please upgrade the core to at least " + constants.minCoreVersionToSharePeers);
+			}
+			eventBus.emit('peer_version', ws, body); // handled elsewhere
+			break;
+
+		case 'new_version': // a new version is available
+			if (!body)
+				return;
+			if (ws.bLoggingIn || ws.bLoggedIn) // accept from hub only
+				eventBus.emit('new_version', ws, body);
+			break;
+
+		case 'hub/push_project_number':
+			if (!body)
+				return;
+			if (ws.bLoggingIn || ws.bLoggedIn)
+				eventBus.emit('receivedPushProjectNumber', ws, body);
+			break;
+		
+		case 'bugreport':
+			if (!conf.bug_sink_email)
+				return console.log("no bug_sink_email, not accepting bugreport");
+			if (!body || !body.exception || !ValidationUtils.isNonemptyString(body.message))
+				return console.log("invalid bugreport");
+			var arrParts = body.exception.toString().split("Breadcrumbs", 2);
+			var text = body.message + ' ' + arrParts[0];
+			var matches = body.message.match(/message encrypted to unknown key, device (0\w{32})/);
+			var hash = matches ? matches[1] : crypto.createHash("sha256").update(text, "utf8").digest("base64");
+			if (hash === prev_bugreport_hash)
+				return console.log("ignoring known bug report");
+			prev_bugreport_hash = hash;
+			if (conf.ignoreBugreportRegexp && new RegExp(conf.ignoreBugreportRegexp).test(text))
+				return console.log('ignoring bugreport');
+			mail.sendBugEmail(body.message, body.exception);
+			break;
+			
+```
+
+**File:** README.md (L16-85)
+```markdown
+## Configuring
+
+The default settings are in the library's [conf.js](conf.js), they can be overridden in your project root's conf.js (see the clients above as examples), then in conf.json in the app data folder.  The app data folder is:
+
+* macOS: `~/Library/Application Support/<appname>`
+* Linux: `~/.config/<appname>`
+* Windows: `%LOCALAPPDATA%\<appname>`
+
+`<appname>` is `name` in your `package.json`.
+
+### Settings
+
+This is the list of some of the settings that the library understands (your app can add more settings that only your app understands):
+
+#### conf.port
+
+The port to listen on.  If you don't want to accept incoming connections at all, set port to `null`, which is the default.  If you do want to listen, you will usually have a proxy, such as nginx, accept websocket connections on standard port 443 and forward them to your O<sub>byte</sub> daemon that listens on port 6611 on the local interface.
+
+#### conf.storage
+
+Storage backend -- mysql or sqlite, the default is sqlite.  If sqlite, the database files are stored in the app data folder.  If mysql, you need to also initialize the database with [SQL file](initial-db/byteball-mysql.sql) and set connection params, e.g. in conf.json in the app data folder:
+
+```json
+{
+	"port": 6611,
+	"storage": "mysql",
+	"database": {
+		"max_connections": 30,
+		"host"     : "localhost",
+		"user"     : "obyte_user",
+		"password" : "yourmysqlpassword",
+		"name"     : "obyte_db"
+	}
+}
+```
+#### conf.bLight
+
+Work as light client (`true`) or full node (`false`).  The default is full client.
+
+#### conf.bServeAsHub
+
+Whether to serve as hub on the O<sub>byte</sub> network (store and forward e2e-encrypted messages for devices that connect to your hub).  The default is `false`.
+
+#### conf.myUrl
+
+If your node accepts incoming connections, this is its URL.  The node will share this URL with all its outgoing peers so that they can reconnect in any direction in the future.  By default the node doesn't share its URL even if it accepts connections.
+
+#### conf.bWantNewPeers
+
+Whether your node wants to learn about new peers from its current peers (`true`, the default) or not (`false`).  Set it to `false` to run your node in stealth mode so that only trusted peers can see its IP address (e.g. if you have online wallets on your server and don't want potential attackers to learn its IP).
+
+#### conf.socksHost and conf.socksPort
+
+Settings for connecting through optional SOCKS5 proxy.  Use them to connect through TOR and hide your IP address from peers even when making outgoing connections.  This is useful and highly recommended when you are running an online wallet on your server and want to make it harder for potential attackers to learn the IP address of the target to attack.  DNS queries are always routed through the proxy if it is enabled.
+
+#### conf.httpsProxy
+
+Setting for connecting through an optional HTTPS proxy. Use it when your local network can only access the Internet via an http proxy server. When both socks5 and http proxy are set, socks5 takes precedence. The configuration value is the full URL to the proxy server, eg. `http://proxy:3128`
+
+#### conf.smtpTransport, conf.smtpRelay, conf.smtpPort, conf.smtpUser, and conf.smtpPassword
+
+Settings for sending email. They are used e.g. if your node needs to send notifications. `smtpTransport` can take one of three values:
+* `local`: send email using locally installed `sendmail`. Normally, `sendmail` is not installed by default and when installed, it needs to be properly configured to actually send emails. If you choose this option, no other conf settings are required for email. This is the default option.
+* `direct`: send email by connecting directly to the recipient's SMTP server. This option is not recommended.
+* `relay`: send email through a relay server, like most email apps do. You need to also configure the server's host `smtpRelay`, its port `smtpPort` if it differs from the default port 25, and `smtpUser` and `smtpPassword` for authentication to the server.
+
+#### MySQL conf for faster syncing
+
+To lower disk load and increase sync speed, you can optionally disable flushing to disk every transaction, instead doing it once a second. This can be done by setting `innodb_flush_log_at_trx_commit=0` in your MySQL server config file (my.ini)
+
+```
+
+**File:** tools/validate_aa_definitions.js (L1-34)
+```javascript
+/*jslint node: true */
+'use strict';
+var async = require('async');
+var constants = require('../constants.js');
+var db = require('../db.js');
+var storage = require('../storage.js');
+var aa_validation = require('../aa_validation.js');
+
+
+var readGetterProps = function (aa_address, func_name, cb) {
+	storage.readAAGetterProps(db, aa_address, func_name, cb);
+};
+
+
+db.query("SELECT address, definition, mci, unit FROM aa_addresses ORDER BY rowid", rows => {
+	async.eachSeries(
+		rows,
+		function (row, cb) {
+			if (constants.bTestnet && ['BD7RTYgniYtyCX0t/a/mmAAZEiK/ZhTvInCMCPG5B1k=', 'EHEkkpiLVTkBHkn8NhzZG/o4IphnrmhRGxp4uQdEkco=', 'bx8VlbNQm2WA2ruIhx04zMrlpQq3EChK6o3k5OXJ130=', '08t8w/xuHcsKlMpPWajzzadmMGv+S4AoeV/QL1F3kBM='].indexOf(row.unit) >= 0) {
+				console.log(row.address, 'skipped');
+				return cb();
+			}
+			var arrDefinition = JSON.parse(row.definition);
+			aa_validation.validateAADefinition(arrDefinition, readGetterProps, row.mci, err => {
+				console.log(row.address, err);
+				err ? cb("validation of " + row.address + " failed: " + err) : cb();
+			});
+		},
+		function (err) {
+			console.log('done, err = ', err);
+			process.exit();
 		}
+	)
+});
 ```

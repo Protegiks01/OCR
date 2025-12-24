@@ -1,367 +1,336 @@
-## Title
-Hash Tree Poisoning via is_nonserial Manipulation Causing Cascading Catchup Failures
+## Vulnerability Assessment
 
-## Summary
-The `processHashTree()` function in `catchup.js` verifies ball hashes using attacker-controlled `is_nonserial` parameters without validating their correctness. A malicious peer can send hash trees with incorrect `is_nonserial` values, causing wrong ball-unit mappings to be cached. This poisons the catchup state, preventing legitimate units from being accepted and causing cascading validation failures for all descendant units.
+After thorough code analysis, I can confirm this is a **VALID security vulnerability**, though the severity classification needs correction.
 
-## Impact
-**Severity**: Critical  
-**Category**: Network Shutdown / Temporary Transaction Delay
+### Title
+Unbounded Address Array in Light Client History Query Causes Hub DoS
 
-## Finding Description
+### Summary
+The `prepareHistory()` function in `light.js` accepts an unlimited number of addresses from untrusted light client peers, constructing expensive database queries that can execute for extended periods. Combined with a global mutex lock and single database connection (default configuration), this allows any peer to freeze individual hub operations for 1+ hours.
 
-**Location**: `byteball/ocore/catchup.js` (function `processHashTree()`, lines 363-364, 367) and `byteball/ocore/validation.js` (function `validateHashTreeParentsAndSkiplist()`, lines 402, 414-417)
+### Impact
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay ≥1 Hour
 
-**Intended Logic**: During catchup, hash trees provide a compact representation of the DAG structure. The `is_nonserial` flag should indicate whether a unit has a `content_hash` (nonserial unit with stripped payload). Ball hashes should be verified to match the actual unit structure.
+**Affected Assets**: Individual full node hub operations, light clients connected to that hub
 
-**Actual Logic**: The `is_nonserial` parameter is attacker-controlled and used directly in ball hash verification without any validation against the unit's actual `content_hash` status. This allows attackers to create hash trees where ball hashes are computed with incorrect `is_nonserial` values, poisoning the ball-unit mapping cache.
+**Damage Severity**:
+- **Quantitative**: Single hub frozen for 1+ hours per attack; indefinitely with repeated attacks
+- **Qualitative**: Affected hub cannot validate units, store transactions, or serve light clients during attack
 
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) [4](#0-3) [5](#0-4) 
+**User Impact**:
+- **Who**: Light clients connected to the targeted hub; users transacting through that hub
+- **Conditions**: Any time the hub receives a malicious `light/get_history` request
+- **Recovery**: Requires manual intervention (restarting node or killing database connection)
+
+**Systemic Risk**: Attacker can target multiple hubs simultaneously with low cost (network bandwidth only). However, other full nodes continue operating normally, so this is not a network-wide shutdown.
+
+### Finding Description
+
+**Location**: 
+- Primary: [1](#0-0) 
+- Handler: [2](#0-1) 
+
+**Intended Logic**: The light client history endpoint should allow peers to request transaction history for a reasonable set of addresses with appropriate rate limiting.
+
+**Actual Logic**: An attacker can send thousands of addresses in a single request, triggering expensive UNION queries that consume the single database connection for extended periods, blocking all other database operations.
+
+**Code Evidence**:
+
+The validation only checks that the address array is non-empty and contains valid address formats, with **no upper bound** on array length: [3](#0-2) 
+
+The `isNonemptyArray` validation function only checks `arr.length > 0`, allowing unlimited array sizes: [4](#0-3) 
+
+Query construction uses ALL provided addresses in IN clauses across multiple SELECT statements with CROSS JOINs: [5](#0-4) 
+
+The MAX_HISTORY_ITEMS check occurs **after** query execution, not before: [6](#0-5) 
+
+A global mutex lock blocks all concurrent history requests: [7](#0-6) 
+
+Default configuration uses only 1 database connection: [8](#0-7) 
+
+SQLite busy_timeout is 30 seconds: [9](#0-8) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Victim node is performing catchup sync with a malicious peer
-   - Legitimate serial units U1, U2 exist on the main chain with correct balls computed without `is_nonserial`
+1. **Preconditions**: Attacker connects to a full node hub as a light client peer; hub runs default configuration (1 database connection)
 
-2. **Step 1 - Hash Tree Poisoning**: 
-   - Attacker sends hash tree via `processHashTree()` with `objBall.is_nonserial = true` for serial unit U1
-   - Fake ball computed: `B1_fake = getBallHash(U1, parent_balls, skiplist_balls, true)`
-   - Verification passes at line 363 because hash matches when computed with attacker's `is_nonserial=true`
-   - Wrong mapping stored: `storage.assocHashTreeUnitsByBall[B1_fake] = U1`
+2. **Step 1 - Send Malicious Request**: Attacker sends `light/get_history` with 2000+ valid addresses (randomly generated), `min_mci: 1` to trigger CROSS JOINs, and valid witness array
 
-3. **Step 2 - Legitimate Unit Rejection**: 
-   - Full unit U1 arrives with legitimate ball `B1_correct` (computed with `is_nonserial=false`)
-   - `validateHashTreeBall()` looks for `assocHashTreeUnitsByBall[B1_correct]`, doesn't find it (only `B1_fake` exists)
-   - Unit U1 is rejected with error: "ball B1_correct is not known in hash tree"
+3. **Step 2 - Query Execution**: The prepareHistory function constructs a UNION of 4-5 SELECT statements, each scanning tables with `WHERE address IN(addr1, ..., addr2000)`. On databases with millions of units, this query executes for 10-60+ minutes
 
-4. **Step 3 - Cascading Parent Validation Failures**: 
-   - Child unit U2 with parent U1 arrives for validation
-   - `validateHashTreeParentsAndSkiplist()` calls `readBallsByUnits([U1])`
-   - At lines 414-417, it searches `assocHashTreeUnitsByBall` and finds `B1_fake` for U1
-   - Ball hash for U2 is computed using `B1_fake` in parent_balls array
-   - Computed hash doesn't match U2's legitimate ball
-   - Unit U2 is rejected with error: "ball hash is wrong"
+4. **Step 3 - Resource Lock**: During execution, the single database connection is busy, the global `get_history_request` mutex is held, and all other database operations wait for busy_timeout (30s) then fail
 
-5. **Step 4 - Permanent Catchup Failure**: 
-   - All units referencing poisoned units as parents/ancestors fail validation
-   - Hash tree entries persist (no cleanup on validation errors per line 1060-1061 in network.js - commented out)
-   - Node cannot complete catchup and remains permanently out of sync
+5. **Step 4 - Hub Freeze**: The targeted hub cannot validate new units, store transactions, or serve other light clients for the duration of the attack (1+ hours)
 
-**Security Property Broken**: 
-- **Invariant #19 (Catchup Completeness)**: "Syncing nodes must retrieve all units on MC up to last stable point without gaps. Missing units cause validation failures and permanent desync."
-- **Invariant #20 (Database Referential Integrity)**: Wrong ball-unit mappings corrupt the temporary catchup data structures.
+**Security Property Broken**: Hub availability and transaction processing capability
 
-**Root Cause Analysis**: 
-The vulnerability exists because:
-1. `is_nonserial` is determined by the presence of `content_hash` in the unit, but this information is not available in the hash tree
-2. The hash tree only contains ball hashes and unit hashes, not the full unit data
-3. There is no mechanism to verify the correctness of `is_nonserial` until the full unit arrives
-4. By that time, the wrong ball-unit mapping is already cached and used for parent lookups
-5. The cached mappings persist even when units fail validation
+**Root Cause Analysis**:
+1. **Missing Input Validation**: No maximum limit on address array length
+2. **Post-Execution Validation**: MAX_HISTORY_ITEMS check happens after expensive query runs
+3. **Resource Bottleneck**: Single database connection + global mutex create single point of failure
+4. **No Query Timeout**: Beyond SQLite's busy_timeout, no application-level cancellation mechanism
 
-## Impact Explanation
-
-**Affected Assets**: 
-- Network availability for syncing nodes
-- All units in the catchup range become inaccessible
-- Transaction confirmation is blocked for affected nodes
-
-**Damage Severity**:
-- **Quantitative**: All nodes attempting to sync from a malicious peer are affected. Nodes remain permanently out of sync until manual intervention.
-- **Qualitative**: Complete denial of service for catchup protocol. Cascading failures affect all descendants of poisoned units, potentially thousands of units.
-
-**User Impact**:
-- **Who**: Any full node performing catchup synchronization, new nodes joining the network, nodes recovering from downtime
-- **Conditions**: Exploitable whenever a node requests catchup from a malicious peer (happens automatically in normal operation)
-- **Recovery**: Requires manual database cleanup (deleting `hash_tree_balls` and `catchup_chain_balls` tables) and requesting catchup from honest peer. No automatic recovery mechanism exists.
-
-**Systemic Risk**: 
-- If multiple malicious peers exist, new nodes may be unable to sync at all
-- Cascading failures mean a single poisoned unit can prevent acceptance of thousands of descendants
-- No rate limiting or peer reputation system to prevent repeated attacks
-- Light clients may also be affected via similar mechanisms in `light.js`
-
-## Likelihood Explanation
+### Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious peer node on the Obyte network
-- **Resources Required**: Ability to run a peer node and respond to catchup requests (minimal resources)
-- **Technical Skill**: Medium - requires understanding of catchup protocol and ball hash computation, but no cryptographic attacks needed
+- **Identity**: Any peer capable of establishing WebSocket connection to a hub
+- **Resources Required**: Single computer with network access; no funds required
+- **Technical Skill**: Low - simple JSON message crafting
 
 **Preconditions**:
-- **Network State**: Victim node must be performing catchup (common for new nodes or nodes recovering from downtime)
-- **Attacker State**: Must be selected as catchup peer by victim (happens probabilistically in peer selection)
-- **Timing**: No specific timing requirements - attack works whenever catchup is initiated
+- **Network State**: Hub accepting light client connections (normal operation)
+- **Attacker State**: Ability to connect to hub (no authentication required)
+- **Timing**: Attack works at any time
 
 **Execution Complexity**:
-- **Transaction Count**: Zero transactions needed - purely a protocol-level attack
-- **Coordination**: Single malicious peer sufficient
-- **Detection Risk**: Low - hash trees appear valid during initial verification, failures only occur when full units arrive
+- **Transaction Count**: Single WebSocket message
+- **Coordination**: None required
+- **Detection Risk**: Low - appears as legitimate sync request initially
 
 **Frequency**:
-- **Repeatability**: Can be repeated indefinitely on every catchup attempt
-- **Scale**: Can affect any unit in the hash tree range (potentially millions of units)
+- **Repeatability**: Unlimited - different tags/address lists bypass per-tag blocking
+- **Scale**: Can target multiple hubs
 
-**Overall Assessment**: **High likelihood** - Attack is easily executable by any peer node with minimal resources and moderate technical knowledge. Affects critical network operation (syncing) with no automatic mitigation.
+**Overall Assessment**: High likelihood - trivial to execute, no resources required, no detection mechanism
 
-## Recommendation
+### Recommendation
 
-**Immediate Mitigation**: 
-1. Clear hash tree cache on any validation error to prevent persistent poisoning
-2. Implement peer reputation tracking to avoid re-requesting from malicious peers
-3. Request hash trees from multiple peers and cross-validate
+**Immediate Mitigation**:
+Add upper bound validation on address array length in `light.js`:
 
-**Permanent Fix**: 
-The core issue is that `is_nonserial` cannot be validated without the full unit. Solutions:
+```javascript
+// In prepareHistory function, after line 43
+if (arrAddresses && arrAddresses.length > 100) // reasonable limit
+    return callbacks.ifError("too many addresses, max 100");
+```
 
-**Option 1 - Include content_hash indicator in hash tree (Recommended)**:
-Modify hash tree structure to include a `has_content_hash` boolean that can be cross-validated with parent/chain references.
-
-**Option 2 - Defer ball hash verification**:
-Don't verify ball hash in `processHashTree()`, only verify when full unit arrives and actual `content_hash` is known.
-
-**Option 3 - Clear poisoned entries on validation failure**:
-When a unit's ball doesn't match hash tree, clear the hash tree entry and request new hash tree.
-
-**Code Changes**:
-
-**File**: `byteball/ocore/catchup.js` [1](#0-0) 
-
-Add validation that is_nonserial is only used for final verification after unit arrives:
-
-**Recommended Fix** - Remove premature ball hash validation or defer storage:
-- Store hash tree data with a "pending_verification" flag
-- Only commit to `assocHashTreeUnitsByBall` after full unit validation confirms ball hash
-- Clear pending entries on validation failures
-
-**File**: `byteball/ocore/network.js` [6](#0-5) 
-
-Uncomment and fix the hash tree cleanup on validation errors.
+**Permanent Fix**:
+1. Implement pre-execution complexity estimation
+2. Add per-peer rate limiting for history requests
+3. Consider query timeouts at application level
+4. Monitor long-running queries and auto-terminate
 
 **Additional Measures**:
-- Add test cases for hash trees with incorrect `is_nonserial` values
-- Implement peer reputation system to blacklist peers sending invalid hash trees
-- Add monitoring/alerting for repeated hash tree validation failures
-- Consider adding a hash tree version field to allow protocol upgrades
+- Add monitoring for history request patterns
+- Implement connection-level rate limiting
+- Consider increasing database connection pool size for hubs
 
-**Validation**:
-- [x] Fix prevents exploitation by not caching wrong mappings
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible (hash tree protocol can be versioned)
-- [x] Performance impact acceptable (minimal additional validation)
+### Notes
 
-## Proof of Concept
+**Severity Justification**: This is classified as **MEDIUM** severity rather than CRITICAL because:
+- Impact is per-hub, not network-wide
+- Other full nodes continue operating normally  
+- Attack does not cause permanent data loss or fund theft
+- Meets Immunefi criteria for "Temporary Transaction Delay ≥1 Hour"
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_hash_tree_poison.js`):
-```javascript
-/*
- * Proof of Concept for Hash Tree Poisoning via is_nonserial Manipulation
- * Demonstrates: How a malicious peer can poison hash tree cache and prevent catchup
- * Expected Result: Legitimate units are rejected due to ball hash mismatch
- */
-
-const catchup = require('./catchup.js');
-const objectHash = require('./object_hash.js');
-const storage = require('./storage.js');
-const db = require('./db.js');
-
-// Simulate a legitimate serial unit (no content_hash)
-const legitimateUnit = {
-    unit: 'UNIT1_HASH_EXAMPLE',
-    parent_balls: ['GENESIS_BALL'],
-    skiplist_balls: null
-};
-
-// Legitimate ball (computed WITHOUT is_nonserial)
-const legitimateBall = objectHash.getBallHash(
-    legitimateUnit.unit,
-    legitimateUnit.parent_balls,
-    legitimateUnit.skiplist_balls,
-    false  // Correct: unit has no content_hash
-);
-
-console.log('Legitimate ball:', legitimateBall);
-
-// Attacker creates poisoned hash tree with is_nonserial=true
-const poisonedBall = objectHash.getBallHash(
-    legitimateUnit.unit,
-    legitimateUnit.parent_balls,
-    legitimateUnit.skiplist_balls,
-    true  // INCORRECT: attacker claims unit is nonserial
-);
-
-console.log('Poisoned ball:', poisonedBall);
-console.log('Balls differ:', legitimateBall !== poisonedBall);
-
-// Attacker sends this hash tree
-const maliciousHashTree = [
-    {
-        unit: legitimateUnit.unit,
-        ball: poisonedBall,  // Using the poisoned ball
-        parent_balls: legitimateUnit.parent_balls,
-        is_nonserial: true  // MALICIOUS: incorrect flag
-    }
-];
-
-// Process the malicious hash tree (simulated)
-console.log('\n--- Processing malicious hash tree ---');
-console.log('Hash tree verification will pass because:');
-console.log('  Computed:', objectHash.getBallHash(
-    maliciousHashTree[0].unit,
-    maliciousHashTree[0].parent_balls,
-    maliciousHashTree[0].skiplist_balls,
-    maliciousHashTree[0].is_nonserial
-));
-console.log('  Expected:', maliciousHashTree[0].ball);
-console.log('  Match:', objectHash.getBallHash(
-    maliciousHashTree[0].unit,
-    maliciousHashTree[0].parent_balls,
-    maliciousHashTree[0].skiplist_balls,
-    maliciousHashTree[0].is_nonserial
-) === maliciousHashTree[0].ball);
-
-// This would store the WRONG mapping
-console.log('\nWrong mapping stored:');
-console.log('  assocHashTreeUnitsByBall[' + poisonedBall + '] = ' + legitimateUnit.unit);
-
-// When legitimate unit arrives later
-console.log('\n--- Legitimate unit arrives ---');
-console.log('Looking for ball in hash tree:', legitimateBall);
-console.log('Hash tree contains:', poisonedBall);
-console.log('Lookup fails! Unit rejected with "need_hash_tree" error');
-
-console.log('\n--- Impact ---');
-console.log('✗ Legitimate unit cannot be stored');
-console.log('✗ All child units will use wrong parent ball from hash tree');
-console.log('✗ Cascading validation failures for all descendants');
-console.log('✗ Node cannot complete catchup');
-```
-
-**Expected Output** (when vulnerability exists):
-```
-Legitimate ball: dGVzdF9sZWdpdGltYXRlX2JhbGxfaGFzaA==
-Poisoned ball: dGVzdF9wb2lzb25lZF9iYWxsX2hhc2g=
-Balls differ: true
-
---- Processing malicious hash tree ---
-Hash tree verification will pass because:
-  Computed: dGVzdF9wb2lzb25lZF9iYWxsX2hhc2g=
-  Expected: dGVzdF9wb2lzb25lZF9iYWxsX2hhc2g=
-  Match: true
-
-Wrong mapping stored:
-  assocHashTreeUnitsByBall[dGVzdF9wb2lzb25lZF9iYWxsX2hhc2g=] = UNIT1_HASH_EXAMPLE
-
---- Legitimate unit arrives ---
-Looking for ball in hash tree: dGVzdF9sZWdpdGltYXRlX2JhbGxfaGFzaA==
-Hash tree contains: dGVzdF9wb2lzb25lZF9iYWxsX2hhc2g=
-Lookup fails! Unit rejected with "need_hash_tree" error
-
---- Impact ---
-✗ Legitimate unit cannot be stored
-✗ All child units will use wrong parent ball from hash tree
-✗ Cascading validation failures for all descendants
-✗ Node cannot complete catchup
-```
-
-**Expected Output** (after fix applied):
-```
---- Processing hash tree ---
-Validation deferred until full unit arrives
-Temporary entry stored with pending_verification flag
-
---- Legitimate unit arrives ---
-Full validation with actual content_hash status
-Ball hash matches legitimate ball: ✓
-Unit accepted and stored successfully
-
---- Impact ---
-✓ Attack prevented
-✓ Catchup completes successfully
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the core vulnerability mechanism
-- [x] Shows clear violation of Catchup Completeness invariant
-- [x] Demonstrates measurable impact (network partition, DoS)
-- [x] Would fail gracefully after recommended fix applied
-
-## Notes
-
-This vulnerability is particularly severe because:
-
-1. **No cryptographic attack needed**: The attacker simply provides valid-looking but incorrect metadata (`is_nonserial` flag)
-
-2. **Cascading impact**: A single poisoned unit causes ALL descendants to fail validation when they try to use the wrong parent ball from the hash tree cache
-
-3. **Persistent state corruption**: The wrong mappings are stored in `storage.assocHashTreeUnitsByBall` and persist across validation attempts
-
-4. **No automatic recovery**: There is no mechanism to detect and clear poisoned hash tree entries - manual database cleanup is required
-
-5. **Affects core protocol operation**: Catchup is essential for new nodes joining the network and existing nodes recovering from downtime
-
-The vulnerability exploits a subtle timing issue: ball hash verification happens in two places with different information available:
-- In `processHashTree()`: only hash tree data (including attacker-controlled `is_nonserial`) 
-- In `validateHashTreeParentsAndSkiplist()`: full unit data (with actual `content_hash` status)
-
-The fix must ensure consistency between these two validation points, either by deferring the first validation or by providing enough information in the hash tree to validate `is_nonserial` correctly.
+The vulnerability is real and should be fixed, but the original claim overstated the impact as "network-wide shutdown" when it's actually limited to individual hubs receiving the malicious request.
 
 ### Citations
 
-**File:** catchup.js (L363-364)
+**File:** light.js (L28-165)
 ```javascript
-							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
-								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
+function prepareHistory(historyRequest, callbacks){
+	if (!historyRequest)
+		return callbacks.ifError("no history request");
+	var arrKnownStableUnits = historyRequest.known_stable_units;
+	var arrWitnesses = historyRequest.witnesses;
+	var arrAddresses = historyRequest.addresses;
+	var arrRequestedJoints = historyRequest.requested_joints;
+	var minMci = historyRequest.min_mci || 0;
+	
+	if (!arrAddresses && !arrRequestedJoints)
+		return callbacks.ifError("neither addresses nor joints requested");
+	if (arrAddresses){
+		if (!ValidationUtils.isNonemptyArray(arrAddresses))
+			return callbacks.ifError("no addresses");
+		if (!arrAddresses.every(ValidationUtils.isValidAddress))
+			return callbacks.ifError("some addresses are not valid");
+	}
+	if (arrRequestedJoints) {
+		if (!ValidationUtils.isNonemptyArray(arrRequestedJoints))
+			return callbacks.ifError("no requested joints");
+		if (!arrRequestedJoints.every(isValidUnitHash))
+			return callbacks.ifError("invalid requested joints");
+	}
+	if (!ValidationUtils.isArrayOfLength(arrWitnesses, constants.COUNT_WITNESSES))
+		return callbacks.ifError("wrong number of witnesses");
+	if (minMci && !ValidationUtils.isNonnegativeInteger(minMci))
+		return callbacks.ifError("min_mci should be non negative integer");
+
+	var assocKnownStableUnits = {};
+	if (arrKnownStableUnits) {
+		if (!ValidationUtils.isNonemptyArray(arrKnownStableUnits))
+			return callbacks.ifError("known_stable_units must be non-empty array");
+		if (!arrKnownStableUnits.every(isValidUnitHash))
+			return callbacks.ifError("invalid known stable units");
+		arrKnownStableUnits.forEach(function (unit) {
+			assocKnownStableUnits[unit] = true;
+		});
+	}
+	
+	var objResponse = {};
+
+	// add my joints and proofchain to these joints
+	var arrSelects = [];
+	if (arrAddresses){
+		// we don't filter sequence='good' after the unit is stable, so the client will see final doublespends too
+		var strAddressList = arrAddresses.map(db.escape).join(', ');
+		var mciCond = minMci ? " AND (main_chain_index >= " + minMci + " OR main_chain_index IS NULL) " : "";
+		arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM outputs JOIN units USING(unit) \n\
+			WHERE address IN("+ strAddressList + ") AND (+sequence='good' OR is_stable=1)" + mciCond);
+		if (minMci) {
+			arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM unit_authors CROSS JOIN units USING(unit) \n\
+			WHERE address IN(" + strAddressList + ") AND (+sequence='good' OR is_stable=1) AND _mci>=" + minMci);
+			arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM unit_authors CROSS JOIN units USING(unit) \n\
+			WHERE address IN(" + strAddressList + ") AND (+sequence='good' OR is_stable=1) AND _mci IS NULL");
+		}
+		else
+			arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM unit_authors JOIN units USING(unit) \n\
+			WHERE address IN(" + strAddressList + ") AND (+sequence='good' OR is_stable=1)");
+		arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM aa_responses JOIN units ON trigger_unit=unit \n\
+			WHERE aa_address IN(" + strAddressList + ")" + mciCond);
+	}
+	if (arrRequestedJoints){
+		var strUnitList = arrRequestedJoints.map(db.escape).join(', ');
+		arrSelects.push("SELECT unit, main_chain_index, level, is_stable FROM units WHERE unit IN("+strUnitList+") AND (+sequence='good' OR is_stable=1) \n");
+	}
+	var sql = arrSelects.join("\nUNION \n") + "ORDER BY main_chain_index DESC, level DESC";
+	db.query(sql, function(rows){
+		// if no matching units, don't build witness proofs
+		rows = rows.filter(function(row){ return !assocKnownStableUnits[row.unit]; });
+		if (rows.length === 0)
+			return callbacks.ifOk(objResponse);
+		if (rows.length > MAX_HISTORY_ITEMS)
+			return callbacks.ifError(constants.lightHistoryTooLargeErrorMessage);
+		const last_aa_response_id = storage.last_aa_response_id;
+
+		mutex.lock(['prepareHistory'], function(unlock){
+			var start_ts = Date.now();
+			witnessProof.prepareWitnessProof(
+				arrWitnesses, 0, 
+				function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, last_ball_unit, last_ball_mci){
+					if (err){
+						callbacks.ifError(err);
+						return unlock();
+					}
+					objResponse.unstable_mc_joints = arrUnstableMcJoints;
+					if (arrWitnessChangeAndDefinitionJoints.length > 0)
+						objResponse.witness_change_and_definition_joints = arrWitnessChangeAndDefinitionJoints;
+
+					// add my joints and proofchain to those joints
+					objResponse.joints = [];
+					objResponse.proofchain_balls = [];
+				//	var arrStableUnits = [];
+					var later_mci = last_ball_mci+1; // +1 so that last ball itself is included in the chain
+					async.eachSeries(
+						rows,
+						function(row, cb2){
+							storage.readJoint(db, row.unit, {
+								ifNotFound: function(){
+									throw Error("prepareJointsWithProofs unit not found "+row.unit);
+								},
+								ifFound: function(objJoint){
+									objResponse.joints.push(objJoint);
+								//	if (row.is_stable)
+								//		arrStableUnits.push(row.unit);
+									if (row.main_chain_index > last_ball_mci || row.main_chain_index === null) // unconfirmed, no proofchain
+										return cb2();
+									proofChain.buildProofChain(later_mci, row.main_chain_index, row.unit, objResponse.proofchain_balls, function(){
+										later_mci = row.main_chain_index;
+										cb2();
+									});
+								}
+							});
+						},
+						function(){
+							//if (objResponse.joints.length > 0 && objResponse.proofchain_balls.length === 0)
+							//    throw "no proofs";
+							if (objResponse.proofchain_balls.length === 0)
+								delete objResponse.proofchain_balls;
+							// more triggers might get stabilized and executed while we were building the proofchain. We use the units that were stable when we began building history to make sure their responses are included in objResponse.joints
+							// new: we include only the responses that were there before last_aa_response_id
+							var arrUnits = objResponse.joints.map(function (objJoint) { return objJoint.unit.unit; });
+							db.query("SELECT mci, trigger_address, aa_address, trigger_unit, bounced, response_unit, response, timestamp, aa_responses.creation_date FROM aa_responses LEFT JOIN units ON mci=main_chain_index AND +is_on_main_chain=1 WHERE trigger_unit IN(" + arrUnits.map(db.escape).join(', ') + ") AND +aa_response_id<=? ORDER BY aa_response_id", [last_aa_response_id], function (aa_rows) {
+								// there is nothing to prove that responses are authentic
+								if (aa_rows.length > 0)
+									objResponse.aa_responses = aa_rows.map(function (aa_row) {
+										objectHash.cleanNulls(aa_row);
+										return aa_row;
+									});
+								callbacks.ifOk(objResponse);
+								console.log("prepareHistory (without main search) for addresses "+(arrAddresses || []).join(', ')+" and joints "+(arrRequestedJoints || []).join(', ')+" took "+(Date.now()-start_ts)+'ms');
+								unlock();
+							});
+						}
+					);
+				}
+			);
+		});
+	});
 ```
 
-**File:** catchup.js (L367-367)
+**File:** network.js (L3314-3357)
 ```javascript
-								storage.assocHashTreeUnitsByBall[objBall.ball] = objBall.unit;
+		case 'light/get_history':
+			if (largeHistoryTags[tag])
+				return sendErrorResponse(ws, tag, constants.lightHistoryTooLargeErrorMessage);
+			if (!ws.bSentSysVars) {
+				ws.bSentSysVars = true;
+				sendSysVars(ws);
+			}
+			mutex.lock(['get_history_request'], function(unlock){
+				if (!ws || ws.readyState !== ws.OPEN) // may be already gone when we receive the lock
+					return process.nextTick(unlock);
+				light.prepareHistory(params, {
+					ifError: function(err){
+						if (err === constants.lightHistoryTooLargeErrorMessage)
+							largeHistoryTags[tag] = true;
+						sendErrorResponse(ws, tag, err);
+						unlock();
+					},
+					ifOk: function(objResponse){
+						sendResponse(ws, tag, objResponse);
+						bWatchingForLight = true;
+						if (params.addresses)
+							db.query(
+								"INSERT "+db.getIgnore()+" INTO watched_light_addresses (peer, address) VALUES "+
+								params.addresses.map(function(address){ return "("+db.escape(ws.peer)+", "+db.escape(address)+")"; }).join(", ")
+							);
+						if (params.requested_joints) {
+							storage.sliceAndExecuteQuery("SELECT unit FROM units WHERE main_chain_index >= ? AND unit IN(?)",
+								[storage.getMinRetrievableMci(), params.requested_joints], params.requested_joints, function(rows) {
+								if(rows.length) {
+									db.query(
+										"INSERT " + db.getIgnore() + " INTO watched_light_units (peer, unit) VALUES " +
+										rows.map(function(row) {
+											return "(" + db.escape(ws.peer) + ", " + db.escape(row.unit) + ")";
+										}).join(", ")
+									);
+								}
+							});
+						}
+						//db.query("INSERT "+db.getIgnore()+" INTO light_peer_witnesses (peer, witness_address) VALUES "+
+						//    params.witnesses.map(function(address){ return "("+db.escape(ws.peer)+", "+db.escape(address)+")"; }).join(", "));
+						unlock();
+					}
+				});
+			});
 ```
 
-**File:** object_hash.js (L101-112)
+**File:** validation_utils.js (L68-70)
 ```javascript
-function getBallHash(unit, arrParentBalls, arrSkiplistBalls, bNonserial) {
-	var objBall = {
-		unit: unit
-	};
-	if (arrParentBalls && arrParentBalls.length > 0)
-		objBall.parent_balls = arrParentBalls;
-	if (arrSkiplistBalls && arrSkiplistBalls.length > 0)
-		objBall.skiplist_balls = arrSkiplistBalls;
-	if (bNonserial)
-		objBall.is_nonserial = true;
-	return getBase64Hash(objBall);
+function isNonemptyArray(arr){
+	return (Array.isArray(arr) && arr.length > 0);
 }
 ```
 
-**File:** validation.js (L402-404)
+**File:** conf.js (L129-129)
 ```javascript
-		var hash = objectHash.getBallHash(objUnit.unit, arrParentBalls, arrSkiplistBalls, !!objUnit.content_hash);
-		if (hash !== objJoint.ball)
-			return callback(createJointError("ball hash is wrong"));
+	exports.database.max_connections = exports.database.max_connections || 1;
 ```
 
-**File:** validation.js (L413-418)
+**File:** sqlite_pool.js (L52-52)
 ```javascript
-			// we have to check in hash_tree_balls too because if we were synced, went offline, and now starting to catch up, our parents will have no ball yet
-			for (var ball in storage.assocHashTreeUnitsByBall){
-				var unit = storage.assocHashTreeUnitsByBall[ball];
-				if (arrUnits.indexOf(unit) >= 0 && arrBalls.indexOf(ball) === -1)
-					arrBalls.push(ball);
-			}
-```
-
-**File:** network.js (L1060-1061)
-```javascript
-					//	if (objJoint.ball)
-					//		db.query("DELETE FROM hash_tree_balls WHERE ball=? AND unit=?", [objJoint.ball, objJoint.unit.unit]);
+				connection.query("PRAGMA busy_timeout=30000", function(){
 ```

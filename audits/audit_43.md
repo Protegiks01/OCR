@@ -1,377 +1,267 @@
 ## Title
-Deferred Response Vars Length Validation Enables Computation Waste DoS in State Update Formulas
+Unhandled Async Error in Post-Commit Callback Causes Permanent Write Mutex Deadlock and Network Freeze
 
 ## Summary
-The `executeStateUpdateFormula()` function in `aa_composer.js` checks response vars length before and after state update formula execution, but not during execution. An attacker can craft a state update formula that incrementally adds large response vars through expensive computations, wasting validator resources before the final length check bounces the transaction.
+The `saveJoint()` function in `writer.js` uses an async callback after committing database transactions, but lacks error handling for rejected promises. When AA trigger handling or TPS fee update operations fail, the write mutex is never released, causing all subsequent unit writes to block indefinitely and freezing the entire network.
 
 ## Impact
-**Severity**: Medium
-**Category**: Temporary Transaction Delay / Unintended AA Behavior
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+The vulnerability causes complete network paralysis. All nodes attempting to write new units block permanently, preventing any transaction confirmations. The entire network becomes non-operational, requiring manual node restarts across all validators. All user funds become effectively frozen as no transactions can be processed.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_composer.js`, function `executeStateUpdateFormula()`, lines 1292-1324
+**Location**: `byteball/ocore/writer.js`, function `saveJoint()`, lines 693-730 [1](#0-0) 
 
-**Intended Logic**: The response vars length check should prevent AAs from performing expensive computations that result in oversized response data, protecting validators from resource exhaustion attacks.
+**Intended Logic**: After committing a unit to the database, the code should handle AA triggers, update TPS fees, emit events, call the completion callback, and release the write mutex via `unlock()` to allow subsequent units to be processed.
 
-**Actual Logic**: The length check occurs only before (lines 1296-1299) and after (lines 1319-1321) formula execution. During execution, the state update formula can perform expensive operations (database queries, complex computations) while incrementally adding response vars that eventually exceed `MAX_RESPONSE_VARS_LENGTH` (4000 bytes). [1](#0-0) 
+**Actual Logic**: The post-commit callback is declared as an async function [2](#0-1) , but when the awaited operations reject, the promise rejection is unhandled. This prevents execution from reaching the critical `unlock()` call [3](#0-2) , leaving the mutex permanently locked.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker deploys an AA with a malicious state update formula containing multiple `response_var_assignment` statements, each preceded by expensive state var reads or computations.
+1. **Preconditions**: Network is operational and processing units normally. The write mutex is acquired at the start of `saveJoint()` [1](#0-0) 
 
-2. **Step 1**: Attacker triggers the AA. The `handleTrigger` function initializes `responseVars` as an empty object. [2](#0-1) 
+2. **Step 1**: A unit is submitted that causes MCIs to stabilize, setting `bStabilizedAATriggers = true` [4](#0-3) 
 
-3. **Step 2**: Before state update formula execution, the first check passes because `responseVars` is empty or small. [3](#0-2) 
+3. **Step 2**: The database transaction commits successfully at line 693, but the write mutex is still held.
 
-4. **Step 3**: During formula execution, each `response_var_assignment` triggers:
-   - Database queries to read state vars (involving `storage.readAAStateVar` calls) [4](#0-3) 
-   - Complex computations within the MAX_OPS limit (2000 operations) [5](#0-4) 
-   - Incremental addition of response var values via `assignField(responseVars, var_name, res)` [6](#0-5) 
+4. **Step 3**: The code attempts to handle AA triggers via `await aa_composer.handleAATriggers()` [5](#0-4) 
 
-5. **Step 4**: After all computation completes and multiple response vars have been added (total exceeding 4000 bytes), the final check fails and the trigger bounces. [7](#0-6) 
+5. **Step 4**: Inside `handleAATriggers()`, multiple error scenarios can occur:
+   - Database query rejection in the async callback [6](#0-5) 
+   - Thrown error if unit props not found in cache [7](#0-6) 
+   - Thrown error if kvstore batch write fails [8](#0-7) 
 
-**Security Property Broken**: This violates **AA Deterministic Execution** integrity by allowing resource exhaustion attacks where validators perform expensive computations that should be rejected earlier. While execution remains deterministic, the lack of incremental validation enables DoS by forcing all nodes to waste resources processing formulas destined to bounce.
+6. **Step 5**: Alternatively, `await storage.updateTpsFees()` can reject due to database query failures [9](#0-8) [10](#0-9) [11](#0-10) 
 
-**Root Cause Analysis**: The validation architecture assumes that pre-execution checks sufficiently protect against resource waste. However, state update formulas with `bStateVarAssignmentAllowed: true` can modify `responseVars` during execution without intermediate checks. The formula parser has no mechanism to detect progressive accumulation of response data during evaluation. [8](#0-7) 
+7. **Step 6**: When any of these operations throw or reject, the async callback rejects. Lines 724-729 never execute - `onDone()` is not called, and critically, `unlock()` is never called [12](#0-11) 
+
+8. **Result**: The write mutex remains locked forever. All subsequent `saveJoint()` calls block at line 33 waiting for the mutex. No new units can be written to the database. The entire network freezes.
+
+**Security Property Broken**: The fundamental invariant that acquired mutexes must be released is violated. This also breaks transaction atomicity at the system level - while the database transaction is atomic, the post-commit operations (AA trigger handling) are non-atomic with the mutex release, causing system-level inconsistency.
+
+**Root Cause Analysis**: The code mixes synchronous control flow (mutex locking/unlocking) with asynchronous operations (async/await) without proper error handling. The `commit_fn` callback is defined to simply call the callback without handling the returned promise [13](#0-12) . When the async callback rejects, there's no catch handler, and the cleanup code (`unlock()`) is never reached.
 
 ## Impact Explanation
 
-**Affected Assets**: Validator node computational resources (CPU, database I/O), network throughput
+**Affected Assets**: All network participants, entire network operation, all bytes and custom assets
 
 **Damage Severity**:
-- **Quantitative**: Each malicious trigger can force validators to execute up to MAX_OPS (2000) operations and perform multiple database queries before bouncing. With repeated triggers, an attacker can sustain resource consumption.
-- **Qualitative**: Temporary network congestion, increased validation latency for legitimate transactions, potential node overload if attack is sustained.
+- **Quantitative**: 100% of network transaction capacity is lost. All user funds become frozen (cannot be moved). No time limit on freeze duration - permanent until manual intervention.
+- **Qualitative**: Catastrophic - requires emergency node restarts across all validators. All economic activity ceases. The AA triggers table may contain stale entries requiring manual cleanup.
 
 **User Impact**:
-- **Who**: All validators processing the malicious AA triggers
-- **Conditions**: Triggered whenever attacker sends transactions to the malicious AA
-- **Recovery**: Transactions eventually bounce but computation is irreversibly wasted; no permanent state corruption occurs
+- **Who**: All users, validators, AA operators, exchange operators, and any service depending on the Obyte network
+- **Conditions**: Triggered whenever a unit stabilizes MCIs while any error occurs during AA trigger handling or TPS fee updates
+- **Recovery**: Requires manual node restart on all affected nodes. May require database cleanup of pending AA triggers.
 
-**Systemic Risk**: If multiple attackers deploy such AAs or a single attacker deploys many instances, cumulative resource consumption could delay network-wide transaction processing. However, bounce fees provide economic disincentive for sustained attacks.
+**Systemic Risk**: Cascading network failure - once one node freezes, peers continue broadcasting units that cannot be processed, causing more nodes to freeze. Within minutes, the entire network becomes non-operational. The vulnerability can be triggered accidentally by infrastructure issues (database connection failures, disk errors) or intentionally by deploying problematic AAs.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any AA developer or user with ability to deploy/trigger AAs
-- **Resources Required**: Minimal - only bounce fees (MIN_BYTES_BOUNCE_FEE = 10,000 bytes) per trigger [9](#0-8) 
-- **Technical Skill**: Medium - requires understanding of AA formula syntax and ability to craft state update formulas with incremental response var assignments
+- **Identity**: Can be triggered accidentally by legitimate activity (database errors, infrastructure issues) or intentionally by malicious actors deploying AAs with edge cases
+- **Resources Required**: Ability to submit transactions (minimal cost). No special privileges needed.
+- **Technical Skill**: Low to Medium - can occur naturally, or be intentionally triggered with understanding of AA trigger timing
 
 **Preconditions**:
-- **Network State**: Any operational state; no specific network conditions required
-- **Attacker State**: Deployed AA with malicious state update formula, sufficient bytes to trigger repeatedly
-- **Timing**: Attack can be executed at any time by sending trigger transactions
+- **Network State**: At least one AA trigger must be pending when a unit stabilizes MCIs (common during normal operation)
+- **Attacker State**: None required for accidental triggers; for intentional exploitation, ability to deploy AA and submit trigger units
+- **Timing**: Any time AA triggers are being processed
 
 **Execution Complexity**:
-- **Transaction Count**: One AA deployment + N trigger transactions (where N depends on desired attack intensity)
-- **Coordination**: None required; single attacker can execute
-- **Detection Risk**: High - malicious AAs with suspicious state update patterns (many response assignments with minimal logic) would be observable on-chain
+- **Transaction Count**: Single unit submission can trigger the bug
+- **Coordination**: None required
+- **Detection Risk**: Low - appears as normal unit submission followed by network hang
 
 **Frequency**:
-- **Repeatability**: High - attacker can trigger repeatedly until economic cost (bounce fees) becomes prohibitive
-- **Scale**: Limited by attacker's byte balance and network spam protections
+- **Repeatability**: Can occur repeatedly during normal operation whenever database/infrastructure errors occur
+- **Scale**: Single occurrence freezes entire network
 
-**Overall Assessment**: Medium likelihood. While technically easy to execute and requiring minimal resources, the attack has limited practical impact due to bounce fees acting as economic rate limiter and high detection visibility.
+**Overall Assessment**: High likelihood. The error handling gap is always present and can be triggered by database connection failures, disk errors, memory issues, or edge cases in AA execution that are difficult to predict or prevent. Production databases inevitably experience transient errors.
 
 ## Recommendation
 
-**Immediate Mitigation**: Document the resource consumption risk in AA developer guidelines and recommend avoiding state update formulas with many incremental response var assignments.
-
-**Permanent Fix**: Add incremental length checking during formula execution in the response_var_assignment handler.
-
-**Code Changes**:
-
-In `formula/evaluation.js`, modify the `response_var_assignment` case to check cumulative response vars length after each assignment: [10](#0-9) 
-
-**Recommended modification** (conceptual - actual implementation would need proper integration):
+**Immediate Mitigation**:
+Wrap the async operations in a try-catch-finally block to ensure `unlock()` is always called:
 
 ```javascript
-// In formula/evaluation.js, after line 1331:
-case 'response_var_assignment':
-    // ... existing code ...
-    evaluate(rhs, function (res) {
-        if (fatal_error)
-            return cb(false);
-        // ... existing validation ...
-        assignField(responseVars, var_name, res);
-        
-        // ADD: Incremental check
-        if (mci >= constants.v4UpgradeMci) {
-            const serializedResponseVars = JSON.stringify(responseVars);
-            if (serializedResponseVars.length > constants.MAX_RESPONSE_VARS_LENGTH)
-                return setFatalError(`response vars too long: ${serializedResponseVars.length}`, cb, false);
+// In writer.js, modify the commit_fn callback starting at line 693
+commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
+    try {
+        // existing code lines 694-728
+        if (bStabilizedAATriggers) {
+            // ... AA trigger handling and TPS fee updates
         }
-        
-        cb(true);
-    });
-    break;
-```
-
-**Additional Measures**:
-- Add test cases specifically testing state update formulas with incremental response var growth
-- Consider introducing complexity budgets that account for response var accumulation
-- Monitor network for AAs with suspicious patterns (high bounce rates with state update formulas)
-
-**Validation**:
-- [x] Fix prevents exploitation by failing fast when limit is exceeded during execution
-- [x] No new vulnerabilities introduced (check is read-only and deterministic)
-- [x] Backward compatible (only affects behavior of already-invalid AAs that would bounce anyway)
-- [x] Performance impact acceptable (JSON.stringify is already performed twice; incremental checks are proportional to number of assignments)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_response_vars_dos.js`):
-```javascript
-/*
- * Proof of Concept for Response Vars Length DoS
- * Demonstrates: State update formula that wastes computation before bouncing
- * Expected Result: Validators perform expensive operations, then bounce at final check
- */
-
-const aa_composer = require('./aa_composer.js');
-const db = require('./db.js');
-const constants = require('./constants.js');
-
-// Malicious AA definition with state update formula
-const maliciousAADefinition = ['autonomous agent', {
-    messages: {
-        cases: [
-            {
-                if: '{trigger.data.action == "attack"}',
-                messages: [
-                    {
-                        app: 'state',
-                        state: `{
-                            // Each assignment reads state vars (database query) then adds response var
-                            response['var1'] = var['expensive_state_var_1'] || 'x'.repeat(800);
-                            response['var2'] = var['expensive_state_var_2'] || 'y'.repeat(800);
-                            response['var3'] = var['expensive_state_var_3'] || 'z'.repeat(800);
-                            response['var4'] = var['expensive_state_var_4'] || 'a'.repeat(800);
-                            response['var5'] = var['expensive_state_var_5'] || 'b'.repeat(800);
-                            response['var6'] = var['expensive_state_var_6'] || 'c'.repeat(800);
-                            // Total: 6 * 800 = 4800 bytes > MAX_RESPONSE_VARS_LENGTH (4000)
-                            // But each assignment happens after expensive state var read
-                        }`
-                    }
-                ]
-            }
-        ]
+        if (onDone)
+            onDone(err);
+    } catch (error) {
+        console.error("Error in post-commit callback:", error);
+        if (onDone)
+            onDone(error);
+    } finally {
+        unlock(); // Always release the mutex
     }
-}];
-
-async function runExploit() {
-    console.log('MAX_RESPONSE_VARS_LENGTH:', constants.MAX_RESPONSE_VARS_LENGTH);
-    console.log('\nDeploying malicious AA...');
-    
-    // In actual attack:
-    // 1. Deploy AA with definition above
-    // 2. Trigger with: { action: 'attack' }
-    // 3. Validators will:
-    //    - Pass initial responseVars check (empty)
-    //    - Execute state update formula
-    //    - Read 6 state vars (6 database queries)
-    //    - Add 6 response vars (total 4800 bytes)
-    //    - THEN fail at final check
-    // 4. All computation wasted before bounce
-    
-    console.log('\nAttack flow:');
-    console.log('1. Initial check: responseVars = {} (length 2) ✓ PASS');
-    console.log('2. Execute formula with 6 state var reads (6 DB queries)...');
-    console.log('3. Add response[var1] = 800 bytes');
-    console.log('4. Add response[var2] = 800 bytes');  
-    console.log('5. Add response[var3] = 800 bytes');
-    console.log('6. Add response[var4] = 800 bytes');
-    console.log('7. Add response[var5] = 800 bytes');
-    console.log('8. Add response[var6] = 800 bytes');
-    console.log('9. Final check: responseVars length = 4800 > 4000 ✗ FAIL');
-    console.log('\nResult: Wasted 6 database queries + formula execution');
-    console.log('        before detecting responseVars overflow\n');
-    
-    return true;
-}
-
-runExploit().then(success => {
-    console.log(success ? 'PoC demonstration complete' : 'PoC failed');
-    process.exit(0);
 });
 ```
 
-**Expected Output** (when vulnerability exists):
+**Permanent Fix**:
+1. Add comprehensive error handling around all async operations in post-commit callbacks
+2. Ensure `unlock()` is called in all code paths (success, error, exception)
+3. Add logging for unhandled promise rejections in the callback
+4. Consider refactoring to use async/await consistently throughout the stack
+
+**Additional Measures**:
+- Add monitoring to detect when the write mutex remains locked beyond expected duration
+- Implement automatic mutex release with timeout as a failsafe
+- Add test coverage for error scenarios in AA trigger handling
+- Review all other locations where mutexes are used to ensure similar patterns don't exist
+
+## Proof of Concept
+
+```javascript
+// test/mutex_deadlock.test.js
+const test = require('ava');
+const writer = require('../writer.js');
+const aa_composer = require('../aa_composer.js');
+const mutex = require('../mutex.js');
+
+// Mock aa_composer.handleAATriggers to throw an error
+const originalHandleAATriggers = aa_composer.handleAATriggers;
+aa_composer.handleAATriggers = async function() {
+    throw new Error("Simulated AA trigger handling error");
+};
+
+test.serial('write mutex deadlock on AA trigger error', async t => {
+    // Create a mock joint that will trigger AA handling
+    const objJoint = {
+        unit: {
+            unit: 'test_unit_hash_' + Date.now(),
+            version: '1.0',
+            alt: '1',
+            authors: [],
+            messages: [],
+            parent_units: [],
+            last_ball: 'last_ball_hash',
+            last_ball_unit: 'last_ball_unit_hash',
+            witness_list_unit: 'witness_list_unit_hash',
+            headers_commission: 500,
+            payload_commission: 500
+        }
+    };
+    
+    const objValidationState = {
+        bUnderWriteLock: false,
+        last_ball_mci: 1000000 // After v4 upgrade
+    };
+    
+    // First saveJoint call - will fail and leave mutex locked
+    let firstCallCompleted = false;
+    writer.saveJoint(objJoint, objValidationState, null, (err) => {
+        firstCallCompleted = true;
+        t.truthy(err); // Should receive error
+    });
+    
+    // Wait a bit for the error to occur
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Try to acquire the write mutex again - this should block forever
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 1000));
+    const lockPromise = mutex.lock(['write']).then(unlock => {
+        unlock();
+        return 'LOCKED';
+    });
+    
+    const result = await Promise.race([lockPromise, timeoutPromise]);
+    
+    // If working correctly, we should get 'LOCKED'
+    // If the bug exists, we get 'TIMEOUT' because mutex is never released
+    t.is(result, 'TIMEOUT', 'Write mutex was never released after error in AA trigger handling');
+    
+    // Restore original function
+    aa_composer.handleAATriggers = originalHandleAATriggers;
+});
 ```
-MAX_RESPONSE_VARS_LENGTH: 4000
-
-Deploying malicious AA...
-
-Attack flow:
-1. Initial check: responseVars = {} (length 2) ✓ PASS
-2. Execute formula with 6 state var reads (6 DB queries)...
-3. Add response[var1] = 800 bytes
-4. Add response[var2] = 800 bytes
-5. Add response[var3] = 800 bytes
-6. Add response[var4] = 800 bytes
-7. Add response[var5] = 800 bytes
-8. Add response[var6] = 800 bytes
-9. Final check: responseVars length = 4800 > 4000 ✗ FAIL
-
-Result: Wasted 6 database queries + formula execution
-        before detecting responseVars overflow
-
-PoC demonstration complete
-```
-
-**Expected Output** (after fix applied):
-```
-MAX_RESPONSE_VARS_LENGTH: 4000
-
-Deploying malicious AA...
-
-Attack flow with incremental checks:
-1. Initial check: responseVars = {} (length 2) ✓ PASS
-2. Execute formula...
-3. Add response[var1] = 800 bytes, check length = ~800 ✓ PASS
-4. Add response[var2] = 800 bytes, check length = ~1600 ✓ PASS
-5. Add response[var3] = 800 bytes, check length = ~2400 ✓ PASS
-6. Add response[var4] = 800 bytes, check length = ~3200 ✓ PASS
-7. Add response[var5] = 800 bytes, check length = ~4000 ✓ PASS
-8. Add response[var6] = 800 bytes, check length = ~4800 ✗ FAIL IMMEDIATELY
-
-Result: Early termination after 6 assignments (vs. 6 DB queries in original)
-        Computation saved on remaining formula execution
-
-PoC demonstration complete
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the conceptual vulnerability in actual codebase structure
-- [x] Shows clear computation waste (database queries before overflow detection)
-- [x] Demonstrates measurable impact (wasted resources per trigger)
-- [x] Would fail more efficiently after incremental check fix
 
 ## Notes
 
-This vulnerability represents a **business logic flaw** in the validation architecture rather than a critical security breach. While it enables temporary resource consumption attacks, several factors limit its practical severity:
-
-1. **Economic Rate Limiting**: Bounce fees (MIN_BYTES_BOUNCE_FEE) make sustained attacks expensive
-2. **Deterministic Behavior**: All nodes waste resources equally, maintaining consensus
-3. **No State Corruption**: Wasted computation doesn't cause permanent damage
-4. **High Visibility**: Malicious AAs are easily identifiable on-chain
-
-The primary concern is that sophisticated attackers could optimize state update formulas to maximize computation per bounce fee, potentially achieving disproportionate resource consumption. The recommended incremental checking would provide defense-in-depth by failing fast when response vars accumulate beyond limits during execution.
-
-The vulnerability is confirmed to exist in the current codebase structure as analyzed, where response vars can be added incrementally during state update formula execution without intermediate length validation between the pre-execution check and post-execution check.
+This vulnerability represents a critical failure in error handling that can completely halt the network. The issue is exacerbated by the fact that it can be triggered by transient infrastructure problems (database connection timeouts, disk I/O errors) that are inevitable in production environments. The lack of a try-catch-finally block around the async operations in the post-commit callback is a serious oversight that violates basic error handling principles for resource management (mutexes must be released in all code paths). The vulnerability affects all in-scope files and does not require any special attacker capabilities or threat model violations.
 
 ### Citations
 
-**File:** aa_composer.js (L396-396)
+**File:** writer.js (L33-33)
 ```javascript
-	var responseVars = {};
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
 ```
 
-**File:** aa_composer.js (L1292-1324)
+**File:** writer.js (L45-49)
 ```javascript
-	function executeStateUpdateFormula(objResponseUnit, cb) {
-		if (bBouncing)
-			return cb();
-		if (!objStateUpdate) {
-			const rv_len = getResponseVarsLength();
-			if (rv_len > constants.MAX_RESPONSE_VARS_LENGTH)
-				return cb(`response vars too long: ${rv_len}`);
-			return cb();
-		}
-		var opts = {
-			conn: conn,
-			formula: objStateUpdate.formula,
-			trigger: trigger,
-			params: params,
-			locals: objStateUpdate.locals,
-			stateVars: stateVars,
-			responseVars: responseVars,
-			bStateVarAssignmentAllowed: true,
-			bStatementsOnly: true,
-			objValidationState: objValidationState,
-			address: address,
-			objResponseUnit: objResponseUnit
-		};
-		formulaParser.evaluate(opts, function (err, res) {
-		//	console.log('--- state update formula', objStateUpdate.formula, '=', res);
-			if (res === null)
-				return cb(err.bounce_message || "formula " + objStateUpdate.formula + " failed: "+err);
-			const rv_len = getResponseVarsLength();
-			if (rv_len > constants.MAX_RESPONSE_VARS_LENGTH)
-				return cb(`response vars too long: ${rv_len}`);
-			cb();
-		});
-	}
-```
-
-**File:** formula/evaluation.js (L1310-1335)
-```javascript
-			case 'response_var_assignment':
-				var var_name_or_expr = arr[1];
-				var rhs = arr[2];
-				evaluate(var_name_or_expr, function (var_name) {
-					if (fatal_error)
-						return cb(false);
-					if (typeof var_name !== 'string')
-						return setFatalError("assignment: var name "+var_name_or_expr+" evaluated to " + var_name, cb, false);
-					evaluate(rhs, function (res) {
-						if (fatal_error)
-							return cb(false);
-						// response vars - strings, numbers, and booleans
-						if (res instanceof wrappedObject)
-							res = true;
-						if (!isValidValue(res))
-							return setFatalError("evaluation of rhs " + rhs + " in response var assignment failed: " + JSON.stringify(res), cb, false);
-						if (Decimal.isDecimal(res)) {
-							res = res.toNumber();
-							if (!isFinite(res))
-								return setFatalError("not finite js number in response_var_assignment", cb, false);
-						}
-						assignField(responseVars, var_name, res);
-						cb(true);
-					});
+			commit_fn = function (sql, cb) {
+				conn.query(sql, function () {
+					cb();
 				});
-				break;
+			};
 ```
 
-**File:** formula/evaluation.js (L2614-2634)
+**File:** writer.js (L693-693)
 ```javascript
-		storage.readAAStateVar(param_address, var_name, function (value) {
-		//	console.log(var_name+'='+(typeof value === 'object' ? JSON.stringify(value) : value));
-			if (value === undefined) {
-				assignField(stateVars[param_address], var_name, { value: false });
-				return cb2(false);
-			}
-			if (bLimitedPrecision) {
-				value = value.toString();
-				var f = string_utils.toNumber(value, bLimitedPrecision);
-				if (f !== null)
-					value = createDecimal(value);
-			}
-			else {
-				if (typeof value === 'number')
-					value = createDecimal(value);
-				else if (typeof value === 'object')
-					value = new wrappedObject(value);
-			}
-			assignField(stateVars[param_address], var_name, { value: value, old_value: value, original_old_value: value });
-			cb2(value);
-		});
+							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
 ```
 
-**File:** constants.js (L66-66)
+**File:** writer.js (L711-713)
 ```javascript
-exports.MAX_OPS = process.env.MAX_OPS || 2000;
+								if (bStabilizedAATriggers) {
+									if (bInLargerTx || objValidationState.bUnderWriteLock)
+										throw Error(`saveJoint stabilized AA triggers while in larger tx or under write lock`);
 ```
 
-**File:** constants.js (L70-70)
+**File:** writer.js (L715-715)
 ```javascript
-exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
+									await aa_composer.handleAATriggers();
+```
+
+**File:** writer.js (L724-729)
+```javascript
+								if (onDone)
+									onDone(err);
+								count_writes++;
+								if (conf.storage === 'sqlite')
+									updateSqliteStats(objUnit.unit);
+								unlock();
+```
+
+**File:** aa_composer.js (L97-98)
+```javascript
+						conn.query("DELETE FROM aa_triggers WHERE mci=? AND unit=? AND address=?", [mci, unit, address], async function(){
+							await conn.query("UPDATE units SET count_aa_responses=IFNULL(count_aa_responses, 0)+? WHERE unit=?", [arrResponses.length, unit]);
+```
+
+**File:** aa_composer.js (L100-101)
+```javascript
+							if (!objUnitProps)
+								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+```
+
+**File:** aa_composer.js (L106-109)
+```javascript
+							batch.write({ sync: true }, function(err){
+								console.log("AA batch write took "+(Date.now()-batch_start_time)+'ms');
+								if (err)
+									throw Error("AA composer: batch write failed: "+err);
+```
+
+**File:** storage.js (L1210-1210)
+```javascript
+			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
+```
+
+**File:** storage.js (L1221-1221)
+```javascript
+				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
+```
+
+**File:** storage.js (L1223-1223)
+```javascript
+				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
 ```

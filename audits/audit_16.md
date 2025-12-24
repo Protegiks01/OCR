@@ -1,371 +1,328 @@
+# Audit Report
+
 ## Title
-Light Client Bounce Fee Validation Bypass via Network Failure Silencing Leading to Complete Fund Loss
+Hash Tree Poisoning via Unvalidated `is_nonserial` Parameter in Catchup Protocol
 
 ## Summary
-In `aa_addresses.js`, the `checkAAOutputs()` function returns success when `rows.length === 0` at line 126. [1](#0-0)  In light client mode, network failures during AA definition fetching are silently ignored, [2](#0-1) [3](#0-2)  causing `readAADefinitions` to return empty rows even when targeting an AA requiring bounce fees. This allows light clients to create transactions with insufficient bounce fees, resulting in complete fund loss when the AA bounce mechanism cannot refund. [4](#0-3) 
+The `processHashTree()` function in `catchup.js` accepts attacker-controlled `is_nonserial` values without validating their correctness against actual unit properties. A malicious peer can send hash trees with incorrect `is_nonserial` flags, causing fake ball hashes to be cached. This poisons the catchup state, preventing legitimate units from being accepted and triggering cascading validation failures for all descendant units, permanently blocking sync for affected nodes.
 
 ## Impact
-**Severity**: Critical
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay
 
-**Category**: Direct Fund Loss
+**Affected Parties**: Nodes performing catchup synchronization (new nodes joining network, nodes recovering from downtime)
+
+**Damage**: Affected nodes cannot complete sync and remain permanently out of sync until manual database cleanup. If multiple malicious peers exist, new nodes may be unable to join the network. Cascading failures affect all units referencing poisoned units as ancestors.
+
+**Duration**: Indefinite (requires manual intervention to recover)
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_addresses.js`
-- Primary vulnerability: `readAADefinitions()` function (lines 34-109), specifically error handling at lines 74-77 and 78-81
-- Secondary issue: `checkAAOutputs()` function (lines 111-145), specifically early return at line 126
+**Location**: [1](#0-0) 
 
-**Intended Logic**: The `checkAAOutputs()` function should validate that all payments to AA addresses include sufficient bounce fees before allowing transaction composition. In light client mode, if AA definitions are not in the local database, `readAADefinitions()` should fetch them from the light vendor and return an error if fetching fails, preventing unsafe transactions.
+**Intended Logic**: During catchup, hash trees provide compact DAG representation. The `is_nonserial` flag should accurately indicate whether a unit has `content_hash` (stripped payload). Ball hashes must be verified against actual unit structure.
 
-**Actual Logic**: When network requests to fetch AA definitions fail or time out, errors are logged but silently ignored by calling the async callback without an error parameter. [2](#0-1) [3](#0-2)  The `async.each` completes successfully with the original empty `rows` array. [5](#0-4)  The `checkAAOutputs()` function then interprets empty rows as "no AA addresses present" and returns success without any bounce fee validation. [1](#0-0) 
+**Actual Logic**: The `is_nonserial` parameter is received from the peer and used directly in ball hash verification without validation. At hash tree processing time, only unit hash, ball hash, parent balls, and skiplist balls are available - the full unit with `content_hash` field is not yet received. This allows attackers to provide incorrect `is_nonserial` values that compute valid-looking but fake ball hashes.
+
+**Code Evidence**:
+
+Ball hash verification using attacker-provided `is_nonserial`: [2](#0-1) 
+
+Fake ball-unit mapping stored in cache: [3](#0-2) 
+
+Legitimate unit rejection when ball not found: [4](#0-3) 
+
+Parent ball lookup from poisoned hash tree: [5](#0-4) 
+
+Ball hash validation using wrong parent balls: [6](#0-5) 
+
+Failed cleanup allows fake entries to persist: [7](#0-6) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - User operates a light client (conf.bLight = true)
-   - AA exists at address with bounce_fees.base = 10000 bytes
-   - AA definition not present in light client's local database
+   - Victim node initiates catchup sync
+   - Malicious peer selected as sync source
+   - Legitimate serial unit U exists with ball `B_real = getBallHash(U, parents, skiplist, false)`
 
-2. **Step 1 - Transaction Initiation**: User attempts to send 5000 bytes (insufficient) to the AA address via `wallet.js` sendMultiPayment function. [6](#0-5) 
+2. **Step 1 - Hash Tree Poisoning**:
+   - Attacker sends hash tree via `handleHashTree()` → `processHashTree()`
+   - Hash tree entry: `{ball: B_fake, unit: U, parent_balls: [...], skiplist_balls: [...], is_nonserial: true}`
+   - Where `B_fake = getBallHash(U, parents, skiplist, true)` (computed with wrong flag)
+   - Verification at line 363 passes: `B_fake === getBallHash(U, [...], [...], true)` ✓
+   - Line 367 stores: `storage.assocHashTreeUnitsByBall[B_fake] = U`
 
-3. **Step 2 - Network Failure**: 
-   - `checkAAOutputs()` calls `readAADefinitions()` with the AA address
-   - Local database query returns no rows (AA not cached)
-   - Light client attempts to fetch definition via `network.requestFromLightVendor()` [7](#0-6) 
-   - Network request fails (timeout, connection error, or vendor returns error response) [8](#0-7) 
-   - Error handler logs message but calls callback without error [2](#0-1) 
+3. **Step 2 - Legitimate Unit Rejection**:
+   - Full unit U arrives with correct ball `B_real`
+   - `validateHashTreeBall()` checks: `storage.assocHashTreeUnitsByBall[B_real]`
+   - Returns undefined (only `B_fake` cached)
+   - Line 389 rejects unit: "ball B_real is not known in hash tree"
+   - Commented-out cleanup (line 1060-1061) means `B_fake` persists
 
-4. **Step 3 - Validation Bypass**: 
-   - `async.each` completes successfully, invokes final callback with empty `rows` array [5](#0-4) 
-   - `checkAAOutputs()` checks `rows.length === 0` and returns `handleResult()` with no error [1](#0-0) 
-   - Transaction composition proceeds without bounce fee validation
-   - Transaction is broadcast to network with only 5000 bytes sent to AA
+4. **Step 3 - Cascading Failures**:
+   - Child unit C references U as parent
+   - `validateHashTreeParentsAndSkiplist()` calls `readBallsByUnits([U])`
+   - Lines 414-417 search hash tree cache, find `B_fake` for unit U
+   - Returns `B_fake` in parent_balls array
+   - Line 402 computes: `getBallHash(C, [B_fake, ...], [...], ...)`
+   - Actual unit C was created with `B_real` in parent_balls
+   - Hash mismatch detected, line 404 rejects: "ball hash is wrong"
 
-5. **Step 4 - Fund Loss**: 
-   - Full nodes accept the transaction (no bounce fee validation at unit acceptance level)
-   - AA execution detects insufficient bounce fees [9](#0-8) 
-   - Bounce mechanism is invoked but checks `(trigger.outputs.base || 0) < bounce_fees.base` [4](#0-3) 
-   - Since 5000 < 10000, bounce returns without sending any refund [4](#0-3) 
-   - User permanently loses all 5000 bytes sent to the AA
+5. **Step 4 - Permanent Desync**:
+   - All descendants of poisoned units fail validation
+   - Node cannot advance past poisoned units
+   - Sync permanently blocked until manual database cleanup
 
-**Security Property Broken**: **Invariant #12 (Bounce Correctness)** - "Failed AA executions must refund inputs minus bounce fees via bounce response. Incorrect refund amounts or recipients cause fund loss." The bounce mechanism fails to protect users when validation is bypassed.
+**Security Property Broken**: Catchup protocol integrity - syncing nodes must be able to retrieve and validate all units on the main chain without gaps or corruption.
 
-**Root Cause Analysis**: The code treats network failures as equivalent to "address is not an AA" by silently continuing after errors. The design assumes network requests will succeed or that addresses genuinely don't exist, failing to distinguish between these cases. This creates an unsafe default where validation errors are suppressed rather than propagated.
+**Root Cause**: The `is_nonserial` flag is determined by `content_hash` presence in the unit, but this information is unavailable during hash tree processing (only unit hash available). No mechanism exists to verify `is_nonserial` correctness until the full unit arrives, by which time the wrong mapping is already cached and used for descendant validation.
 
 ## Impact Explanation
 
-**Affected Assets**: 
-- Bytes (base asset)
-- Custom assets (any asset with bounce_fees defined in AA)
-- All light client users sending payments to AAs
+**Affected Assets**: Network availability for syncing nodes, catchup protocol integrity
 
 **Damage Severity**:
-- **Quantitative**: 100% loss of sent amount when insufficient for bounce fees. With typical bounce fees of 10,000 bytes and users potentially sending millions of bytes in failed transactions, losses could be substantial.
-- **Qualitative**: Complete and permanent fund loss with no recovery mechanism. Funds are neither refunded nor properly processed by the AA.
+- **Quantitative**: All nodes syncing from malicious peer affected. Single poisoned unit blocks acceptance of all descendants (potentially thousands of units).
+- **Qualitative**: Complete denial of service for catchup protocol. Indefinite transaction delay for affected nodes (>24 hours).
 
 **User Impact**:
-- **Who**: Any light client user (mobile wallets, browser wallets) sending payments to AAs
-- **Conditions**: Exploitable whenever network conditions are poor (slow internet, light vendor downtime, connection timeouts) or when light vendor is malicious/compromised
-- **Recovery**: None - funds are permanently lost. No reversal mechanism exists.
+- **Who**: New nodes joining network, nodes recovering from downtime, any node performing catchup
+- **Conditions**: Exploitable whenever node requests catchup from malicious peer (automatic peer selection)
+- **Recovery**: Manual database cleanup required (delete `hash_tree_balls` and `catchup_chain_balls` tables, restart sync with honest peer)
 
-**Systemic Risk**: Light client reliability is compromised. Users lose trust in AA interactions. Malicious light vendors can deliberately return errors to cause fund loss for users interacting with specific AAs, enabling targeted attacks.
+**Systemic Risk**: Multiple malicious peers can prevent network growth. No automatic recovery. No rate limiting or peer reputation system.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: No active attacker needed - passive network failures trigger the vulnerability. However, malicious light vendors or network attackers (MITM) can deliberately trigger it.
-- **Resources Required**: For passive exploitation: none (natural network failures). For active exploitation: ability to disrupt light vendor connections or operate a malicious light vendor.
-- **Technical Skill**: Minimal - users naturally encounter this through network issues.
+- **Identity**: Malicious peer node on Obyte network
+- **Resources**: Ability to run peer node (minimal infrastructure)
+- **Technical Skill**: Medium (understand catchup protocol and ball hash computation)
 
 **Preconditions**:
-- **Network State**: Light client with poor connectivity, light vendor experiencing downtime, or malicious light vendor
-- **Attacker State**: None for passive case. For active case: control over light vendor or network path
-- **Timing**: Any time a light client user sends payment to an AA not in their local cache
+- **Network State**: Victim performing catchup (common for new/recovering nodes)
+- **Attacker State**: Selected as catchup peer (probabilistic)
+- **Timing**: No specific timing required
 
 **Execution Complexity**:
-- **Transaction Count**: Single transaction from victim
-- **Coordination**: None required for passive case
-- **Detection Risk**: Appears as normal network failure; difficult to distinguish from legitimate errors
+- **Transaction Count**: Zero (protocol-level attack)
+- **Coordination**: Single malicious peer sufficient
+- **Detection Risk**: Low (appears valid until full units arrive)
 
-**Frequency**:
-- **Repeatability**: High - occurs naturally with any network disruption during AA interactions
-- **Scale**: Affects all light client users globally when network conditions deteriorate
+**Frequency**: Repeatable on every catchup attempt, affects arbitrary number of units
 
-**Overall Assessment**: **High likelihood** - Natural network failures guarantee this will occur regularly in production. Light clients commonly experience connectivity issues, especially on mobile networks.
+**Overall Assessment**: High likelihood - easily executable by any peer with minimal resources, affects critical network operation (syncing), no automatic mitigation.
 
 ## Recommendation
 
-**Immediate Mitigation**: Light client operators should advise users to avoid AA interactions during network instability. Display clear warnings when bounce fee validation cannot be completed.
+**Immediate Mitigation**:
+Defer ball-unit mapping storage until full unit validation confirms `is_nonserial` correctness: [8](#0-7) 
 
-**Permanent Fix**: Propagate errors from network failures instead of silently suppressing them.
+Store hash tree balls in temporary database table, verify `is_nonserial` matches actual `content_hash` presence when full unit arrives.
 
-**Code Changes**:
-
-In `aa_addresses.js`, modify the `readAADefinitions` function to propagate network errors:
-
-```javascript
-// Lines 70-105 in aa_addresses.js should be modified:
-
-// BEFORE (vulnerable):
-async.each(
-    arrRemainingAddresses,
-    function (address, cb) {
-        network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
-            if (response && response.error) { 
-                console.log('failed to get definition of ' + address + ': ' + response.error);
-                return cb(); // ← VULNERABLE: Error suppressed
-            }
-            if (!response) {
-                cacheOfNewAddresses[address] = Date.now();
-                console.log('address ' + address + ' not known yet');
-                return cb(); // ← VULNERABLE: No response treated as success
-            }
-            // ... process successful response
-        });
-    },
-    function () {
-        handleRows(rows); // ← Called even after failures
-    }
-);
-
-// AFTER (fixed):
-async.each(
-    arrRemainingAddresses,
-    function (address, cb) {
-        network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
-            if (response && response.error) { 
-                console.log('failed to get definition of ' + address + ': ' + response.error);
-                return cb(response.error); // ← FIX: Propagate error
-            }
-            if (!response) {
-                // If genuinely new address (never seen before), that's okay
-                // But we should distinguish this from network timeouts
-                cacheOfNewAddresses[address] = Date.now();
-                console.log('address ' + address + ' not known yet');
-                return cb(); // ← This case is acceptable (genuinely new address)
-            }
-            // ... process successful response
-        });
-    },
-    function (err) { // ← FIX: Check for errors
-        if (err) {
-            console.log('Error fetching AA definitions:', err);
-            return handleRows(null, err); // Propagate error to caller
-        }
-        handleRows(rows);
-    }
-);
-```
-
-Modify `checkAAOutputs` to handle errors from `readAADefinitions`:
-
-```javascript
-// Line 124 in aa_addresses.js:
-
-// BEFORE:
-readAADefinitions(arrAddresses, function (rows) {
-    if (rows.length === 0)
-        return handleResult();
-    // ...
-});
-
-// AFTER:
-readAADefinitions(arrAddresses, function (rows, err) {
-    if (err)
-        return handleResult(new Error('Unable to verify AA bounce fees: ' + err));
-    if (rows.length === 0)
-        return handleResult();
-    // ...
-});
-```
+**Permanent Fix**:
+1. Add validation in `processHashTree()` to mark hash tree entries as unverified
+2. In `validateHashTreeBall()`, verify `is_nonserial` correctness:
+   - When unit has `content_hash`, ball must be computed with `is_nonserial=true`
+   - When unit lacks `content_hash`, ball must be computed with `is_nonserial=false`
+3. Reject units where hash tree `is_nonserial` doesn't match actual unit structure
+4. Purge incorrectly-flagged hash tree entries
 
 **Additional Measures**:
-- Add timeout handling with explicit error reporting
-- Implement retry logic for failed definition fetches with exponential backoff
-- Add monitoring/alerting for high failure rates in definition fetching
-- Cache successful fetches longer to reduce dependency on network
-- Display clear UI warnings when bounce fee validation is skipped due to errors
-
-**Validation**:
-- [x] Fix prevents exploitation by refusing unsafe transactions
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible - only rejects previously unsafe transactions
-- [x] Performance impact minimal - only adds error checking
+- Uncomment and fix cleanup logic at [7](#0-6) 
+- Add test case verifying rejection of hash trees with incorrect `is_nonserial`
+- Implement peer reputation system to blacklist peers sending invalid hash trees
+- Add monitoring for hash tree validation failures
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Set conf.bLight = true to simulate light client mode
-```
+**Note**: A complete runnable PoC would require:
+1. Setting up two Obyte nodes (victim and malicious peer)
+2. Modifying malicious peer's `readHashTree()` to send incorrect `is_nonserial`
+3. Initiating catchup from victim to malicious peer
+4. Observing unit rejection with "ball is not known in hash tree"
+5. Observing cascading failures for child units
 
-**Exploit Script** (`light_client_bounce_fee_bypass_poc.js`):
-```javascript
-/*
- * Proof of Concept for Light Client Bounce Fee Validation Bypass
- * Demonstrates: Network failure causing bounce fee validation bypass
- * Expected Result: Transaction proceeds without bounce fee check, user loses funds
- */
+The vulnerability is evident from code analysis without requiring full PoC implementation, as the execution path is deterministic and the missing validation is clear.
 
-const aa_addresses = require('./aa_addresses.js');
-const network = require('./network.js');
-const constants = require('./constants.js');
-
-// Simulate light client mode
-const conf = require('./conf.js');
-conf.bLight = true;
-
-// Mock network to simulate failures
-const originalRequestFromLightVendor = network.requestFromLightVendor;
-network.requestFromLightVendor = function(command, params, callback) {
-    console.log('[MOCK] Network request failed - simulating timeout/error');
-    // Simulate error response
-    setTimeout(() => callback(null, null, { error: 'Connection timeout' }), 100);
-};
-
-async function runExploit() {
-    console.log('=== Bounce Fee Bypass PoC ===\n');
-    
-    // Simulate payment to AA with insufficient bounce fees
-    const aaAddress = 'FAKEAAADDRESSFORPOC123456789012'; // Would be real AA in practice
-    const insufficientAmount = 5000; // Less than typical MIN_BYTES_BOUNCE_FEE (10000)
-    
-    const arrPayments = [{
-        asset: null,
-        outputs: [{ address: aaAddress, amount: insufficientAmount }]
-    }];
-    
-    console.log(`Attempting to send ${insufficientAmount} bytes to AA: ${aaAddress}`);
-    console.log(`(Typical bounce fee requirement: ${constants.MIN_BYTES_BOUNCE_FEE} bytes)\n`);
-    
-    aa_addresses.checkAAOutputs(arrPayments, function(err) {
-        if (err) {
-            console.log('✓ SAFE: Validation correctly rejected insufficient bounce fees');
-            console.log('Error:', err.toString());
-            return false;
-        } else {
-            console.log('✗ VULNERABLE: Validation passed despite insufficient bounce fees!');
-            console.log('Transaction would proceed, leading to fund loss when AA bounces.');
-            return true;
-        }
-    });
-}
-
-runExploit();
-```
-
-**Expected Output** (when vulnerability exists):
-```
-=== Bounce Fee Bypass PoC ===
-
-Attempting to send 5000 bytes to AA: FAKEAAADDRESSFORPOC123456789012
-(Typical bounce fee requirement: 10000 bytes)
-
-[MOCK] Network request failed - simulating timeout/error
-failed to get definition of FAKEAAADDRESSFORPOC123456789012: Connection timeout
-✗ VULNERABLE: Validation passed despite insufficient bounce fees!
-Transaction would proceed, leading to fund loss when AA bounces.
-```
-
-**Expected Output** (after fix applied):
-```
-=== Bounce Fee Bypass PoC ===
-
-Attempting to send 5000 bytes to AA: FAKEAAADDRESSFORPOC123456789012
-(Typical bounce fee requirement: 10000 bytes)
-
-[MOCK] Network request failed - simulating timeout/error
-failed to get definition of FAKEAAADDRESSFORPOC123456789012: Connection timeout
-✓ SAFE: Validation correctly rejected insufficient bounce fees
-Error: Unable to verify AA bounce fees: Connection timeout
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates vulnerability in unmodified codebase
-- [x] Shows clear violation of Bounce Correctness invariant (#12)
-- [x] Demonstrates measurable impact (fund loss scenario)
-- [x] Would be prevented by proposed fix
+---
 
 ## Notes
 
-This vulnerability is particularly severe because:
-
-1. **Silent failures**: Network errors produce no warnings to users, who believe their transactions are safe
-2. **High frequency**: Light clients regularly experience network issues, especially on mobile networks
-3. **Complete fund loss**: Unlike most validation bypasses, this results in 100% fund loss with no recovery
-4. **Affects legitimate users**: No malicious intent needed - ordinary network problems trigger the bug
-5. **Trust model violation**: Light clients depend on light vendors for safety, but network failures bypass all protections
-
-The root cause is a fundamental design flaw in error handling where network failures are treated as "no AAs present" rather than "validation incomplete." The fix requires distinguishing between three cases:
-- AA definitions successfully fetched → validate bounce fees
-- Network error occurred → reject transaction as unsafe
-- Address genuinely not an AA → proceed without bounce fee check
+This vulnerability affects the catchup protocol's integrity but does not cause network-wide shutdown. The severity is **Medium** (not Critical as claimed) because it creates "Temporary Transaction Delay ≥1 Day" for affected syncing nodes, not network-wide consensus failure. Already-synced nodes continue operating normally. The impact escalates with multiple malicious peers but remains node-specific rather than system-wide.
 
 ### Citations
 
-**File:** aa_addresses.js (L73-77)
+**File:** catchup.js (L336-476)
 ```javascript
-						network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
-							if (response && response.error) { 
-								console.log('failed to get definition of ' + address + ': ' + response.error);
-								return cb();
+function processHashTree(arrBalls, callbacks){
+	if (!Array.isArray(arrBalls))
+		return callbacks.ifError("no balls array");
+	mutex.lock(["hash_tree"], function(unlock){
+		
+		db.query("SELECT 1 FROM hash_tree_balls LIMIT 1", function(ht_rows){
+			//if (ht_rows.length > 0) // duplicate
+			//    return unlock();
+			
+			db.takeConnectionFromPool(function(conn){
+				
+				conn.query("BEGIN", function(){
+					
+					var max_mci = null;
+					async.eachSeries(
+						arrBalls,
+						function(objBall, cb){
+							if (typeof objBall.ball !== "string")
+								return cb("no ball");
+							if (typeof objBall.unit !== "string")
+								return cb("no unit");
+							if (!storage.isGenesisUnit(objBall.unit)){
+								if (!Array.isArray(objBall.parent_balls))
+									return cb("no parents");
 							}
-```
+							else if (objBall.parent_balls)
+								return cb("genesis with parents?");
+							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
 
-**File:** aa_addresses.js (L78-81)
-```javascript
-							if (!response) {
-								cacheOfNewAddresses[address] = Date.now();
-								console.log('address ' + address + ' not known yet');
-								return cb();
-```
+							function addBall(){
+								storage.assocHashTreeUnitsByBall[objBall.ball] = objBall.unit;
+								// insert even if it already exists in balls, because we need to define max_mci by looking outside this hash tree
+								conn.query("INSERT "+conn.getIgnore()+" INTO hash_tree_balls (ball, unit) VALUES(?,?)", [objBall.ball, objBall.unit], function(){
+									cb();
+									//console.log("inserted unit "+objBall.unit, objBall.ball);
+								});
+							}
+							
+							function checkSkiplistBallsExist(){
+								if (!objBall.skiplist_balls)
+									return addBall();
+								conn.query(
+									"SELECT ball FROM hash_tree_balls WHERE ball IN(?) UNION SELECT ball FROM balls WHERE ball IN(?)",
+									[objBall.skiplist_balls, objBall.skiplist_balls],
+									function(rows){
+										if (rows.length !== objBall.skiplist_balls.length)
+											return cb("some skiplist balls not found");
+										addBall();
+									}
+								);
+							}
 
-**File:** aa_addresses.js (L102-104)
-```javascript
-					function () {
-						handleRows(rows);
-					}
-```
+							if (!objBall.parent_balls)
+								return checkSkiplistBallsExist();
+							conn.query("SELECT ball FROM hash_tree_balls WHERE ball IN(?)", [objBall.parent_balls], function(rows){
+								//console.log(rows.length+" rows", objBall.parent_balls);
+								if (rows.length === objBall.parent_balls.length)
+									return checkSkiplistBallsExist();
+								var arrFoundBalls = rows.map(function(row) { return row.ball; });
+								var arrMissingBalls = _.difference(objBall.parent_balls, arrFoundBalls);
+								conn.query(
+									"SELECT ball, main_chain_index, is_on_main_chain FROM balls JOIN units USING(unit) WHERE ball IN(?)", 
+									[arrMissingBalls], 
+									function(rows2){
+										if (rows2.length !== arrMissingBalls.length)
+											return cb("some parents not found, unit "+objBall.unit);
+										for (var i=0; i<rows2.length; i++){
+											var props = rows2[i];
+											if (props.is_on_main_chain === 1 && (props.main_chain_index > max_mci || max_mci === null))
+												max_mci = props.main_chain_index;
+										}
+										checkSkiplistBallsExist();
+									}
+								);
+							});
+						},
+						function(error){
+							
+							function finish(err){
+								conn.query(err ? "ROLLBACK" : "COMMIT", function(){
+									conn.release();
+									unlock();
+									err ? callbacks.ifError(err) : callbacks.ifOk();
+								});
+							}
 
-**File:** aa_addresses.js (L125-126)
-```javascript
-		if (rows.length === 0)
-			return handleResult();
-```
-
-**File:** aa_composer.js (L880-881)
-```javascript
-		if ((trigger.outputs.base || 0) < bounce_fees.base)
-			return finish(null);
-```
-
-**File:** aa_composer.js (L1680-1682)
-```javascript
-			if ((trigger.outputs.base || 0) < bounce_fees.base) {
-				return bounce('received bytes are not enough to cover bounce fees');
-			}
-```
-
-**File:** wallet.js (L1965-1972)
-```javascript
-	if (!opts.aa_addresses_checked) {
-		aa_addresses.checkAAOutputs(arrPayments, function (err) {
-			if (err)
-				return handleResult(err);
-			opts.aa_addresses_checked = true;
-			sendMultiPayment(opts, handleResult);
+							if (error)
+								return finish(error);
+							
+							// it is ok that max_mci === null as the 2nd tree does not touch finished balls
+							//if (max_mci === null && !storage.isGenesisUnit(arrBalls[0].unit))
+							//    return finish("max_mci not defined");
+							
+							// check that the received tree matches the first pair of chain elements
+							conn.query(
+								"SELECT ball, main_chain_index \n\
+								FROM catchup_chain_balls LEFT JOIN balls USING(ball) LEFT JOIN units USING(unit) \n\
+								ORDER BY member_index LIMIT 2", 
+								function(rows){
+									
+									if (rows.length !== 2)
+										return finish("expecting to have 2 elements in the chain");
+									// removed: the main chain might be rebuilt if we are sending new units while syncing
+								//	if (max_mci !== null && rows[0].main_chain_index !== null && rows[0].main_chain_index !== max_mci)
+								//		return finish("max mci doesn't match first chain element: max mci = "+max_mci+", first mci = "+rows[0].main_chain_index);
+									if (rows[1].ball !== arrBalls[arrBalls.length-1].ball)
+										return finish("tree root doesn't match second chain element");
+									// remove the oldest chain element, we now have hash tree instead
+									conn.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+										
+										purgeHandledBallsFromHashTree(conn, finish);
+									});
+								}
+							);
+						}
+					);
+				});
+			});
 		});
-		return;
+	});
+}
+
+function purgeHandledBallsFromHashTree(conn, onDone){
+	conn.query("SELECT ball FROM hash_tree_balls CROSS JOIN balls USING(ball)", function(rows){
+		if (rows.length === 0)
+			return onDone();
+		var arrHandledBalls = rows.map(function(row){ return row.ball; });
+		arrHandledBalls.forEach(function(ball){
+			delete storage.assocHashTreeUnitsByBall[ball];
+		});
+		conn.query("DELETE FROM hash_tree_balls WHERE ball IN(?)", [arrHandledBalls], function(){
+			onDone();
+		});
+	});
+}
+
+exports.prepareCatchupChain = prepareCatchupChain;
+exports.processCatchupChain = processCatchupChain;
+exports.readHashTree = readHashTree;
+exports.processHashTree = processHashTree;
 ```
 
-**File:** network.js (L750-754)
+**File:** validation.js (L386-389)
 ```javascript
-	findOutboundPeerOrConnect(exports.light_vendor_url, function(err, ws){
-		if (err)
-			return responseHandler(null, null, {error: "[connect to light vendor failed]: "+err});
-		sendRequest(ws, command, params, false, responseHandler);
-	});
+	var unit_by_hash_tree_ball = storage.assocHashTreeUnitsByBall[objJoint.ball];
+//	conn.query("SELECT unit FROM hash_tree_balls WHERE ball=?", [objJoint.ball], function(rows){
+		if (!unit_by_hash_tree_ball) 
+			return callback({error_code: "need_hash_tree", message: "ball "+objJoint.ball+" is not known in hash tree"});
+```
+
+**File:** validation.js (L402-404)
+```javascript
+		var hash = objectHash.getBallHash(objUnit.unit, arrParentBalls, arrSkiplistBalls, !!objUnit.content_hash);
+		if (hash !== objJoint.ball)
+			return callback(createJointError("ball hash is wrong"));
+```
+
+**File:** validation.js (L414-417)
+```javascript
+			for (var ball in storage.assocHashTreeUnitsByBall){
+				var unit = storage.assocHashTreeUnitsByBall[ball];
+				if (arrUnits.indexOf(unit) >= 0 && arrBalls.indexOf(ball) === -1)
+					arrBalls.push(ball);
+```
+
+**File:** network.js (L1060-1061)
+```javascript
+					//	if (objJoint.ball)
+					//		db.query("DELETE FROM hash_tree_balls WHERE ball=? AND unit=?", [objJoint.ball, objJoint.unit.unit]);
 ```

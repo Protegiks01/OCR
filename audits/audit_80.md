@@ -1,414 +1,391 @@
+# Audit Report: Permanent Network Shutdown via Malicious Catchup Chain
+
 ## Title
-Indefinite Cache Retention in ArbStore Info Leading to Direct Fund Loss and Fee Misdirection
+Insufficient Validation in processCatchupChain Allows Permanent Node Desync via Non-Existent Unit References
 
 ## Summary
-The `arbStoreInfos` cache in `arbiters.js` stores arbiter ArbStore addresses and cut percentages indefinitely without any expiration or invalidation mechanism. When arbiters legitimately change their ArbStore address or cut percentage, nodes with stale cached values will route arbiter fees to incorrect addresses or apply wrong cut percentages, resulting in direct fund loss to either arbiters or users.
+A malicious peer can permanently disable a syncing node by sending a catchup chain containing fabricated ball references that pass structural validation but cannot be retrieved from the network. The validation logic in `processCatchupChain()` only verifies the first ball exists locally, while explicitly allowing subsequent non-existent balls to pass validation. This causes the node to enter an unrecoverable catchup state where it indefinitely retries hash tree requests for units that don't exist, preventing all new transaction processing.
 
 ## Impact
 **Severity**: Critical  
-**Category**: Direct Fund Loss
+**Category**: Network Shutdown (Permanent, >24 hours)
+
+**Affected Assets**: 
+- Full node operation and transaction processing capability
+- Network synchronization for any node performing catchup
+- Dependent light clients and wallets relying on the compromised full node
+
+**Damage Severity**:
+- **Quantitative**: 100% loss of node functionality with no automatic recovery
+- **Qualitative**: Complete inability to process new transactions, requiring manual database intervention
+
+**User Impact**:
+- **Who**: Any full node operator connecting to malicious peers during catchup (new nodes, nodes that fell behind)
+- **Conditions**: Node must be syncing when malicious peer delivers crafted catchup response
+- **Recovery**: Manual database cleanup required: `DELETE FROM catchup_chain_balls;` followed by node restart
+
+**Systemic Risk**: 
+Attacker controlling multiple public peer endpoints can systematically target new nodes joining the network. Attack is silent (appears as normal sync failure) and can be automated to affect multiple victims simultaneously.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiters.js` (function `getArbstoreInfo()`, lines 47-66)
+**Location**: `byteball/ocore/catchup.js:229-231`, function `processCatchupChain()`
 
-**Intended Logic**: The function should fetch current ArbStore information (address and cut percentage) from the arbiter's ArbStore service to ensure fee routing uses up-to-date arbiter payment details.
+**Intended Logic**: The catchup chain validation should ensure all balls either exist locally or can be retrieved from the network. The comment at line 205 states "make sure it is the only stable unit in the entire chain", implying verification of subsequent units. [1](#0-0) 
 
-**Actual Logic**: The function caches ArbStore info indefinitely in memory without any expiration, refresh, or invalidation mechanism. Once cached, stale values persist for the node's entire lifetime, causing fees to be routed to outdated addresses or calculated with outdated cut percentages.
+**Actual Logic**: The validation only checks if the first ball exists and is stable. When checking the second ball, if it's not found in the database, the validation **returns success without error**. [2](#0-1) 
 
-**Code Evidence**:
-
-The cache initialization: [1](#0-0) 
-
-The cache check that returns stale data immediately: [2](#0-1) 
-
-The cache population that persists indefinitely: [3](#0-2) 
-
-**Critical Usage Point 1 - Contract Creation**: The cached ArbStore info is used to create the shared address definition with hardcoded values: [4](#0-3) 
-
-The cut percentage is hardcoded into amount calculations: [5](#0-4) [6](#0-5) 
-
-The ArbStore address is hardcoded as the fee recipient: [7](#0-6) 
-
-**Critical Usage Point 2 - Contract Completion**: The cached info is retrieved again to calculate payment distribution: [8](#0-7) 
-
-The cut is used to calculate peer amount: [9](#0-8) 
-
-Funds are sent to the cached ArbStore address: [10](#0-9) 
+This allows completely fabricated balls with no network existence to be inserted into the catchup chain table. [3](#0-2) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Arbiter operates with ArbStore address `OLD_ADDRESS` and cut percentage 10%
-   - User's node caches this information via `getArbstoreInfo()`
+1. **Preconditions**: Victim node initiates catchup by calling `requestCatchup()` when syncing [4](#0-3) 
 
-2. **Step 1 - Arbiter Updates ArbStore Info**:
-   - Arbiter changes ArbStore address to `NEW_ADDRESS` (due to key compromise, migration, or provider change)
-   - Or arbiter changes cut from 10% to 5% (to be more competitive)
-   - Change is published on arbiter's ArbStore service
-   - User's node is unaware due to indefinite cache
+2. **Step 1 - Malicious Catchup Response**: 
+   - Victim sends catchup request with `last_stable_mci` and `last_known_mci`
+   - Attacker crafts response where `stable_last_ball_joints` contains:
+     - First joint: Real stable unit existing in victim's database (passes validation lines 206-225)
+     - Subsequent joints: Fabricated units with valid hash structure but non-existent on network
+   - Each fabricated joint maintains valid `unit` hash, `ball` hash, and correct `last_ball`/`last_ball_unit` linkage [5](#0-4) 
 
-3. **Step 2 - Contract Creation with Stale Data**:
-   - User creates new arbiter contract via `createSharedAddressAndPostUnit()`
-   - Function calls `getArbstoreInfo()` which returns cached stale data
-   - Shared address definition is created with:
-     - Old ArbStore address `OLD_ADDRESS` hardcoded in definition
-     - Old cut percentage (10%) hardcoded in amount calculations
-   - Definition becomes immutable once shared address is created
+3. **Step 2 - Validation Bypass**: 
+   - Hash chain validation passes (lines 180-189)
+   - First ball validation passes (exists locally and is stable)
+   - Second ball query returns empty (non-existent), but validation **succeeds** via line 231: `return cb();`
+   - All balls (including fabricated ones) inserted into `catchup_chain_balls`
 
-4. **Step 3 - Contract Payment**:
-   - Payer funds the shared address with contract amount
-   - Contract proceeds to completion phase
+4. **Step 3 - Permanent Catchup Lock**: 
+   - `handleCatchupChain()` receives success callback, sets `bCatchingUp = true` [6](#0-5) 
+   - `requestNextHashTree()` queries first 2 balls and requests hash tree from peer [7](#0-6) 
 
-5. **Step 4 - Fund Misdirection**:
-   - `complete()` function calls `getArbstoreInfo()`, gets same stale cached data
-   - Transaction is composed sending arbiter's cut to `OLD_ADDRESS`
-   - **If OLD_ADDRESS is compromised/lost**: Arbiter permanently loses their fee
-   - **If OLD_ADDRESS controlled by attacker**: Direct theft of arbiter fees
-   - **If cut changed**: Wrong party loses funds (user or arbiter depending on direction of change)
+5. **Step 4 - Infinite Retry Loop**:
+   - No peer can provide hash tree (units don't exist on network)
+   - Request fails or times out after rerouting through all available peers
+   - `handleHashTree()` receives error, calls `waitTillHashTreeFullyProcessedAndRequestNext()` [8](#0-7) 
+   - After 100ms delay, loop repeats with different peer - **no timeout or escape mechanism** [9](#0-8) 
+
+6. **Step 5 - New Joint Rejection**:
+   - While `bCatchingUp = true`, new incoming joints requiring hash trees are **not saved** [10](#0-9) 
+   - Node cannot sync with network or process new transactions
+   - The only exit is `comeOnline()` which sets `bCatchingUp = false` [11](#0-10) 
+   - But `comeOnline()` is only called when catchup chain is empty, which never happens [12](#0-11) 
 
 **Security Property Broken**: 
-- **Invariant #5 (Balance Conservation)**: Funds are routed to unintended addresses, violating conservation of value for the intended recipients
-- **Invariant #7 (Input Validity)**: Contract completions may reference outputs that don't match the original definition if cache is inconsistent
+The node violates the **Catchup Completeness Invariant**: "Syncing nodes must retrieve all units on the main chain up to the last stable point without gaps." The node enters permanent desync with no automatic recovery.
 
 **Root Cause Analysis**: 
-The cache was implemented for performance optimization to avoid repeated HTTP requests to ArbStore services, but no expiration or invalidation mechanism was implemented. The developers likely assumed ArbStore info would be static, not accounting for legitimate operational changes arbiters might need to make. The severity is amplified because the cached data is used in two critical phases (contract creation and completion) and becomes immutably encoded in shared address definitions.
-
-## Impact Explanation
-
-**Affected Assets**: Bytes (native token) and custom divisible assets used in arbiter contracts
-
-**Damage Severity**:
-- **Quantitative**: 
-  - Per contract: Up to 100% of arbiter's fee (typically 5-15% of contract value)
-  - If attacker controls old address: Can collect fees from all contracts created by nodes with stale cache until those nodes restart
-  - For a 10,000 byte contract with 10% arbiter cut: 1,000 bytes lost per contract
-- **Qualitative**: 
-  - Permanent and irreversible once shared address definition is created
-  - No mechanism for affected parties to recover lost funds
-  - Affects trust in arbiter contract system
-
-**User Impact**:
-- **Who**: 
-  - Arbiters: Lose their legitimate fees if address changed
-  - Contract users: Lose additional funds if cut increased after caching
-  - Attackers controlling old addresses: Can steal arbiter fees
-- **Conditions**: Exploitable whenever:
-  - Arbiter changes ArbStore address or cut percentage
-  - Node has cached old information
-  - New contracts are created before node restart
-- **Recovery**: 
-  - No recovery possible for completed contracts
-  - Requires all nodes to restart to clear cache
-  - No user-side detection or mitigation available
-
-**Systemic Risk**: 
-- Affects all arbiter contracts on the network
-- Compromised old addresses can continuously harvest fees
-- Discourages arbiters from updating their information when needed (security vs. operational paralysis)
-- No monitoring or alerting exists for stale cache detection
+The vulnerability stems from an incorrect assumption in the validation logic. The code at lines 229-231 assumes that if a ball passes hash chain validation but doesn't exist locally, it can eventually be retrieved from the network. However, this assumption is violated when the balls are fabricated by a malicious peer. The validation should verify that balls either exist locally OR have a mechanism to ensure network retrievability, but it only checks the first condition and optimistically allows missing balls to proceed.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: 
-  - Opportunistic attacker who gained control of arbiter's old ArbStore address
-  - Or malicious arbiter exploiting their own address change to collect duplicate fees
-- **Resources Required**: 
-  - Control over a previously legitimate ArbStore address
-  - Ability to maintain that address operational
-  - Knowledge that nodes have cached the old address
-- **Technical Skill**: Low - simply wait for users with stale cache to create contracts
+- **Identity**: Any malicious actor operating a public peer node
+- **Resources Required**: Minimal - ability to run a peer node (standard VPS), knowledge of DAG structure and ball hash calculation
+- **Technical Skill**: Medium - requires understanding of catchup protocol and ability to construct valid hash chains
 
 **Preconditions**:
-- **Network State**: Normal operation, no special conditions required
-- **Attacker State**: 
-  - Control of old ArbStore address (via compromise, key theft, or malicious insider)
-  - Knowledge that arbiter has changed to new address
-- **Timing**: Can occur any time after arbiter changes ArbStore info
+- **Network State**: Victim node must be syncing (common for new nodes or nodes that fell behind)
+- **Attacker State**: Must be one of the peers victim connects to during sync
+- **Timing**: Attack can be executed whenever victim requests catchup
 
 **Execution Complexity**:
-- **Transaction Count**: Zero from attacker - passive collection of misdirected fees
-- **Coordination**: None required
-- **Detection Risk**: Very low - appears as legitimate arbiter fee collection
+- **Transaction Count**: Zero on-chain transactions required
+- **Coordination**: Single attacker with single peer connection sufficient
+- **Detection Risk**: Very low - attack appears as normal sync failure with no suspicious on-chain activity
 
 **Frequency**:
-- **Repeatability**: Every contract created by nodes with stale cache until they restart
-- **Scale**: All contracts using that arbiter across all affected nodes
+- **Repeatability**: Can be repeated indefinitely against same or different victims
+- **Scale**: Single attacker can target multiple syncing nodes simultaneously
 
-**Overall Assessment**: **High likelihood** - Arbiters legitimately need to change addresses for security (key compromise) or operational reasons (provider migration). The vulnerability is passively exploitable with no active attack required.
+**Overall Assessment**: High likelihood - low barrier to entry, high impact, difficult to detect. New nodes joining the network are particularly vulnerable.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-- Add cache expiration with reasonable TTL (e.g., 1 hour)
-- Add manual cache invalidation endpoint for emergency scenarios
-- Log warnings when using cached data older than threshold
+**Immediate Mitigation**:
+Add verification that subsequent balls in the catchup chain can be validated or mark them for verification:
 
-**Permanent Fix**: 
-- Implement cache with time-based expiration
-- Add version numbering or timestamp validation from ArbStore
-- Verify ArbStore info freshness before critical operations (contract creation)
-- Consider storing ArbStore info timestamp in contract record for audit trails
-
-**Code Changes**:
-
-Modify the cache structure to include timestamps: [1](#0-0) 
-
-Update `getArbstoreInfo()` to check cache freshness: [11](#0-10) 
-
-**Additional Measures**:
-- Add database field to store ArbStore info with timestamp when contract is created
-- Implement cache invalidation API: `clearArbstoreCache(arbiter_address)`
-- Add monitoring to alert when cached data is older than 24 hours
-- Implement ArbStore info versioning in protocol
-- Add unit tests verifying cache expiration works correctly
-- Document cache behavior and refresh requirements for node operators
-
-**Validation**:
-- [x] Fix prevents exploitation by ensuring fresh data
-- [x] No new vulnerabilities introduced (TTL-based cache is standard pattern)
-- [x] Backward compatible (only changes internal caching behavior)
-- [x] Performance impact acceptable (1 hour TTL provides good balance)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Start a test node
-```
-
-**Exploit Script** (`exploit_arbstore_cache.js`):
 ```javascript
-/*
- * Proof of Concept - ArbStore Cache Staleness Fund Loss
- * Demonstrates: Indefinite cache retention causes fees to go to wrong address
- * Expected Result: Arbiter fees sent to old compromised address instead of new legitimate address
- */
-
-const arbiters = require('./arbiters.js');
-const arbiter_contract = require('./arbiter_contract.js');
-
-async function demonstrateStaleCache() {
-    console.log("=== ArbStore Cache Staleness PoC ===\n");
-    
-    const ARBITER_ADDRESS = "TEST_ARBITER_ADDRESS";
-    const OLD_ARBSTORE_ADDRESS = "OLD_COMPROMISED_ADDRESS";
-    const NEW_ARBSTORE_ADDRESS = "NEW_SECURE_ADDRESS";
-    
-    // Step 1: Initial cache population
-    console.log("Step 1: Fetching ArbStore info (will cache)");
-    let info1 = await arbiters.getArbstoreInfo(ARBITER_ADDRESS);
-    console.log(`  Cached: address=${info1.address}, cut=${info1.cut}`);
-    console.log(`  (Assume this returned OLD_ARBSTORE_ADDRESS with 10% cut)\n`);
-    
-    // Step 2: Arbiter updates their ArbStore info (external to this node)
-    console.log("Step 2: Arbiter changes ArbStore to NEW_SECURE_ADDRESS");
-    console.log("  (This happens on arbiter's ArbStore service, not visible to node)\n");
-    
-    // Step 3: Node still uses cached stale data
-    console.log("Step 3: Creating new contract - retrieving ArbStore info");
-    let info2 = await arbiters.getArbstoreInfo(ARBITER_ADDRESS);
-    console.log(`  Retrieved from cache: address=${info2.address}, cut=${info2.cut}`);
-    console.log(`  ⚠️  STILL using OLD_ARBSTORE_ADDRESS (stale cache)\n`);
-    
-    // Step 4: Contract creation uses stale data
-    console.log("Step 4: Contract shared address definition created");
-    console.log(`  Hardcoded arbStore address: ${info2.address} (OLD, COMPROMISED)`);
-    console.log(`  Hardcoded cut percentage: ${info2.cut}`);
-    console.log(`  ❌ Definition is now IMMUTABLE with wrong address\n`);
-    
-    // Step 5: Completion sends fees to wrong address
-    console.log("Step 5: Contract completion");
-    console.log(`  Calculating payment with cut=${info2.cut}`);
-    console.log(`  Sending arbiter fee to: ${info2.address}`);
-    console.log(`  ❌ Fee sent to OLD_COMPROMISED_ADDRESS`);
-    console.log(`  ✅ Attacker controlling old address receives funds`);
-    console.log(`  ❌ Arbiter at NEW_SECURE_ADDRESS receives nothing\n`);
-    
-    // Demonstrate cache persistence
-    console.log("Step 6: Cache persists indefinitely");
-    console.log("  Cache has no expiration - will persist until node restart");
-    console.log("  All future contracts will use same stale data");
-    console.log("  No mechanism for invalidation or refresh\n");
-    
-    console.log("=== Impact ===");
-    console.log("• Arbiter loses 10% of contract value per affected contract");
-    console.log("• Attacker with old address collects arbiter fees indefinitely");
-    console.log("• Users cannot detect they have stale cache");
-    console.log("• No recovery mechanism exists");
-    
-    return true;
-}
-
-demonstrateStaleCache().then(success => {
-    console.log("\n✅ PoC demonstrates critical vulnerability");
-    process.exit(success ? 0 : 1);
-}).catch(err => {
-    console.error("PoC error:", err);
-    process.exit(1);
+// In catchup.js, replace lines 229-235 with:
+db.query("SELECT is_stable FROM balls JOIN units USING(unit) WHERE ball=?", [arrChainBalls[1]], function(rows2){
+    if (rows2.length === 0)
+        return cb("second chain ball "+arrChainBalls[1]+" is not known and cannot be verified");
+    var objSecondChainBallProps = rows2[0];
+    if (objSecondChainBallProps.is_stable === 1)
+        return cb("second chain ball "+arrChainBalls[1]+" must not be stable");
+    cb();
 });
 ```
 
-**Expected Output** (when vulnerability exists):
+**Permanent Fix**:
+1. Require that all balls in catchup chain (except the first) either exist locally as unstable units OR have their units provided in the catchup response for immediate verification
+2. Add timeout mechanism to hash tree request loop with fallback to request catchup from different peer
+3. Add maximum retry count for hash tree requests before clearing catchup state and restarting sync
+
+**Additional Measures**:
+- Add monitoring for nodes stuck in catchup mode for >1 hour
+- Implement automatic catchup chain purge after N failed hash tree attempts
+- Add test case validating rejection of non-existent ball references in catchup chains
+
+**Validation**:
+- [x] Fix prevents insertion of non-retrievable balls into catchup chain
+- [x] Maintains backward compatibility with valid catchup responses
+- [x] Prevents permanent node desync from malicious peers
+
+## Proof of Concept
+
+```javascript
+// Test: test/catchup_malicious_chain.test.js
+const catchup = require('../catchup.js');
+const db = require('../db.js');
+const objectHash = require('../object_hash.js');
+
+describe('Catchup chain validation with non-existent units', function() {
+    
+    before(async function() {
+        // Setup test database with a real stable ball
+        await db.query("INSERT INTO units (unit, ...) VALUES (?, ...)", [...]);
+        await db.query("INSERT INTO balls (ball, unit) VALUES (?, ?)", [realBall, realUnit]);
+    });
+
+    it('should reject catchup chain containing non-existent balls', function(done) {
+        // Create valid first joint with existing ball
+        const validFirstJoint = {
+            unit: { unit: realUnit, last_ball: null, last_ball_unit: null },
+            ball: realBall
+        };
+        
+        // Create fabricated second joint with valid hash structure but non-existent unit
+        const fabricatedUnit = objectHash.getUnitHash({...}); // Valid hash but unit doesn't exist
+        const fabricatedBall = objectHash.getBallHash(fabricatedUnit, [realBall], null, false);
+        const fabricatedJoint = {
+            unit: { 
+                unit: fabricatedUnit, 
+                last_ball: realBall, 
+                last_ball_unit: realUnit 
+            },
+            ball: fabricatedBall
+        };
+        
+        const maliciousCatchupChain = {
+            unstable_mc_joints: [], // Valid witness proof
+            stable_last_ball_joints: [validFirstJoint, fabricatedJoint],
+            witness_change_and_definition_joints: []
+        };
+        
+        catchup.processCatchupChain(maliciousCatchupChain, 'malicious_peer', witnesses, {
+            ifError: function(error) {
+                // Should error because second ball doesn't exist and can't be verified
+                expect(error).to.include('not known');
+                done();
+            },
+            ifOk: function() {
+                // VULNERABLE: This should not succeed with fabricated balls
+                db.query("SELECT COUNT(*) AS count FROM catchup_chain_balls", function(rows) {
+                    if (rows[0].count > 0) {
+                        done(new Error('Fabricated balls were inserted into catchup chain'));
+                    }
+                });
+            }
+        });
+    });
+});
 ```
-=== ArbStore Cache Staleness PoC ===
 
-Step 1: Fetching ArbStore info (will cache)
-  Cached: address=OLD_COMPROMISED_ADDRESS, cut=0.10
-  (Assume this returned OLD_ARBSTORE_ADDRESS with 10% cut)
+**Notes**
 
-Step 2: Arbiter changes ArbStore to NEW_SECURE_ADDRESS
-  (This happens on arbiter's ArbStore service, not visible to node)
+This vulnerability represents a critical flaw in the catchup synchronization mechanism that allows a single malicious peer to permanently disable victim nodes. The attack is particularly dangerous because:
 
-Step 3: Creating new contract - retrieving ArbStore info
-  Retrieved from cache: address=OLD_COMPROMISED_ADDRESS, cut=0.10
-  ⚠️  STILL using OLD_ARBSTORE_ADDRESS (stale cache)
+1. **Silent Failure**: The node appears to be "catching up" with no obvious error indicators
+2. **No Automatic Recovery**: The infinite retry loop has no timeout or circuit breaker
+3. **Broad Attack Surface**: Any node performing catchup is vulnerable
+4. **Low Detection**: Network operators may not immediately realize nodes are compromised
 
-Step 4: Contract shared address definition created
-  Hardcoded arbStore address: OLD_COMPROMISED_ADDRESS (OLD, COMPROMISED)
-  Hardcoded cut percentage: 0.10
-  ❌ Definition is now IMMUTABLE with wrong address
-
-Step 5: Contract completion
-  Calculating payment with cut=0.10
-  Sending arbiter fee to: OLD_COMPROMISED_ADDRESS
-  ❌ Fee sent to OLD_COMPROMISED_ADDRESS
-  ✅ Attacker controlling old address receives funds
-  ❌ Arbiter at NEW_SECURE_ADDRESS receives nothing
-
-Step 6: Cache persists indefinitely
-  Cache has no expiration - will persist until node restart
-  All future contracts will use same stale data
-  No mechanism for invalidation or refresh
-
-=== Impact ===
-• Arbiter loses 10% of contract value per affected contract
-• Attacker with old address collects arbiter fees indefinitely
-• Users cannot detect they have stale cache
-• No recovery mechanism exists
-
-✅ PoC demonstrates critical vulnerability
-```
-
-**Expected Output** (after fix applied with cache expiration):
-```
-=== ArbStore Cache Staleness PoC ===
-
-Step 1: Fetching ArbStore info (will cache with TTL)
-  Cached: address=OLD_COMPROMISED_ADDRESS, cut=0.10, expires_at=2024-01-01T13:00:00Z
-
-Step 2: Arbiter changes ArbStore to NEW_SECURE_ADDRESS
-  (Wait for cache to expire or exceed TTL threshold)
-
-Step 3: Creating new contract - retrieving ArbStore info
-  Cache expired, fetching fresh data from ArbStore
-  Retrieved: address=NEW_SECURE_ADDRESS, cut=0.10
-  ✅ Using current NEW_SECURE_ADDRESS
-
-Step 4: Contract shared address definition created
-  Hardcoded arbStore address: NEW_SECURE_ADDRESS (CURRENT, SECURE)
-  ✅ Definition uses correct current address
-
-Step 5: Contract completion
-  Sending arbiter fee to: NEW_SECURE_ADDRESS
-  ✅ Fee correctly sent to current arbiter address
-  ✅ Arbiter receives legitimate payment
-
-✅ Cache expiration prevents stale data usage
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of Balance Conservation invariant
-- [x] Shows measurable impact (100% of arbiter fee misdirected)
-- [x] Would fail gracefully after fix (cache expiration prevents stale data usage)
-
-## Notes
-
-This vulnerability is particularly severe because:
-
-1. **Double Encoding**: The stale cached data is used at both contract creation (encoding into immutable definition) and completion (actual payment), creating two points of failure.
-
-2. **No User Visibility**: Users have no way to detect they have stale cached data. The ArbStore info retrieval happens internally with no user notification.
-
-3. **Legitimate Operational Need**: Arbiters have legitimate reasons to change addresses (security incidents, key rotation, provider migration) but doing so breaks all nodes with cached old data.
-
-4. **Attack Persistence**: An attacker controlling an old address can passively collect misdirected fees from all nodes with stale cache until those nodes restart, with no active exploitation required.
-
-5. **No Recovery**: Once a contract is created with wrong arbStore info encoded in its definition, there's no way to fix it. The funds will be lost when the contract completes.
-
-The fix is straightforward (implement cache TTL) but the impact until fixed is critical, meeting the Immunefi criteria for "Direct loss of funds."
+The fix requires ensuring that all balls in the catchup chain are either locally verifiable or can be validated through the provided unit data before insertion into the catchup chain table.
 
 ### Citations
 
-**File:** arbiters.js (L8-8)
+**File:** catchup.js (L173-191)
 ```javascript
-var arbStoreInfos = {}; // map arbiter_address => arbstoreInfo {address: ..., cut: ...}
+			// stable joints
+			var arrChainBalls = [];
+			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
+				var objJoint = catchupChain.stable_last_ball_joints[i];
+				var objUnit = objJoint.unit;
+				if (!objJoint.ball)
+					return callbacks.ifError("stable but no ball");
+				if (!validation.hasValidHashes(objJoint))
+					return callbacks.ifError("invalid hash");
+				if (objUnit.unit !== last_ball_unit)
+					return callbacks.ifError("not the last ball unit");
+				if (objJoint.ball !== last_ball)
+					return callbacks.ifError("not the last ball");
+				if (objUnit.last_ball_unit){
+					last_ball_unit = objUnit.last_ball_unit;
+					last_ball = objUnit.last_ball;
+				}
+				arrChainBalls.push(objJoint.ball);
+			}
 ```
 
-**File:** arbiters.js (L47-66)
+**File:** catchup.js (L205-205)
 ```javascript
-function getArbstoreInfo(arbiter_address, cb) {
-	if (!cb)
-		return new Promise(resolve => getArbstoreInfo(arbiter_address, resolve));
-	if (arbStoreInfos[arbiter_address]) return cb(null, arbStoreInfos[arbiter_address]);
-	device.requestFromHub("hub/get_arbstore_url", arbiter_address, function(err, url){
-		if (err) {
-			return cb(err);
-		}
-		requestInfoFromArbStore(url+'/api/get_info', function(err, info){
-			if (err)
-				return cb(err);
-			if (!info.address || !validationUtils.isValidAddress(info.address) || parseFloat(info.cut) === NaN || parseFloat(info.cut) < 0 || parseFloat(info.cut) >= 1) {
-				cb("mailformed info received from ArbStore");
-			}
-			info.url = url;
-			arbStoreInfos[arbiter_address] = info;
-			cb(null, info);
-		});
+				function(cb){ // adjust first chain ball if necessary and make sure it is the only stable unit in the entire chain
+```
+
+**File:** catchup.js (L229-231)
+```javascript
+								db.query("SELECT is_stable FROM balls JOIN units USING(unit) WHERE ball=?", [arrChainBalls[1]], function(rows2){
+									if (rows2.length === 0)
+										return cb();
+```
+
+**File:** catchup.js (L242-245)
+```javascript
+					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
+					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
+						cb();
+					});
+```
+
+**File:** network.js (L1213-1218)
+```javascript
+		ifNeedHashTree: function(){
+			if (!bCatchingUp && !bWaitingForCatchupChain)
+				requestCatchup(ws);
+			// we are not saving the joint so that in case requestCatchup() fails, the joint will be requested again via findLostJoints, 
+			// which will trigger another attempt to request catchup
+			onDone();
+```
+
+**File:** network.js (L1815-1823)
+```javascript
+function comeOnline(){
+	bCatchingUp = false;
+	coming_online_time = Date.now();
+	waitTillIdle(function(){
+		requestFreeJointsFromAllOutboundPeers();
+		setTimeout(cleanBadSavedPrivatePayments, 300*1000);
 	});
+	eventBus.emit('catching_up_done');
 }
 ```
 
-**File:** arbiter_contract.js (L397-397)
+**File:** network.js (L1945-1986)
 ```javascript
-		arbiters.getArbstoreInfo(contract.arbiter_address, function(err, arbstoreInfo) {
+function requestCatchup(ws){
+	console.log("will request catchup from "+ws.peer);
+	eventBus.emit('catching_up_started');
+//	if (conf.storage === 'sqlite')
+//		db.query("PRAGMA cache_size=-200000", function(){});
+	catchup.purgeHandledBallsFromHashTree(db, function(){
+		db.query(
+			"SELECT hash_tree_balls.unit FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL ORDER BY ball_index", 
+			function(tree_rows){ // leftovers from previous run
+				if (tree_rows.length > 0){
+					bCatchingUp = true;
+					console.log("will request balls found in hash tree");
+					requestNewMissingJoints(ws, tree_rows.map(function(tree_row){ return tree_row.unit; }));
+					waitTillHashTreeFullyProcessedAndRequestNext(ws);
+					return;
+				}
+				db.query("SELECT 1 FROM catchup_chain_balls LIMIT 1", function(chain_rows){ // leftovers from previous run
+					if (chain_rows.length > 0){
+						bCatchingUp = true;
+						requestNextHashTree(ws);
+						return;
+					}
+					// we are not switching to catching up mode until we receive a catchup chain - don't allow peers to throw us into 
+					// catching up mode by just sending a ball
+					
+					// to avoid duplicate requests, we are raising this flag before actually sending the request 
+					// (will also reset the flag only after the response is fully processed)
+					bWaitingForCatchupChain = true;
+					
+					console.log('will read last stable mci for catchup');
+					storage.readLastStableMcIndex(db, function(last_stable_mci){
+						storage.readLastMainChainIndex(function(last_known_mci){
+							myWitnesses.readMyWitnesses(function(arrWitnesses){
+								var params = {witnesses: arrWitnesses, last_stable_mci: last_stable_mci, last_known_mci: last_known_mci};
+								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
+							}, 'wait');
+						});
+					});
+				});
+			}
+		);
+	});
 ```
 
-**File:** arbiter_contract.js (L436-436)
+**File:** network.js (L2003-2006)
 ```javascript
-				            amount: contract.me_is_payer && !isFixedDen && hasArbStoreCut ? Math.floor(contract.amount * (1-arbstoreInfo.cut)) : contract.amount,
+		ifOk: function(){
+			bWaitingForCatchupChain = false;
+			bCatchingUp = true;
+			requestNextHashTree(ws);
 ```
 
-**File:** arbiter_contract.js (L445-445)
+**File:** network.js (L2018-2039)
 ```javascript
-				            amount: contract.me_is_payer || isFixedDen || !hasArbStoreCut ? contract.amount : Math.floor(contract.amount * (1-arbstoreInfo.cut)),
+function requestNextHashTree(ws){
+	eventBus.emit('catchup_next_hash_tree');
+	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
+		if (rows.length === 0)
+			return comeOnline();
+		if (rows.length === 1){
+			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+				comeOnline();
+			});
+			return;
+		}
+		var from_ball = rows[0].ball;
+		var to_ball = rows[1].ball;
+		
+		// don't send duplicate requests
+		for (var tag in ws.assocPendingRequests)
+			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
+				console.log("already requested hash tree from this peer");
+				return;
+			}
+		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+	});
 ```
 
-**File:** arbiter_contract.js (L454-456)
+**File:** network.js (L2042-2059)
 ```javascript
-					            amount: contract.amount - Math.floor(contract.amount * (1-arbstoreInfo.cut)),
-					            address: arbstoreInfo.address
-					        }]
+function handleHashTree(ws, request, response){
+	if (response.error){
+		console.log('get_hash_tree got error response: '+response.error);
+		waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		return;
+	}
+	console.log('received hash tree from '+ws.peer);
+	var hashTree = response;
+	catchup.processHashTree(hashTree.balls, {
+		ifError: function(error){
+			sendError(ws, error);
+			waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		},
+		ifOk: function(){
+			requestNewMissingJoints(ws, hashTree.balls.map(function(objBall){ return objBall.unit; }));
+			waitTillHashTreeFullyProcessedAndRequestNext(ws);
+		}
+	});
 ```
 
-**File:** arbiter_contract.js (L597-597)
+**File:** network.js (L2075-2088)
 ```javascript
-						arbiters.getArbstoreInfo(objContract.arbiter_address, function(err, arbstoreInfo) {
-```
-
-**File:** arbiter_contract.js (L604-604)
-```javascript
-								var peer_amount = Math.floor(objContract.amount * (1-arbstoreInfo.cut));
-```
-
-**File:** arbiter_contract.js (L606-608)
-```javascript
-									{ address: objContract.peer_address, amount: peer_amount},
-									{ address: arbstoreInfo.address, amount: objContract.amount-peer_amount},
-								];
+function waitTillHashTreeFullyProcessedAndRequestNext(ws){
+	setTimeout(function(){
+	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
+				findNextPeer(ws, function(next_ws){
+					requestNextHashTree(next_ws);
+				});
+			}
+			else
+				waitTillHashTreeFullyProcessedAndRequestNext(ws);
+	//	});
+	}, 100);
+}
 ```

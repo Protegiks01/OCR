@@ -1,263 +1,307 @@
-## Title
-Unhandled Exceptions in breadcrumbs.add() Cause Critical Node Crash and Permanent Mutex Deadlock During Transaction Validation
+# Audit Report: Unbounded Recursion in Light Client Textcoin Claiming
 
 ## Summary
-The `breadcrumbs.add()` function lacks exception handling around operations that can throw (Date().toString(), string concatenation, array operations, console.log()). When these operations fail during mutex-protected validation or network operations, they cause immediate process crashes and permanent mutex deadlocks, preventing all future transaction processing.
+
+The `receiveTextCoin()` function in `wallet.js` contains an unbounded recursion vulnerability where an attacker can create a chain of asset definitions, each containing payment outputs to the textcoin address in subsequent assets. This causes the light client to make N sequential network requests (one per asset), leading to severe performance degradation or potential stack overflow when claiming textcoins.
 
 ## Impact
-**Severity**: Critical  
-**Category**: Network Shutdown
+
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / DoS
+
+Light client users attempting to claim maliciously crafted textcoins experience significant delays (potentially 5-10 minutes for a 1000-asset chain) or application crashes due to unbounded recursion. No funds are lost, but the textcoin becomes unusable for light clients until they switch to full node mode. Attacker can target multiple victims by creating multiple such textcoins.
 
 ## Finding Description
 
-**Location**: 
-- `byteball/ocore/breadcrumbs.js` (function `add()`)
-- `byteball/ocore/network.js` (lines 1026-1027, 1347-1349)
-- `byteball/ocore/validation.js` (lines 1141-1142)
-- `byteball/ocore/mutex.js` (lines 43-59)
+**Location**: `byteball/ocore/wallet.js:2518-2566`, function `checkStability()`
 
-**Intended Logic**: The breadcrumbs.add() function is designed to log debugging information for troubleshooting sequences of calls. It should be a non-critical, auxiliary function that doesn't impact core operations.
+**Intended Logic**: The `checkStability()` function should query outputs for the textcoin address, fetch unknown asset definitions once, then proceed with claiming. Recursion should terminate after a single level since asset definitions should not add new outputs to the textcoin address.
 
-**Actual Logic**: The function performs multiple operations without exception handling. When any operation throws (most commonly console.log() failure due to stdout errors), the exception propagates uncaught through critical validation and network code paths, causing process crashes and mutex deadlocks.
+**Actual Logic**: When `checkStability()` discovers unknown assets, it calls `network.requestHistoryFor()` which fetches asset definition units and saves them via `writer.saveJoint()`. However, Obyte allows units to contain multiple message types - an asset definition unit can also contain payment messages. When such units are saved, ALL messages are persisted, including payment outputs to arbitrary addresses. The next `checkStability()` call queries ALL outputs again, discovers newly added outputs in other unknown assets, and recurses again with no depth limit.
 
-**Code Evidence**: [1](#0-0) [2](#0-1) [3](#0-2) [4](#0-3) 
+**Code Evidence:**
 
-**Exploitation Path**:
+The recursive query that discovers all outputs (including newly added ones): [1](#0-0) 
 
-1. **Preconditions**: Node is running in production with stdout redirected to a file or with limited resources (common in daemon/containerized deployments)
+The code that triggers recursion when unknown assets are found: [2](#0-1) 
 
-2. **Step 1**: Disk fills up OR file descriptor limit is reached OR stdout pipe is broken. This can be accelerated by an attacker submitting units that trigger extensive validation logging and breadcrumb activity.
+The function that reads unknown assets from the database: [3](#0-2) 
 
-3. **Step 2**: A unit arrives requiring validation. Network.js calls mutex.lock(['handleJoint']) and then validation.validate().
+When history is received, `light.processHistory()` calls `writer.saveJoint()` for the asset definition unit: [4](#0-3) 
 
-4. **Step 3**: During validation, checkSerialAddressUse() detects conflicting units and calls breadcrumbs.add() twice at lines 1141-1142.
+The `writer.saveJoint()` function saves ALL outputs from the unit, including payment messages: [5](#0-4) 
 
-5. **Step 4**: console.log() in breadcrumbs.add() throws an exception due to stdout failure. The exception propagates up through the validation callback stack, never reaching the unlock() callback in the mutex.
+**Exploitation Path:**
 
-6. **Step 5**: The ['handleJoint'] mutex remains locked permanently. The Node.js process crashes due to uncaught exception (no global handler exists).
+1. **Preconditions**: Attacker creates N asset definition units on-chain (N=1000):
+   - Unit U_1000 defines Asset_1000 (no additional payments)
+   - Unit U_999 defines Asset_999 and includes payment of 1 byte in Asset_1000 to `textcoin_addr`
+   - Unit U_998 defines Asset_998 and includes payment of 1 byte in Asset_999 to `textcoin_addr`
+   - ... continues down to Unit U_1 defining Asset_1
 
-7. **Step 6**: Even after restart, if resource conditions persist, the same crash loop occurs. All transaction validation is blocked.
+2. **Step 1**: Attacker sends textcoin to victim (light client) with output in Asset_1
 
-**Security Property Broken**: Invariant #24 (Network Unit Propagation) - Valid units cannot be processed, and the node cannot participate in consensus.
+3. **Step 2**: Victim calls `receiveTextCoin()`. First `checkStability()` queries outputs, finds Asset_1 is unknown
+   - Code path: `wallet.js:receiveTextCoin()` → `checkStability()` queries line 2519-2522 → `getAssetInfos()` line 2576 detects unknown Asset_1
+
+4. **Step 3**: Line 2531 calls `network.requestHistoryFor([Asset_1], [], checkStability)` - recursive callback set
+
+5. **Step 4**: Light vendor returns Unit U_1. `light.processHistory()` calls `writer.saveJoint()` which saves:
+   - Asset_1 definition to `assets` table  
+   - Payment output (1 byte in Asset_2 to `textcoin_addr`) to `outputs` table
+
+6. **Step 5**: `checkStability()` called again (callback), queries outputs again, now finds:
+   - Asset_1 (known)
+   - Asset_2 (unknown - newly added from U_1's payment message)
+
+7. **Step 6**: Line 2531 calls `network.requestHistoryFor([Asset_2], [], checkStability)` - recursion continues
+
+8. **Step 7**: Process repeats for Asset_3, Asset_4, ..., Asset_1000, requiring 1000 network roundtrips
+
+**Security Property Broken**: System availability for light clients - textcoin claiming should complete in bounded time with bounded recursion depth. The implicit assumption that asset definition units only contain asset definitions is violated.
 
 **Root Cause Analysis**: 
-The codebase treats breadcrumbs.add() as a simple logging utility but calls it within critical mutex-protected validation flows. The mutex.js implementation has no exception handling around the proc() callback, so any uncaught exception leaves the mutex locked. Combined with the absence of a global uncaughtException handler, this creates a critical failure mode.
+- Obyte protocol allows units to contain multiple message types (asset definition + payment) - this is by design
+- `checkStability()` queries ALL outputs for the address on each invocation with no filtering of previously processed assets
+- No recursion depth limit exists in the code
+- `writer.saveJoint()` correctly saves all messages, but the calling code doesn't anticipate payment messages in asset definition units adding new outputs to the claimed address
 
 ## Impact Explanation
 
-**Affected Assets**: All network participants lose the ability to validate and propagate transactions when nodes crash.
+**Affected Assets**: No direct fund loss. Affects usability of textcoins denominated in custom assets for light client users.
 
 **Damage Severity**:
-- **Quantitative**: Complete node shutdown requiring manual intervention. If multiple nodes experience the same resource conditions (common in clustered deployments or during network-wide disk space issues), significant network capacity is lost.
-- **Qualitative**: Total inability to process transactions, permanent mutex deadlock preventing recovery without code fix.
+- **Quantitative**: For N=1000 asset chain, requires 1000 recursive function calls and 1000 network roundtrips to light vendor. Each roundtrip ~100-500ms = 100-500 seconds (1.6-8.3 minutes) minimum. JavaScript call stack typically ~10,000-15,000 depth, so N=1000 unlikely to overflow but N>10,000 could crash the application.
+- **Qualitative**: Denial of service against light client textcoin functionality. User experience severely degraded.
 
 **User Impact**:
-- **Who**: All node operators, especially those running production nodes with stdout logging to files
-- **Conditions**: Occurs when console.log() fails (disk full, broken pipe, fd limits, stdout closed)
-- **Recovery**: Requires process restart AND resolution of underlying resource issue. If resource issue persists, crash loop continues.
+- **Who**: Light client users (not full nodes) attempting to claim textcoins created by malicious actors
+- **Conditions**: Exploitable whenever attacker creates textcoin with chained asset references. Light clients affected because they don't have all assets cached locally.
+- **Recovery**: User can switch to full node mode (which would throw error on unknown asset rather than fetch), or wait for the claiming process to complete if it doesn't crash. Alternatively, user can manually add recursion depth protection.
 
-**Systemic Risk**: In production environments with common configurations (log rotation, disk quotas, containerization), this can cause cascading failures across multiple nodes, significantly degrading network capacity.
+**Systemic Risk**: Low - affects individual textcoin claims only, doesn't cascade to network consensus or other users' funds. However, attacker can create multiple such textcoins to DoS multiple light client users.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user who can submit units to the network
-- **Resources Required**: Ability to submit multiple units to trigger extensive logging
-- **Technical Skill**: Low - simply needs to submit units that trigger validation edge cases (conflicting units, missing parents, etc.)
+- **Identity**: Any user with Obyte address and understanding of asset creation mechanics
+- **Resources Required**: Transaction fees to create N asset definitions (~1000 bytes per asset × 1000 assets = ~1MB payload = significant but feasible cost)
+- **Technical Skill**: Medium - requires understanding that units can contain both asset definitions and payment messages, and ability to compose such units
 
 **Preconditions**:
-- **Network State**: Node running with stdout redirected (common in production)
-- **Attacker State**: Ability to submit units to the network
-- **Timing**: Resource constraints present or can be induced
+- **Network State**: Normal operation
+- **Attacker State**: Sufficient funds to create asset chain on-chain (moderate cost)
+- **Timing**: No special timing required - assets can be created at any time before sending textcoin
 
 **Execution Complexity**:
-- **Transaction Count**: Multiple units to fill logs and exhaust disk/resources
-- **Coordination**: Can be combined with spam attacks to fill disk faster
-- **Detection Risk**: Appears as normal validation activity until crash occurs
+- **Transaction Count**: N+1 units (N asset definitions + 1 textcoin send)
+- **Coordination**: Single attacker, no coordination with other parties needed
+- **Detection Risk**: Low - asset definitions and textcoins are normal protocol operations
 
 **Frequency**:
-- **Repeatability**: Occurs on every validation attempt once resource conditions are present
-- **Scale**: Affects individual nodes but can cascade if multiple nodes share similar configurations
+- **Repeatability**: High - attacker can create multiple textcoin traps targeting different victims
+- **Scale**: Per-victim DoS attack, but can be used against many users
 
-**Overall Assessment**: Medium-High likelihood. While not directly exploitable without resource constraints, these constraints commonly exist in production environments (disk quotas, fd limits, containerization). An attacker can accelerate the condition by submitting units that trigger extensive logging.
+**Overall Assessment**: Medium likelihood - attack is technically feasible and economically viable for targeted harassment/griefing, but requires upfront cost and only affects light clients.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add try-catch blocks around all breadcrumbs.add() calls in critical paths
-2. Implement global uncaughtException handler to prevent process crashes
-3. Monitor disk space and file descriptor usage
+**Immediate Mitigation**:
+Add recursion depth limit to prevent unbounded recursion:
 
-**Permanent Fix**: Wrap breadcrumbs.add() internally with exception handling to make it truly non-critical:
-
-**Code Changes**: [1](#0-0) 
-
-**Fixed version** (breadcrumbs.js):
 ```javascript
-function add(breadcrumb){
-	try {
-		if (arrBreadcrumbs.length > MAX_LENGTH)
-			arrBreadcrumbs.shift();
-		arrBreadcrumbs.push(Date().toString() + ': ' + breadcrumb);
-		console.log(breadcrumb);
-	}
-	catch (e) {
-		// Silently fail - breadcrumbs are for debugging only
-		// Don't let logging failures crash critical operations
-	}
+// In wallet.js, receiveTextCoin() function
+var recursionDepth = 0;
+var MAX_ASSET_FETCH_DEPTH = 10;
+
+function checkStability() {
+    if (recursionDepth > MAX_ASSET_FETCH_DEPTH)
+        return cb("Too many chained asset definitions, potential DoS attack");
+    recursionDepth++;
+    // ... existing code
+}
+```
+
+**Permanent Fix**:
+Track which assets have been processed to prevent re-processing newly discovered assets that were added by asset definition units:
+
+```javascript
+// In wallet.js, receiveTextCoin() function
+var processedAssets = new Set();
+
+function checkStability() {
+    db.query(/* ... existing query ... */, async function(rows) {
+        // ... existing code ...
+        const assets = rows.map(row => row.asset).filter(a => a);
+        const newAssets = assets.filter(a => !processedAssets.has(a));
+        const { unknown_assets, asset_infos } = await getAssetInfos(newAssets);
+        
+        if (unknown_assets.length > 0 && conf.bLight) {
+            unknown_assets.forEach(a => processedAssets.add(a));
+            return network.requestHistoryFor(unknown_assets, [], checkStability);
+        }
+        // ... rest of code
+    });
 }
 ```
 
 **Additional Measures**:
-- Add global uncaughtException handler in main entry points to log and gracefully handle unexpected errors
-- Implement mutex.js exception handling to ensure unlock() is called even if proc() throws
-- Add monitoring for breadcrumb failures to detect resource issues early
-- Add test cases that simulate stdout/console.log failures
-
-**Validation**:
-- [x] Fix prevents exploitation - exceptions are caught and silenced
-- [x] No new vulnerabilities introduced - fail-safe approach
-- [x] Backward compatible - no API changes
-- [x] Performance impact acceptable - minimal (one try-catch per call)
+- Add monitoring to detect textcoins with unusual number of chained assets
+- Consider warning users in UI when claiming textcoins with many unknown assets
+- Document this behavior as a known limitation of light clients
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`poc_breadcrumb_crash.js`):
 ```javascript
-/*
- * PoC: Demonstrate breadcrumbs.add() crash causing mutex deadlock
- * This simulates console.log() failure during validation
- */
+const composer = require('./composer.js');
+const network = require('./network.js');
+const wallet = require('./wallet.js');
+const objectHash = require('./object_hash.js');
 
-const breadcrumbs = require('./breadcrumbs.js');
-const mutex = require('./mutex.js');
-
-// Simulate console.log failure
-const originalLog = console.log;
-console.log = function() {
-	throw new Error('ENOSPC: no space left on device');
-};
-
-// Simulate critical validation path with mutex
-function simulateValidation() {
-	console.log('Starting validation with mutex lock...');
-	
-	mutex.lock(['handleJoint'], function(unlock) {
-		console.log('Mutex locked, calling breadcrumbs.add()...');
-		
-		try {
-			// This will throw because console.log is broken
-			breadcrumbs.add('Testing conflicting unit detection');
-			
-			// This unlock will never be reached
-			console.log('Validation complete');
-			unlock();
-		} catch (e) {
-			console.error('Exception caught in simulation:', e.message);
-			// In real code, there's no try-catch, so unlock() never happens
-		}
-	});
-	
-	// Try to acquire lock again - will deadlock if not unlocked
-	setTimeout(function() {
-		console.log('Attempting second lock - will hang if deadlocked...');
-		mutex.lock(['handleJoint'], function(unlock) {
-			console.log('Second lock acquired - no deadlock');
-			unlock();
-		});
-	}, 100);
+// PoC: Create chain of 10 assets for demonstration (use 1000+ for actual DoS)
+async function createAssetChain() {
+    const CHAIN_LENGTH = 10;
+    const textcoinAddress = '...'; // Target textcoin address
+    const assets = [];
+    
+    // Step 1: Create assets in reverse order
+    for (let i = CHAIN_LENGTH; i >= 1; i--) {
+        const messages = [{
+            app: 'asset',
+            payload_location: 'inline',
+            payload_hash: '...',
+            payload: {
+                is_private: false,
+                is_transferrable: true,
+                auto_destroy: false,
+                fixed_denominations: false,
+                issued_by_definer_only: false,
+                cosigned_by_definer: false,
+                spender_attested: false
+            }
+        }];
+        
+        // Add payment to textcoin address in next asset (except last)
+        if (i < CHAIN_LENGTH) {
+            messages.push({
+                app: 'payment',
+                payload_location: 'inline',
+                payload: {
+                    asset: assets[i], // Next asset in chain
+                    inputs: [{ type: 'issue', amount: 1, address: attackerAddress }],
+                    outputs: [{ address: textcoinAddress, amount: 1 }]
+                }
+            });
+        }
+        
+        const unit = await composer.composeJoint({
+            paying_addresses: [attackerAddress],
+            messages: messages,
+            signer: attackerSigner
+        });
+        
+        assets[i-1] = unit.unit.unit; // Asset ID = unit hash
+    }
+    
+    // Step 2: Send textcoin with output in Asset_1
+    await composer.composeJoint({
+        paying_addresses: [attackerAddress],
+        outputs_by_asset: {
+            [assets[0]]: [{ address: textcoinAddress, amount: 1 }]
+        },
+        signer: attackerSigner
+    });
+    
+    return textcoinAddress;
 }
 
-// Restore console.log for demo output
-console.log = originalLog;
-simulateValidation();
+// Step 3: Victim (light client) attempts to claim
+async function victimClaimTextcoin(mnemonic, recipientAddress) {
+    console.log('Starting textcoin claim...');
+    const startTime = Date.now();
+    let requestCount = 0;
+    
+    // Instrument network.requestHistoryFor to count requests
+    const originalRequestHistory = network.requestHistoryFor;
+    network.requestHistoryFor = function(...args) {
+        requestCount++;
+        console.log(`Network request #${requestCount} for assets: ${args[0]}`);
+        return originalRequestHistory.apply(this, args);
+    };
+    
+    try {
+        await wallet.receiveTextCoin(mnemonic, recipientAddress, (err, unit, asset) => {
+            const elapsed = Date.now() - startTime;
+            console.log(`Claim completed in ${elapsed}ms after ${requestCount} requests`);
+            console.log(`Expected: 1-2 requests, Actual: ${requestCount} requests`);
+            
+            // Assert failure for demonstration
+            if (requestCount > 2) {
+                console.error('VULNERABILITY CONFIRMED: Unbounded recursion detected!');
+                console.error(`Made ${requestCount} recursive network calls`);
+            }
+        });
+    } finally {
+        network.requestHistoryFor = originalRequestHistory;
+    }
+}
+
+// Run PoC
+(async () => {
+    const textcoinAddr = await createAssetChain();
+    await victimClaimTextcoin('test mnemonic phrase...', 'RECIPIENT_ADDRESS');
+})();
 ```
 
-**Expected Output** (vulnerability present):
-```
-Starting validation with mutex lock...
-Mutex locked, calling breadcrumbs.add()...
-Exception caught in simulation: ENOSPC: no space left on device
-Attempting second lock - will hang if deadlocked...
-[Process hangs - mutex deadlock]
-```
+**Expected Output**: 10 (or 1000) network requests with corresponding recursive calls, demonstrating unbounded recursion proportional to chain length.
 
-**Expected Output** (after fix):
-```
-Starting validation with mutex lock...
-Mutex locked, calling breadcrumbs.add()...
-Validation complete
-Attempting second lock - will hang if deadlocked...
-Second lock acquired - no deadlock
-```
-
-**PoC Validation**:
-- [x] Demonstrates exception from breadcrumbs.add()
-- [x] Shows mutex deadlock when exception occurs in mutex callback
-- [x] Illustrates process crash/hang scenario
-- [x] Fix (try-catch in breadcrumbs.add) prevents the issue
+---
 
 ## Notes
 
-This vulnerability is particularly dangerous because:
-
-1. **Silent Until Triggered**: Works fine until resource constraints appear, making it hard to detect in testing
-2. **Production-Specific**: Most likely to occur in production with log file rotation, disk quotas, or containerization
-3. **Cascading Effect**: Once one node crashes, increased load on remaining nodes may trigger same condition
-4. **Mutex Deadlock**: Even if process doesn't fully crash, mutex deadlock prevents recovery without restart
-
-The fix is straightforward (add try-catch), but the impact is severe enough to warrant Critical severity classification under the "Network not being able to confirm new transactions" category.
+- Full nodes are not affected because they already have all assets cached and would throw an error if an asset is truly unknown (line 2578-2579)
+- The vulnerability is specific to light clients which must fetch asset definitions from light vendors on demand
+- While units containing both asset definitions and payment messages are valid per protocol, the `receiveTextCoin()` function doesn't anticipate this pattern being used maliciously
+- The recursion depth for N=1000 is unlikely to cause stack overflow (JS stack ~10k-15k) but causes severe performance degradation
+- Economic cost is moderate: ~1000 bytes per asset definition unit × 1000 units = ~1MB = ~1000 bytes in fees (feasible for targeted attack)
 
 ### Citations
 
-**File:** breadcrumbs.js (L12-17)
+**File:** wallet.js (L2519-2522)
 ```javascript
-function add(breadcrumb){
-	if (arrBreadcrumbs.length > MAX_LENGTH)
-		arrBreadcrumbs.shift(); // forget the oldest breadcrumbs
-	arrBreadcrumbs.push(Date().toString() + ': ' + breadcrumb);
-	console.log(breadcrumb);
-}
+		db.query(
+			"SELECT is_stable, asset, SUM(amount) AS `amount` \n\
+			FROM outputs JOIN units USING(unit) WHERE address=? AND sequence='good' AND is_spent=0 GROUP BY asset ORDER BY asset DESC", 
+			[addrInfo.address],
 ```
 
-**File:** network.js (L1025-1027)
+**File:** wallet.js (L2528-2531)
 ```javascript
-	var validate = function(){
-		mutex.lock(['handleJoint'], function(unlock){
-			validation.validate(objJoint, {
+					const assets = rows.map(row => row.asset).filter(a => a);
+					const { unknown_assets, asset_infos } = await getAssetInfos(assets);
+					if (unknown_assets.length > 0 && conf.bLight)
+						return network.requestHistoryFor(unknown_assets, [], checkStability);
 ```
 
-**File:** validation.js (L1140-1142)
+**File:** wallet.js (L2576-2580)
 ```javascript
-			var arrConflictingUnits = arrConflictingUnitProps.map(function(objConflictingUnitProps){ return objConflictingUnitProps.unit; });
-			breadcrumbs.add("========== found conflicting units "+arrConflictingUnits+" =========");
-			breadcrumbs.add("========== will accept a conflicting unit "+objUnit.unit+" =========");
+				storage.readAsset(db, asset, null, function (err, objAsset) {
+					if (err && err.indexOf("not found") !== -1) {
+						if (!conf.bLight) // full wallets must have this asset
+							throw Error("textcoin asset " + asset + " not found");
+						unknown_assets.push(asset);
 ```
 
-**File:** mutex.js (L43-59)
+**File:** light.js (L329-329)
 ```javascript
-function exec(arrKeys, proc, next_proc){
-	arrLockedKeyArrays.push(arrKeys);
-	console.log("lock acquired", arrKeys);
-	var bLocked = true;
-	proc(function unlock(unlock_msg) {
-		if (!bLocked)
-			throw Error("double unlock?");
-		if (unlock_msg)
-			console.log(unlock_msg);
-		bLocked = false;
-		release(arrKeys);
-		console.log("lock released", arrKeys);
-		if (next_proc)
-			next_proc.apply(next_proc, arguments);
-		handleQueue();
-	});
-}
+								writer.saveJoint(objJoint, {sequence: sequence, arrDoubleSpendInputs: [], arrAdditionalQueries: []}, null, cb2);
+```
+
+**File:** writer.js (L394-398)
+```javascript
+								conn.addQuery(arrQueries, 
+									"INSERT INTO outputs \n\
+									(unit, message_index, output_index, address, amount, asset, denomination, is_serial) VALUES(?,?,?,?,?,?,?,1)",
+									[objUnit.unit, i, j, output.address, parseInt(output.amount), payload.asset, denomination]
+								);
 ```

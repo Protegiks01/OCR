@@ -1,432 +1,295 @@
-## Title
-Catchup Chain MCI Gap Validation Bypass Leading to Resource Exhaustion DoS
+# Audit Report: TPS Fee Validation Bypass via Type Mismatch
 
 ## Summary
-The `processCatchupChain()` function replaces `arrChainBalls[0]` with the current last stable ball when the received chain starts from an old MCI, but fails to validate that the MCI gap to `arrChainBalls[1]` remains within `MAX_CATCHUP_CHAIN_LENGTH` (1,000,000) after replacement. A malicious peer can exploit this to cause the victim node to query millions of units when requesting hash trees, leading to database exhaustion and complete node denial-of-service.
+
+A critical type mismatch vulnerability in `storage.getTpsFeeRecipients()` causes TPS fee validation to check the first author's balance during validation, but then deduct fees from different recipients after unit storage. This occurs because the function receives `earned_headers_commission_recipients` in array format during validation but object format during fee deduction, and JavaScript's `for...in` loop behaves differently for each type. Attackers can exploit this to bypass TPS fee requirements and accumulate negative balances.
 
 ## Impact
+
 **Severity**: Critical  
-**Category**: Network Shutdown
+**Category**: Fee Bypass / Balance Conservation Violation
+
+**Affected Assets**: TPS fee balances (bytes denomination), which regulate transaction processing during network congestion.
+
+**Damage Severity**:
+- Attackers can submit units without sufficient TPS fee balance by validating against a co-author with adequate balance
+- Enables accumulation of unlimited negative TPS fee balances
+- With typical min_tps_fee of 500-1000 bytes per unit, attackers can evade thousands of bytes in fees daily
+- Breaks the TPS fee mechanism's core congestion control purpose
+
+**User Impact**:
+- All network participants affected - honest users pay proper TPS fees while attackers bypass them
+- Exploitable whenever network TPS exceeds threshold and TPS fees are non-zero
+- Recovery requires protocol upgrade and potentially resetting negative balances
+
+**Systemic Risk**:
+- TPS fee system becomes ineffective if multiple attackers exploit this
+- Attacker units can crowd out legitimate transactions during high-load periods
+- Negative balances accumulate indefinitely without recovery mechanism
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js` - `processCatchupChain()` function (lines 220-226) and `readHashTree()` function (lines 289-292)
+**Location**: [1](#0-0) 
 
-**Intended Logic**: The catchup protocol is designed to synchronize nodes efficiently by limiting chain segments to `MAX_CATCHUP_CHAIN_LENGTH` (1,000,000 MCIs). When a received catchup chain starts from an old MCI that the victim already has, the first element should be replaced with the current last stable ball to avoid duplicate data.
+**Intended Logic**: The `getTpsFeeRecipients()` function should identify which author addresses will pay TPS fees based on `earned_headers_commission_recipients`, validate that all specified recipients are authors (rejecting external addresses), and return a consistent mapping for both validation and fee deduction phases.
 
-**Actual Logic**: After replacing `arrChainBalls[0]` at line 226, there is no validation that the MCI gap between the replaced `arrChainBalls[0]` and `arrChainBalls[1]` remains within `MAX_CATCHUP_CHAIN_LENGTH`. The only validation is that `arrChainBalls[1]` must not be stable (if it exists in the database), but its MCI is never checked.
+**Actual Logic**: The function contains a critical type mismatch bug. It uses a `for...in` loop to iterate over recipients, but JavaScript's `for...in` behaves differently for arrays versus objects:
+- **Array input** (during validation): Iterates over indices ("0", "1") instead of addresses, causing all recipients to be flagged as "external" and overridden to give 100% to the first author
+- **Object input** (after storage): Correctly iterates over address keys, returning the actual recipient mapping
 
 **Code Evidence**:
 
-The replacement happens without gap validation: [1](#0-0) 
+The vulnerable function: [1](#0-0) 
 
-The validation only checks stability, not MCI gap: [2](#0-1) 
+Called during validation with array format: [2](#0-1) 
 
-The MAX_CATCHUP_CHAIN_LENGTH constant that should protect against this: [3](#0-2) 
+Array format validated here: [3](#0-2) 
 
-Later, when hash trees are requested using these balls: [4](#0-3) 
+Conversion from array to object format in writer: [4](#0-3) 
 
-The `readHashTree()` function queries ALL units in the MCI range with no size limit: [5](#0-4) 
+Conversion when loading from database: [5](#0-4) 
 
-And for EACH unit, executes two additional queries (parents and skiplist): [6](#0-5) 
+Called during fee deduction with object format: [6](#0-5) 
+
+Database schema explicitly allows negative balances: [7](#0-6) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Victim node is at `last_stable_mci = 1,000,000`
-   - Attacker has connectivity to victim as a peer
-   - Network has units up to MCI ≥ 2,000,000 (unstable portion)
+   - Network has reached v4 upgrade (MCI ≥ constants.v4UpgradeMci)
+   - Attacker controls two addresses: A (high TPS fee balance, e.g., 10,000 bytes) and B (zero balance)
+   - Address A < B lexicographically (enforced by author sorting: [8](#0-7) )
 
-2. **Step 1**: Attacker crafts a malicious catchup chain:
-   - `arrChainBalls[0]` = ball at MCI 100 (old stable unit)
-   - `arrChainBalls[1]` = ball at MCI 2,000,000 (high unstable MCI, not yet stable)
-   - The chain follows proper `last_ball` references (passes validation at lines 173-191)
-   - Attacker sends this via `getCatchupChain` response
+2. **Step 1 - Craft Multi-Author Unit**:
+   - Create unit with authors = [A, B] (sorted)
+   - Set `earned_headers_commission_recipients = [{address: "B", earned_headers_commission_share: 100}]` (array format required by validation)
+   - Both A and B sign the unit
 
-3. **Step 2**: Victim validates and processes the catchup chain:
-   - Line 216: `arrChainBalls[0]` is confirmed stable ✓
-   - Line 222: `objFirstChainBallProps.main_chain_index (100) < last_stable_mci (1,000,000)` ✓  
-   - Line 226: `arrChainBalls[0]` is **replaced** with ball at MCI 1,000,000
-   - Line 229-236: `arrChainBalls[1]` at MCI 2,000,000 is checked - it's NOT stable (way ahead of stable point), validation passes ✓
-   - **Gap is now 1,000,000 MCIs** - no validation prevents this!
-   - Lines 242-245: Modified chain is stored in `catchup_chain_balls` table
+3. **Step 2 - Validation Bypass**:
+   - `validateTpsFee()` calls `getTpsFeeRecipients(array_format, [A, B])`
+   - `for (let address in recipients)` iterates over "0" (array index, not address "B")
+   - Check `author_addresses.includes("0")` returns false (since "0" ≠ "A" and "0" ≠ "B")
+   - Sets `bHasExternalRecipients = true`
+   - Overrides to `recipients = {A: 100}` (first author)
+   - Validation checks A's balance (10,000 bytes) → passes
 
-4. **Step 3**: Victim requests hash tree from the stored chain:
-   - Line 2020 in network.js: Queries first 2 balls from `catchup_chain_balls`
-   - `from_ball` = ball at MCI 1,000,000
-   - `to_ball` = ball at MCI 2,000,000
-   - Line 2038: Sends `get_hash_tree` request to peer
+4. **Step 3 - Storage Conversion**:
+   - Unit passes validation
+   - Writer converts array to object: [4](#0-3) 
+   - Stored as `{B: 100}` in `storage.assocUnstableUnits`
+   - Unit becomes stable
 
-5. **Step 4**: Peer (attacker or innocent peer) processes `readHashTree` request:
-   - Lines 268-286: Validates balls exist and `from_mci < to_mci` ✓
-   - **No validation that gap ≤ MAX_CATCHUP_CHAIN_LENGTH!**
-   - Lines 289-292: Executes query for ALL units where `main_chain_index > 1,000,000 AND main_chain_index <= 2,000,000`
-   - Assuming ~10 units per MCI (conservative estimate), this returns **10,000,000 rows**
-   - Lines 294-324: For EACH of the 10,000,000 units, executes 2 additional queries (parents + skiplist)
-   - **Total: 20,000,000+ database queries executed serially**
-   - Memory consumption: 10,000,000 ball objects in `arrBalls` array
-   - **Result: Database locks up, node becomes unresponsive, DoS achieved**
+5. **Step 4 - Fee Deduction Discrepancy**:
+   - `updateTpsFees()` calls `getTpsFeeRecipients({B: 100}, [A, B])` (object format now)
+   - `for (let address in recipients)` correctly iterates over "B"
+   - Check `author_addresses.includes("B")` returns true
+   - Returns `{B: 100}` without override
+   - Deducts TPS fee (e.g., 500 bytes) from B's balance: [9](#0-8) 
+   - B's balance: 0 - 500 = **-500 bytes** (negative balance allowed by schema)
 
-**Security Property Broken**: 
-- **Invariant #19 (Catchup Completeness)**: "Syncing nodes must retrieve all units on MC up to last stable point without gaps. Missing units cause validation failures and permanent desync." - The gap validation failure allows creation of unreasonably large sync requests that DoS the network.
-- **Implicit Resource Limit Invariant**: The `MAX_CATCHUP_CHAIN_LENGTH` constant exists to bound resource consumption during catchup, but this invariant is violated after the replacement.
+**Security Properties Broken**:
+- **Balance Conservation**: TPS fee balances can become negative without corresponding credit elsewhere
+- **Fee Sufficiency Validation**: Units bypass actual fee payment requirements through validation-deduction mismatch
 
-**Root Cause Analysis**: 
-The root cause is that the MCI gap validation happens on the **sender** side in `prepareCatchupChain()` (line 65), but after the **receiver** modifies the chain via replacement (line 226), there is no re-validation of the gap size. The code assumes that if the original chain was valid (within limits), it remains valid after replacement, but this assumption is false when the receiver's `last_stable_mci` has advanced significantly beyond the sender's.
-
-## Impact Explanation
-
-**Affected Assets**: Network availability, node resources (CPU, memory, database connections)
-
-**Damage Severity**:
-- **Quantitative**: 
-  - Single malicious catchup chain can trigger 20,000,000+ database queries
-  - Memory consumption: ~10GB (assuming 1KB per ball object × 10,000,000 units)
-  - Node unresponsive for hours until query completes or times out
-  - Can be repeated indefinitely by sending multiple malicious chains
-
-- **Qualitative**: 
-  - Complete node denial-of-service
-  - Prevents transaction validation and relay
-  - Victim node cannot serve other peers
-  - Database connection pool exhaustion prevents all operations
-
-**User Impact**:
-- **Who**: Any node syncing from an attacker-controlled peer, or any peer serving hash trees to a victim that received a malicious catchup chain
-- **Conditions**: Node must be behind in sync and accept catchup chains from malicious peer
-- **Recovery**: Requires manual node restart, database connection cleanup, and potentially blacklisting the malicious peer
-
-**Systemic Risk**: 
-- Attacker can target multiple nodes simultaneously
-- Hub nodes are particularly vulnerable as they serve many light clients
-- If major hubs are DoS'd, network partition risk increases
-- Automated attack scripts could maintain persistent DoS across the network
+**Root Cause**: JavaScript's `for...in` loop iterates over array indices ("0", "1") for arrays but object keys (addresses) for objects. The function was designed for post-storage object format but is also called during validation with pre-storage array format. The validation function `validateHeadersCommissionRecipients()` enforces array format but doesn't verify recipients are authors, delegating that check to `getTpsFeeRecipients()`, which fails for arrays.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any malicious peer on the Obyte network
-- **Resources Required**: 
-  - Ability to connect to victim as a peer (low barrier)
-  - Knowledge of victim's approximate `last_stable_mci` (observable via network gossip)
-  - No computational resources needed beyond crafting one malicious message
-- **Technical Skill**: Low - requires understanding of catchup protocol format but no cryptographic or consensus manipulation
+- Any user with two Obyte addresses (easily achievable)
+- Requires understanding of multi-author units and `earned_headers_commission_recipients` field
+- Technical skill: Medium
 
 **Preconditions**:
-- **Network State**: Network must have units at high unstable MCIs (always true in active network)
-- **Attacker State**: Must be accepted as a peer by victim (standard peer connection)
-- **Timing**: Can be executed at any time when victim is syncing or behind
+- Post-v4 upgrade network
+- Control of two addresses with proper lexicographic ordering
+- No special timing or network state required
 
 **Execution Complexity**:
-- **Transaction Count**: Zero transactions needed - pure network protocol attack
-- **Coordination**: Single attacker, single message
-- **Detection Risk**: Low - appears as legitimate catchup chain until hash tree is requested
+- Single multi-author unit per exploit
+- Self-contained (attacker controls both authors)
+- Detection risk: Low (multi-author units with custom recipients are legitimate)
 
 **Frequency**:
-- **Repeatability**: Unlimited - can send multiple malicious catchup chains
-- **Scale**: Can target multiple nodes simultaneously
+- Unlimited repeatability
+- Can create multiple low-balance addresses to distribute negative balances
 
-**Overall Assessment**: **High** likelihood - low technical barrier, high impact, easily repeatable, difficult to detect before damage occurs.
+**Overall Assessment**: High likelihood - easy to execute, difficult to detect, provides direct financial benefit by evading TPS fees.
 
 ## Recommendation
 
-**Immediate Mitigation**: Add validation after the replacement to ensure the MCI gap doesn't exceed `MAX_CATCHUP_CHAIN_LENGTH`.
+**Immediate Mitigation**:
 
-**Permanent Fix**: Implement comprehensive gap validation in `processCatchupChain()` after line 226.
-
-**Code Changes**:
-
-After the replacement at line 226, add validation to check the gap to the second element: [7](#0-6) 
-
-Insert the following validation immediately after line 226:
+Fix `getTpsFeeRecipients()` to handle both array and object formats correctly:
 
 ```javascript
-arrChainBalls[0] = objLastStableMcUnitProps.ball; // replace to avoid receiving duplicates
-
-// ADDED: Validate MCI gap after replacement
-if (arrChainBalls[1]) {
-    db.query(
-        "SELECT main_chain_index FROM balls JOIN units USING(unit) WHERE ball=?", 
-        [arrChainBalls[1]], 
-        function(rows_gap_check){
-            if (rows_gap_check.length > 0) {
-                var second_ball_mci = rows_gap_check[0].main_chain_index;
-                var mci_gap = second_ball_mci - last_stable_mci;
-                if (mci_gap > MAX_CATCHUP_CHAIN_LENGTH) {
-                    return cb("MCI gap too large after replacement: " + mci_gap + 
-                             " (from MCI " + last_stable_mci + " to " + second_ball_mci + 
-                             "), max allowed: " + MAX_CATCHUP_CHAIN_LENGTH);
-                }
-            }
-            // Continue with existing validation...
-            [existing code from line 227-236]
+function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
+    let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
+    if (earned_headers_commission_recipients) {
+        let bHasExternalRecipients = false;
+        
+        // Convert array format to object format if needed
+        if (Array.isArray(earned_headers_commission_recipients)) {
+            recipients = {};
+            earned_headers_commission_recipients.forEach(r => {
+                recipients[r.address] = r.earned_headers_commission_share;
+            });
         }
-    );
-}
-else {
-    return cb();
-}
-```
-
-Additionally, add a safety limit in `readHashTree()` to prevent resource exhaustion even if validation fails: [8](#0-7) 
-
-Add after line 286:
-
-```javascript
-if (from_mci >= to_mci)
-    return callbacks.ifError("from is after to");
-
-// ADDED: Prevent excessive range queries
-var mci_range = to_mci - from_mci;
-if (mci_range > MAX_CATCHUP_CHAIN_LENGTH) {
-    return callbacks.ifError("hash tree range too large: " + mci_range + 
-                            " MCIs (from " + from_mci + " to " + to_mci + 
-                            "), max allowed: " + MAX_CATCHUP_CHAIN_LENGTH);
+        
+        // Now check recipients using object keys
+        for (let address in recipients) {
+            if (!author_addresses.includes(address))
+                bHasExternalRecipients = true;
+        }
+        if (bHasExternalRecipients)
+            recipients = { [author_addresses[0]]: 100 };
+    }
+    return recipients;
 }
 ```
 
 **Additional Measures**:
-- Add integration test: "should reject catchup chain with excessive MCI gap after replacement"
-- Add monitoring: Log warning when catchup chains are close to MAX_CATCHUP_CHAIN_LENGTH
-- Consider lowering MAX_CATCHUP_CHAIN_LENGTH if analysis shows typical chains are much shorter
-- Add peer reputation: Track peers sending invalid catchup chains and temporarily ban repeat offenders
+- Add validation preventing negative TPS fee balances during fee deduction
+- Add monitoring to detect units where validation and deduction recipients differ
+- Database migration to reset existing negative TPS fee balances
 
 **Validation**:
-- [x] Fix prevents exploitation by rejecting chains with excessive gaps after replacement
-- [x] No new vulnerabilities introduced - adds conservative validation only
-- [x] Backward compatible - only rejects malicious chains that should never have been accepted
-- [x] Performance impact acceptable - adds one additional database query per catchup chain validation
+- Fix ensures consistent recipient detection for both array and object inputs
+- Prevents validation-deduction mismatch
+- No breaking changes to existing valid units
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_catchup_gap.js`):
 ```javascript
-/*
- * Proof of Concept for Catchup Chain MCI Gap Validation Bypass
- * Demonstrates: A malicious peer can send a catchup chain that, after 
- * replacement, creates a gap exceeding MAX_CATCHUP_CHAIN_LENGTH, causing
- * massive resource consumption when hash trees are requested.
- * Expected Result: Node becomes unresponsive due to database exhaustion
- */
+const test = require('ava');
+const storage = require('../storage.js');
 
-const catchup = require('./catchup.js');
-const db = require('./db.js');
-const storage = require('./storage.js');
-
-async function createMaliciousCatchupChain() {
-    // Simulate scenario where:
-    // - Victim's last_stable_mci = 1,000,000
-    // - Attacker sends chain starting from MCI 100
-    // - Second ball is at MCI 2,000,000 (unstable)
+test('getTpsFeeRecipients type mismatch vulnerability', t => {
+    const author_addresses = ['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'];
     
-    const maliciousCatchupChain = {
-        unstable_mc_joints: [], // Simplified for PoC
-        stable_last_ball_joints: [
-            {
-                unit: {
-                    unit: 'unit_at_mci_100',
-                    last_ball_unit: null,
-                    last_ball: null
-                },
-                ball: 'ball_at_mci_100'
-            },
-            {
-                unit: {
-                    unit: 'unit_at_mci_2000000',
-                    last_ball_unit: 'unit_at_mci_100',
-                    last_ball: 'ball_at_mci_100'
-                },
-                ball: 'ball_at_mci_2000000'
-            }
-        ],
-        witness_change_and_definition_joints: [],
-        proofchain_balls: []
-    };
+    // During validation: array format
+    const array_format = [
+        {address: 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', earned_headers_commission_share: 100}
+    ];
+    const validation_recipients = storage.getTpsFeeRecipients(array_format, author_addresses);
     
-    // Victim processes this chain
-    catchup.processCatchupChain(
-        maliciousCatchupChain,
-        'malicious_peer',
-        ['WITNESS1', 'WITNESS2', /* ... */],
-        {
-            ifError: function(error) {
-                console.log('❌ Catchup chain rejected (expected if fix is applied):', error);
-            },
-            ifOk: function() {
-                console.log('✓ Malicious catchup chain accepted!');
-                console.log('Chain stored in catchup_chain_balls table');
-                
-                // Now simulate hash tree request
-                db.query(
-                    "SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2",
-                    function(rows) {
-                        if (rows.length === 2) {
-                            console.log('Requesting hash tree from:', rows[0].ball, 'to:', rows[1].ball);
-                            
-                            const hashTreeRequest = {
-                                from_ball: rows[0].ball, // ball_at_mci_1000000 (after replacement)
-                                to_ball: rows[1].ball    // ball_at_mci_2000000
-                            };
-                            
-                            console.log('⚠️  WARNING: This will query 1,000,000 MCIs worth of units!');
-                            console.log('⚠️  Expected: 20,000,000+ database queries');
-                            console.log('⚠️  Expected: ~10GB memory consumption');
-                            console.log('⚠️  Node will become unresponsive');
-                            
-                            // Uncomment to actually trigger the DoS (DANGEROUS):
-                            // catchup.readHashTree(hashTreeRequest, {
-                            //     ifError: (err) => console.log('Error:', err),
-                            //     ifOk: (balls) => console.log('Hash tree received:', balls.length, 'balls')
-                            // });
-                        }
-                    }
-                );
-            }
-        }
-    );
-}
-
-// Run exploit
-createMaliciousCatchupChain();
+    // During fee deduction: object format (as converted by writer.js or storage.js)
+    const object_format = {'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB': 100};
+    const deduction_recipients = storage.getTpsFeeRecipients(object_format, author_addresses);
+    
+    // BUG: Different recipients returned!
+    // Validation checks first author (A), but deduction charges specified recipient (B)
+    t.deepEqual(validation_recipients, {'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA': 100}); // Checks A's balance
+    t.deepEqual(deduction_recipients, {'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB': 100}); // Charges B's balance
+    
+    // This proves the validation-deduction mismatch
+    t.notDeepEqual(validation_recipients, deduction_recipients);
+});
 ```
-
-**Expected Output** (when vulnerability exists):
-```
-✓ Malicious catchup chain accepted!
-Chain stored in catchup_chain_balls table
-Requesting hash tree from: ball_at_mci_1000000 to: ball_at_mci_2000000
-⚠️  WARNING: This will query 1,000,000 MCIs worth of units!
-⚠️  Expected: 20,000,000+ database queries
-⚠️  Expected: ~10GB memory consumption
-⚠️  Node will become unresponsive
-[Node becomes unresponsive for extended period]
-```
-
-**Expected Output** (after fix applied):
-```
-❌ Catchup chain rejected (expected if fix is applied): MCI gap too large after replacement: 1000000 (from MCI 1000000 to 2000000), max allowed: 1000000
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the vulnerability path from catchup chain processing to resource exhaustion
-- [x] Clear violation of resource limit invariant (MAX_CATCHUP_CHAIN_LENGTH bypass)
-- [x] Measurable impact: 1,000,000 MCI gap → 20,000,000+ queries → DoS
-- [x] Fix prevents exploitation by validating gap size after replacement
-
----
 
 ## Notes
 
-This vulnerability is particularly severe because:
+The database schema comment "can be negative" at line 1002 of `byteball-sqlite.sql` likely refers to legitimate refund scenarios when actual TPS is lower than estimated, not for bypassing validation. The validation logic at [10](#0-9)  explicitly checks balance sufficiency, indicating that negative balances from insufficient validation are not intended behavior.
 
-1. **Bypasses Intended Protection**: The `MAX_CATCHUP_CHAIN_LENGTH` constant was specifically designed to prevent this type of resource exhaustion, but the replacement logic creates a blind spot where the limit is not enforced.
-
-2. **Defense-in-Depth Failure**: Both `processCatchupChain()` and `readHashTree()` lack gap validation, allowing the attack to succeed even though there are two potential checkpoints.
-
-3. **Realistic Attack Vector**: The attacker doesn't need to control the network or compromise cryptography - just send a carefully crafted catchup chain during normal sync operations.
-
-4. **Amplification Effect**: A single small malicious message (few KB) triggers millions of database operations (GB of data movement), providing massive amplification for DoS attacks.
-
-The fix is straightforward and adds minimal overhead (one additional database query during catchup chain validation), making this a high-priority security patch.
+The vulnerability requires the attacker to control both author addresses, but this is trivial since any user can create multiple addresses. The exploit provides clear economic benefit by avoiding TPS fees that can reach thousands of bytes during high network load periods.
 
 ### Citations
 
-**File:** catchup.js (L14-14)
+**File:** storage.js (L1217-1217)
 ```javascript
-var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
+			const recipients = getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses);
 ```
 
-**File:** catchup.js (L220-226)
+**File:** storage.js (L1220-1223)
 ```javascript
-							storage.readLastStableMcUnitProps(db, function(objLastStableMcUnitProps){
-								var last_stable_mci = objLastStableMcUnitProps.main_chain_index;
-								if (objFirstChainBallProps.main_chain_index > last_stable_mci) // duplicate check
-									return cb("first chain ball "+arrChainBalls[0]+" mci is too large");
-								if (objFirstChainBallProps.main_chain_index === last_stable_mci) // exact match
-									return cb();
-								arrChainBalls[0] = objLastStableMcUnitProps.ball; // replace to avoid receiving duplicates
+				const tps_fees_delta = Math.floor(total_tps_fees_delta * share / 100);
+				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
+				const tps_fees_balance = row ? row.tps_fees_balance : 0;
+				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
 ```
 
-**File:** catchup.js (L227-236)
+**File:** storage.js (L1421-1433)
 ```javascript
-								if (!arrChainBalls[1])
-									return cb();
-								db.query("SELECT is_stable FROM balls JOIN units USING(unit) WHERE ball=?", [arrChainBalls[1]], function(rows2){
-									if (rows2.length === 0)
-										return cb();
-									var objSecondChainBallProps = rows2[0];
-									if (objSecondChainBallProps.is_stable === 1)
-										return cb("second chain ball "+arrChainBalls[1]+" must not be stable");
-									cb();
-								});
-```
-
-**File:** catchup.js (L285-286)
-```javascript
-			if (from_mci >= to_mci)
-				return callbacks.ifError("from is after to");
-```
-
-**File:** catchup.js (L289-292)
-```javascript
-			db.query(
-				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
-				[from_mci, to_mci], 
-```
-
-**File:** catchup.js (L302-323)
-```javascript
-							db.query(
-								"SELECT ball FROM parenthoods LEFT JOIN balls ON parent_unit=balls.unit WHERE child_unit=? ORDER BY ball", 
-								[objBall.unit],
-								function(parent_rows){
-									if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
-										throw Error("some parents have no balls");
-									if (parent_rows.length > 0)
-										objBall.parent_balls = parent_rows.map(function(parent_row){ return parent_row.ball; });
-									db.query(
-										"SELECT ball FROM skiplist_units LEFT JOIN balls ON skiplist_unit=balls.unit WHERE skiplist_units.unit=? ORDER BY ball", 
-										[objBall.unit],
-										function(srows){
-											if (srows.some(function(srow){ return !srow.ball; }))
-												throw Error("some skiplist units have no balls");
-											if (srows.length > 0)
-												objBall.skiplist_balls = srows.map(function(srow){ return srow.ball; });
-											arrBalls.push(objBall);
-											cb();
-										}
-									);
-								}
-							);
-```
-
-**File:** network.js (L2020-2038)
-```javascript
-	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
-		if (rows.length === 0)
-			return comeOnline();
-		if (rows.length === 1){
-			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-				comeOnline();
-			});
-			return;
+function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
+	let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
+	if (earned_headers_commission_recipients) {
+		let bHasExternalRecipients = false;
+		for (let address in recipients) {
+			if (!author_addresses.includes(address))
+				bHasExternalRecipients = true;
 		}
-		var from_ball = rows[0].ball;
-		var to_ball = rows[1].ball;
-		
-		// don't send duplicate requests
-		for (var tag in ws.assocPendingRequests)
-			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
-				console.log("already requested hash tree from this peer");
-				return;
-			}
-		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+		if (bHasExternalRecipients) // override, non-authors won't pay for our tps fee
+			recipients = { [author_addresses[0]]: 100 };
+	}
+	return recipients;
+}
+```
+
+**File:** storage.js (L2298-2300)
+```javascript
+						if (!assocUnits[prow.unit].earned_headers_commission_recipients)
+							assocUnits[prow.unit].earned_headers_commission_recipients = {};
+						assocUnits[prow.unit].earned_headers_commission_recipients[prow.address] = prow.earned_headers_commission_share;
+```
+
+**File:** validation.js (L911-911)
+```javascript
+	const recipients = storage.getTpsFeeRecipients(objUnit.earned_headers_commission_recipients, author_addresses);
+```
+
+**File:** validation.js (L916-917)
+```javascript
+		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
+			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
+```
+
+**File:** validation.js (L929-954)
+```javascript
+function validateHeadersCommissionRecipients(objUnit, cb){
+	if (objUnit.authors.length > 1 && typeof objUnit.earned_headers_commission_recipients !== "object")
+		return cb("must specify earned_headers_commission_recipients when more than 1 author");
+	if ("earned_headers_commission_recipients" in objUnit){
+		if (!isNonemptyArray(objUnit.earned_headers_commission_recipients))
+			return cb("empty earned_headers_commission_recipients array");
+		var total_earned_headers_commission_share = 0;
+		var prev_address = "";
+		for (var i=0; i<objUnit.earned_headers_commission_recipients.length; i++){
+			var recipient = objUnit.earned_headers_commission_recipients[i];
+			if (!isPositiveInteger(recipient.earned_headers_commission_share))
+				return cb("earned_headers_commission_share must be positive integer");
+			if (hasFieldsExcept(recipient, ["address", "earned_headers_commission_share"]))
+				return cb("unknowsn fields in recipient");
+			if (recipient.address <= prev_address)
+				return cb("recipient list must be sorted by address");
+			if (!isValidAddress(recipient.address))
+				return cb("invalid recipient address checksum");
+			total_earned_headers_commission_share += recipient.earned_headers_commission_share;
+			prev_address = recipient.address;
+		}
+		if (total_earned_headers_commission_share !== 100)
+			return cb("sum of earned_headers_commission_share is not 100");
+	}
+	cb();
+}
+```
+
+**File:** validation.js (L965-966)
+```javascript
+		if (objAuthor.address <= prev_address)
+			return callback("author addresses not sorted");
+```
+
+**File:** writer.js (L571-576)
+```javascript
+		if ("earned_headers_commission_recipients" in objUnit) {
+			objNewUnitProps.earned_headers_commission_recipients = {};
+			objUnit.earned_headers_commission_recipients.forEach(function(row){
+				objNewUnitProps.earned_headers_commission_recipients[row.address] = row.earned_headers_commission_share;
+			});
+		}
+```
+
+**File:** initial-db/byteball-sqlite.sql (L1002-1002)
+```sql
+	tps_fees_balance INT NOT NULL DEFAULT 0, -- can be negative
 ```

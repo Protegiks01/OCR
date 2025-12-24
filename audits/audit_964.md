@@ -1,1 +1,0 @@
-I'll thoroughly analyze the ball ordering in `buildLastMileOfProofChain()` and verify if it's consistent with the verification logic.

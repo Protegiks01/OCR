@@ -1,391 +1,242 @@
-## Title
-Database Lock Timeout Denial of Service During Hash Tree Processing in Catchup Protocol
+# NoVulnerability found for this question.
 
-## Summary
-The `processHashTree()` function in `catchup.js` processes thousands of balls within a single database transaction that can run for 10+ minutes during normal catchup operations. On SQLite nodes, this holds a database-wide RESERVED lock that blocks all other write operations, causing them to timeout after 30 seconds and preventing the node from processing new incoming units.
+## Analysis
 
-## Impact
-**Severity**: Critical
-**Category**: Temporary Network Shutdown / Temporary Transaction Delay
+After thorough code validation, this claim fails to meet the Immunefi bug bounty severity threshold requirements:
 
-## Finding Description
+### 1. **Critical Severity Threshold Violation**
 
-**Location**: `byteball/ocore/catchup.js`, function `processHashTree()`, lines 347-416
+The claim explicitly states recovery time is "typically seconds to minutes" [1](#0-0) , but Immunefi's Medium severity requirements mandate:
+- **Temporary Transaction Delay ≥1 Hour (Medium)**, or  
+- **Temporary Transaction Delay ≥1 Day (Medium)**
 
-**Intended Logic**: The function should process a hash tree of balls received from a peer during catchup synchronization, storing them in the `hash_tree_balls` table for later processing.
+**Seconds-to-minutes recovery is far below the 1-hour minimum threshold.**
 
-**Actual Logic**: The function processes ALL balls (potentially tens of thousands) in a single transaction using `async.eachSeries`. For SQLite databases, the first INSERT acquires a RESERVED lock on the entire database, blocking all other write operations. If the transaction takes 10+ minutes, concurrent write operations timeout after 30 seconds (the configured `busy_timeout`), causing the node to be unable to store new units.
+### 2. **Incorrect Impact Categorization**
 
-**Code Evidence**: [1](#0-0) 
+This affects light client **history request operations** (reading already-confirmed historical proof chains) [2](#0-1) , NOT transaction confirmation delays. The transactions are already confirmed on the network; light clients temporarily cannot retrieve proof chains.
 
-The transaction begins and processes each ball sequentially: [2](#0-1) 
+Light clients can still:
+- Submit new transactions
+- Receive confirmations  
+- Process payments
 
-The transaction is only committed after processing all balls: [3](#0-2) 
+This is a read-path issue, not "Temporary Transaction Delay" as claimed.
 
-SQLite's busy_timeout is configured to only 30 seconds: [4](#0-3) 
+### 3. **Not Exploitable**
 
-**Exploitation Path**:
+The claim admits:
+- "Not directly exploitable by attacker"
+- "Occurs naturally during network operation"  
+- "No attacker action needed"
 
-1. **Preconditions**: 
-   - Node is using SQLite database (common for light clients and smaller nodes)
-   - Node falls behind the network by 5,000+ MCIs (e.g., offline for a few days)
-   - Network has average density of 5+ units per MCI
+This is a timing-dependent race condition in normal operations, not an attacker-exploitable vulnerability.
 
-2. **Step 1**: Node comes online and initiates catchup protocol
-   - Requests hash tree from peers via `get_hash_tree` command
-   - Receives hash tree covering 5,000 MCIs × 5 units/MCI = 25,000 balls
+### 4. **Technical Inconsistency**
 
-3. **Step 2**: `processHashTree()` starts transaction and begins processing
-   - Line 347: Transaction begins with `conn.query("BEGIN")`
-   - Line 369: First INSERT acquires SQLite RESERVED lock on entire database
-   - Processing time: 25,000 balls × 20-50ms per ball = 500-1250 seconds (8-21 minutes)
+The code shows `buildLastMileOfProofChain` uses synchronous `throw Error("no parent that includes target unit")` [3](#0-2) , not error callbacks. This could crash the hub node process if unhandled, which contradicts the claim's description of graceful retry behavior.
 
-4. **Step 3**: During processing, new units arrive from peers
-   - `writer.js` attempts to INSERT into balls table: [5](#0-4) 
-   - Write operation waits for RESERVED lock to be released
-   - After 30 seconds, operation times out with SQLITE_BUSY error
-   - Unit is rejected and must be re-requested
+### 5. **Verified Technical Elements (But Below Threshold)**
 
-5. **Step 4**: Node becomes unable to process new transactions
-   - All incoming units fail to be stored for 8-21 minutes
-   - Node effectively experiences denial of service during catchup
-   - Main chain progression attempts also fail: [6](#0-5) 
+While these elements are technically accurate:
+- ✅ Independent mutex locks exist [4](#0-3) [5](#0-4) 
+- ✅ Connection pooling pattern confirmed [6](#0-5) 
+- ✅ `goDownAndUpdateMainChainIndex` sets `main_chain_index=NULL` [7](#0-6) 
 
-**Security Property Broken**: 
-- **Invariant #19 (Catchup Completeness)**: While the node does retrieve units, it becomes unable to process new units during catchup, creating a temporary network partition
-- **Invariant #21 (Transaction Atomicity)**: The excessive transaction duration prevents other atomic operations from completing
-
-**Root Cause Analysis**: 
-
-1. **No size limit on hash tree**: The `processHashTree()` function has no validation on `arrBalls.length`: [7](#0-6) 
-
-2. **No chunking/batching**: The `async.eachSeries` processes all balls sequentially in one transaction without committing intermediate results
-
-3. **SQLite's database-level locking**: Unlike MySQL's row-level locks, SQLite uses file-level locking where a RESERVED lock blocks all writes to any table
-
-4. **Insufficient busy_timeout**: 30 seconds is inadequate for transactions that can legitimately take 10+ minutes
-
-5. **Large catchup ranges possible**: `MAX_CATCHUP_CHAIN_LENGTH` is set to 1,000,000 MCIs: [8](#0-7) 
-
-## Impact Explanation
-
-**Affected Assets**: 
-- Node availability and network participation
-- Indirectly affects all users relying on this node for transaction processing
-
-**Damage Severity**:
-- **Quantitative**: 
-  - For 5,000 MCI catchup (5 units/MCI): 8-21 minutes of downtime
-  - For 10,000 MCI catchup: 16-42 minutes of downtime
-  - For 50,000 MCI catchup: 80-210 minutes (1.3-3.5 hours) of downtime
-  
-- **Qualitative**: 
-  - Complete inability to process new units during catchup
-  - Peer reputation degradation (other nodes see failed broadcasts)
-  - Potential cascade effect if multiple nodes catchup simultaneously
-
-**User Impact**:
-- **Who**: 
-  - SQLite node operators (light clients, mobile wallets, small validators)
-  - Users sending transactions to affected nodes
-  - Network as a whole if many nodes catchup simultaneously
-  
-- **Conditions**: 
-  - Node falls behind by 1,000+ MCIs (common after brief offline period)
-  - Triggered automatically during normal catchup protocol
-  - No malicious actor required
-  
-- **Recovery**: 
-  - Automatic after transaction completes
-  - No permanent data loss, but transactions received during lockout are lost
-  - Must re-request missed units from peers
-
-**Systemic Risk**: 
-- If multiple nodes go offline simultaneously (e.g., network partition, coordinated restart), they all experience lockout during catchup
-- Creates cascading effect where nodes cannot efficiently sync from each other
-- Malicious peer could potentially optimize hash tree responses to maximize processing time
-
-## Likelihood Explanation
-
-**Attacker Profile**:
-- **Identity**: Not required - vulnerability triggered by normal operations
-- **Resources Required**: None - happens during legitimate catchup
-- **Technical Skill**: None - automatic protocol behavior
-
-**Preconditions**:
-- **Network State**: Node must be behind by 1,000+ MCIs (very common)
-- **Attacker State**: No attacker needed
-- **Timing**: Triggered whenever node performs catchup sync
-
-**Execution Complexity**:
-- **Transaction Count**: Zero - happens automatically
-- **Coordination**: None required
-- **Detection Risk**: Fully observable in node logs
-
-**Frequency**:
-- **Repeatability**: Happens every time node performs catchup with large backlog
-- **Scale**: Affects individual nodes during their catchup period
-
-**Overall Assessment**: **HIGH** likelihood - This occurs during normal network operations whenever a SQLite node falls behind and catches up. No malicious behavior required.
-
-## Recommendation
-
-**Immediate Mitigation**: 
-1. Increase SQLite `busy_timeout` from 30 seconds to 300 seconds (5 minutes)
-2. Add monitoring/alerting for long-running catchup transactions
-3. Document that production nodes should use MySQL instead of SQLite for better concurrency
-
-**Permanent Fix**: Implement transaction batching to commit periodically during hash tree processing
-
-**Code Changes**:
-
-The fix should batch the hash tree processing into smaller transactions:
-
-```javascript
-// File: byteball/ocore/catchup.js
-// Function: processHashTree
-
-// BEFORE (vulnerable - single transaction for all balls):
-conn.query("BEGIN", function(){
-    async.eachSeries(arrBalls, function(objBall, cb){
-        // process each ball
-        conn.query("INSERT ...", function(){ cb(); });
-    }, function(error){
-        conn.query(error ? "ROLLBACK" : "COMMIT", ...);
-    });
-});
-
-// AFTER (fixed - batch commits every 100 balls):
-var BATCH_SIZE = 100;
-var processed = 0;
-
-conn.query("BEGIN", function(){
-    async.eachSeries(arrBalls, function(objBall, cb){
-        // process each ball
-        conn.query("INSERT ...", function(){
-            processed++;
-            if (processed % BATCH_SIZE === 0 && processed < arrBalls.length) {
-                // Commit intermediate batch
-                conn.query("COMMIT", function(){
-                    conn.query("BEGIN", function(){
-                        cb();
-                    });
-                });
-            } else {
-                cb();
-            }
-        });
-    }, function(error){
-        conn.query(error ? "ROLLBACK" : "COMMIT", ...);
-    });
-});
-```
-
-**Additional Measures**:
-- Add size validation: `if (arrBalls.length > 10000) return callbacks.ifError("hash tree too large");`
-- Add progress logging every N balls processed
-- Implement exponential backoff for failed unit writes during catchup
-- Consider using MySQL/InnoDB for production nodes (row-level locking)
-- Add database performance metrics monitoring
-
-**Validation**:
-- [x] Fix prevents excessive lock duration by committing periodically
-- [x] No new vulnerabilities (batch commits maintain atomicity per batch)
-- [x] Backward compatible (doesn't change protocol or data structures)
-- [x] Performance impact acceptable (slight overhead from additional commits, but prevents DoS)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Configure conf.json to use SQLite storage
-```
-
-**Exploit Script** (`test_catchup_lockout.js`):
-```javascript
-/*
- * Proof of Concept for Catchup Database Lock DoS
- * Demonstrates: Long-running hash tree processing blocks other database writes
- * Expected Result: Concurrent write operations timeout during catchup
- */
-
-const catchup = require('./catchup.js');
-const writer = require('./writer.js');
-const db = require('./db.js');
-const async = require('async');
-
-async function simulateLargeCatchup() {
-    // Generate mock hash tree with 10,000 balls
-    const arrBalls = [];
-    for (let i = 0; i < 10000; i++) {
-        arrBalls.push({
-            ball: 'mock_ball_' + i + '_'.repeat(32),
-            unit: 'mock_unit_' + i + '_'.repeat(32),
-            parent_balls: i > 0 ? ['mock_ball_' + (i-1) + '_'.repeat(32)] : undefined
-        });
-    }
-    
-    console.log('Starting hash tree processing with 10,000 balls...');
-    const startTime = Date.now();
-    
-    // Start processing hash tree in background
-    catchup.processHashTree(arrBalls, {
-        ifError: (err) => console.error('Hash tree error:', err),
-        ifOk: () => {
-            const duration = (Date.now() - startTime) / 1000;
-            console.log(`Hash tree completed after ${duration} seconds`);
-        }
-    });
-    
-    // Wait 1 second for transaction to start and acquire lock
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Attempt concurrent writes every 5 seconds
-    for (let i = 0; i < 200; i++) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        const writeStartTime = Date.now();
-        try {
-            await new Promise((resolve, reject) => {
-                db.query(
-                    "INSERT INTO balls (ball, unit) VALUES(?, ?)",
-                    ['concurrent_test_ball_' + i, 'concurrent_test_unit_' + i],
-                    (result) => {
-                        const writeTime = Date.now() - writeStartTime;
-                        console.log(`Write ${i} succeeded after ${writeTime}ms`);
-                        resolve();
-                    }
-                );
-            });
-        } catch (err) {
-            const writeTime = Date.now() - writeStartTime;
-            console.log(`Write ${i} FAILED after ${writeTime}ms: ${err.message}`);
-            if (writeTime > 29000) {
-                console.log('VULNERABILITY CONFIRMED: Write timed out due to catchup lock');
-            }
-        }
-    }
-}
-
-simulateLargeCatchup().then(() => {
-    console.log('Test complete');
-    process.exit(0);
-}).catch(err => {
-    console.error('Test failed:', err);
-    process.exit(1);
-});
-```
-
-**Expected Output** (when vulnerability exists):
-```
-Starting hash tree processing with 10,000 balls...
-Write 0 FAILED after 30001ms: SQLITE_BUSY: database is locked
-VULNERABILITY CONFIRMED: Write timed out due to catchup lock
-Write 1 FAILED after 30002ms: SQLITE_BUSY: database is locked
-VULNERABILITY CONFIRMED: Write timed out due to catchup lock
-...
-Hash tree completed after 542 seconds
-Write 108 succeeded after 45ms
-```
-
-**Expected Output** (after fix applied):
-```
-Starting hash tree processing with 10,000 balls...
-Write 0 succeeded after 125ms
-Write 1 succeeded after 98ms
-Write 2 succeeded after 112ms
-...
-Hash tree completed after 547 seconds
-Write 109 succeeded after 67ms
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase with SQLite
-- [x] Demonstrates clear violation of node availability during catchup
-- [x] Shows measurable impact (30-second timeouts for concurrent writes)
-- [x] Fixed version allows concurrent writes throughout catchup
+**These do not constitute a valid vulnerability under Immunefi's scope because the impact severity is below the minimum threshold.**
 
 ## Notes
 
-This vulnerability is particularly severe because:
-
-1. **It affects legitimate operations**: No malicious behavior is required - simply falling behind the network triggers this issue
-
-2. **SQLite nodes are common**: Light clients, mobile wallets, and smaller nodes frequently use SQLite for resource efficiency
-
-3. **The scale is realistic**: With Obyte's current network activity (3+ million MCIs), a node offline for even a few days will need to sync thousands of MCIs
-
-4. **The impact compounds**: Multiple nodes catching up simultaneously can degrade network health significantly
-
-5. **Database choice matters**: MySQL nodes with InnoDB are less affected due to row-level locking, but SQLite nodes experience complete write lockout
-
-The root cause is architectural - processing unbounded data in a single transaction without considering database locking implications. The fix requires implementing proper batching with periodic commits to release locks while maintaining data consistency.
+The technical analysis of the race condition is accurate, but this represents an operational edge case in read operations with sub-threshold recovery time, not a security vulnerability meeting Immunefi's minimum severity requirements. To qualify as Medium severity, the impact would need to cause transaction delays of at least 1 hour, which is not demonstrated here.
 
 ### Citations
 
-**File:** catchup.js (L14-14)
+**File:** light.js (L103-164)
 ```javascript
-var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
-```
+		mutex.lock(['prepareHistory'], function(unlock){
+			var start_ts = Date.now();
+			witnessProof.prepareWitnessProof(
+				arrWitnesses, 0, 
+				function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, last_ball_unit, last_ball_mci){
+					if (err){
+						callbacks.ifError(err);
+						return unlock();
+					}
+					objResponse.unstable_mc_joints = arrUnstableMcJoints;
+					if (arrWitnessChangeAndDefinitionJoints.length > 0)
+						objResponse.witness_change_and_definition_joints = arrWitnessChangeAndDefinitionJoints;
 
-**File:** catchup.js (L336-338)
-```javascript
-function processHashTree(arrBalls, callbacks){
-	if (!Array.isArray(arrBalls))
-		return callbacks.ifError("no balls array");
-```
-
-**File:** catchup.js (L347-370)
-```javascript
-				conn.query("BEGIN", function(){
-					
-					var max_mci = null;
+					// add my joints and proofchain to those joints
+					objResponse.joints = [];
+					objResponse.proofchain_balls = [];
+				//	var arrStableUnits = [];
+					var later_mci = last_ball_mci+1; // +1 so that last ball itself is included in the chain
 					async.eachSeries(
-						arrBalls,
-						function(objBall, cb){
-							if (typeof objBall.ball !== "string")
-								return cb("no ball");
-							if (typeof objBall.unit !== "string")
-								return cb("no unit");
-							if (!storage.isGenesisUnit(objBall.unit)){
-								if (!Array.isArray(objBall.parent_balls))
-									return cb("no parents");
-							}
-							else if (objBall.parent_balls)
-								return cb("genesis with parents?");
-							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
-								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
-
-							function addBall(){
-								storage.assocHashTreeUnitsByBall[objBall.ball] = objBall.unit;
-								// insert even if it already exists in balls, because we need to define max_mci by looking outside this hash tree
-								conn.query("INSERT "+conn.getIgnore()+" INTO hash_tree_balls (ball, unit) VALUES(?,?)", [objBall.ball, objBall.unit], function(){
-									cb();
+						rows,
+						function(row, cb2){
+							storage.readJoint(db, row.unit, {
+								ifNotFound: function(){
+									throw Error("prepareJointsWithProofs unit not found "+row.unit);
+								},
+								ifFound: function(objJoint){
+									objResponse.joints.push(objJoint);
+								//	if (row.is_stable)
+								//		arrStableUnits.push(row.unit);
+									if (row.main_chain_index > last_ball_mci || row.main_chain_index === null) // unconfirmed, no proofchain
+										return cb2();
+									proofChain.buildProofChain(later_mci, row.main_chain_index, row.unit, objResponse.proofchain_balls, function(){
+										later_mci = row.main_chain_index;
+										cb2();
+									});
+								}
+							});
+						},
+						function(){
+							//if (objResponse.joints.length > 0 && objResponse.proofchain_balls.length === 0)
+							//    throw "no proofs";
+							if (objResponse.proofchain_balls.length === 0)
+								delete objResponse.proofchain_balls;
+							// more triggers might get stabilized and executed while we were building the proofchain. We use the units that were stable when we began building history to make sure their responses are included in objResponse.joints
+							// new: we include only the responses that were there before last_aa_response_id
+							var arrUnits = objResponse.joints.map(function (objJoint) { return objJoint.unit.unit; });
+							db.query("SELECT mci, trigger_address, aa_address, trigger_unit, bounced, response_unit, response, timestamp, aa_responses.creation_date FROM aa_responses LEFT JOIN units ON mci=main_chain_index AND +is_on_main_chain=1 WHERE trigger_unit IN(" + arrUnits.map(db.escape).join(', ') + ") AND +aa_response_id<=? ORDER BY aa_response_id", [last_aa_response_id], function (aa_rows) {
+								// there is nothing to prove that responses are authentic
+								if (aa_rows.length > 0)
+									objResponse.aa_responses = aa_rows.map(function (aa_row) {
+										objectHash.cleanNulls(aa_row);
+										return aa_row;
+									});
+								callbacks.ifOk(objResponse);
+								console.log("prepareHistory (without main search) for addresses "+(arrAddresses || []).join(', ')+" and joints "+(arrRequestedJoints || []).join(', ')+" took "+(Date.now()-start_ts)+'ms');
+								unlock();
+							});
+						}
+					);
+				}
+			);
+		});
 ```
 
-**File:** catchup.js (L416-420)
+**File:** proof_chain.js (L77-151)
 ```javascript
-								conn.query(err ? "ROLLBACK" : "COMMIT", function(){
-									conn.release();
-									unlock();
-									err ? callbacks.ifError(err) : callbacks.ifOk();
-								});
+function buildLastMileOfProofChain(mci, unit, arrBalls, onDone){
+	function addBall(_unit){
+		db.query("SELECT unit, ball, content_hash FROM units JOIN balls USING(unit) WHERE unit=?", [_unit], function(rows){
+			if (rows.length !== 1)
+				throw Error("no unit?");
+			var objBall = rows[0];
+			if (objBall.content_hash)
+				objBall.is_nonserial = true;
+			delete objBall.content_hash;
+			db.query(
+				"SELECT ball FROM parenthoods LEFT JOIN balls ON parent_unit=balls.unit WHERE child_unit=? ORDER BY ball", 
+				[objBall.unit],
+				function(parent_rows){
+					if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
+						throw Error("some parents have no balls");
+					if (parent_rows.length > 0)
+						objBall.parent_balls = parent_rows.map(function(parent_row){ return parent_row.ball; });
+					db.query(
+						"SELECT ball \n\
+						FROM skiplist_units JOIN units ON skiplist_unit=units.unit LEFT JOIN balls ON units.unit=balls.unit \n\
+						WHERE skiplist_units.unit=? ORDER BY ball", 
+						[objBall.unit],
+						function(srows){
+							if (srows.some(function(srow){ return !srow.ball; }))
+								throw Error("last mile: some skiplist units have no balls");
+							if (srows.length > 0)
+								objBall.skiplist_balls = srows.map(function(srow){ return srow.ball; });
+							arrBalls.push(objBall);
+							if (_unit === unit)
+								return onDone();
+							findParent(_unit);
+						}
+					);
+				}
+			);
+		});
+	}
+	
+	function findParent(interim_unit){
+		db.query(
+			"SELECT parent_unit FROM parenthoods JOIN units ON parent_unit=unit WHERE child_unit=? AND main_chain_index=?", 
+			[interim_unit, mci],
+			function(parent_rows){
+				var arrParents = parent_rows.map(function(parent_row){ return parent_row.parent_unit; });
+				if (arrParents.indexOf(unit) >= 0)
+					return addBall(unit);
+				if (arrParents.length === 1) // only one parent, nothing to choose from
+					return addBall(arrParents[0]);
+				async.eachSeries(
+					arrParents,
+					function(parent_unit, cb){
+						graph.determineIfIncluded(db, unit, [parent_unit], function(bIncluded){
+							bIncluded ? cb(parent_unit) : cb();
+						});
+					},
+					function(parent_unit){
+						if (!parent_unit)
+							throw Error("no parent that includes target unit");
+						addBall(parent_unit);
+					}
+				)
+			}
+		);
+	}
+	
+	// start from MC unit and go back in history
+	db.query("SELECT unit FROM units WHERE main_chain_index=? AND is_on_main_chain=1", [mci], function(rows){
+		if (rows.length !== 1)
+			throw Error("no mc unit?");
+		var mc_unit = rows[0].unit;
+		if (mc_unit === unit)
+			return onDone();
+		findParent(mc_unit);
+	});
+}
 ```
 
-**File:** sqlite_pool.js (L52-52)
+**File:** writer.js (L33-33)
 ```javascript
-				connection.query("PRAGMA busy_timeout=30000", function(){
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
 ```
 
-**File:** writer.js (L99-99)
+**File:** sqlite_pool.js (L241-268)
 ```javascript
-			conn.addQuery(arrQueries, "INSERT INTO balls (ball, unit) VALUES(?,?)", [objJoint.ball, objUnit.unit]);
+	function query(){
+		//console.log(arguments[0]);
+		var self = this;
+		var args = arguments;
+		var last_arg = args[args.length - 1];
+		var bHasCallback = (typeof last_arg === 'function');
+		if (!bHasCallback) // no callback
+			last_arg = function(){};
+
+		var count_arguments_without_callback = bHasCallback ? (args.length-1) : args.length;
+		var new_args = [];
+
+		for (var i=0; i<count_arguments_without_callback; i++) // except callback
+			new_args.push(args[i]);
+		if (!bHasCallback)
+			return new Promise(function(resolve){
+				new_args.push(resolve);
+				self.query.apply(self, new_args);
+			});
+		takeConnectionFromPool(function(connection){
+			// add callback that releases the connection before calling the supplied callback
+			new_args.push(function(rows){
+				connection.release();
+				last_arg(rows);
+			});
+			connection.query.apply(connection, new_args);
+		});
+	}
 ```
 
-**File:** main_chain.js (L1436-1436)
+**File:** main_chain.js (L138-141)
 ```javascript
-									conn.query("INSERT INTO balls (ball, unit) VALUES(?,?)", [ball, unit], function(){
+		conn.query(
+			//"UPDATE units SET is_on_main_chain=0, main_chain_index=NULL WHERE is_on_main_chain=1 AND main_chain_index>?", 
+			"UPDATE units SET is_on_main_chain=0, main_chain_index=NULL WHERE main_chain_index>?", 
+			[last_main_chain_index], 
 ```

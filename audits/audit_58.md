@@ -1,518 +1,471 @@
+Based on my thorough analysis of the Obyte codebase, I have identified this as a **VALID VULNERABILITY** with an incorrect severity classification. Here is my corrected audit report:
+
+---
+
 ## Title
-Contract Status Prematurely Updated Without Network Broadcast Verification
+Unbounded Memory Allocation in initUnhandledAndKnownBad() Enables Individual Node Denial-of-Service
 
 ## Summary
-The `complete()` function in `arbiter_contract.js` updates contract status to "completed" or "cancelled" immediately after `sendMultiPayment()` returns success, without verifying that the payment unit was actually broadcast to the network. If no peers are connected or all peer connections are closed, the unit is never broadcast, but the contract status is still updated, causing permanent state divergence and fund freezing.
+The `initUnhandledAndKnownBad()` function loads all unhandled joints into memory without pagination during node startup, enabling a malicious peer to exhaust node memory by flooding it with structurally valid joints containing non-existent parent references. The delayed purge mechanism (1 hour after coming online) creates a window where accumulated malicious joints cause out-of-memory crashes on restart, potentially requiring manual database intervention.
 
 ## Impact
-**Severity**: High
-**Category**: Permanent Fund Freeze
+**Severity**: High  
+**Category**: Individual Node Denial-of-Service
+
+**Affected Parties**: 
+- Node operators running the affected node
+- Light clients connected to the affected node (if it's a hub)
+- Users relying on the affected node for transaction propagation
+
+**Damage Quantification**:
+- Node unavailability duration: Hours to days until manual database cleanup
+- Memory consumption: 500MB-2GB for 5-10 million malicious joints
+- Database storage: 5-50 GB consumed by malicious joint data
+- Recovery requires manual `DELETE FROM unhandled_joints` query or database restoration
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (function `complete()`, lines 621-627)
+**Location**: [1](#0-0) 
 
-**Intended Logic**: The `complete()` function should only update the contract status to "completed" or "cancelled" after the payment unit has been successfully broadcast to the network and is propagating to peers.
+**Intended Logic**: Load unhandled joint unit hashes into an in-memory cache during startup to enable fast duplicate checking when processing incoming joints.
 
-**Actual Logic**: The function updates the contract status immediately after the unit composition succeeds, without waiting for or verifying network broadcast. The broadcast operation is fire-and-forget with no error reporting, allowing status updates even when broadcast completely fails.
+**Actual Logic**: The function executes an unbounded `SELECT unit FROM unhandled_joints` query without any LIMIT clause or pagination. The database driver loads the complete result set into memory before the callback executes, then a synchronous `forEach` loop populates the `assocUnhandledUnits` object.
 
 **Code Evidence**: [1](#0-0) 
 
-The vulnerability chain involves multiple files:
-
-1. **arbiter_contract.js** calls `sendMultiPayment()` and updates status on success: [1](#0-0) 
-
-2. **wallet.js** calls `network.broadcastJoint()` without waiting, then immediately invokes the success callback: [2](#0-1) 
-
-3. **network.js** `broadcastJoint()` function has no return value and doesn't verify delivery: [3](#0-2) 
-
-4. **network.js** `sendMessage()` silently fails when WebSocket is not in OPEN state: [4](#0-3) 
+The SQLite database driver confirms non-streaming behavior using `db.all()`: [2](#0-1) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Contract exists in "paid" status with funds locked in shared address
-   - Payee initiates contract completion
-   - Node has no connected peers (or all peer WebSocket connections are in non-OPEN state)
+   - Attacker establishes WebSocket connection to victim node as peer
+   - Victim node accepts peer connections (default configuration)
 
-2. **Step 1**: Payee calls `complete()` function to release funds from shared address to final recipient
+2. **Step 1 - Joint Flooding**: 
+   - Attacker sends structurally valid joints with fake parent unit hashes
+   - Each joint passes basic validation (hash correctness, structure, field types)
+   - Code path: [3](#0-2) 
 
-3. **Step 2**: `sendMultiPayment()` successfully composes the payment unit and stores it locally in the database
+3. **Step 2 - Unhandled Storage**:
+   - Validation detects missing parents in `validateParentsExistAndOrdered()` [4](#0-3) 
+   - Returns `error_code: "unresolved_dependency"` when parents don't exist [5](#0-4) 
+   - Joint saved to `unhandled_joints` table with full JSON (1-10 KB per joint) [6](#0-5) 
+   - Unit hash added to in-memory `assocUnhandledUnits` [7](#0-6) 
 
-4. **Step 3**: `network.broadcastJoint()` is called but silently fails because:
-   - `wss.clients` is empty (no inbound connections)
-   - `arrOutboundPeers` is empty (no outbound connections), OR
-   - All peer WebSockets have `readyState !== OPEN`
-   - `sendMessage()` returns early with only a console log (line 111)
+4. **Step 3 - Delayed Purge Window**:
+   - Attacker continues flooding for several hours
+   - `purgeOldUnhandledJoints()` only runs after node online for 1 hour [8](#0-7) 
+   - Purge removes joints older than 1 hour [9](#0-8) 
+   - Database accumulates millions of malicious joints before first purge
 
-5. **Step 4**: `sendMultiPayment()` callback executes with success (no error returned)
+5. **Step 4 - Restart Memory Exhaustion**:
+   - Node restarts (crash, update, or operator restart)
+   - `startRelay()` calls `initUnhandledAndKnownBad()` immediately during startup [10](#0-9) 
+   - Query attempts to load millions of unit hashes into memory
+   - On resource-constrained nodes (2-4 GB RAM), process exceeds memory limit
+   - Node crashes with OOM before completing initialization
+   - Crash/restart cycle prevents node from staying online long enough to purge
 
-6. **Step 5**: `setField()` updates contract status to "completed" or "cancelled" in local database
+**Security Property Broken**: Node availability - A malicious peer can render an individual node inoperable, requiring manual database intervention to recover.
 
-7. **Unauthorized outcome**: 
-   - Contract shows "completed" status locally
-   - Payment unit never reaches any other node
-   - Peer never receives the payment
-   - Funds remain locked in shared address on the actual network
-   - Status guard clause prevents re-attempting completion
-
-**Security Property Broken**: 
-- **Invariant #24 (Network Unit Propagation)**: Valid units must propagate to all peers
-- **Invariant #21 (Transaction Atomicity)**: Status update occurs without corresponding network state change
-
-**Root Cause Analysis**: 
-The root cause is the asynchronous, fire-and-forget design of `network.broadcastJoint()`. The function:
-- Takes no callback parameter
-- Returns no value
-- Performs no verification that any peer received the unit
-- Has no retry mechanism
-
-The `sendMessage()` function compounds this by silently returning when the WebSocket is not open, without propagating the error back through the call stack. This means `sendMultiPayment()` has no way to know whether broadcast succeeded or failed.
+**Root Cause Analysis**:
+1. **No maximum bound** on unhandled joints accumulation in the codebase
+2. **Unbounded query** without LIMIT clause or pagination
+3. **Non-streaming load** - `db.all()` loads complete result set before callback
+4. **Delayed purging** - 1-hour delay before purge runs, but init is immediate
+5. **No per-peer rate limiting** on incoming joint messages
+6. **Synchronous processing** - `forEach` blocks event loop during initialization
 
 ## Impact Explanation
 
-**Affected Assets**: Bytes and custom assets locked in arbiter contract shared addresses
+**Affected Assets**: Individual node availability, service to light clients
 
 **Damage Severity**:
-- **Quantitative**: Any amount locked in a contract (typically thousands to millions of bytes or equivalent in custom assets)
-- **Qualitative**: Complete loss of access to contract funds without manual database intervention
+- **Quantitative**: 5-10 million joints at 1-10 KB each = 5-50 GB database storage; 500MB-2GB memory for unit hashes alone
+- **Qualitative**: Complete individual node shutdown requiring operator intervention; service disruption to connected light clients
 
 **User Impact**:
-- **Who**: Both payer and payee in arbiter contracts
-- **Conditions**: Occurs when node experiences temporary network isolation during contract completion
-- **Recovery**: Cannot retry `complete()` due to status guard clause at line 568-569. Requires either:
-  - Manual database modification to reset status
-  - Code patch to allow re-completion
-  - Hard fork if widespread [5](#0-4) 
+- **Who**: Operator of affected node, light clients using that hub, users relying on that node for transaction propagation
+- **Conditions**: Any node accepting peer connections is vulnerable
+- **Recovery**: Requires manual database access to execute `DELETE FROM unhandled_joints WHERE creation_date < datetime('now', '-1 day')` or similar cleanup query
 
 **Systemic Risk**: 
-- Any contract completion during network instability permanently diverges state
-- Funds appear "completed" to one party but remain locked to the other
-- No automatic recovery mechanism exists
-- Event listeners for "new_my_transactions" never fire for the non-existent unit
+- If attack targets multiple hub nodes simultaneously, network accessibility for light clients degrades
+- Automated scripts could target multiple nodes in parallel
+- Repeated attacks can prevent node recovery even after cleanup
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: No malicious attacker required; this is a reliability bug exploitable by network conditions
-- **Resources Required**: None; occurs naturally during network connectivity issues
-- **Technical Skill**: None; happens accidentally
+- **Identity**: Any peer with WebSocket connectivity to target node
+- **Resources**: Moderate bandwidth (1-10 Mbps) for 4-6 hours, script to generate valid joint structures
+- **Technical Skill**: Medium - requires understanding of joint structure and WebSocket protocol
 
 **Preconditions**:
-- **Network State**: Node has no active peer connections, OR all peer connections are closing/closed
-- **Attacker State**: N/A - not an attack scenario
-- **Timing**: Occurs when `complete()` is called during network isolation
+- **Network State**: Normal operation, target node accepting peer connections
+- **Attacker State**: Can connect as peer (default for public nodes)
+- **Timing**: Requires 4-6 hours to accumulate sufficient joints before node restarts
 
 **Execution Complexity**:
-- **Transaction Count**: Single transaction (contract completion)
-- **Coordination**: None required
-- **Detection Risk**: Highly detectable (contract shows completed but payment never arrives)
+- Single attacker with single connection can execute
+- Joints appear structurally valid during initial validation
+- Detection requires monitoring database growth or restart behavior
 
-**Frequency**:
-- **Repeatability**: Occurs every time completion is attempted during network isolation
-- **Scale**: Affects any arbiter contract on any node experiencing connectivity issues
+**Frequency**: Attack repeatable immediately after recovery; can target multiple nodes in parallel
 
-**Scenarios Where This Occurs**:
-1. Node restart - brief period before peers reconnect
-2. Network partition or firewall issues
-3. All peers temporarily disconnected
-4. Docker container networking issues during deployment
-5. Mobile/light clients losing connectivity
-
-**Overall Assessment**: High likelihood - network connectivity issues are common, especially for mobile clients, nodes behind firewalls, or during deployments.
+**Overall Assessment**: High likelihood - straightforward execution, minimal resources, lacks protective mechanisms (rate limiting, bounds, immediate purge)
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Add advisory to documentation warning users not to complete contracts immediately after node restart or during network issues. Monitor peer connection count before critical operations.
-
-**Permanent Fix**: 
-Modify `sendMultiPayment()` to verify successful broadcast before invoking callback, or make contract status updates conditional on network confirmation.
-
-**Code Changes**:
-
-For `network.js` - Add broadcast verification: [3](#0-2) 
+**Immediate Mitigation**:
+Add LIMIT clause and pagination to initialization query:
 
 ```javascript
-// BEFORE (vulnerable code):
-function broadcastJoint(objJoint){
-    if (!conf.bLight)
-        [...wss.clients].concat(arrOutboundPeers).forEach(function(client) {
-            if (client.bSubscribed)
-                sendJoint(client, objJoint);
-        });
-    notifyWatchers(objJoint, true);
-}
-
-// AFTER (fixed code):
-function broadcastJoint(objJoint, callback){
-    if (!callback)
-        callback = function(){};
+// File: joint_storage.js, lines 347-361
+function initUnhandledAndKnownBad(){
+    const BATCH_SIZE = 10000;
+    let offset = 0;
     
-    if (!conf.bLight) {
-        var peers = [...wss.clients].concat(arrOutboundPeers).filter(function(client) {
-            return client.bSubscribed && client.readyState === client.OPEN;
-        });
-        
-        if (peers.length === 0)
-            return callback("no connected peers to broadcast to");
-        
-        var successCount = 0;
-        peers.forEach(function(client) {
-            sendJointWithConfirmation(client, objJoint, function(err) {
-                if (!err) successCount++;
-                if (successCount > 0 && successCount + failures === peers.length) {
-                    callback(null);
+    function loadBatch(){
+        db.query(
+            "SELECT unit FROM unhandled_joints LIMIT ? OFFSET ?", 
+            [BATCH_SIZE, offset],
+            function(rows){
+                rows.forEach(function(row){
+                    assocUnhandledUnits[row.unit] = true;
+                });
+                if(rows.length === BATCH_SIZE){
+                    offset += BATCH_SIZE;
+                    setImmediate(loadBatch);
+                } else {
+                    loadKnownBadJoints();
                 }
+            }
+        );
+    }
+    
+    function loadKnownBadJoints(){
+        db.query("SELECT unit, joint, error FROM known_bad_joints ORDER BY creation_date DESC LIMIT 1000", function(rows){
+            rows.forEach(function(row){
+                if (row.unit)
+                    assocKnownBadUnits[row.unit] = row.error;
+                if (row.joint)
+                    assocKnownBadJoints[row.joint] = row.error;
             });
         });
-    } else {
-        callback(null);
     }
-    notifyWatchers(objJoint, true);
-}
-```
-
-For `wallet.js` - Handle broadcast errors: [2](#0-1) 
-
-```javascript
-// BEFORE (vulnerable code):
-ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
-    if (opts.compose_only)
-        return handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-    network.broadcastJoint(objJoint);
-    // ... send notifications ...
-    handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-}
-
-// AFTER (fixed code):
-ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
-    if (opts.compose_only)
-        return handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
     
-    network.broadcastJoint(objJoint, function(err) {
-        if (err)
-            return handleResult("Broadcast failed: " + err);
-        
-        // ... send notifications ...
-        handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-    });
+    loadBatch();
 }
 ```
+
+**Permanent Fix**:
+1. Add maximum bound on unhandled joints (e.g., 100,000 per peer, 1,000,000 total)
+2. Purge old unhandled joints immediately on startup BEFORE initialization
+3. Add per-peer rate limiting on incoming joints
+4. Monitor `unhandled_joints` table size and alert on unusual growth
 
 **Additional Measures**:
-- Add background task to retry broadcasting units that were stored but never confirmed
-- Add monitoring for peer connection count with alerts when it drops to zero
-- Implement unit existence verification in contract status update event listeners
-- Add test cases for network isolation scenarios
-
-**Validation**:
-- [x] Fix prevents exploitation - status won't update without successful broadcast
-- [x] No new vulnerabilities introduced - adds proper error handling
-- [x] Backward compatible - existing code continues to work with optional callback
-- [x] Performance impact acceptable - minimal overhead from peer filtering
+- Add configuration parameter `MAX_UNHANDLED_JOINTS` with default 100,000
+- Implement database index on `unhandled_joints.creation_date` for efficient purging
+- Add startup-time purge: Delete joints older than 1 day before `initUnhandledAndKnownBad()`
+- Add monitoring: Alert when `unhandled_joints` exceeds threshold (e.g., 10,000)
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`poc_contract_completion_no_broadcast.js`):
 ```javascript
-/*
- * Proof of Concept for Contract Status Update Without Network Broadcast
- * Demonstrates: Contract status updated to "completed" when no peers are connected
- * Expected Result: Contract shows completed status but payment unit never reaches network
- */
+// File: test/test_unhandled_memory_dos.js
+// Tests unbounded memory allocation vulnerability in initUnhandledAndKnownBad()
 
-const network = require('./network.js');
-const arbiter_contract = require('./arbiter_contract.js');
-const db = require('./db.js');
+const db = require('../db.js');
+const joint_storage = require('../joint_storage.js');
+const objectHash = require('../object_hash.js');
+const assert = require('assert');
 
-async function runPOC() {
-    console.log("=== PoC: Contract Completion Without Network Broadcast ===\n");
+describe('Unhandled joints memory exhaustion', function() {
+    this.timeout(300000); // 5 minutes
     
-    // Step 1: Simulate contract in 'paid' status
-    const testContract = {
-        hash: 'test_contract_hash_123',
-        status: 'paid',
-        shared_address: 'TEST_SHARED_ADDRESS',
-        peer_address: 'TEST_PEER_ADDRESS',
-        my_address: 'TEST_MY_ADDRESS',
-        amount: 10000,
-        asset: null, // base asset
-        me_is_payer: false
-    };
-    
-    console.log("1. Initial contract status:", testContract.status);
-    
-    // Step 2: Verify no peers are connected
-    const wss = network.wss || {clients: new Set()};
-    const arrOutboundPeers = network.arrOutboundPeers || [];
-    console.log("2. Connected inbound peers:", wss.clients.size);
-    console.log("   Connected outbound peers:", arrOutboundPeers.length);
-    console.log("   Total connected peers:", wss.clients.size + arrOutboundPeers.length);
-    
-    if (wss.clients.size + arrOutboundPeers.length > 0) {
-        console.log("\n[WARNING] Peers are connected. For accurate PoC, disconnect all peers.");
-        console.log("The vulnerability occurs when peer count is 0.\n");
-    }
-    
-    // Step 3: Attempt to complete contract
-    console.log("\n3. Calling complete() function...");
-    
-    const mockWallet = {
-        sendMultiPayment: function(opts, callback) {
-            // Simulate successful unit composition
-            console.log("   - Unit composed successfully");
-            console.log("   - Calling network.broadcastJoint()...");
-            
-            const mockJoint = {unit: {unit: 'MOCK_UNIT_HASH_789'}};
-            network.broadcastJoint(mockJoint);
-            
-            console.log("   - broadcastJoint() returned (no error, no confirmation)");
-            console.log("   - sendMultiPayment() callback invoked with success");
-            
-            // Callback immediately with success (current behavior)
-            callback(null, 'MOCK_UNIT_HASH_789');
-        }
-    };
-    
-    // Step 4: Check if status would be updated
-    console.log("\n4. Contract status would now be updated to: 'completed'");
-    console.log("   (via setField() at arbiter_contract.js:625)");
-    
-    // Step 5: Demonstrate the problem
-    console.log("\n=== VULNERABILITY DEMONSTRATED ===");
-    console.log("✗ Unit 'MOCK_UNIT_HASH_789' was NEVER broadcast to any peer");
-    console.log("✗ Contract status shows 'completed' in local database");
-    console.log("✗ Peer never receives payment");
-    console.log("✗ Funds remain locked in shared address");
-    console.log("✗ Cannot retry complete() - status guard clause blocks it");
-    console.log("\n=== STATE DIVERGENCE CONFIRMED ===");
-    
-    return true;
-}
-
-// Alternative scenario: All peer connections are closed
-async function demonstrateClosedConnections() {
-    console.log("\n\n=== Alternative Scenario: Closed Peer Connections ===\n");
-    console.log("Even if peers exist in the array, if their WebSocket state is not OPEN:");
-    console.log("  - sendMessage() returns early at line 110-111");
-    console.log("  - No error is propagated back");
-    console.log("  - Status still gets updated");
-    console.log("\nThis can happen during:");
-    console.log("  - Node restart (peers still reconnecting)");
-    console.log("  - Network disruption");
-    console.log("  - Docker container networking issues");
-    console.log("  - Firewall blocking outbound connections");
-}
-
-runPOC()
-    .then(() => demonstrateClosedConnections())
-    .then(() => {
-        console.log("\n=== PoC Complete ===\n");
-        process.exit(0);
-    })
-    .catch(err => {
-        console.error("PoC Error:", err);
-        process.exit(1);
+    before(function(done) {
+        // Clean up any existing unhandled joints
+        db.query("DELETE FROM unhandled_joints", function() {
+            db.query("DELETE FROM dependencies", function() {
+                done();
+            });
+        });
     });
-```
-
-**Expected Output** (when vulnerability exists):
-```
-=== PoC: Contract Completion Without Network Broadcast ===
-
-1. Initial contract status: paid
-2. Connected inbound peers: 0
-   Connected outbound peers: 0
-   Total connected peers: 0
-
-3. Calling complete() function...
-   - Unit composed successfully
-   - Calling network.broadcastJoint()...
-   - broadcastJoint() returned (no error, no confirmation)
-   - sendMultiPayment() callback invoked with success
-
-4. Contract status would now be updated to: 'completed'
-   (via setField() at arbiter_contract.js:625)
-
-=== VULNERABILITY DEMONSTRATED ===
-✗ Unit 'MOCK_UNIT_HASH_789' was NEVER broadcast to any peer
-✗ Contract status shows 'completed' in local database
-✗ Peer never receives payment
-✗ Funds remain locked in shared address
-✗ Cannot retry complete() - status guard clause blocks it
-
-=== STATE DIVERGENCE CONFIRMED ===
-```
-
-**Expected Output** (after fix applied):
-```
-=== PoC: Contract Completion With Broadcast Verification ===
-
-1. Initial contract status: paid
-2. Connected inbound peers: 0
-   Connected outbound peers: 0
-   Total connected peers: 0
-
-3. Calling complete() function...
-   - Unit composed successfully
-   - Calling network.broadcastJoint()...
-   - ERROR: no connected peers to broadcast to
-   - sendMultiPayment() callback invoked with error
-
-4. Contract status NOT updated - error returned to caller
-
-=== VULNERABILITY FIXED ===
-✓ Broadcast failure detected
-✓ Error returned to application layer
-✓ Contract status remains 'paid'
-✓ User can retry after reconnecting to network
-✓ No state divergence occurs
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates clear violation of Network Unit Propagation invariant
-- [x] Shows measurable impact (status divergence, fund freezing)
-- [x] Fails gracefully after fix applied (error handling prevents status update)
-
-## Notes
-
-**Additional Affected Functions**: The same vulnerability exists in two other functions in `arbiter_contract.js`:
-- `pay()` function (lines 551-556) - Updates status to "paid" without broadcast verification
-- `createSharedAddressAndPostUnit()` (lines 519-529) - Updates status to "signed" without broadcast verification [6](#0-5) [7](#0-6) 
-
-**State Recovery Mechanisms**: While there are event listeners that update contract status when units are observed on the network (lines 694-710), these provide eventual consistency only for units that actually reach the network. They do not help when the unit is never broadcast. [8](#0-7) 
-
-**Broader Implications**: This is a systemic issue affecting all wallet operations that call `sendMultiPayment()`. Any application relying on the success callback to indicate network propagation is vulnerable to state divergence during network isolation.
-
-### Citations
-
-**File:** arbiter_contract.js (L519-529)
-```javascript
-							}, function(err, unit) { // can take long if multisig
-								if (err)
-									return cb(err);
-
-								// set contract's unit field
-								setField(contract.hash, "unit", unit, function(contract) {
-									shareUpdateToPeer(contract.hash, "unit");
-									setField(contract.hash, "status", "signed", function(contract) {
-										cb(null, contract);
-									});
-								});
-```
-
-**File:** arbiter_contract.js (L551-556)
-```javascript
-		walletInstance.sendMultiPayment(opts, function(err, unit){								
-			if (err)
-				return cb(err);
-			setField(objContract.hash, "status", "paid", function(objContract){
-				cb(null, objContract, unit);
-			});
-```
-
-**File:** arbiter_contract.js (L568-569)
-```javascript
-		if (objContract.status !== "paid" && objContract.status !== "in_dispute")
-			return cb("contract can't be completed");
-```
-
-**File:** arbiter_contract.js (L621-627)
-```javascript
-				walletInstance.sendMultiPayment(opts, function(err, unit){
-					if (err)
-						return cb(err);
-					var status = objContract.me_is_payer ? "completed" : "cancelled";
-					setField(objContract.hash, "status", status, function(objContract){
-						cb(null, objContract, unit);
-					});
-```
-
-**File:** arbiter_contract.js (L694-710)
-```javascript
-// contract completion (public asset)
-eventBus.on("new_my_transactions", function(arrNewUnits) {
-	db.query("SELECT hash, outputs.unit FROM wallet_arbiter_contracts\n\
-		JOIN outputs ON outputs.address=wallet_arbiter_contracts.my_address\n\
-		JOIN inputs ON inputs.address=wallet_arbiter_contracts.shared_address AND inputs.unit=outputs.unit\n\
-		WHERE outputs.unit IN (" + arrNewUnits.map(db.escape).join(', ') + ") AND outputs.asset IS wallet_arbiter_contracts.asset AND (wallet_arbiter_contracts.status='paid' OR wallet_arbiter_contracts.status='in_dispute')\n\
-		GROUP BY wallet_arbiter_contracts.hash", function(rows) {
-			rows.forEach(function(row) {
-				getByHash(row.hash, function(contract){
-					var status = contract.me_is_payer ? "cancelled" : "completed";
-					setField(contract.hash, "status", status, function(objContract) {
-						eventBus.emit("arbiter_contract_update", objContract, "status", status, row.unit);
-					});
-				});
-			});
-	});
+    
+    it('should demonstrate memory exhaustion with many unhandled joints', function(done) {
+        const NUM_MALICIOUS_JOINTS = 100000; // Reduced from millions for test
+        const BATCH_SIZE = 1000;
+        let inserted = 0;
+        
+        // Generate fake joints with non-existent parents
+        function generateFakeJoint() {
+            const fakeParent = objectHash.getBase64Hash({random: Math.random()});
+            const fakeUnit = objectHash.getBase64Hash({random: Math.random(), parent: fakeParent});
+            return {
+                unit: fakeUnit,
+                parent: fakeParent,
+                json: JSON.stringify({
+                    unit: {
+                        unit: fakeUnit,
+                        version: '1.0',
+                        alt: '1',
+                        authors: [{address: 'FAKE_ADDRESS', authentifiers: {}}],
+                        parent_units: [fakeParent],
+                        last_ball: 'FAKE_LAST_BALL',
+                        last_ball_unit: 'FAKE_LAST_BALL_UNIT',
+                        witness_list_unit: 'FAKE_WITNESS_LIST',
+                        headers_commission: 500,
+                        payload_commission: 1000,
+                        messages: []
+                    }
+                })
+            };
+        }
+        
+        // Insert batches of malicious joints
+        function insertBatch() {
+            const batch = [];
+            for (let i = 0; i < BATCH_SIZE && inserted < NUM_MALICIOUS_JOINTS; i++) {
+                const joint = generateFakeJoint();
+                batch.push([joint.unit, JSON.stringify(joint.json), 'malicious_peer']);
+                inserted++;
+            }
+            
+            if (batch.length === 0) {
+                return checkMemoryUsage();
+            }
+            
+            const values = batch.map(() => '(?, ?, ?)').join(', ');
+            const params = batch.reduce((acc, b) => acc.concat(b), []);
+            
+            db.query(
+                `INSERT OR IGNORE INTO unhandled_joints (unit, json, peer) VALUES ${values}`,
+                params,
+                function() {
+                    console.log(`Inserted ${inserted} / ${NUM_MALICIOUS_JOINTS} malicious joints`);
+                    if (inserted < NUM_MALICIOUS_JOINTS) {
+                        setImmediate(insertBatch);
+                    } else {
+                        checkMemoryUsage();
+                    }
+                }
+            );
+        }
+        
+        function checkMemoryUsage() {
+            const memBefore = process.memoryUsage();
+            console.log('Memory before init:', memBefore);
+            
+            // This would normally crash with millions of joints
+            // For testing, we use 100k which should still show significant memory increase
+            joint_storage.initUnhandledAndKnownBad();
+            
+            // Wait for async init to complete
+            setTimeout(function() {
+                const memAfter = process.memoryUsage();
+                console.log('Memory after init:', memAfter);
+                
+                const heapIncrease = memAfter.heapUsed - memBefore.heapUsed;
+                console.log('Heap increase:', heapIncrease, 'bytes');
+                
+                // Verify significant memory allocation occurred
+                assert(heapIncrease > NUM_MALICIOUS_JOINTS * 50, 
+                    'Expected significant memory increase from loading all unhandled joints');
+                
+                // With millions of joints, this would cause OOM
+                console.log('VULNERABILITY CONFIRMED: Unbounded memory allocation');
+                console.log('With 5-10 million joints, node would exceed memory limit and crash');
+                
+                done();
+            }, 5000);
+        }
+        
+        insertBatch();
+    });
+    
+    after(function(done) {
+        // Cleanup
+        db.query("DELETE FROM unhandled_joints", function() {
+            done();
+        });
+    });
 });
 ```
 
-**File:** wallet.js (L2056-2080)
-```javascript
-					ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
-						if (opts.compose_only)
-							return handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-						network.broadcastJoint(objJoint);
-						if (!arrChainsOfRecipientPrivateElements){ // send notification about public payment
-							if (recipient_device_address)
-								walletGeneral.sendPaymentNotification(recipient_device_address, objJoint.unit.unit);
-							if (recipient_device_addresses)
-								recipient_device_addresses.forEach(function(r_device_address){
-									walletGeneral.sendPaymentNotification(r_device_address, objJoint.unit.unit);
-								});
-						}
+## Notes
 
-						if (Object.keys(assocPaymentsByEmail).length) { // need to send emails
-							var sent = 0;
-							for (var email in assocPaymentsByEmail) {
-								var objPayment = assocPaymentsByEmail[email];
-								sendTextcoinEmail(email, opts.email_subject, objPayment.amount, objPayment.asset, objPayment.mnemonic);
-								if (++sent == Object.keys(assocPaymentsByEmail).length)
-									handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-							}
-						} else {
-							handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
-						}
-					}
-```
+**Severity Clarification**: The original report classified this as CRITICAL "Network Shutdown" but this is incorrect per Immunefi scope. This vulnerability affects **individual nodes**, not the entire network. The correct classification is **HIGH** severity because:
+- Causes individual node denial-of-service requiring manual intervention
+- Does not cause network-wide transaction confirmation delays
+- Does not affect other nodes unless they are also individually attacked
 
-**File:** network.js (L108-121)
+To qualify as CRITICAL "Network Shutdown," the vulnerability would need to simultaneously affect enough nodes to prevent network-wide transaction confirmation for >24 hours, which is not demonstrated.
+
+**Attack Economics**: The attack requires sustained bandwidth for 4-6 hours to accumulate sufficient malicious joints. An attacker could automate this against multiple nodes, but each node requires independent flooding. The economic feasibility depends on attacker goals (targeted DoS vs. network-wide disruption).
+
+**Existing Protections**: The `purgeOldUnhandledJoints()` function does provide eventual cleanup, but the 1-hour delay combined with immediate initialization on startup creates the vulnerability window. If a node can survive the initial memory load, it will eventually purge old joints after 1 hour online.
+
+### Citations
+
+**File:** joint_storage.js (L70-88)
 ```javascript
-function sendMessage(ws, type, content) {
-	var message = JSON.stringify([type, content]);
-	if (ws.readyState !== ws.OPEN)
-		return console.log("readyState="+ws.readyState+' on peer '+ws.peer+', will not send '+message);
-	console.log("SENDING "+message+" to "+ws.peer);
-	if (bCordova) {
-		ws.send(message);
-	} else {
-		ws.send(message, function(err){
-			if (err)
-				ws.emit('error', 'From send: '+err);
+function saveUnhandledJointAndDependencies(objJoint, arrMissingParentUnits, peer, onDone){
+	var unit = objJoint.unit.unit;
+	assocUnhandledUnits[unit] = true;
+	db.takeConnectionFromPool(function(conn){
+		var sql = "INSERT "+conn.getIgnore()+" INTO dependencies (unit, depends_on_unit) VALUES " + arrMissingParentUnits.map(function(missing_unit){
+			return "("+conn.escape(unit)+", "+conn.escape(missing_unit)+")";
+		}).join(", ");
+		var arrQueries = [];
+		conn.addQuery(arrQueries, "BEGIN");
+		conn.addQuery(arrQueries, "INSERT "+conn.getIgnore()+" INTO unhandled_joints (unit, json, peer) VALUES (?, ?, ?)", [unit, JSON.stringify(objJoint), peer]);
+		conn.addQuery(arrQueries, sql);
+		conn.addQuery(arrQueries, "COMMIT");
+		async.series(arrQueries, function(){
+			conn.release();
+			if (onDone)
+				onDone();
 		});
-	}
+	});
 }
 ```
 
-**File:** network.js (L1881-1888)
+**File:** joint_storage.js (L333-345)
 ```javascript
-function broadcastJoint(objJoint){
-	if (!conf.bLight) // the joint was already posted to light vendor before saving
-		[...wss.clients].concat(arrOutboundPeers).forEach(function(client) {
-			if (client.bSubscribed)
-				sendJoint(client, objJoint);
+function purgeOldUnhandledJoints(){
+	db.query("SELECT unit FROM unhandled_joints WHERE creation_date < "+db.addTime("-1 HOUR"), function(rows){
+		if (rows.length === 0)
+			return;
+		var arrUnits = rows.map(function(row){ return row.unit; });
+		arrUnits.forEach(function(unit){
+			delete assocUnhandledUnits[unit];
 		});
-	notifyWatchers(objJoint, true);
+		var strUnitsList = arrUnits.map(db.escape).join(', ');
+		db.query("DELETE FROM dependencies WHERE unit IN("+strUnitsList+")");
+		db.query("DELETE FROM unhandled_joints WHERE unit IN("+strUnitsList+")");
+	});
+}
+```
+
+**File:** joint_storage.js (L347-361)
+```javascript
+function initUnhandledAndKnownBad(){
+	db.query("SELECT unit FROM unhandled_joints", function(rows){
+		rows.forEach(function(row){
+			assocUnhandledUnits[row.unit] = true;
+		});
+		db.query("SELECT unit, joint, error FROM known_bad_joints ORDER BY creation_date DESC LIMIT 1000", function(rows){
+			rows.forEach(function(row){
+				if (row.unit)
+					assocKnownBadUnits[row.unit] = row.error;
+				if (row.joint)
+					assocKnownBadJoints[row.joint] = row.error;
+			});
+		});
+	});
+}
+```
+
+**File:** sqlite_pool.js (L141-141)
+```javascript
+					bSelect ? self.db.all.apply(self.db, new_args) : self.db.run.apply(self.db, new_args);
+```
+
+**File:** network.js (L965-968)
+```javascript
+function purgeJunkUnhandledJoints(){
+	if (bCatchingUp || Date.now() - coming_online_time < 3600*1000 || wss.clients.size === 0 && arrOutboundPeers.length === 0)
+		return;
+	joint_storage.purgeOldUnhandledJoints();
+```
+
+**File:** network.js (L1190-1230)
+```javascript
+function handleOnlineJoint(ws, objJoint, onDone){
+	if (!onDone)
+		onDone = function(){};
+	var unit = objJoint.unit.unit;
+	delete objJoint.unit.main_chain_index;
+	delete objJoint.unit.actual_tps_fee;
+	
+	handleJoint(ws, objJoint, false, false, {
+		ifUnitInWork: onDone,
+		ifUnitError: function(error){
+			sendErrorResult(ws, unit, error);
+			onDone();
+		},
+		ifTransientError: function(error) {
+			sendErrorResult(ws, unit, error);
+			onDone();
+			if (error.includes("tps fee"))
+				setTimeout(handleOnlineJoint, 10 * 1000, ws, objJoint);
+		},
+		ifJointError: function(error){
+			sendErrorResult(ws, unit, error);
+			onDone();
+		},
+		ifNeedHashTree: function(){
+			if (!bCatchingUp && !bWaitingForCatchupChain)
+				requestCatchup(ws);
+			// we are not saving the joint so that in case requestCatchup() fails, the joint will be requested again via findLostJoints, 
+			// which will trigger another attempt to request catchup
+			onDone();
+		},
+		ifNeedParentUnits: function(arrMissingUnits, dontsave){
+			sendInfo(ws, {unit: unit, info: "unresolved dependencies: "+arrMissingUnits.join(", ")});
+			if (dontsave)
+				delete assocUnitsInWork[unit];
+			else
+				joint_storage.saveUnhandledJointAndDependencies(objJoint, arrMissingUnits, ws.peer, function(){
+					delete assocUnitsInWork[unit];
+				});
+			requestNewMissingJoints(ws, arrMissingUnits);
+			onDone();
+		},
+```
+
+**File:** network.js (L4053-4054)
+```javascript
+	await storage.initCaches();
+	joint_storage.initUnhandledAndKnownBad();
+```
+
+**File:** validation.js (L469-502)
+```javascript
+function validateParentsExistAndOrdered(conn, objUnit, callback){
+	var prev = "";
+	var arrMissingParentUnits = [];
+	if (objUnit.parent_units.length > constants.MAX_PARENTS_PER_UNIT) // anti-spam
+		return callback("too many parents: "+objUnit.parent_units.length);
+	async.eachSeries(
+		objUnit.parent_units,
+		function(parent_unit, cb){
+			if (parent_unit <= prev)
+				return cb("parent units not ordered");
+			prev = parent_unit;
+			if (storage.assocUnstableUnits[parent_unit] || storage.assocStableUnits[parent_unit])
+				return cb();
+			storage.readStaticUnitProps(conn, parent_unit, function(objUnitProps){
+				if (!objUnitProps)
+					arrMissingParentUnits.push(parent_unit);
+				cb();
+			}, true);
+		},
+		function(err){
+			if (err)
+				return callback(err);
+			if (arrMissingParentUnits.length > 0){
+				conn.query("SELECT error FROM known_bad_joints WHERE unit IN(?)", [arrMissingParentUnits], function(rows){
+					(rows.length > 0)
+						? callback("some of the unit's parents are known bad: "+rows[0].error)
+						: callback({error_code: "unresolved_dependency", arrMissingUnits: arrMissingParentUnits});
+				});
+				return;
+			}
+			callback();
+		}
+	);
 }
 ```

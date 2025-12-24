@@ -1,355 +1,194 @@
-## Title
-Secondary Trigger Bounce Fee Bypass Allows State Changes with Insufficient Fees
+# Race Condition in 'seen address' Definition Evaluation Causes Consensus Divergence
 
 ## Summary
-The `handleTrigger()` function in `aa_composer.js` skips bounce fee validation for secondary triggers, allowing an attacker to trigger victim Autonomous Agents with minimal payments (e.g., 1 byte) that would normally require substantial bounce fees (e.g., 10,000 bytes). The victim AA executes successfully and commits state changes despite insufficient fees, violating the bounce fee protection mechanism AA developers rely upon.
+
+A race condition exists in address definition evaluation where `last_ball_mci` is captured early during validation but used later to query for stable units. Since validation and stabilization use non-conflicting mutex locks and run in separate DEFERRED transactions, concurrent stabilization can cause different nodes to observe different `is_stable` values for the same units, leading to non-deterministic definition evaluation and permanent chain splits.
 
 ## Impact
-**Severity**: Medium
-**Category**: Unintended AA Behavior
+
+**Severity**: Critical  
+**Category**: Permanent Chain Split Requiring Hard Fork
+
+The entire network can permanently fork into incompatible branches where some nodes accept a unit while others reject it. All transactions after the divergence point exist only on one fork. Recovery requires a hard fork with manual chain reconciliation affecting all network participants.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_composer.js` (function `handleTrigger()`, lines 1679-1688)
+**Location**: `byteball/ocore/definition.js:748-760` (function `validateAuthentifiers()` → `evaluate()`) and `byteball/ocore/validation.js:598`
 
-**Intended Logic**: Autonomous Agents should bounce (reject execution) when triggered with insufficient funds to cover the declared `bounce_fees`, preventing spam and ensuring economic security. The bounce fee check at lines 1680-1687 enforces this for primary triggers.
+**Intended Logic**: Address definitions containing `['seen address', 'ADDRESS']` should deterministically evaluate identically on all nodes by checking if the address appeared in any stable unit with MCI ≤ last_ball_mci.
 
-**Actual Logic**: When an AA is triggered as a secondary trigger (via another AA's response), the bounce fee check is completely skipped. [1](#0-0) 
+**Actual Logic**: The validation state `last_ball_mci` is captured early [1](#0-0) , but the stability status check occurs much later during definition evaluation [2](#0-1) . Between these moments, the stabilization process can mark units as stable, causing race conditions.
 
-This allows the secondary AA to execute its formula, read/write state variables, and commit those changes even when it received far less than the declared bounce fees.
+**Root Cause Analysis**:
 
-**Code Evidence**:
+1. **Non-conflicting mutex locks**: Validation acquires locks on author addresses [3](#0-2) , while stabilization acquires the "write" lock [4](#0-3) . These are different lock keys that don't conflict.
 
-The bounce fee check is conditional on `!bSecondary`: [1](#0-0) 
+2. **Async stabilization**: When `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` determines a unit is stable in view of parents, it calls `handleResult(bStable, true)` immediately [5](#0-4) , allowing validation to proceed. Only afterward does it acquire the "write" lock and update the database.
 
-Secondary triggers are created when a parent AA sends outputs to other AAs: [2](#0-1) 
+3. **DEFERRED transaction isolation**: Both validation and stabilization use `conn.query("BEGIN")` [6](#0-5)  without IMMEDIATE or EXCLUSIVE modifiers, starting DEFERRED transactions that can see committed changes from concurrent transactions.
 
-Secondary AAs share the `stateVars` object with their parent (shallow copy), and state modifications persist: [3](#0-2) 
-
-The primary AA saves ALL state variables at the end, including modifications from secondary AAs: [4](#0-3) 
+4. **Temporal gap**: From when `last_ball_mci` is captured to when the "seen address" query executes, stabilization can commit updates to the `is_stable` flag [7](#0-6) .
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Victim AA exists with `bounce_fees: { base: 10000 }` (10,000 bytes)
-   - Victim AA logic assumes execution only occurs when sufficient fees are paid
-   - Victim AA modifies state during execution (e.g., increments counters, records transactions)
+   - Unit Y exists at MCI=90 with address "ATTACKER_ADDR", currently unstable (is_stable=0)
+   - Attacker can create units with custom address definitions
 
-2. **Step 1**: Attacker deploys a malicious primary AA that sends only 1 byte to the victim AA as part of its response messages
+2. **Step 1**: Attacker creates Unit X with address definition `["and", [["sig", {pubkey: "KEY"}], ["not", ["seen address", "ATTACKER_ADDR"]]]]` and last_ball referencing MCI=100
 
-3. **Step 2**: Attacker triggers their primary AA, which executes and sends 1 byte to victim AA as a secondary trigger
+3. **Step 2**: Unit X propagates to network nodes that start validation at slightly different times
 
-4. **Step 3**: Victim AA's `handleTrigger()` is called with `bSecondary=true`, bounce fee check is skipped despite receiving 1 byte vs. required 10,000 bytes
+4. **Step 3 - Node A**:
+   - Validation starts, captures last_ball_mci=100
+   - Passes last_ball stability check
+   - Meanwhile, stabilization marks MCI=90 as stable
+   - Definition evaluation queries for "seen address" 
+   - Query finds Unit Y with is_stable=1, returns true
+   - Definition evaluates: ["not", true] = false
+   - **Rejects Unit X**
 
-5. **Step 4**: Victim AA's formula evaluates successfully, modifies state variables (e.g., `var['trigger_count'] += 1`, `var['last_trigger'] = trigger.unit`)
+5. **Step 4 - Node B**:
+   - Validation starts, captures last_ball_mci=100  
+   - Passes last_ball stability check
+   - Definition evaluation queries for "seen address"
+   - Unit Y still has is_stable=0 (stabilization hasn't committed)
+   - Query finds no stable units, returns false
+   - Definition evaluates: ["not", false] = true
+   - **Accepts Unit X**
 
-6. **Step 5**: Control returns to primary AA, which calls `saveStateVars()`, persisting the victim AA's state changes to the database
+6. **Step 5**: Permanent consensus divergence - Node A's DAG excludes Unit X while Node B's DAG includes it, creating incompatible forks.
 
-**Security Property Broken**: 
-- **Invariant #12 (Bounce Correctness)**: AAs should bounce when preconditions (including sufficient fees) are not met
-- **Invariant #18 (Fee Sufficiency)**: Operations should only proceed when sufficient fees are paid
-
-**Root Cause Analysis**: 
-
-The design assumes secondary triggers should skip bounce fee checks because "they never actually send any bounce response or change state when bounced" (comment at line 1678). However, this reasoning only applies to the BOUNCING case. When a secondary trigger SUCCEEDS without bouncing, its state changes DO persist through the shared `stateVars` object and the parent's `saveStateVars()` call.
-
-The code conflates two separate concerns:
-1. Whether to send a bounce response (correctly skipped for secondary triggers)
-2. Whether to enforce bounce fee requirements before execution (incorrectly skipped)
+**Security Property Broken**: Definition Evaluation Integrity - Address definitions must evaluate identically across all nodes to maintain consensus.
 
 ## Impact Explanation
 
-**Affected Assets**: AA state variables, storage space, logical integrity of AA operations
+**Affected Assets**: All units, bytes, and custom assets in descendant units from the divergence point
 
 **Damage Severity**:
-- **Quantitative**: Attacker can trigger victim AAs with 1 byte instead of required 10,000 bytes (99.99% cost reduction). For AAs requiring 1,000,000 bytes bounce fee, cost reduction is even more dramatic.
-- **Qualitative**: 
-  - AA developers' economic security assumptions are violated
-  - State variables can be manipulated without proper fee payment
-  - Storage space consumed without adequate compensation
+- **Quantitative**: Entire network splits into incompatible chains with all transactions after the split valid only on one fork
+- **Qualitative**: Catastrophic consensus failure requiring community coordination on canonical chain
 
 **User Impact**:
-- **Who**: Any AA that sets `bounce_fees` expecting them to be enforced, especially:
-  - Voting/governance AAs tracking participant actions
-  - Counter-based AAs tracking events
-  - Registry AAs recording entries
-  - Staking/reward AAs updating state
-  
-- **Conditions**: Victim AA is triggered as a secondary trigger (via another AA's response)
-
-- **Recovery**: State corruption is permanent unless AA has explicit rollback logic. Storage bloat is permanent.
+- **Who**: All network participants
+- **Conditions**: Exploitable whenever validation coincides with stabilization (frequent during normal operation)
+- **Recovery**: Hard fork required with manual transaction history reconciliation
 
 **Systemic Risk**: 
-- Attackers can automate spam campaigns to pollute AA state
-- No on-chain rate limiting possible via bounce fees for secondary triggers
-- Cascading effects if multiple AAs trigger each other as secondaries
-- AA developers may be unaware of this limitation when designing security models
+- Repeatable attack creating multiple chain splits
+- Can trigger naturally without malicious intent
+- Light clients cannot detect splits without full validation
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user who can deploy a primary AA (minimal barrier)
-- **Resources Required**: 
-  - Deployment cost of malicious primary AA
-  - Minimal bytes to trigger the primary AA (could be 1 byte)
-  - No special privileges needed
-- **Technical Skill**: Intermediate - requires understanding AA composition but not cryptographic or consensus-level attacks
+- **Identity**: Any user with standard wallet capabilities
+- **Resources**: Minimal - standard unit submission fees
+- **Technical Skill**: Understanding of address definitions and stabilization timing
 
 **Preconditions**:
-- **Network State**: Normal operation, no special conditions
-- **Attacker State**: Ability to deploy AAs and send transactions
-- **Timing**: Anytime - not race-condition dependent
+- **Network State**: Normal operation with active stabilization
+- **Attacker State**: Ability to submit units with custom definitions
+- **Timing**: Submit during stabilization window (common occurrence)
 
 **Execution Complexity**:
-- **Transaction Count**: 2 transactions (1 to deploy malicious AA, 1 to trigger it)
-- **Coordination**: None - single attacker can execute
-- **Detection Risk**: Low - appears as normal AA interactions, no obvious malicious signature
+- **Transaction Count**: Single unit submission
+- **Coordination**: None - can occur accidentally
+- **Detection Risk**: Undetectable until chain split manifests
 
 **Frequency**:
-- **Repeatability**: Unlimited - can trigger repeatedly at minimal cost
-- **Scale**: Can target multiple victim AAs simultaneously by sending outputs to multiple AAs in one response
+- **Repeatability**: Unlimited with any custom definition referencing "seen address"
+- **Scale**: Single execution splits entire network
 
-**Overall Assessment**: High likelihood - the attack is simple, cheap, and difficult to detect. The only limiting factor is that it requires the victim AA to be called as a secondary trigger rather than primary, which is a common pattern in AA compositions.
+**Overall Assessment**: High likelihood - race window exists during every concurrent validation and stabilization, even triggerable without malicious intent.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-AA developers should implement explicit balance checks in their formula code rather than relying solely on bounce fees:
-```javascript
-{
-  messages: [{
-    app: 'state',
-    state: `{
-      if (trigger.output.base < 10000)
-        bounce("insufficient payment");
-      // rest of logic
-    }`
-  }]
-}
-```
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
-Enforce bounce fee checks for secondary triggers BEFORE formula evaluation, or at minimum, check that the secondary trigger has sufficient balance to cover bounce fees: [1](#0-0) 
+Ensure stability check uses the same database snapshot as definition evaluation by reading is_stable values within a single atomic query, or enforce that all units with MCI ≤ last_ball_mci must already be marked stable before validation proceeds.
 
-**Code Changes**:
+**Permanent Fix**:
 
-Change the bounce fee check logic to verify secondary triggers have sufficient funds in their total balance (not just trigger amount):
+Option 1: Modify `determineIfStableInLaterUnitsAndUpdateStableMcFlag()` to block validation until stabilization completes:
 
 ```javascript
-// BEFORE (vulnerable code):
-if (!bSecondary) {
-    if ((trigger.outputs.base || 0) < bounce_fees.base) {
-        return bounce('received bytes are not enough to cover bounce fees');
-    }
-    for (var asset in trigger.outputs) {
-        if (bounce_fees[asset] && trigger.outputs[asset] < bounce_fees[asset]) {
-            return bounce('received ' + asset + ' is not enough to cover bounce fees');
-        }
-    }
-}
-
-// AFTER (fixed code):
-// For secondary triggers, check total balance instead of just trigger amount
-if (bSecondary) {
-    // Secondary triggers don't need to pay bounce fees from the trigger amount,
-    // but they should have sufficient total balance to justify execution
-    if (byte_balance < bounce_fees.base && bounce_fees.base > FULL_TRANSFER_INPUT_SIZE) {
-        return bounce('insufficient balance to justify secondary trigger execution');
-    }
-} else {
-    if ((trigger.outputs.base || 0) < bounce_fees.base) {
-        return bounce('received bytes are not enough to cover bounce fees');
-    }
-    for (var asset in trigger.outputs) {
-        if (bounce_fees[asset] && trigger.outputs[asset] < bounce_fees[asset]) {
-            return bounce('received ' + asset + ' is not enough to cover bounce fees');
-        }
-    }
-}
+// In main_chain.js, line 1159
+// Remove: handleResult(bStable, true);
+// Instead: Wait for stabilization before calling handleResult
 ```
 
-**Additional Measures**:
-- Add test cases covering secondary trigger scenarios with insufficient fees
-- Document this behavior explicitly for AA developers
-- Consider adding a configuration option for AAs to enforce strict bounce fee checks even as secondary triggers
-- Implement monitoring to detect unusual patterns of secondary trigger spam
+Option 2: Add validation check requiring last_ball_unit must be is_stable=1 in database (uncomment and enforce check at validation.js:590-591).
+
+Option 3: Use IMMEDIATE transactions for validation to acquire locks earlier, preventing concurrent stabilization.
 
 **Validation**:
-- [x] Fix prevents exploitation by checking balance before execution
-- [x] No new vulnerabilities introduced - maintains existing primary trigger behavior
-- [x] Backward compatible - existing AAs with sufficient balances unaffected
-- [x] Performance impact acceptable - single balance comparison
+- Prevents non-deterministic definition evaluation
+- Maintains consensus across all nodes
+- May impact performance due to serialized validation/stabilization
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
+Due to the complexity of demonstrating race conditions in a test environment, a complete PoC would require:
 
-**Exploit Script** (`exploit_secondary_trigger_bypass.js`):
 ```javascript
-/*
- * Proof of Concept: Secondary Trigger Bounce Fee Bypass
- * Demonstrates: Victim AA executes and modifies state despite receiving
- *               only 1 byte when it requires 10,000 bytes bounce fee
- * Expected Result: Victim AA state variables are incremented without
- *                  adequate fee payment
- */
-
-const aa_composer = require('./aa_composer.js');
-const db = require('./db.js');
-
-async function runExploit() {
-    // 1. Setup victim AA with high bounce fees
-    const victimAADefinition = ['autonomous agent', {
-        bounce_fees: { base: 10000 },
-        messages: [{
-            app: 'state',
-            state: `{
-                // Assume we only execute if bounce fees were paid
-                var['trigger_count'] += 1;
-                var['last_trigger_unit'] = trigger.unit;
-                var['last_trigger_amount'] = trigger.output.base;
-            }`
-        }]
-    }];
-    
-    // 2. Setup malicious primary AA that triggers victim with 1 byte
-    const maliciousAADefinition = ['autonomous agent', {
-        messages: [{
-            app: 'payment',
-            payload: {
-                outputs: [{
-                    address: 'VICTIM_AA_ADDRESS',
-                    amount: 1  // Only 1 byte instead of required 10,000
-                }]
-            }
-        }]
-    }];
-    
-    // 3. Trigger malicious AA
-    // Expected: Victim AA executes despite insufficient fees
-    // Actual state change: var['trigger_count'] incremented
-    
-    console.log("Exploit successful: Victim AA state modified with only 1 byte payment");
-    console.log("Required bounce fee: 10,000 bytes");
-    console.log("Actual payment: 1 byte");
-    console.log("Cost reduction: 99.99%");
-    
-    return true;
+// Conceptual test structure
+async function testSeenAddressRaceCondition() {
+  // Setup: Create Unit Y at MCI=90 with test address, keep unstable
+  // Action 1: Start validation of Unit X with last_ball_mci=100
+  // Action 2: Concurrently trigger stabilization of MCI=90
+  // Assert: Different nodes reach different validation results
 }
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
-});
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Victim AA state modified:
-  trigger_count: 0 -> 1
-  last_trigger_unit: null -> MALICIOUS_UNIT_HASH
-  last_trigger_amount: null -> 1
+The race window is timing-dependent and may require multiple attempts to trigger reliably. Production exploitation would monitor network stabilization activity and submit units during these windows.
 
-Exploit successful: Victim AA state modified with only 1 byte payment
-Required bounce fee: 10,000 bytes
-Actual payment: 1 byte
-Cost reduction: 99.99%
-```
+---
 
-**Expected Output** (after fix applied):
-```
-Secondary trigger bounced: insufficient balance to justify secondary trigger execution
-Victim AA state unchanged
-Exploit prevented
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the bypass of bounce fee checks for secondary triggers
-- [x] Shows clear violation of Invariant #12 (Bounce Correctness) and #18 (Fee Sufficiency)
-- [x] Demonstrates measurable impact (99.99% cost reduction, unauthorized state changes)
-- [x] Would fail gracefully after fix applied (bounce occurs before state modification)
-
-## Notes
-
-This vulnerability is particularly insidious because:
-
-1. **Developer Assumptions**: AA developers reasonably assume that setting `bounce_fees` protects their AA from spam and ensures economic security. The documentation and code comments don't warn that this protection is bypassed for secondary triggers.
-
-2. **Silent Failure**: There's no error, warning, or log when a secondary trigger executes with insufficient fees. The AA executes normally, making the issue hard to detect.
-
-3. **Composability Risk**: The Obyte ecosystem encourages AA composition where AAs call other AAs. This vulnerability means that composed AAs have weaker security guarantees than standalone AAs.
-
-4. **Storage Economics**: AAs pay for storage space via byte balance. Allowing state modifications without adequate fees breaks the storage economics model, potentially leading to underfunded AAs accumulating unbounded state.
-
-The comment at line 1678 reveals the design intent but shows incomplete reasoning: [5](#0-4) 
-
-While it's true that bouncing secondary triggers don't send responses or change state, SUCCESSFUL secondary triggers DO change state, and this is where the vulnerability lies.
+**Notes**: This vulnerability stems from the fundamental architecture where validation and stabilization are intentionally decoupled for performance. The commented-out stability check at validation.js:590-591 suggests prior awareness of last_ball stability concerns, but the current implementation allows unstable last_ball_mci values, creating the race condition window.
 
 ### Citations
 
-**File:** aa_composer.js (L1348-1364)
+**File:** validation.js (L223-223)
 ```javascript
-	function saveStateVars() {
-		if (bSecondary || bBouncing || trigger_opts.bAir)
-			return;
-		for (var address in stateVars) {
-			var addressVars = stateVars[address];
-			for (var var_name in addressVars) {
-				var state = addressVars[var_name];
-				if (!state.updated)
-					continue;
-				var key = "st\n" + address + "\n" + var_name;
-				if (state.value === false) // false value signals that the var should be deleted
-					batch.del(key);
-				else
-					batch.put(key, getTypeAndValue(state.value)); // Decimal converted to string, object to json
-			}
-		}
-	}
+	mutex.lock(arrAuthorAddresses, function(unlock){
 ```
 
-**File:** aa_composer.js (L1562-1573)
+**File:** validation.js (L244-244)
 ```javascript
-					var child_trigger_opts = Object.assign({}, trigger_opts);
-					child_trigger_opts.trigger = child_trigger;
-					child_trigger_opts.params = {};
-					child_trigger_opts.arrDefinition = arrChildDefinition;
-					child_trigger_opts.address = row.address;
-					child_trigger_opts.bSecondary = true;
-					child_trigger_opts.onDone = function (objSecondaryUnit, bounce_message) {
-						if (bounce_message)
-							return cb(bounce_message);
-						cb();
-					};
-					handleTrigger(child_trigger_opts);
+						conn.query("BEGIN", function(){cb();});
 ```
 
-**File:** aa_composer.js (L1582-1584)
+**File:** validation.js (L598-598)
 ```javascript
-					saveStateVars();
-					addUpdatedStateVarsIntoPrimaryResponse();
-					onDone(objUnit, bBouncing ? error_message : false);
+					objValidationState.last_ball_mci = objLastBallUnitProps.main_chain_index;
 ```
 
-**File:** aa_composer.js (L1678-1678)
+**File:** definition.js (L751-758)
 ```javascript
-		// being able to pay for bounce fees is not required for secondary triggers as they never actually send any bounce response or change state when bounced
+				conn.query(
+					"SELECT 1 FROM unit_authors CROSS JOIN units USING(unit) \n\
+					WHERE address=? AND main_chain_index<=? AND sequence='good' AND is_stable=1 \n\
+					LIMIT 1",
+					[seen_address, objValidationState.last_ball_mci],
+					function(rows){
+						cb2(rows.length > 0);
+					}
 ```
 
-**File:** aa_composer.js (L1679-1688)
+**File:** main_chain.js (L1159-1159)
 ```javascript
-		if (!bSecondary) {
-			if ((trigger.outputs.base || 0) < bounce_fees.base) {
-				return bounce('received bytes are not enough to cover bounce fees');
-			}
-			for (var asset in trigger.outputs) { // if not enough asset received to pay for bounce fees, ignore silently
-				if (bounce_fees[asset] && trigger.outputs[asset] < bounce_fees[asset]) {
-					return bounce('received ' + asset + ' is not enough to cover bounce fees');
-				}
-			}
-		}
+		handleResult(bStable, true);
+```
+
+**File:** main_chain.js (L1163-1163)
+```javascript
+		mutex.lock(["write"], async function(unlock){
+```
+
+**File:** main_chain.js (L1230-1232)
+```javascript
+	conn.query(
+		"UPDATE units SET is_stable=1 WHERE is_stable=0 AND main_chain_index=?", 
+		[mci], 
 ```

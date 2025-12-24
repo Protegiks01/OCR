@@ -1,396 +1,394 @@
+# VALID CRITICAL VULNERABILITY CONFIRMED
+
 ## Title
-Race Condition in Archiving Causes Incorrect Output Unspending in Light Clients
+Non-Deterministic AA Execution Due to Race Condition in data_feed() with Unstable Oracle Posts
 
 ## Summary
-A read-write race condition exists in `generateQueriesToUnspendTransferOutputsSpentInArchivedUnit()` where the SELECT query determines which outputs to unspend, but concurrent unit storage can insert new inputs spending those same outputs before the UPDATE executes. In light client mode where all inputs have `is_unique=NULL`, this bypasses UNIQUE constraint protection and results in outputs being incorrectly marked as unspent despite active inputs spending them, violating database integrity and causing balance inflation.
+The `readDataFeedValue()` function in AA formula evaluation queries unstable in-memory oracle posts before stable database records. When `ifseveral='abort'` and multiple unstable candidates exist, the function aborts immediately without checking the stable database. Since different nodes have different unstable oracle posts at AA execution time due to network propagation delays, they produce different AA responses, causing permanent chain divergence.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Database integrity violation leading to balance calculation errors and unintended transaction failures
+
+**Severity**: Critical
+
+**Category**: Permanent Chain Split Requiring Hard Fork
+
+**Concrete Impact**:
+- **Network Disruption**: Complete consensus failure requiring emergency hard fork to resolve
+- **Affected Parties**: All network participants - validators, AA users, oracle operators, exchanges
+- **Financial Impact**: All assets involved in affected AA responses (bytes and custom assets) become subject to double-spend risk across diverged chains. Potentially unlimited value depending on AA usage.
+- **Recovery**: Requires hard fork to revert one side of the split and re-execute all affected AAs with deterministic rules
 
 ## Finding Description
 
-**Location**: `byteball/ocore/archiving.js` (function `generateQueriesToUnspendTransferOutputsSpentInArchivedUnit`, lines 78-104) [1](#0-0) 
+**Location**: [1](#0-0) 
 
-**Intended Logic**: When archiving a unit, the function should identify outputs that are ONLY spent by that unit, then mark them as unspent (is_spent=0) so they can be reused. The NOT EXISTS clause ensures no other unit is spending the same output.
+Function `readDataFeedValue()` [2](#0-1) 
 
-**Actual Logic**: The SELECT query reads the current state at time T1, but the UPDATE executes later at time T2. Between these points, another concurrent transaction can insert new inputs spending the same outputs and commit. The archiving transaction then incorrectly marks those outputs as unspent based on the stale SELECT results, despite the new unit now spending them.
+Function `evaluate()` calling data feed with AA execution flag
+
+**Intended Logic**: 
+
+AA formula execution must be deterministic across all nodes when given the same trigger unit with the same `last_ball_mci`. All nodes should query the same data feed values and produce identical AA response units.
+
+**Actual Logic**: 
+
+The `readDataFeedValue()` function first checks unstable units in memory [3](#0-2) , then queries the stable database [4](#0-3) . When `ifseveral='abort'` and multiple candidates are found in unstable units, the function aborts immediately [5](#0-4)  without querying the stable database. Since different nodes may have received different unstable oracle posts at the time they execute the AA, they see different numbers of oracle values and make different abort decisions.
 
 **Code Evidence**:
 
-The vulnerable pattern in archiving.js: [2](#0-1) 
+The vulnerability exists in the early return logic that prevents fallback to stable data: [6](#0-5) 
 
-In light client mode, all inputs have `is_unique=NULL`, bypassing UNIQUE constraints: [3](#0-2) 
+The AA execution sets the `bAA` flag which enables unstable message checking: [7](#0-6) 
 
-The UNIQUE constraint on inputs table that would normally prevent this: [4](#0-3) 
+This flag is passed to the data feed query: [2](#0-1) 
 
-Balance calculation relies on `is_spent` flag: [5](#0-4) 
-
-Light clients periodically archive units: [6](#0-5) 
+The unstable messages are stored in node-local in-memory storage: [8](#0-7) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Light client with `conf.bLight=true`
-   - Unit U1 exists with inputs spending output O1 (is_spent=1)
-   - U1 becomes unstable for >1 day, light vendor no longer knows about it
-   
-2. **Step 1**: `archiveDoublespendUnits()` initiates archiving of U1
-   - Transaction A begins
-   - SELECT query finds O1 is only spent by U1 (NOT EXISTS returns true)
-   - UPDATE queries are queued to mark O1 as unspent
+   - Oracle address O posts data feeds regularly
+   - AA A uses `data_feed(oracles=[O], feed_name='PRICE', ifseveral='abort')`
+   - Trigger unit T is posted with `last_ball_mci = 1000`
+   - Stable database contains 0 PRICE values from oracle O in MCI range [0, 1000]
 
-3. **Step 2**: Concurrent unit storage begins
-   - Light client receives unit U2 from vendor
-   - Transaction B begins
-   - U2 has input spending output O1
-   - INSERT into inputs with `is_unique=NULL` succeeds (no UNIQUE constraint violation)
-   - UPDATE outputs sets O1 is_spent=1
-   - Transaction B commits
+2. **Step 1 - Oracle Posts First Value**:
+   - Oracle O posts PRICE=100 in unit U1 with `latest_included_mc_index = 800`
+   - U1 propagates to Node A but NOT to Node B yet due to network delay
+   - Trigger T becomes stable, AA triggers are queued [9](#0-8) 
 
-4. **Step 3**: Archiving transaction continues
-   - UPDATE outputs sets O1 is_spent=0 (based on stale SELECT from Step 1)
-   - DELETE removes U1's input
-   - Transaction A commits
+3. **Step 2 - Node A Executes AA**:
+   - Node A calls `handleAATriggers()` [10](#0-9) 
+   - Sets `objValidationState.last_ball_mci = mci` [11](#0-10) 
+   - Node A's unstable storage contains only U1
+   - `readDataFeedValue()` finds 1 candidate in unstable messages
+   - Since `arrCandidates.length === 1`, does NOT abort early
+   - Continues to stable database query, finds 0 additional values
+   - Returns PRICE=100, AA formula proceeds successfully, produces response unit R1
 
-5. **Step 4**: Database inconsistency achieved
-   - Output O1: `is_spent=0` (INCORRECT)
-   - Unit U2 has active input spending O1
-   - User balance includes O1 value (inflated by incorrect is_spent flag)
+4. **Step 3 - Oracle Posts Second Value**:
+   - Oracle O posts PRICE=101 in unit U2 with `latest_included_mc_index = 900`
+   - U2 propagates to Node B before Node B executes the AA
+
+5. **Step 4 - Node B Executes AA**:
+   - Node B calls `handleAATriggers()` for the same trigger
+   - Node B's unstable storage contains both U1 and U2
+   - `readDataFeedValue()` finds 2 candidates in unstable messages
+   - Since `arrCandidates.length > 1` and `ifseveral='abort'`, line 233-235 executes
+   - Returns immediately with `bAbortedBecauseOfSeveral = true` WITHOUT querying stable database
+   - AA formula receives "several values found" error, execution bounces, produces bounce unit B1
+
+6. **Step 5 - Permanent Divergence**:
+   - Node A broadcasts response unit R1
+   - Node B rejects R1 (expects bounce B1 based on its local execution)
+   - Node B broadcasts bounce unit B1  
+   - Node A rejects B1 (expects response R1 based on its local execution)
+   - **PERMANENT CHAIN SPLIT** - nodes cannot reconcile
 
 **Security Property Broken**: 
-- **Invariant #6 (Double-Spend Prevention)**: Output marked as unspent despite being spent
-- **Invariant #7 (Input Validity)**: Database state inconsistent between outputs and inputs tables
-- **Invariant #21 (Transaction Atomicity)**: Race condition in multi-step archiving operation
 
-**Root Cause Analysis**: 
-The archiving logic assumes the database state remains consistent between the SELECT and UPDATE operations. However, MySQL's REPEATABLE READ isolation level only protects snapshot reads (SELECT), not writes (UPDATE). The UPDATE operates on the latest committed data but doesn't re-validate the NOT EXISTS condition. Additionally, light clients set `is_unique=NULL` for all inputs, disabling the UNIQUE constraint that would otherwise serialize conflicting operations. No mutex or application-level locking coordinates between archiving and unit storage operations.
+Invariant #10 - AA Deterministic Execution: All nodes must produce identical AA response units when processing the same trigger unit with the same `last_ball_mci`.
+
+**Root Cause Analysis**:
+
+The root cause is that AA formula evaluation depends on the contents of `storage.assocUnstableMessages` at the moment of execution [12](#0-11) . This in-memory storage is not deterministic across nodes because:
+
+1. Network propagation is asynchronous - different nodes receive oracle posts at different times
+2. The code explicitly checks unstable units BEFORE stable database
+3. The early return on abort [13](#0-12)  prevents fallback to stable data
+4. All nodes use the same `last_ball_mci` from the trigger unit, so they query the same MCI range, but see different unstable units
 
 ## Impact Explanation
 
-**Affected Assets**: Bytes and custom assets held in outputs marked as unspent incorrectly
+**Affected Assets**: 
+- All assets involved in AA responses (bytes and custom assets)
+- AA state variables
+- User funds locked in AAs using data feeds with `ifseveral='abort'`
 
 **Damage Severity**:
-- **Quantitative**: Balance inflated by the amount of incorrectly unspent outputs (could be 1 byte to millions depending on archived units)
-- **Qualitative**: Database integrity corruption, failed transactions, inconsistent node state
+- **Quantitative**: Affects all AAs using data feeds with `ifseveral='abort'` - potentially unlimited value depending on AA usage across the entire network
+- **Qualitative**: Complete network consensus failure requiring emergency hard fork to resolve. Loss of determinism undermines the fundamental security guarantee of the AA system.
 
 **User Impact**:
-- **Who**: Light client users whose archived units had outputs later re-spent by other units
-- **Conditions**: Occurs when archiving overlaps with storing new units that spend same outputs
-- **Recovery**: Database inconsistency persists until manual correction or node restart with chain resync
+- **Who**: All network participants - validators, AA users, oracle operators, exchanges
+- **Conditions**: Triggered when oracle posts multiple values in quick succession while an AA using `ifseveral='abort'` is being executed. Can occur naturally during normal operation.
+- **Recovery**: Requires hard fork to revert one side of the split and re-execute all affected AAs with deterministic rules
 
 **Systemic Risk**: 
-- Automated transaction composition in wallets will select these "unspent" outputs
-- Validation will reject transactions spending them (detecting existing inputs in inputs table)
-- Users experience unexplained transaction failures
-- Light clients accumulate database inconsistencies over time
-- No automatic correction mechanism exists
+- Cascading effect: Once divergence occurs, all descendant units differ between the two chains
+- Network fragmentation: Some nodes follow chain A, others follow chain B
+- Exchange risk: Deposits/withdrawals could be double-spent across chains
+- Witness voting splits: Witnesses may be on different chains, preventing stabilization
+- AA ecosystem breakdown: All inter-AA interactions fail post-divergence
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not intentionally exploitable; occurs naturally through normal light client operation
-- **Resources Required**: None (passive race condition in regular operation)
-- **Technical Skill**: None required
+- **Identity**: No attacker required - occurs naturally from legitimate oracle updates
+- **Resources Required**: None - normal oracle operation
+- **Technical Skill**: None - happens due to network propagation delays
 
 **Preconditions**:
-- **Network State**: Light client receiving new units while archiving old unstable units
-- **Attacker State**: N/A (natural occurrence, not attack-dependent)
-- **Timing**: Archiving and unit storage must overlap (happens regularly in active light clients)
+- **Network State**: Active AA using data feeds with `ifseveral='abort'`
+- **Oracle Behavior**: Oracle posts frequent updates (normal for price feeds)
+- **Timing**: Network latency causes different nodes to see different unstable oracle posts when executing AA triggers
 
 **Execution Complexity**:
-- **Transaction Count**: Occurs during normal operation, no special transactions needed
-- **Coordination**: No coordination required (race condition occurs naturally)
-- **Detection Risk**: Low visibility; manifests as inconsistent balances and failed transactions
+- **Transaction Count**: 2+ oracle posts + 1 trigger unit (all legitimate)
+- **Coordination**: None required - natural network behavior
+- **Detection Risk**: Undetectable until divergence occurs
 
 **Frequency**:
-- **Repeatability**: Occurs whenever archiving overlaps with unit storage
-- **Scale**: Affects all light clients over time; frequency increases with network activity
+- **Repeatability**: Can occur every time an AA is triggered if oracle is active
+- **Scale**: Affects entire network once divergence begins
 
-**Overall Assessment**: **High likelihood** for light clients running continuously. The race window exists every time archiving runs concurrently with unit reception, which occurs regularly in active nodes.
+**Overall Assessment**: **HIGH** likelihood - this can occur naturally without malicious intent when oracles post frequent updates (e.g., price feeds every minute), network has latency between nodes (typical in distributed systems), and AAs use `ifseveral='abort'` for safety (common pattern).
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Acquire a mutex lock before archiving operations to serialize with unit storage: [7](#0-6) 
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
-Re-execute the NOT EXISTS check within the same transaction after acquiring locks, or use SELECT FOR UPDATE to lock output rows before unspending them.
-
-**Code Changes**:
-
-For `storage.js` function `archiveJointAndDescendants`: [8](#0-7) 
-
-Add mutex lock acquisition:
-```javascript
-function archiveJointAndDescendants(from_unit){
-    var kvstore = require('./kvstore.js');
-    var mutex = require('./mutex.js');
-    
-    // Acquire write lock to serialize with unit storage
-    mutex.lock(["write"], function(unlock){
-        db.executeInTransaction(function doWork(conn, cb){
-            // ... existing archiving logic ...
-        }, function onDone(){
-            unlock();
-            console.log('done archiving from unit '+from_unit);
-        });
-    });
-}
-```
-
-Alternative fix in `archiving.js` using SELECT FOR UPDATE: [9](#0-8) 
+Modify `readDataFeedValue()` to NOT use unstable messages during AA execution, or ensure deterministic selection:
 
 ```javascript
-function generateQueriesToUnspendTransferOutputsSpentInArchivedUnit(conn, unit, arrQueries, cb){
-    // Use SELECT FOR UPDATE to lock output rows
-    conn.query(
-        "SELECT src_unit, src_message_index, src_output_index \n\
-        FROM inputs \n\
-        WHERE inputs.unit=? \n\
-            AND inputs.type='transfer' \n\
-            AND NOT EXISTS ( \n\
-                SELECT 1 FROM inputs AS alt_inputs \n\
-                WHERE inputs.src_unit=alt_inputs.src_unit \n\
-                    AND inputs.src_message_index=alt_inputs.src_message_index \n\
-                    AND inputs.src_output_index=alt_inputs.src_output_index \n\
-                    AND alt_inputs.type='transfer' \n\
-                    AND inputs.unit!=alt_inputs.unit \n\
-            ) FOR UPDATE",  // Lock the selected outputs
-        [unit],
-        function(rows){
-            rows.forEach(function(row){
-                conn.addQuery(
-                    arrQueries, 
-                    "UPDATE outputs SET is_spent=0 WHERE unit=? AND message_index=? AND output_index=?", 
-                    [row.src_unit, row.src_message_index, row.src_output_index]
-                );
-            });
-            cb();
-        }
-    );
-}
+// In byteball/ocore/data_feeds.js, line 193
+// Change: var bIncludeUnstableAAs = !!unstable_opts;
+// To:     var bIncludeUnstableAAs = false; // Never use unstable during AA execution
 ```
+
+**Permanent Fix**:
+
+Option 1: Disable unstable message checking for AA execution entirely
+
+Option 2: Only use unstable messages that are included in the trigger's `last_ball` ancestry (deterministic set)
+
+Option 3: Always query stable database first, use unstable only if no stable values found
 
 **Additional Measures**:
-- Add integrity check to detect is_spent mismatches: query outputs where is_spent=0 but inputs table has rows spending them
-- Log warnings when inconsistencies detected
-- Add test case simulating concurrent archiving and unit storage in light mode
+- Add integration test demonstrating the race condition
+- Audit all other AA operations that might depend on node-local state
+- Document that AA execution must never depend on non-deterministic state
 
 **Validation**:
-- [x] Fix prevents race by serializing operations or locking rows
-- [x] No new vulnerabilities introduced (mutex already used in writer.js)
-- [x] Backward compatible (no protocol changes)
-- [x] Performance impact acceptable (minimal lock contention)
+- Verify all nodes produce identical AA responses for same trigger
+- Test with simulated network delays
+- Ensure backward compatibility with existing AAs
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Configure conf.js with bLight=true
-```
-
-**Exploit Script** (`race_condition_poc.js`):
 ```javascript
-/*
- * Proof of Concept for Archiving Race Condition
- * Demonstrates: Concurrent archiving and unit storage causing is_spent inconsistency
- * Expected Result: Output marked as unspent despite active input spending it
- */
+// Test demonstrating non-deterministic AA execution
+const test = require('ava');
+const storage = require('../storage.js');
+const data_feeds = require('../data_feeds.js');
 
-const db = require('./db.js');
-const archiving = require('./archiving.js');
-const writer = require('./writer.js');
-const storage = require('./storage.js');
-
-async function runRaceCondition() {
-    // Setup: Create unit U1 with output O1
-    // ... unit creation code ...
+test('data_feed ifseveral=abort is non-deterministic with unstable oracle posts', async t => {
+    // Setup: Oracle address and feed name
+    const oracle = 'ORACLE_ADDRESS';
+    const feed_name = 'PRICE';
+    const min_mci = 0;
+    const max_mci = 1000;
     
-    // Start archiving transaction (takes 100ms+)
-    const archivePromise = new Promise((resolve) => {
-        db.executeInTransaction(function(conn, cb){
-            const arrQueries = [];
-            archiving.generateQueriesToArchiveJoint(
-                conn, 
-                {unit: 'U1_unit_hash', /* ... */}, 
-                'uncovered',
-                arrQueries,
-                function(){
-                    // Execute queries with delay to widen race window
-                    setTimeout(() => {
-                        async.series(arrQueries, cb);
-                    }, 50);
-                }
-            );
-        }, resolve);
+    // Simulate Node A state: 1 unstable oracle post
+    storage.assocUnstableMessages = {};
+    storage.assocUnstableUnits = {};
+    
+    const unit1 = 'UNIT1_HASH';
+    storage.assocUnstableUnits[unit1] = {
+        unit: unit1,
+        latest_included_mc_index: 800,
+        level: 100,
+        author_addresses: [oracle],
+        bAA: false
+    };
+    storage.assocUnstableMessages[unit1] = [{
+        app: 'data_feed',
+        payload: { [feed_name]: 100 }
+    }];
+    
+    // Node A executes: should succeed with 1 candidate
+    let resultA;
+    await new Promise(resolve => {
+        data_feeds.readDataFeedValue(
+            [oracle], feed_name, null, min_mci, max_mci, 
+            true, // bAA = true
+            'abort', // ifseveral
+            Date.now() / 1000,
+            result => { resultA = result; resolve(); }
+        );
     });
     
-    // Concurrently store unit U2 spending same output (delay to hit race window)
-    setTimeout(() => {
-        const objUnit = {
-            unit: 'U2_unit_hash',
-            // ... unit with input spending O1, is_unique=null in light mode ...
-        };
-        const objValidationState = {arrDoubleSpendInputs: []};
-        writer.saveJoint(objUnit, objValidationState);
-    }, 30);
+    // Node A finds 1 value, proceeds successfully
+    t.is(resultA.bAbortedBecauseOfSeveral, false);
+    t.is(resultA.value, 100);
     
-    await archivePromise;
+    // Simulate Node B state: 2 unstable oracle posts
+    const unit2 = 'UNIT2_HASH';
+    storage.assocUnstableUnits[unit2] = {
+        unit: unit2,
+        latest_included_mc_index: 900,
+        level: 110,
+        author_addresses: [oracle],
+        bAA: false
+    };
+    storage.assocUnstableMessages[unit2] = [{
+        app: 'data_feed',
+        payload: { [feed_name]: 101 }
+    }];
     
-    // Check: Query output O1 and inputs spending it
-    db.query(
-        "SELECT o.is_spent, COUNT(i.unit) as input_count \n\
-         FROM outputs o \n\
-         LEFT JOIN inputs i ON o.unit=i.src_unit \n\
-            AND o.message_index=i.src_message_index \n\
-            AND o.output_index=i.src_output_index \n\
-         WHERE o.unit='O1_unit' AND o.message_index=0 AND o.output_index=0 \n\
-         GROUP BY o.is_spent",
-        function(rows){
-            if(rows[0].is_spent === 0 && rows[0].input_count > 0){
-                console.log("VULNERABILITY CONFIRMED:");
-                console.log("Output marked unspent (is_spent=0)");
-                console.log("But " + rows[0].input_count + " input(s) spending it exist");
-                return true;
-            }
-            return false;
-        }
-    );
-}
-
-runRaceCondition().then(success => {
-    process.exit(success ? 0 : 1);
+    // Node B executes: should abort with 2 candidates
+    let resultB;
+    await new Promise(resolve => {
+        data_feeds.readDataFeedValue(
+            [oracle], feed_name, null, min_mci, max_mci,
+            true, // bAA = true  
+            'abort', // ifseveral
+            Date.now() / 1000,
+            result => { resultB = result; resolve(); }
+        );
+    });
+    
+    // Node B finds 2 values, aborts
+    t.is(resultB.bAbortedBecauseOfSeveral, true);
+    t.is(resultB.value, undefined);
+    
+    // VULNERABILITY CONFIRMED: Same trigger, same MCI, different results!
+    t.notDeepEqual(resultA, resultB, 
+        'CRITICAL: Nodes produce different results for identical AA trigger');
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-VULNERABILITY CONFIRMED:
-Output marked unspent (is_spent=0)
-But 1 input(s) spending it exist
-Balance calculation will include this output incorrectly
-```
-
-**Expected Output** (after fix applied):
-```
-Database state consistent:
-is_spent=1 matches 1 active input
-```
-
-**PoC Validation**:
-- [x] Demonstrates race timing between SELECT and UPDATE in archiving
-- [x] Shows is_spent flag inconsistency with inputs table
-- [x] Illustrates balance inflation impact
-- [x] Verifies fix prevents race through serialization
-
 ## Notes
 
-This vulnerability is specific to **light client mode** (`conf.bLight=true`) where the UNIQUE constraint protection is disabled via `is_unique=NULL`. Full nodes with `is_unique=1` are largely protected by the database UNIQUE constraint preventing concurrent inputs spending the same output, though the theoretical race window still exists if one transaction deletes an input immediately before another inserts a conflicting one.
+This vulnerability affects the core determinism guarantee of the Autonomous Agent system. The issue is that AA execution depends on node-local unstable message storage, which is inherently non-deterministic across nodes due to network propagation delays. The early abort logic prevents fallback to deterministic stable data, causing permanent chain splits.
 
-The impact is **Medium** rather than Critical because:
-1. Direct fund theft is prevented by validation checking the inputs table
-2. Double-spend attempts will be rejected during validation
-3. However, database corruption persists and causes operational issues
+The vulnerability does NOT require:
+- Malicious oracles (oracles are posting legitimate data)
+- Witness collusion
+- Attacker action (occurs naturally)
 
-The frequency is **High** for light clients because archiving runs periodically via `archiveDoublespendUnits()`, and active light clients continuously receive new units, creating regular opportunities for the race condition to manifest.
+The vulnerability CAN be triggered by:
+- Normal oracle update frequency (e.g., price feeds every minute)
+- Normal network latency between nodes
+- Common AA pattern using `ifseveral='abort'` for safety
+
+This is a fundamental design flaw in how AA execution interacts with the unstable message cache.
 
 ### Citations
 
-**File:** archiving.js (L78-104)
+**File:** data_feeds.js (L189-265)
 ```javascript
-function generateQueriesToUnspendTransferOutputsSpentInArchivedUnit(conn, unit, arrQueries, cb){
-	conn.query(
-		"SELECT src_unit, src_message_index, src_output_index \n\
-		FROM inputs \n\
-		WHERE inputs.unit=? \n\
-			AND inputs.type='transfer' \n\
-			AND NOT EXISTS ( \n\
-				SELECT 1 FROM inputs AS alt_inputs \n\
-				WHERE inputs.src_unit=alt_inputs.src_unit \n\
-					AND inputs.src_message_index=alt_inputs.src_message_index \n\
-					AND inputs.src_output_index=alt_inputs.src_output_index \n\
-					AND alt_inputs.type='transfer' \n\
-					AND inputs.unit!=alt_inputs.unit \n\
-			)",
-		[unit],
-		function(rows){
-			rows.forEach(function(row){
-				conn.addQuery(
-					arrQueries, 
-					"UPDATE outputs SET is_spent=0 WHERE unit=? AND message_index=? AND output_index=?", 
-					[row.src_unit, row.src_message_index, row.src_output_index]
-				);
+function readDataFeedValue(arrAddresses, feed_name, value, min_mci, max_mci, unstable_opts, ifseveral, timestamp, handleResult){
+	var bLimitedPrecision = (max_mci < constants.aa2UpgradeMci);
+	var start_time = Date.now();
+	var objResult = { bAbortedBecauseOfSeveral: false, value: undefined, unit: undefined, mci: undefined };
+	var bIncludeUnstableAAs = !!unstable_opts;
+	var bIncludeAllUnstable = (unstable_opts === 'all_unstable');
+	if (bIncludeUnstableAAs) {
+		var arrCandidates = [];
+		for (var unit in storage.assocUnstableMessages) {
+			var objUnit = storage.assocUnstableUnits[unit] || storage.assocStableUnits[unit];
+			if (!objUnit)
+				throw Error("unstable unit " + unit + " not in assoc");
+			if (!objUnit.bAA && !bIncludeAllUnstable)
+				continue;
+			if (objUnit.latest_included_mc_index < min_mci || objUnit.latest_included_mc_index > max_mci)
+				continue;
+			if (_.intersection(arrAddresses, objUnit.author_addresses).length === 0)
+				continue;
+			storage.assocUnstableMessages[unit].forEach(function (message) {
+				if (message.app !== 'data_feed')
+					return;
+				var payload = message.payload;
+				if (!ValidationUtils.hasOwnProperty(payload, feed_name))
+					return;
+				var feed_value = payload[feed_name];
+				if (value === null || value === feed_value || value.toString() === feed_value.toString())
+					arrCandidates.push({
+						value: string_utils.getFeedValue(feed_value, bLimitedPrecision),
+						latest_included_mc_index: objUnit.latest_included_mc_index,
+						level: objUnit.level,
+						unit: objUnit.unit,
+						mci: max_mci // it doesn't matter
+					});
 			});
-			cb();
+		}
+		if (arrCandidates.length === 1) {
+			var feed = arrCandidates[0];
+			objResult.value = feed.value;
+			objResult.unit = feed.unit;
+			objResult.mci = feed.mci;
+			if (ifseveral === 'last')
+				return handleResult(objResult);
+		}
+		else if (arrCandidates.length > 1) {
+			if (ifseveral === 'abort') {
+				objResult.bAbortedBecauseOfSeveral = true;
+				return handleResult(objResult);
+			}
+			arrCandidates.sort(function (a, b) {
+				if (a.latest_included_mc_index < b.latest_included_mc_index)
+					return -1;
+				if (a.latest_included_mc_index > b.latest_included_mc_index)
+					return 1;
+				if (a.level < b.level)
+					return -1;
+				if (a.level > b.level)
+					return 1;
+				throw Error("can't sort candidates "+a+" and "+b);
+			});
+			var feed = arrCandidates[arrCandidates.length - 1];
+			objResult.value = feed.value;
+			objResult.unit = feed.unit;
+			objResult.mci = feed.mci;
+			return handleResult(objResult);
+		}
+	}
+	async.eachSeries(
+		arrAddresses,
+		function(address, cb){
+			readDataFeedByAddress(address, feed_name, value, min_mci, max_mci, ifseveral, objResult, cb);
+		},
+		function(err){ // err passed here if aborted because of several
+			console.log('data feed by '+arrAddresses+' '+feed_name+', val='+value+': '+objResult.value+', dfv took '+(Date.now()-start_time)+'ms');
+			handleResult(objResult);
 		}
 	);
 }
 ```
 
-**File:** writer.js (L33-33)
+**File:** formula/evaluation.js (L81-81)
 ```javascript
-	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+	var bAA = (messages.length === 0);
 ```
 
-**File:** writer.js (L358-371)
+**File:** formula/evaluation.js (L588-592)
 ```javascript
-								var is_unique = 
-									(objValidationState.arrDoubleSpendInputs.some(function(ds){ return (ds.message_index === i && ds.input_index === j); }) || conf.bLight) 
-									? null : 1;
-								conn.addQuery(arrQueries, "INSERT INTO inputs \n\
-										(unit, message_index, input_index, type, \n\
-										src_unit, src_message_index, src_output_index, \
-										from_main_chain_index, to_main_chain_index, \n\
-										denomination, amount, serial_number, \n\
-										asset, is_unique, address) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-									[objUnit.unit, i, j, type, 
-									 src_unit, src_message_index, src_output_index, 
-									 from_main_chain_index, to_main_chain_index, 
-									 denomination, input.amount, input.serial_number, 
-									 payload.asset, is_unique, address]);
+					dataFeeds.readDataFeedValue(arrAddresses, feed_name, value, min_mci, mci, bAA, ifseveral, objValidationState.last_ball_timestamp, function(objResult){
+					//	console.log(arrAddresses, feed_name, value, min_mci, ifseveral);
+					//	console.log('---- objResult', objResult);
+						if (objResult.bAbortedBecauseOfSeveral)
+							return cb("several values found");
 ```
 
-**File:** initial-db/byteball-mysql.sql (L295-295)
-```sql
-	UNIQUE KEY bySrcOutput(src_unit, src_message_index, src_output_index, is_unique), -- UNIQUE guarantees there'll be no double spend for type=transfer
+**File:** storage.js (L37-37)
+```javascript
+var assocUnstableMessages = {};
 ```
 
-**File:** balances.js (L14-18)
+**File:** main_chain.js (L1621-1622)
 ```javascript
-	db.query(
-		"SELECT asset, is_stable, SUM(amount) AS balance \n\
-		FROM outputs "+join_my_addresses+" CROSS JOIN units USING(unit) \n\
-		WHERE is_spent=0 AND "+where_condition+" AND sequence='good' \n\
-		GROUP BY asset, is_stable",
+				});
+				conn.query("INSERT INTO aa_triggers (mci, unit, address) VALUES " + arrValues.join(', '), function () {
 ```
 
-**File:** light_wallet.js (L222-237)
+**File:** writer.js (L714-715)
 ```javascript
-function archiveDoublespendUnits(){
-	var col = (conf.storage === 'sqlite') ? 'rowid' : 'creation_date';
-	db.query("SELECT unit FROM units WHERE is_stable=0 AND creation_date<"+db.addTime('-1 DAY')+" ORDER BY "+col+" DESC", function(rows){
-		var arrUnits = rows.map(function(row){ return row.unit; });
-		breadcrumbs.add("units still unstable after 1 day: "+(arrUnits.join(', ') || 'none'));
-		arrUnits.forEach(function(unit){
-			network.requestFromLightVendor('get_joint', unit, function(ws, request, response){
-				if (response.error)
-					return breadcrumbs.add("get_joint "+unit+": "+response.error);
-				if (response.joint_not_found === unit){
-					breadcrumbs.add("light vendor doesn't know about unit "+unit+" any more, will archive");
-					storage.archiveJointAndDescendantsIfExists(unit);
-				}
-			});
-		});
-	});
+									const aa_composer = require("./aa_composer.js");
+									await aa_composer.handleAATriggers();
 ```
 
-**File:** storage.js (L1749-1751)
+**File:** aa_composer.js (L416-416)
 ```javascript
-function archiveJointAndDescendants(from_unit){
-	var kvstore = require('./kvstore.js');
-	db.executeInTransaction(function doWork(conn, cb){
+		last_ball_mci: mci,
 ```

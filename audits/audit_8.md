@@ -1,406 +1,314 @@
-## Title
-Silent Bounce Fee Validation Bypass in Light Client Due to Improper Async Error Propagation
+# Stack Overflow DoS via Cyclic Shared Address References in Balance Reading
 
 ## Summary
-The `readAADefinitions()` function in `aa_addresses.js` fails to propagate errors when fetching AA definitions from light vendors, causing the bounce fee validation mechanism to silently accept incomplete data. This allows light client users to send payments to AAs with insufficient bounce fees, leading to total fund loss when the AA execution fails and cannot send a bounce response. [1](#0-0) 
+
+The `readSharedAddressesDependingOnAddresses()` function in `balances.js` lacks cycle detection when recursively traversing shared address dependency chains. When shared addresses form cycles (A has member B, B has member A), the function enters infinite recursion causing stack overflow and node crash, preventing balance queries for affected wallets.
 
 ## Impact
-**Severity**: High
-**Category**: Direct Fund Loss
+
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Network Disruption
+
+**Affected Assets**: Node availability, user ability to read balances for wallets containing cyclic shared addresses
+
+**Damage Severity**:
+- Node crashes when attempting to read balances for affected wallets
+- Does not corrupt DAG, consensus, or actual balances
+- Affects individual node operations, not network-wide consensus
+- Recovery requires node restart; vulnerability persists until cyclic addresses removed or code patched
+
+**User Impact**:
+- **Who**: Node operators and users with wallets containing cyclic shared addresses
+- **Conditions**: Automatically triggered when balance reading functions are called
+- **Recovery**: Node restart required; issue persists until addressed
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_addresses.js` - `readAADefinitions()` function (lines 34-109)
+**Location**: [1](#0-0) 
 
-**Intended Logic**: When light clients fetch AA definitions from remote vendors, any failures (network errors, missing definitions, or hash mismatches) should be treated as errors, preventing the transaction from proceeding until all AA definitions are successfully validated for bounce fee requirements.
+**Intended Logic**: Recursively discover all shared addresses depending on given member addresses, traversing the dependency chain while avoiding infinite loops.
 
-**Actual Logic**: Error conditions at lines 76, 81, 86, and 89 call `cb()` without an error parameter, causing `async.each` to interpret these as successful completions. The completion callback at line 102 proceeds with incomplete data, and bounce fee validation only checks AAs that were successfully loaded, silently ignoring failed fetches.
+**Actual Logic**: Uses `_.difference(arrSharedAddresses, arrMemberAddresses)` at line 117, which only compares against the immediate input array, not the entire recursion history. With cycles (A→B→A), each recursive call sees different input arrays, causing infinite recursion until JavaScript stack overflow.
 
-**Code Evidence**: [2](#0-1) 
+**Code Evidence**: [1](#0-0) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - User operates a light client (`conf.bLight === true`)
-   - Target AA address is not cached locally in database
-   - Network conditions or light vendor state causes definition fetch to fail (timeout, error response, or definition hash mismatch)
+1. **Preconditions**: Attacker creates two shared addresses that reference each other as members
 
-2. **Step 1**: Light client user attempts to send payment to AA address with amount less than required bounce fee
-   - User calls wallet function to send payment
-   - `sendMultiPayment` invokes `checkAAOutputs` to validate bounce fees
-   - `checkAAOutputs` calls `readAADefinitions([aa_address])`
+2. **Step 1**: Create shared address A with definition including member address B
+   - Database insert: `shared_address_signing_paths(shared_address=A, address=B)`
+   - Validation passes because `bAllowUnresolvedInnerDefinitions = true` [2](#0-1) 
 
-3. **Step 2**: Definition fetch fails but error is silently swallowed
-   - `readAADefinitions` finds AA not in database (lines 40-42)
-   - Falls through to light vendor fetch logic (lines 70-105)
-   - `requestFromLightVendor` returns error OR null response OR mismatched definition
-   - Iterator callback calls `cb()` without error parameter (lines 76, 81, or 86)
-   - `async.each` treats this as successful completion
+3. **Step 2**: Create shared address B with definition including member address A  
+   - Database insert: `shared_address_signing_paths(shared_address=B, address=A)`
+   - Cycle now exists: A→B→A
+   - No database constraints prevent this: [3](#0-2) 
 
-4. **Step 3**: Bounce fee validation proceeds with incomplete data
-   - Completion callback at line 102-104 executes: `handleRows(rows)`
-   - `rows` does not contain the target AA definition
-   - Back in `checkAAOutputs` (lines 124-144), loop at lines 128-140 only validates AAs present in `rows`
-   - Target AA is skipped, bounce fee check passes incorrectly [3](#0-2) 
+4. **Step 3**: Any user calls `readSharedBalance()` on wallet containing A or B
+   - Triggers: [4](#0-3) 
+   - Which calls: [5](#0-4) 
+   - Which calls: [1](#0-0) 
 
-5. **Step 4**: Payment proceeds and user loses funds
-   - Transaction is composed and submitted with insufficient bounce fees
-   - AA executes, fails for some reason (intentional or unintentional)
-   - AA attempts to bounce, but checks bounce fees (lines 880-881, 886-887 in `aa_composer.js`)
-   - Insufficient bounce fees detected, `finish(null)` called - no bounce sent
-   - User loses entire payment amount [4](#0-3) 
+5. **Step 4**: Infinite recursion occurs:
+   - Call 1 with [A]: Queries `WHERE address IN(A)`, finds B, computes `_.difference([B], [A]) = [B]`, recurses with [B]
+   - Call 2 with [B]: Queries `WHERE address IN(B)`, finds A, computes `_.difference([A], [B]) = [A]`, recurses with [A]  
+   - Call 3: Same as Call 1 - infinite loop continues
+   - Hits JavaScript stack limit (~10,000-15,000 calls), throws `RangeError: Maximum call stack size exceeded`
+   - Node crashes or becomes unresponsive
 
-**Security Property Broken**: 
-**Invariant #12 - Bounce Correctness**: Failed AA executions must refund inputs minus bounce fees via bounce response. This vulnerability allows payments with insufficient bounce fees to proceed, causing the bounce mechanism to fail silently when needed.
+**Security Property Broken**: Node availability - stack overflow prevents balance reading operations, causing DoS against individual nodes.
 
-**Root Cause Analysis**: 
-The root cause is improper error handling in asynchronous iteration. The code uses `async.each` to fetch multiple AA definitions, but the iterator callback uses `cb()` (no-argument callback) to indicate both success AND failure scenarios. According to `async.each` semantics, the iterator should call `cb(err)` with a truthy error value to indicate failure, which would immediately terminate iteration and call the completion callback with that error. Instead, calling `cb()` with no arguments signals successful completion, allowing the process to continue with incomplete data.
+**Root Cause Analysis**: Algorithm uses `_.difference()` for deduplication but only maintains state within each individual recursive call, not across the entire recursion tree. Proper cycle detection requires tracking ALL addresses visited throughout the entire traversal (e.g., accumulator set passed through all recursive calls or closure-captured visited set).
 
-## Impact Explanation
-
-**Affected Assets**: 
-- Base bytes
-- Custom assets (any asset specified in AA bounce_fees)
-- User wallet balances
-
-**Damage Severity**:
-- **Quantitative**: Minimum loss of 10,000 bytes per transaction (MIN_BYTES_BOUNCE_FEE), potentially much higher depending on AA-defined bounce fees and custom assets. For AAs requiring multiple asset bounce fees, loss could reach thousands of dollars per transaction.
-- **Qualitative**: Complete, unrecoverable loss of payment amount. No bounce response sent, no refund mechanism available. [5](#0-4) 
-
-**User Impact**:
-- **Who**: Light client users attempting to interact with AAs whose definitions are not locally cached
-- **Conditions**: Network instability, light vendor errors, newly deployed AAs, or malicious responses from compromised infrastructure
-- **Recovery**: None - funds are permanently lost as they are consumed by the AA without refund
-
-**Systemic Risk**: 
-- Light client users lose trust in the platform after unexplained fund losses
-- Users may blame AAs or the protocol rather than the client-side validation bug
-- Could affect multiple users simultaneously if light vendor infrastructure experiences issues
-- Creates perverse incentive for AA developers to set high bounce fees as "insurance" against this bug
+**Additional Vulnerability**: The same pattern exists in `readAllControlAddresses()`: [6](#0-5) , which also recursively traverses member addresses without cycle detection.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not required - this is a defensive vulnerability that causes self-harm. However, an AA developer could exploit this by creating AAs designed to fail after consuming payments, knowing light clients might bypass bounce fee checks.
-- **Resources Required**: None for natural occurrence; minimal for exploitation (deploy an AA, wait for light clients with network issues)
-- **Technical Skill**: Low - bug triggers naturally during network instability
+- **Identity**: Any Obyte user with ability to create shared addresses (standard protocol feature)
+- **Resources**: Minimal - ability to create two shared address definitions  
+- **Technical Skill**: Low - only requires understanding shared address creation
 
 **Preconditions**:
-- **Network State**: Light client must fail to fetch AA definition (network timeout, light vendor error, or definition hash mismatch)
-- **Attacker State**: AA must be deployed and payment attempted
-- **Timing**: Any time a light client encounters an uncached AA definition during network issues
+- **Network State**: Normal operation
+- **Attacker State**: Standard shared address creation capability
+- **Timing**: No timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: 1 (single payment to AA)
+- **Transaction Count**: 2 units (one per shared address)
 - **Coordination**: None required
-- **Detection Risk**: Very low - appears as normal payment failure, logs show "failed to get definition" but transaction proceeds anyway
+- **Detection Risk**: Cyclic references visible in database but not routinely monitored
 
-**Frequency**:
-- **Repeatability**: Every time network conditions prevent definition fetch
-- **Scale**: Could affect many users simultaneously during light vendor outages or network instability
-
-**Overall Assessment**: **Medium to High likelihood** - While it requires specific preconditions (light client + definition fetch failure), these conditions occur naturally in real-world deployments due to network instability, light vendor issues, or timing with newly deployed AAs. The bug is deterministic once conditions are met.
+**Overall Assessment**: High likelihood - easy to execute, low cost, immediately exploitable once created.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Deploy guidance for light client users to verify AA definitions are cached before sending payments, or switch to full node mode for critical transactions.
-
-**Permanent Fix**: 
-Propagate errors properly through the `async.each` callback chain. When any error condition occurs during definition fetching, pass an error object to the callback to halt processing and prevent incomplete data from being used.
-
-**Code Changes**:
-
-File: `byteball/ocore/aa_addresses.js`
-Function: `readAADefinitions`
-
-Lines 72-100 should be modified to pass errors to callback:
+**Immediate Mitigation**:
+Implement visited address tracking in recursive functions:
 
 ```javascript
-function (address, cb) {
-    network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
-        if (response && response.error) { 
-            console.log('failed to get definition of ' + address + ': ' + response.error);
-            return cb(new Error('failed to get definition of ' + address + ': ' + response.error)); // CHANGED: pass error
-        }
-        if (!response) {
-            cacheOfNewAddresses[address] = Date.now();
-            console.log('address ' + address + ' not known yet');
-            return cb(new Error('address ' + address + ' not known yet')); // CHANGED: pass error
-        }
-        var arrDefinition = response;
-        if (objectHash.getChash160(arrDefinition) !== address) {
-            console.log("definition doesn't match address: " + address);
-            return cb(new Error("definition doesn't match address: " + address)); // CHANGED: pass error
-        }
-        // ... rest of function continues normally
-        var insert_cb = function (err) { 
-            if (err) return cb(err); // CHANGED: propagate insert errors
-            cb(); // success case remains unchanged
-        };
-        // ... existing code
-    });
+// File: byteball/ocore/balances.js
+// Function: readSharedAddressesDependingOnAddresses
+
+function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
+	readSharedAddressesDependingOnAddressesWithHistory(arrMemberAddresses, [], handleSharedAddresses);
 }
-```
 
-And update the completion callback to handle errors:
-
-```javascript
-function (err) {
-    if (err) {
-        console.log('Error loading AA definitions:', err);
-        return handleRows([]); // or pass error up: return handleResult(err);
-    }
-    handleRows(rows);
-}
-```
-
-**Additional Measures**:
-- Add retry logic with exponential backoff for transient network failures
-- Implement caching with TTL to reduce dependency on live fetches
-- Add explicit validation that all requested AA addresses are present in results before proceeding
-- Implement monitoring/alerting for definition fetch failures
-- Add user-facing warnings when bounce fee validation is skipped
-
-**Validation**:
-- [x] Fix prevents exploitation by ensuring errors halt the validation process
-- [x] No new vulnerabilities introduced - proper error handling follows Node.js best practices
-- [x] Backward compatible - error handling doesn't change successful flow
-- [x] Performance impact acceptable - no additional overhead in success case
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`poc_bounce_fee_bypass.js`):
-```javascript
-/*
- * Proof of Concept for Silent Bounce Fee Validation Bypass
- * Demonstrates: Light client bypasses bounce fee check when AA definition fetch fails
- * Expected Result: Payment proceeds with insufficient bounce fees, user loses funds on bounce
- */
-
-const aa_addresses = require('./aa_addresses.js');
-const network = require('./network.js');
-const conf = require('./conf.js');
-
-// Simulate light client mode
-conf.bLight = true;
-
-// Mock light vendor that returns errors
-const originalRequestFromLightVendor = network.requestFromLightVendor;
-network.requestFromLightVendor = function(command, params, responseHandler) {
-    if (command === 'light/get_definition') {
-        // Simulate network error
-        setTimeout(() => {
-            responseHandler(null, null, {error: "network timeout"});
-        }, 100);
-    } else {
-        originalRequestFromLightVendor(command, params, responseHandler);
-    }
-};
-
-// Test the vulnerability
-const testAAAddress = 'SOME_AA_ADDRESS_NOT_IN_DB';
-const paymentAmount = 5000; // Less than MIN_BYTES_BOUNCE_FEE (10000)
-
-console.log('Testing bounce fee validation with failed definition fetch...');
-console.log(`Payment amount: ${paymentAmount} bytes`);
-console.log(`Required bounce fee: 10000 bytes`);
-console.log(`Expected: Validation should FAIL (insufficient bounce fees)`);
-console.log(`Actual: Validation will PASS (vulnerability)`);
-
-aa_addresses.checkAAOutputs([{
-    asset: null, // base
-    outputs: [{
-        address: testAAAddress,
-        amount: paymentAmount
-    }]
-}], function(err) {
-    if (err) {
-        console.log('✓ CORRECT: Validation rejected payment:', err.toString());
-        process.exit(0);
-    } else {
-        console.log('✗ VULNERABILITY: Validation incorrectly allowed payment with insufficient bounce fees!');
-        console.log('User would lose', paymentAmount, 'bytes when AA bounces');
-        process.exit(1);
-    }
-});
-```
-
-**Expected Output** (when vulnerability exists):
-```
-Testing bounce fee validation with failed definition fetch...
-Payment amount: 5000 bytes
-Required bounce fee: 10000 bytes
-Expected: Validation should FAIL (insufficient bounce fees)
-Actual: Validation will PASS (vulnerability)
-failed to get definition of SOME_AA_ADDRESS_NOT_IN_DB: network timeout
-✗ VULNERABILITY: Validation incorrectly allowed payment with insufficient bounce fees!
-User would lose 5000 bytes when AA bounces
-```
-
-**Expected Output** (after fix applied):
-```
-Testing bounce fee validation with failed definition fetch...
-Payment amount: 5000 bytes
-Required bounce fee: 10000 bytes
-Expected: Validation should FAIL (insufficient bounce fees)
-Actual: Validation will PASS (vulnerability)
-Error loading AA definitions: Error: failed to get definition of SOME_AA_ADDRESS_NOT_IN_DB: network timeout
-✓ CORRECT: Validation rejected payment: Error: failed to get definition of SOME_AA_ADDRESS_NOT_IN_DB: network timeout
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates the vulnerability on unmodified ocore codebase
-- [x] Clearly shows violation of Invariant #12 (Bounce Correctness)
-- [x] Shows measurable impact (fund loss when bounce fails)
-- [x] Would fail gracefully after fix applied (validation properly rejects insufficient bounce fees)
-
-## Notes
-
-This vulnerability is particularly insidious because:
-
-1. **Silent Failure**: The error is logged but not propagated, so users have no indication that bounce fee validation was bypassed
-2. **Light Client Specific**: Only affects light clients, which are precisely the users who need the most protection (they cannot independently verify AA definitions)
-3. **Natural Occurrence**: Doesn't require malicious actors - network instability alone can trigger the bug
-4. **Permanent Loss**: Once triggered, funds are unrecoverable as the bounce mechanism fails silently
-5. **Trust Model Violation**: Even with trusted light vendors, network issues can cause this vulnerability to manifest
-
-The fix is straightforward (proper async error handling) but critical for protecting light client users from inadvertent fund loss.
-
-### Citations
-
-**File:** aa_addresses.js (L34-109)
-```javascript
-function readAADefinitions(arrAddresses, handleRows) {
-	if (!handleRows)
-		return new Promise(resolve => readAADefinitions(arrAddresses, resolve));
-	arrAddresses = arrAddresses.filter(isValidAddress);
-	if (arrAddresses.length === 0)
-		return handleRows([]);
-	db.query("SELECT definition, address, base_aa FROM aa_addresses WHERE address IN (" + arrAddresses.map(db.escape).join(', ') + ")", function (rows) {
-		if (!conf.bLight || arrAddresses.length === rows.length)
-			return handleRows(rows);
-		var arrKnownAAAdresses = rows.map(function (row) { return row.address; });
-		var arrRemainingAddresses = _.difference(arrAddresses, arrKnownAAAdresses);
-		var remaining_addresses_list = arrRemainingAddresses.map(db.escape).join(', ');
-		db.query(
-			"SELECT definition_chash AS address FROM definitions WHERE definition_chash IN("+remaining_addresses_list+") \n\
-			UNION \n\
-			SELECT address FROM my_addresses WHERE address IN(" + remaining_addresses_list + ") \n\
-			UNION \n\
-			SELECT shared_address AS address FROM shared_addresses WHERE shared_address IN(" + remaining_addresses_list + ")",
-			function (non_aa_rows) {
-				if (arrRemainingAddresses.length === non_aa_rows.length)
-					return handleRows(rows);
-				var arrKnownNonAAAddresses = non_aa_rows.map(function (row) { return row.address; });
-				arrRemainingAddresses = _.difference(arrRemainingAddresses, arrKnownNonAAAddresses);
-				var arrCachedNewAddresses = [];
-				arrRemainingAddresses.forEach(function (address) {
-					var ts = cacheOfNewAddresses[address]
-					if (!ts)
-						return;
-					if (Date.now() - ts > 60 * 1000)
-						delete cacheOfNewAddresses[address];
-					else
-						arrCachedNewAddresses.push(address);
-				});
-				arrRemainingAddresses = _.difference(arrRemainingAddresses, arrCachedNewAddresses);
-				if (arrRemainingAddresses.length === 0)
-					return handleRows(rows);
-				async.each(
-					arrRemainingAddresses,
-					function (address, cb) {
-						network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
-							if (response && response.error) { 
-								console.log('failed to get definition of ' + address + ': ' + response.error);
-								return cb();
-							}
-							if (!response) {
-								cacheOfNewAddresses[address] = Date.now();
-								console.log('address ' + address + ' not known yet');
-								return cb();
-							}
-							var arrDefinition = response;
-							if (objectHash.getChash160(arrDefinition) !== address) {
-								console.log("definition doesn't match address: " + address);
-								return cb();
-							}
-							var Definition = require("./definition.js");
-							var insert_cb = function () { cb(); };
-							var strDefinition = JSON.stringify(arrDefinition);
-							var bAA = (arrDefinition[0] === 'autonomous agent');
-							if (bAA) {
-								var base_aa = arrDefinition[1].base_aa;
-								rows.push({ address: address, definition: strDefinition, base_aa: base_aa });
-								storage.insertAADefinitions(db, [{ address, definition: arrDefinition }], constants.GENESIS_UNIT, 0, false, insert_cb);
-							//	db.query("INSERT " + db.getIgnore() + " INTO aa_addresses (address, definition, unit, mci, base_aa) VALUES(?, ?, ?, ?, ?)", [address, strDefinition, constants.GENESIS_UNIT, 0, base_aa], insert_cb);
-							}
-							else
-								db.query("INSERT " + db.getIgnore() + " INTO definitions (definition_chash, definition, has_references) VALUES (?,?,?)", [address, strDefinition, Definition.hasReferences(arrDefinition) ? 1 : 0], insert_cb);
-						});
-					},
-					function () {
-						handleRows(rows);
-					}
-				);
+function readSharedAddressesDependingOnAddressesWithHistory(arrMemberAddresses, arrVisited, handleSharedAddresses){
+	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
+	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
+		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+		if (arrSharedAddresses.length === 0)
+			return handleSharedAddresses([]);
+		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses, arrVisited);
+		if (arrNewMemberAddresses.length === 0)
+			return handleSharedAddresses([]);
+		readSharedAddressesDependingOnAddressesWithHistory(
+			arrNewMemberAddresses, 
+			arrVisited.concat(arrMemberAddresses), 
+			function(arrNewSharedAddresses){
+				handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
 			}
 		);
 	});
 }
 ```
 
-**File:** aa_addresses.js (L124-144)
+**Permanent Fix**: Apply same pattern to `readAllControlAddresses()` in `wallet_defined_by_addresses.js`
+
+**Additional Measures**:
+- Add database-level cycle detection during shared address creation
+- Add test case verifying cyclic references are handled gracefully
+- Add monitoring for cyclic address patterns in database
+
+**Validation**:
+- Fix prevents infinite recursion with cyclic references
+- Performance impact minimal (additional array comparison overhead)
+- Backward compatible with existing non-cyclic shared addresses
+
+## Proof of Concept
+
 ```javascript
-	readAADefinitions(arrAddresses, function (rows) {
-		if (rows.length === 0)
-			return handleResult();
-		var arrMissingBounceFees = [];
-		rows.forEach(function (row) {
-			var arrDefinition = JSON.parse(row.definition);
-			var bounce_fees = arrDefinition[1].bounce_fees;
-			if (!bounce_fees)
-				bounce_fees = { base: constants.MIN_BYTES_BOUNCE_FEE };
-			if (!bounce_fees.base)
-				bounce_fees.base = constants.MIN_BYTES_BOUNCE_FEE;
-			for (var asset in bounce_fees) {
-				var amount = assocAmounts[row.address][asset] || 0;
-				if (amount < bounce_fees[asset])
-					arrMissingBounceFees.push({ address: row.address, asset: asset, missing_amount: bounce_fees[asset] - amount, recommended_amount: bounce_fees[asset] });
-			}
-		});
-		if (arrMissingBounceFees.length === 0)
-			return handleResult();
-		handleResult(new MissingBounceFeesErrorMessage({ error: "The amounts are less than bounce fees", missing_bounce_fees: arrMissingBounceFees }));
+// Test: test/cyclic_shared_addresses.test.js
+const db = require('../db.js');
+const balances = require('../balances.js');
+
+describe('Cyclic shared address handling', function() {
+	before(async function() {
+		// Setup test database
+		await db.query("DELETE FROM shared_address_signing_paths");
+		await db.query("DELETE FROM shared_addresses");
+		
+		// Create cyclic references
+		await db.query(
+			"INSERT INTO shared_addresses (shared_address, definition) VALUES (?, ?)",
+			['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', JSON.stringify(['sig', {pubkey: 'A'.repeat(44)}])]
+		);
+		await db.query(
+			"INSERT INTO shared_addresses (shared_address, definition) VALUES (?, ?)",
+			['BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', JSON.stringify(['sig', {pubkey: 'B'.repeat(44)}])]
+		);
+		await db.query(
+			"INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, member_signing_path, device_address) VALUES (?, ?, ?, ?, ?)",
+			['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'r.0', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'r', '0'.repeat(33)]
+		);
+		await db.query(
+			"INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, member_signing_path, device_address) VALUES (?, ?, ?, ?, ?)",
+			['BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'r.0', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'r', '0'.repeat(33)]
+		);
 	});
-```
 
-**File:** aa_composer.js (L880-894)
-```javascript
-		if ((trigger.outputs.base || 0) < bounce_fees.base)
-			return finish(null);
-		var messages = [];
-		for (var asset in trigger.outputs) {
-			var amount = trigger.outputs[asset];
-			var fee = bounce_fees[asset] || 0;
-			if (fee > amount)
-				return finish(null);
-			if (fee === amount)
-				continue;
-			var bounced_amount = amount - fee;
-			messages.push({app: 'payment', payload: {asset: asset, outputs: [{address: trigger.address, amount: bounced_amount}]}});
+	it('should not crash with cyclic shared address references', function(done) {
+		this.timeout(5000); // Should complete quickly or timeout
+		
+		let crashed = false;
+		const originalExit = process.exit;
+		process.exit = () => { crashed = true; };
+		
+		try {
+			// This will cause infinite recursion with current code
+			balances.readSharedBalance('test_wallet', function(result) {
+				process.exit = originalExit;
+				if (crashed) {
+					done(new Error('Node crashed due to stack overflow'));
+				} else {
+					done();
+				}
+			});
+		} catch (e) {
+			process.exit = originalExit;
+			if (e.message && e.message.includes('Maximum call stack size exceeded')) {
+				done(new Error('Stack overflow occurred: ' + e.message));
+			} else {
+				done(e);
+			}
 		}
-		if (messages.length === 0)
-			return finish(null);
+	});
+});
 ```
 
-**File:** constants.js (L70-70)
+**Notes**:
+- Both `balances.js` and `wallet_defined_by_addresses.js` contain functions vulnerable to cyclic reference DoS
+- Database schema permits cyclic shared address member relationships
+- Definition validation allows unresolved inner definitions, enabling separate creation of mutually-referencing addresses
+- No existing cycle detection in balance reading code paths
+- Impact limited to node availability; does not affect funds or consensus
+
+### Citations
+
+**File:** balances.js (L97-109)
 ```javascript
-exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
+function readSharedAddressesOnWallet(wallet, handleSharedAddresses){
+	db.query("SELECT DISTINCT shared_address_signing_paths.shared_address FROM my_addresses \n\
+			JOIN shared_address_signing_paths USING(address) \n\
+			LEFT JOIN prosaic_contracts ON prosaic_contracts.shared_address = shared_address_signing_paths.shared_address \n\
+			WHERE wallet=? AND prosaic_contracts.hash IS NULL", [wallet], function(rows){
+		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+		if (arrSharedAddresses.length === 0)
+			return handleSharedAddresses([]);
+		readSharedAddressesDependingOnAddresses(arrSharedAddresses, function(arrNewSharedAddresses){
+			handleSharedAddresses(arrSharedAddresses.concat(arrNewSharedAddresses));
+		});
+	});
+}
+```
+
+**File:** balances.js (L111-124)
+```javascript
+function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
+	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
+	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
+		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+		if (arrSharedAddresses.length === 0)
+			return handleSharedAddresses([]);
+		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses);
+		if (arrNewMemberAddresses.length === 0)
+			return handleSharedAddresses([]);
+		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
+			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
+		});
+	});
+}
+```
+
+**File:** balances.js (L126-160)
+```javascript
+function readSharedBalance(wallet, handleBalance){
+	var assocBalances = {};
+	readSharedAddressesOnWallet(wallet, function(arrSharedAddresses){
+		if (arrSharedAddresses.length === 0)
+			return handleBalance(assocBalances);
+		var strAddressList = arrSharedAddresses.map(db.escape).join(', ');
+		db.query(
+			"SELECT asset, address, is_stable, SUM(amount) AS balance \n\
+			FROM outputs CROSS JOIN units USING(unit) \n\
+			WHERE is_spent=0 AND sequence='good' AND address IN("+strAddressList+") \n\
+			GROUP BY asset, address, is_stable \n\
+			UNION ALL \n\
+			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM witnessing_outputs \n\
+			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address \n\
+			UNION ALL \n\
+			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM headers_commission_outputs \n\
+			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address",
+			function(rows){
+				for (var i=0; i<rows.length; i++){
+					var row = rows[i];
+					var asset = row.asset || "base";
+					if (!assocBalances[asset])
+						assocBalances[asset] = {};
+					if (!assocBalances[asset][row.address])
+						assocBalances[asset][row.address] = {stable: 0, pending: 0};
+					assocBalances[asset][row.address][row.is_stable ? 'stable' : 'pending'] += row.balance;
+				}
+				for (var asset in assocBalances)
+					for (var address in assocBalances[asset])
+						assocBalances[asset][address].total = assocBalances[asset][address].stable + assocBalances[asset][address].pending;
+				handleBalance(assocBalances);
+			}
+		);
+	});
+}
+```
+
+**File:** definition.js (L263-263)
+```javascript
+						var bAllowUnresolvedInnerDefinitions = true;
+```
+
+**File:** initial-db/byteball-sqlite.sql (L628-639)
+```sql
+CREATE TABLE shared_address_signing_paths (
+	shared_address CHAR(32) NOT NULL,
+	signing_path VARCHAR(255) NULL, -- full path to signing key which is a member of the member address
+	address CHAR(32) NOT NULL, -- member address
+	member_signing_path VARCHAR(255) NULL, -- path to signing key from root of the member address
+	device_address CHAR(33) NOT NULL, -- where this signing key lives or is reachable through
+	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (shared_address, signing_path),
+	FOREIGN KEY (shared_address) REFERENCES shared_addresses(shared_address)
+	-- own address is not present in correspondents
+--    FOREIGN KEY byDeviceAddress(device_address) REFERENCES correspondent_devices(device_address)
+);
+```
+
+**File:** wallet_defined_by_addresses.js (L485-501)
+```javascript
+function readAllControlAddresses(conn, arrAddresses, handleLists){
+	conn = conn || db;
+	conn.query(
+		"SELECT DISTINCT address, shared_address_signing_paths.device_address, (correspondent_devices.device_address IS NOT NULL) AS have_correspondent \n\
+		FROM shared_address_signing_paths LEFT JOIN correspondent_devices USING(device_address) WHERE shared_address IN(?)", 
+		[arrAddresses], 
+		function(rows){
+			if (rows.length === 0)
+				return handleLists([], []);
+			var arrControlAddresses = rows.map(function(row){ return row.address; });
+			var arrControlDeviceAddresses = rows.filter(function(row){ return row.have_correspondent; }).map(function(row){ return row.device_address; });
+			readAllControlAddresses(conn, arrControlAddresses, function(arrControlAddresses2, arrControlDeviceAddresses2){
+				handleLists(_.union(arrControlAddresses, arrControlAddresses2), _.union(arrControlDeviceAddresses, arrControlDeviceAddresses2));
+			});
+		}
+	);
+}
 ```

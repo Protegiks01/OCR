@@ -1,285 +1,250 @@
-## Title
-Empty Array/Object Deletion in AA Response Messages Prevents Legitimate Data Storage
+# Audit Report: Missing Error Check in Divisible Asset Save Callback
 
 ## Summary
-The `replace()` function in `aa_composer.js` unconditionally deletes fields when formulas evaluate to empty arrays `[]` or empty objects `{}`, preventing Autonomous Agents from legitimately storing these values in response messages, data payloads, or response variables. While state variables are unaffected (they use a separate storage mechanism), this limitation breaks AA functionality for valid use cases requiring empty collections.
+The `getSavingCallbacks()` function in `divisible_asset.js` contains a critical flaw where the `onDone` callback unconditionally signals success to the caller even when `writer.saveJoint` fails and rolls back the database transaction. This causes wallet state divergence from the blockchain state, potentially leading to double-payments when users retry what they believe are failed transactions.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Unintended AA Behavior
+**Severity**: High  
+**Category**: Unintended Behavior with Direct Fund Risk
+
+This vulnerability affects all users sending divisible asset payments (both bytes and custom assets). When database save operations fail, the transaction is properly rolled back but the application receives a success signal, causing the wallet to update its state (mark outputs as spent, update balances) while the blockchain has no record of the transaction. Users may then retry the payment, resulting in double-payment and direct fund loss.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_composer.js` (function `replace()`, lines 643-650)
+**Location**: `byteball/ocore/divisible_asset.js:381-386`, function `getSavingCallbacks().ifOk()`
 
-**Intended Logic**: The `replace()` function should evaluate formulas in the AA template and assign their results to the corresponding fields, allowing AAs to construct response messages with arbitrary valid values including empty arrays and objects.
+**Intended Logic**: When `writer.saveJoint` completes, the callback should check if an error occurred. If `err` is not null (indicating save failure and rollback), the code must call `callbacks.ifError(err)` to notify the caller of the failure. Only on successful save should `callbacks.ifOk()` be invoked.
 
-**Actual Logic**: When a formula evaluates to an empty array `[]` or empty object `{}`, the deletion logic treats this as a removal signal rather than a legitimate value, causing the field to be deleted from the response structure.
+**Actual Logic**: The `onDone` callback unconditionally calls `callbacks.ifOk()` regardless of whether `err` is null or not.
 
-**Code Evidence**:
+**Code Evidence**: [1](#0-0) 
 
-The deletion check in the `replace()` function: [1](#0-0) 
+The problematic callback at lines 381-386 never checks the `err` parameter before calling `callbacks.ifOk()` at line 386.
 
-The `isEmptyObjectOrArray()` helper function that identifies empty collections: [2](#0-1) 
+For comparison, the correct pattern exists in `composer.js`: [2](#0-1) 
 
-The critical unwrapping logic that converts wrappedObjects to plain values before the deletion check: [3](#0-2) 
+Lines 777-778 properly check `if (err) return callbacks.ifError(err);` before proceeding to `callbacks.ifOk()`.
 
 **Exploitation Path**:
 
-1. **Preconditions**: An AA developer creates a legitimate AA that needs to return empty arrays or empty objects in response messages (e.g., a registry AA returning an empty list of items, or a data aggregator returning an empty result set).
+1. **Preconditions**: User initiates a divisible asset payment (particularly private payments where validation can fail).
 
-2. **Step 1**: AA definition includes a formula that evaluates to an empty array or object:
-   ```javascript
-   messages: [{
-     app: 'data',
-     payload: {
-       items: "{[]}",  // Empty array to indicate no items found
-       metadata: "{{}}" // Empty object for optional metadata
-     }
-   }]
-   ```
+2. **Step 1**: User calls `composeAndSaveDivisibleAssetPaymentJoint` which invokes `getSavingCallbacks().ifOk()` [3](#0-2) 
 
-3. **Step 2**: When the AA is triggered, the `replace()` function evaluates the formulas with `bObjectResultAllowed: true` at line 637.
+3. **Step 2**: During `writer.saveJoint` execution, an error occurs. For private payments, the `preCommitCallback` [4](#0-3)  calls `validateAndSaveDivisiblePrivatePayment` which can fail with database errors, constraint violations, or validation failures [5](#0-4) 
 
-4. **Step 3**: Formula evaluation creates a `wrappedObject` containing the empty array/object, which is then unwrapped to its plain value (line 2974-2975 in `evaluation.js`).
+4. **Step 3**: The error propagates to `writer.saveJoint` which rolls back the transaction [6](#0-5)  and calls `onDone(err)` with the error [7](#0-6) 
 
-5. **Step 4**: The plain empty array/object triggers `isEmptyObjectOrArray(res)` to return `true` at line 643, causing the field to be deleted (lines 644-647) instead of being assigned the empty value.
+5. **Step 4**: In `divisible_asset.js`, the `onDone` callback releases locks and unconditionally calls `callbacks.ifOk()` at line 386, signaling SUCCESS despite the database rollback.
 
-6. **Result**: The response message is sent without the intended fields, breaking the AA's intended behavior and potentially causing consuming applications to fail or misinterpret the absence of fields.
+6. **Step 5**: The wallet broadcasts the joint and reports success [8](#0-7) . The wallet state shows the payment succeeded (outputs marked as spent, balance reduced), but the local database has no record. If the user retries thinking something went wrong, they may send the payment twice.
 
-**Security Property Broken**: **Invariant #10 (AA Deterministic Execution)** - While execution is deterministic, the inability to store empty arrays/objects creates an artificial limitation that violates the principle that AAs should be able to express arbitrary valid data structures in their responses.
+**Security Property Broken**: 
+- **Transaction Atomicity**: The save operation failed and was rolled back, but application state was updated as if it succeeded
+- **Balance Conservation**: Wallet shows reduced balance but blockchain has not recorded the transfer
 
-**Root Cause Analysis**: The design decision to treat empty strings, arrays, and objects as removal signals was intended to provide conditional field inclusion/exclusion. However, this creates an ambiguity: there's no way to distinguish between "remove this field" and "set this field to an empty array/object." The comment on line 643 acknowledges this is intentional design ("signals that the key should be removed"), but it doesn't account for legitimate use cases where empty collections are meaningful data values.
+**Root Cause Analysis**: The error handling pattern was implemented without proper error checking in the callback. The developer likely copied code without including the necessary `if (err)` check that exists in the correct implementation in `composer.js`.
 
 ## Impact Explanation
 
-**Affected Assets**: AA response messages, data payloads, response variables (not state variables)
+**Affected Assets**: All divisible assets (bytes and custom divisible assets), particularly private payments where `preCommitCallback` can fail.
 
 **Damage Severity**:
-- **Quantitative**: No direct fund loss. Affects AA functionality for any AA that needs to return empty collections.
-- **Qualitative**: Data integrity issue - AAs cannot fully express their intended data structures. Consumer applications may fail or behave incorrectly when expected fields are missing rather than empty.
+- **Quantitative**: Every failed divisible asset payment results in state inconsistency. Users who retry can double-pay arbitrary amounts. Affects all wallet implementations using this code.
+- **Qualitative**: Loss of trust in wallet balance reporting and transaction status. Silent failures with false success reporting undermine system reliability.
 
 **User Impact**:
-- **Who**: AA developers who need to return empty arrays/objects; users of AAs that rely on empty collection semantics
-- **Conditions**: Occurs whenever an AA formula evaluates to `[]` or `{}` in any response message field except state variable assignments
-- **Recovery**: No recovery needed (no funds at risk), but workaround required - AAs must use alternative representations like `null`, `-1`, or sentinel values instead of natural empty collections
+- **Who**: All users sending divisible asset payments. Particularly affects private asset transfers and payments during database stress.
+- **Conditions**: Triggered whenever `writer.saveJoint` encounters errors (database failures, validation failures in preCommit, resource exhaustion, constraint violations).
+- **Recovery**: Requires manual reconciliation. Users must check blockchain directly to verify actual payment status. Double-payments require customer support intervention.
 
-**Systemic Risk**: Low systemic risk. This is a protocol-level design limitation that affects AA expressiveness but does not threaten network stability, consensus, or asset security. The impact is contained to individual AA functionality.
+**Systemic Risk**: 
+- Wallet state inconsistencies accumulate across the user base
+- Users lose confidence when payments show success but don't appear on chain
+- All applications using this library inherit the vulnerability
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not an attack - this is a design limitation affecting legitimate AA developers
-- **Resources Required**: N/A (affects normal AA development)
-- **Technical Skill**: Any AA developer who needs to use empty collections
+- **Identity**: Any user during normal operations (unintentional trigger) or malicious actor who understands the validation rules
+- **Resources Required**: Ability to send divisible asset payments
+- **Technical Skill**: Low for unintentional trigger (happens naturally during database issues); Medium for intentional exploitation
 
 **Preconditions**:
-- **Network State**: Any state after aa2UpgradeMci when objects became supported
-- **Attacker State**: N/A (legitimate use case)
-- **Timing**: Occurs on every AA trigger where formulas evaluate to empty collections
+- **Network State**: Any state; more likely during high load or database stress
+- **Attacker State**: Has divisible assets to send
+- **Timing**: Can occur anytime; no special timing required
 
 **Execution Complexity**:
-- **Transaction Count**: Single AA trigger
+- **Transaction Count**: Single transaction
 - **Coordination**: None required
-- **Detection Risk**: Immediately evident - fields simply don't appear in response messages
+- **Detection Risk**: Low - appears as normal failed transaction in logs, but user receives success signal
 
 **Frequency**:
-- **Repeatability**: Every time an affected AA is triggered
-- **Scale**: Affects any AA that needs empty collection semantics
+- **Repeatability**: Triggers every time a save error occurs
+- **Scale**: Affects every divisible asset payment encountering save errors
 
-**Overall Assessment**: High likelihood of encounter for legitimate use cases; not exploitable for malicious purposes.
+**Overall Assessment**: High likelihood - This will trigger naturally during database errors, network issues, or constraint violations. The bug activates automatically when any error condition occurs during the save operation.
 
 ## Recommendation
 
-**Immediate Mitigation**: Document this limitation clearly in AA development guidelines. Recommend workarounds such as using `null` to represent "no data" or using sentinel arrays like `[-1]` to represent "empty but present."
+**Immediate Mitigation**:
+Add error check before calling success callback in `divisible_asset.js`:
 
-**Permanent Fix**: Introduce a distinction between "field removal signal" and "legitimate empty value." Options include:
-
-1. **Add explicit removal operator**: Introduce a special value (e.g., `undefined` or a custom sentinel) to signal field removal, while allowing empty arrays/objects as normal values.
-
-2. **Configuration flag**: Add an AA-level or field-level flag to indicate whether empty values should be treated as removal signals or legitimate values.
-
-3. **Type-based handling**: Only treat empty strings as removal signals (which are less commonly needed as legitimate values), while preserving empty arrays/objects.
-
-**Code Changes**:
-
-Option 1 - Use `undefined` as explicit removal signal:
-
-File: `byteball/ocore/aa_composer.js`, function `replace()`
-
-Current vulnerable code: [1](#0-0) 
-
-Proposed fix:
 ```javascript
-// Line 643-650 replacement
-if (res === undefined) { // Only undefined signals removal, not empty values
-    if (typeof name === 'string')
-        delete obj[name];
-    else
-        assignField(obj, name, null);
+function onDone(err){
+    console.log("saved unit "+unit+", err="+err, objPrivateElement);
+    validation_unlock();
+    combined_unlock();
+    if (err)
+        return callbacks.ifError(err);
+    var arrChains = objPrivateElement ? [[objPrivateElement]] : null;
+    callbacks.ifOk(objJoint, arrChains, arrChains);
 }
-else
-    assignField(obj, name, res);
 ```
 
-Supporting changes needed in `formula/evaluation.js` to allow `undefined` as a valid formula result when explicitly returned.
-
 **Additional Measures**:
-- Add test cases covering empty array/object storage in response messages
-- Update AA documentation to clarify empty value semantics
-- Add validation warnings when AAs use patterns that might be affected
-
-**Validation**:
-- [✓] Fix allows empty arrays/objects to be stored normally
-- [✓] Provides alternative mechanism for field removal if needed
-- [✓] Backward compatible (existing AAs don't use `undefined` since it's currently not a valid formula result)
-- [✓] No performance impact
+- Apply same fix to `indivisible_asset.js` which has a similar issue with only partial mitigation
+- Add integration tests that verify error handling when `preCommitCallback` fails
+- Add monitoring to detect when save operations fail but success is reported
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`test_empty_values.js`):
 ```javascript
-/*
- * Proof of Concept: Empty Array/Object Deletion
- * Demonstrates: Empty arrays and objects are deleted from response messages
- * Expected Result: Fields with empty values are missing from response unit
- */
+// Test case demonstrating the bug
+// File: test/test_divisible_error_handling.js
 
-const aa_composer = require('./aa_composer.js');
-const aa_validation = require('./aa_validation.js');
-const objectHash = require('./object_hash.js');
+const divisible_asset = require('../divisible_asset.js');
+const db = require('../db.js');
 
-// AA that returns empty array and empty object
-var aa = ['autonomous agent', {
-    bounce_fees: { base: 10000 },
-    messages: [{
-        app: 'data',
-        payload: {
-            empty_list: "{[]}",           // Should store empty array
-            empty_dict: "{{}}",           // Should store empty object
-            normal_value: "{trigger.data.x}"  // Normal field for comparison
-        }
-    }]
-}];
-
-var trigger = { 
-    address: 'TRIGGER_ADDRESS',
-    unit: 'TRIGGER_UNIT',
-    output: { base: 20000 }, 
-    data: { x: 'test' } 
-};
-
-// Validate and compose AA response
-aa_composer.dryRunPrimaryAATrigger(trigger, 'AA_ADDRESS', aa, (arrResponses) => {
-    if (arrResponses.length > 0 && arrResponses[0].objResponseUnit) {
-        const payload = arrResponses[0].objResponseUnit.messages
-            .find(m => m.app === 'data').payload;
+describe('Divisible Asset Error Handling', function() {
+    it('should call ifError when saveJoint fails', function(done) {
+        let errorCallbackCalled = false;
+        let okCallbackCalled = false;
         
-        console.log('Response payload:', JSON.stringify(payload, null, 2));
-        console.log('\nBUG DEMONSTRATED:');
-        console.log('- empty_list field present:', 'empty_list' in payload);
-        console.log('- empty_dict field present:', 'empty_dict' in payload);
-        console.log('- normal_value field present:', 'normal_value' in payload);
-        console.log('\nExpected: All three fields should be present');
-        console.log('Actual: Only normal_value is present, empty fields were deleted');
-    }
+        const params = {
+            asset: 'test_asset',
+            paying_addresses: ['TEST_ADDRESS'],
+            fee_paying_addresses: ['TEST_FEE_ADDRESS'],
+            change_address: 'TEST_CHANGE',
+            to_address: 'TEST_RECIPIENT',
+            amount: 1000,
+            signer: mockSigner,
+            callbacks: {
+                ifError: function(err) {
+                    errorCallbackCalled = true;
+                    console.log('Error callback called correctly:', err);
+                },
+                ifNotEnoughFunds: function(err) {
+                    done(new Error('Should not call ifNotEnoughFunds'));
+                },
+                ifOk: function(objJoint) {
+                    okCallbackCalled = true;
+                    console.log('OK callback called (BUG!)');
+                }
+            }
+        };
+        
+        // Mock database error during save
+        const originalQuery = db.query;
+        db.query = function(sql, params, callback) {
+            if (sql.includes('INSERT INTO outputs')) {
+                // Simulate constraint violation or other DB error
+                return callback('Database constraint violation');
+            }
+            return originalQuery.apply(this, arguments);
+        };
+        
+        divisible_asset.composeAndSaveDivisibleAssetPaymentJoint(params);
+        
+        setTimeout(function() {
+            db.query = originalQuery; // Restore
+            
+            // BUG: okCallbackCalled should be false but will be true
+            if (okCallbackCalled && !errorCallbackCalled) {
+                console.log('BUG CONFIRMED: ifOk called despite error!');
+                done();
+            } else if (errorCallbackCalled && !okCallbackCalled) {
+                done(new Error('Bug is fixed - error handled correctly'));
+            } else {
+                done(new Error('Unexpected callback state'));
+            }
+        }, 2000);
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Response payload: {
-  "normal_value": "test"
-}
-
-BUG DEMONSTRATED:
-- empty_list field present: false
-- empty_dict field present: false
-- normal_value field present: true
-
-Expected: All three fields should be present
-Actual: Only normal_value is present, empty fields were deleted
-```
-
-**Expected Output** (after fix applied):
-```
-Response payload: {
-  "empty_list": [],
-  "empty_dict": {},
-  "normal_value": "test"
-}
-
-BUG DEMONSTRATED:
-- empty_list field present: true
-- empty_dict field present: true
-- normal_value field present: true
-
-Expected: All three fields should be present
-Actual: All fields correctly preserved
-```
-
-**PoC Validation**:
-- [✓] PoC demonstrates the issue on unmodified ocore codebase
-- [✓] Shows clear unintended behavior (field deletion)
-- [✓] Demonstrates measurable impact (missing fields in response)
-- [✓] Would pass after fix is applied
-
 ## Notes
 
-**Important Clarifications**:
-
-1. **State Variables Are NOT Affected**: State variable storage uses a completely separate mechanism through the `state_var_assignment` evaluation path. The state assignment logic in `formula/evaluation.js` (lines 1216-1319) directly stores wrappedObject values without going through the deletion check. Empty arrays/objects CAN be stored in state variables successfully. [4](#0-3) [5](#0-4) 
-
-2. **The Issue Is Specific to Response Message Construction**: The `replace()` function processes the AA template to build response units. The deletion logic only affects fields in response messages, data payloads, and similar structures - not the internal state storage.
-
-3. **This Is Intentional Design, But Incomplete**: The comment explicitly states empty values "signal that the key should be removed," indicating this was an intentional design choice for conditional field inclusion. However, it creates an ambiguity for legitimate empty value use cases.
-
-4. **Workarounds Exist But Are Suboptimal**: AA developers can work around this by using alternative representations (`null`, sentinel values, or structured wrappers), but these are less intuitive and require additional handling logic in consuming applications.
+This is a clear implementation bug where error handling was omitted. The comparison with `composer.js` confirms this is not intentional design. While the severity is HIGH rather than CRITICAL (as it requires specific error conditions and user retry for fund loss), it's a serious reliability issue that undermines user trust and can result in direct financial loss through double-payments. The fix is straightforward: add the missing error check before calling the success callback.
 
 ### Citations
 
-**File:** aa_composer.js (L643-650)
+**File:** divisible_asset.js (L306-307)
 ```javascript
-				if (res === '' || isEmptyObjectOrArray(res)) { // signals that the key should be removed (only empty string or array or object, cannot be false as it is a valid value for asset properties)
-					if (typeof name === 'string')
-						delete obj[name];
-					else
-						assignField(obj, name, null);
-				}
-				else
-					assignField(obj, name, res);
+		ifOk: async function(objJoint, private_payload, composer_unlock){
+			var objUnit = objJoint.unit;
 ```
 
-**File:** aa_composer.js (L1371-1372)
+**File:** divisible_asset.js (L343-360)
 ```javascript
-		else if (value instanceof wrappedObject)
-			return 'j\n' + string_utils.getJsonSourceString(value.obj, true);
+					if (bPrivate){
+						preCommitCallback = function(conn, cb){
+							var payload_hash = objectHash.getBase64Hash(private_payload, objUnit.version !== constants.versionWithoutTimestamp);
+							var message_index = composer.getMessageIndexByPayloadHash(objUnit, payload_hash);
+							objPrivateElement = {
+								unit: unit,
+								message_index: message_index,
+								payload: private_payload
+							};
+							validateAndSaveDivisiblePrivatePayment(conn, objPrivateElement, {
+								ifError: function(err){
+									cb(err);
+								},
+								ifOk: function(){
+									cb();
+								}
+							});
+						};
 ```
 
-**File:** validation_utils.js (L80-84)
+**File:** divisible_asset.js (L381-386)
 ```javascript
-function isEmptyObjectOrArray(obj) {
-	if (typeof obj !== "object" || obj === null)
-		return false;
-	return (Array.isArray(obj) && obj.length === 0 || Object.keys(obj).length === 0);
-}
+								function onDone(err){
+									console.log("saved unit "+unit+", err="+err, objPrivateElement);
+									validation_unlock();
+									combined_unlock();
+									var arrChains = objPrivateElement ? [[objPrivateElement]] : null; // only one chain that consists of one element
+									callbacks.ifOk(objJoint, arrChains, arrChains);
 ```
 
-**File:** formula/evaluation.js (L1263-1264)
+**File:** composer.js (L774-781)
 ```javascript
-								stateVars[address][var_name].value = res;
-								stateVars[address][var_name].updated = true;
+								function onDone(err){
+									validation_unlock();
+									combined_unlock();
+									if (err)
+										return callbacks.ifError(err);
+									console.log("composer saved unit "+unit);
+									callbacks.ifOk(objJoint, assocPrivatePayloads);
+								}
 ```
 
-**File:** formula/evaluation.js (L2974-2975)
+**File:** writer.js (L693-693)
 ```javascript
-				if (res instanceof wrappedObject)
-					res = bObjectResultAllowed ? res.obj : true;
+							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
+```
+
+**File:** writer.js (L724-725)
+```javascript
+								if (onDone)
+									onDone(err);
+```
+
+**File:** wallet.js (L2494-2497)
+```javascript
+		ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
+			network.broadcastJoint(objJoint);
+			cb(null, objJoint.unit.unit, asset);
+		}
 ```

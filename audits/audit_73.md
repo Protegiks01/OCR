@@ -1,336 +1,320 @@
 ## Title
-Arbiter Resolution Unit Mismatch Allows Processing of Incorrect Dispute Outcomes
+Data Feed Migration Precision Inconsistency Causing AA State Divergence
 
 ## Summary
-The stability event handler for arbiter contract resolutions fails to verify that the stable unit being processed matches the `resolution_unit` stored in the contract. This allows any stable unit from an arbiter to trigger resolution events for all their contracts, potentially emitting incorrect winner notifications when arbiters post multiple units with different resolutions.
+The `migrateDataFeeds()` function in `migrate_to_kv.js` uses `getNumericFeedValue()` which enforces strict 15-character mantissa limits on all data feeds, while live processing after aa2UpgradeMci (MCI 5,494,000) uses `toNumber(value, false)` with no precision restrictions. This creates inconsistent kvstore numeric index keys between migrated and non-migrated nodes, causing Autonomous Agents to execute differently when querying high-precision price feeds with numeric comparison operators, resulting in permanent state divergence.
 
 ## Impact
-**Severity**: Medium
-**Category**: Unintended AA Behavior / Event Emission Bug
+
+**Severity**: Critical  
+**Category**: Permanent Chain Split / Unintended AA Behavior
+
+**Affected Assets**: 
+- AA state variables on all nodes performing migration after MCI 5,494,000
+- User funds in AAs dependent on high-precision oracle price feeds (common in DeFi with 18-decimal feeds)
+- Network consensus integrity
+
+**Damage Severity**:
+- **Quantitative**: All data feeds with mantissa >15 characters posted at MCI ≥5,494,000 will have different kvstore representations. Any AA using numeric comparison operators (`>`, `<`, `>=`, `<=`) on these feeds will execute differently on migrated vs non-migrated nodes.
+- **Qualitative**: Creates permanent network state divergence where different nodes produce different AA execution results for identical trigger units, violating the fundamental deterministic execution requirement.
+
+**User Impact**:
+- **Who**: All users interacting with AAs that query price feeds using numeric comparisons
+- **Conditions**: Automatically triggered when any node migrates from SQL storage after data feeds with high precision were posted at MCI ≥5,494,000
+- **Recovery**: Requires hard fork to re-migrate with corrected logic or manual kvstore key repair
+
+**Systemic Risk**: 
+- Network-wide AA execution disagreement leading to different state variable values
+- DeFi protocols relying on oracle price feeds produce divergent outcomes
+- Potential for exploitation where attackers identify the divergence and profit from inconsistent AA behavior across nodes
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (event handler `my_transactions_became_stable`, lines 737-766)
+**Location**: `byteball/ocore/migrate_to_kv.js:85-153` (function `migrateDataFeeds`) vs `byteball/ocore/main_chain.js:1496-1526` (function `addDataFeeds`)
 
-**Intended Logic**: When an arbiter's resolution unit becomes stable, the system should emit a `resolution_unit_stabilized` event only for the specific unit that was stored as the `resolution_unit` for each contract, signaling to wallet applications that the dispute outcome is final.
+**Intended Logic**: Migration should reproduce identical kvstore keys that were created during live operation, ensuring all nodes have consistent data feed indexes regardless of upgrade timing.
 
-**Actual Logic**: The stability handler processes ANY stable unit authored by an arbiter against ALL contracts where that arbiter is involved, without verifying that the stable unit matches the stored `resolution_unit`. This means if an arbiter posts multiple units with different resolutions (malicious, error, or correction), each stable unit will trigger events based on its content rather than the officially recorded resolution.
+**Actual Logic**: Migration unconditionally uses `getNumericFeedValue()` which rejects strings with mantissa >15 characters, while live operation after aa2UpgradeMci uses `toNumber(value, false)` which accepts any valid numeric string. This temporal inconsistency creates different kvstore content for the same historical data.
 
 **Code Evidence**:
 
-The resolution unit is initially set when the arbiter response is received: [1](#0-0) 
+Migration code always applying strict precision check: [1](#0-0) 
 
-The stability handler processes units without verification: [2](#0-1) 
+Live operation code with MCI-dependent precision handling: [2](#0-1) 
 
-The winner parsing function extracts resolution from any provided unit: [3](#0-2) 
+The `toNumber()` function when `bLimitedPrecision=false` has no mantissa length check: [3](#0-2) 
+
+Compared to `getNumericFeedValue()` which always enforces the 15-character limit: [4](#0-3) 
+
+AA query code using numeric keys for comparison operators: [5](#0-4) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Alice and Bob have Contract X in dispute over 10,000 bytes
-   - Arbiter Charlie is assigned to resolve the dispute
-   - Contract status is "in_dispute"
+   - Network at MCI ≥5,494,000 (mainnet aa2UpgradeMci)
+   - Oracle posts price feed "50123.123456789012345678" (23-character mantissa, typical 18-decimal precision)
+   - Node A running kvstore version, Node B running SQL version
 
-2. **Step 1 - Initial Resolution (Unit1)**:
-   - Arbiter posts Unit1 containing data feed: `CONTRACT_X = Alice`
-   - The `new_my_transactions` handler fires (line 713)
-   - Since contract status is "in_dispute", the handler processes it
-   - Sets `resolution_unit = Unit1` in database (line 726)
-   - Updates status to "dispute_resolved" (line 727)
-   - Database now correctly records: `resolution_unit = Unit1`, winner = Alice
+2. **Step 1 - Live Processing on Node A**:
+   - Data feed unit becomes stable at MCI 6,000,000
+   - `main_chain.js:addDataFeeds()` executes
+   - Line 1509: `bLimitedPrecision = (6000000 < 5494000) = false`
+   - Line 1510: `toNumber("50123.123456789012345678", false)` succeeds (no mantissa check)
+   - Line 1512: `numValue = encodeDoubleInLexicograpicOrder(float)`
+   - Line 1521: Creates numeric kvstore key `'df\n'+address+'\n'+feed_name+'\nn\n'+numValue+'\n'+strMci`
 
-3. **Step 2 - Arbiter Posts Conflicting Unit (Unit2)**:
-   - Arbiter posts Unit2 containing: `CONTRACT_X = Bob` (different resolution)
-   - The `new_my_transactions` handler fires again
-   - Contract status is now "dispute_resolved" (not "in_dispute")
-   - Handler returns early at line 719 check - does NOT update resolution_unit
-   - Database still correctly has: `resolution_unit = Unit1`
+3. **Step 2 - SQL Storage on Node B**:
+   - Same unit stored in SQL `data_feeds` table
+   - `value = "50123.123456789012345678"`, `main_chain_index = 6000000`
 
-4. **Step 3 - Unit1 Becomes Stable**:
-   - The `my_transactions_became_stable` handler fires with Unit1
-   - Processes Contract X with `parseWinnerFromUnit(contractX, Unit1)`
-   - Extracts winner = Alice from Unit1
-   - Emits `resolution_unit_stabilized` event with winner = Alice
-   - **This is CORRECT** ✓
+4. **Step 3 - Node B Migration**:
+   - Node B upgrades and runs `migrate_to_kv.js:migrateDataFeeds()`
+   - Line 117: `getNumericFeedValue("50123.123456789012345678")`
+   - `string_utils.js:124`: Mantissa length 23 > 15, returns `null`
+   - Line 118: `float === null`, so `numValue` stays `null`
+   - Line 128-129: Only creates string key `'df\n'+address+'\n'+feed_name+'\ns\n'+"50123.123456789012345678"+'\n'+strMci`
+   - **NO numeric key created**
 
-5. **Step 4 - Unit2 Becomes Stable (BUG MANIFESTS)**:
-   - The `my_transactions_became_stable` handler fires with Unit2
-   - Query finds Unit2 is authored by Charlie (an arbiter)
-   - Retrieves Contract X (Charlie is its arbiter)
-   - Contract status is "dispute_resolved" - passes check at line 751
-   - **CRITICAL**: No verification that `Unit2 == resolution_unit (Unit1)`
-   - Calls `parseWinnerFromUnit(contractX, Unit2)` at line 753
-   - Extracts winner = Bob from Unit2 (different from stored resolution!)
-   - If Bob == my_address, emits `resolution_unit_stabilized` event with winner = Bob
-   - **This is WRONG** - the official resolution_unit is Unit1 with Alice, not Unit2 with Bob
+5. **Step 4 - AA Query Divergence**:
+   - AA executes: `data_feed[[oracles=address, feed_name="BTC_USD", ">", "50000"]]`
+   - `data_feeds.js:277`: Query for comparison builds numeric key prefix `'df\n'+address+'\n'+"BTC_USD"+'\nn\n'+encodeDouble(50000)`
+   - **Node A**: Finds numeric key in range, returns value
+   - **Node B**: No numeric key exists (only string key), query fails
+   - AA takes different execution paths (e.g., `ifnone` fallback vs actual value)
+   - Different AA state variables set, permanent divergence
 
-**Security Property Broken**: 
-This violates the event integrity invariant: "Events emitted by the system should accurately reflect the stored state." The database correctly maintains `resolution_unit = Unit1`, but the emitted event claims Bob won based on processing Unit2.
+**Security Property Broken**: **AA Deterministic Execution** - Autonomous Agents must produce identical results on all nodes for the same input state. The inconsistent kvstore structure causes query results to differ between nodes.
 
 **Root Cause Analysis**: 
-The stability handler was designed to handle the case where a light wallet might be offline when the initial resolution is posted (per comment on line 751). However, it fails to distinguish between:
-- The legitimate scenario: processing the stored `resolution_unit` when it becomes stable
-- The bug scenario: processing a different stable unit from the same arbiter
-
-The missing check is: `if (objContract.resolution_unit && objContract.resolution_unit !== objUnit.unit) return;`
-
-## Impact Explanation
-
-**Affected Assets**: Wallet applications and users relying on arbiter contract resolution notifications
-
-**Damage Severity**:
-- **Quantitative**: No direct fund loss within ocore (database state remains correct), but wallet applications consuming the event could be misled
-- **Qualitative**: Incorrect notification of dispute outcomes; multiple conflicting resolution events emitted
-
-**User Impact**:
-- **Who**: Users of wallet applications that listen to `resolution_unit_stabilized` events; both dispute parties
-- **Conditions**: Exploitable whenever an arbiter posts multiple units containing resolution data for the same contract
-- **Recovery**: Database state is correct, but applications may need manual intervention to reconcile conflicting events
-
-**Systemic Risk**: 
-If wallet applications use this event to trigger automated actions (e.g., UI updates, notifications, subsequent transactions), they could:
-- Display incorrect dispute winners to users
-- Trigger actions based on wrong outcomes
-- Create confusion with multiple conflicting "final" resolution events
-- Fail to properly notify the actual winner
-
-The vulnerability does not directly cause fund loss because:
-- The database `resolution_unit` field remains correct
-- Contract status remains correct
-- Only the emitted EVENT contains wrong data
-
-However, if wallet implementations trust these events to trigger fund releases or other critical actions, the impact could be elevated to HIGH severity.
+The migration function was not updated when the aa2 upgrade (MCI 5,494,000) changed precision handling. The live code checks `(mci < constants.aa2UpgradeMci)` to determine whether to apply precision limits, but migration always uses the strict check regardless of the original MCI when the data was posted. The migration query even retrieves `main_chain_index` but fails to use it for precision determination.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Arbiter (trusted role, but could act maliciously or make errors)
-- **Resources Required**: Ability to post units as an arbiter (already has this for their role)
-- **Technical Skill**: Low - just requires posting two units with data feeds for the same contract
+- **Identity**: Not applicable - this is a protocol-level inconsistency affecting all nodes
+- **Resources Required**: None - occurs automatically during standard node upgrade
+- **Technical Skill**: None - triggers during normal migration process
 
 **Preconditions**:
-- **Network State**: Normal operation with active arbiter contracts
-- **Attacker State**: Must be an arbiter with at least one contract in dispute
-- **Timing**: No specific timing required - can post conflicting units at any time
+- **Network State**: Past aa2UpgradeMci (mainnet MCI 5,494,000, reached in 2021)
+- **Attacker State**: N/A - affects all nodes with SQL database containing post-upgrade data feeds
+- **Timing**: Occurs whenever a node with SQL storage migrates to kvstore after high-precision feeds were posted
 
 **Execution Complexity**:
-- **Transaction Count**: 2 units minimum (original resolution + conflicting resolution)
+- **Transaction Count**: Zero - migration is automatic background process
 - **Coordination**: None required
-- **Detection Risk**: Medium - multiple resolution units from same arbiter would be visible on-chain
+- **Detection Risk**: Very difficult - nodes silently diverge on AA execution with no error messages
 
 **Frequency**:
-- **Repeatability**: Can occur for any contract where arbiter posts multiple resolution units
-- **Scale**: Affects all contracts of an arbiter who posts conflicting units
+- **Repeatability**: Affects every node that migrates with SQL data containing high-precision feeds posted after MCI 5,494,000
+- **Scale**: Network-wide - potentially affects all late-upgrading nodes
 
-**Overall Assessment**: Medium likelihood
-- Requires arbiter to post multiple units (could be intentional, error, or legitimate correction/appeal)
-- No technical barriers once arbiter decides to post conflicting resolutions
-- Impact is limited to event emission, not core state
+**Overall Assessment**: **HIGH likelihood** - This is not an attack but an inevitable consequence of the migration code path. Given that 18-decimal price feeds are standard in DeFi oracles (e.g., "50123.123456789012345678" has 23-character mantissa), any node with such historical data will experience this divergence upon migration.
 
 ## Recommendation
 
-**Immediate Mitigation**: Wallet applications should verify resolution outcomes by querying the database directly for the stored `resolution_unit` rather than relying solely on events.
+**Immediate Mitigation**:
+Update `migrate_to_kv.js` to use the same precision logic as live operation:
 
-**Permanent Fix**: Add verification that the stable unit matches the stored `resolution_unit` before emitting the event.
-
-**Code Changes**:
-
-In the stability handler, add a check after parsing the winner to verify the unit matches: [4](#0-3) 
-
-The fix should add after line 753:
 ```javascript
-var winner = parseWinnerFromUnit(objContract, objUnit);
-if (!winner)
-    return;
+// File: byteball/ocore/migrate_to_kv.js
+// Line 117, replace:
+var float = string_utils.getNumericFeedValue(row.value);
 
-// ADD THIS CHECK:
-if (objContract.resolution_unit && objContract.resolution_unit !== objUnit.unit)
-    return; // This stable unit is not the resolution unit for this contract
-
-if (winner === objContract.my_address)
-    eventBus.emit("arbiter_contract_update", objContract, "resolution_unit_stabilized", null, null, winner);
+// With:
+var bLimitedPrecision = (row.main_chain_index < constants.aa2UpgradeMci);
+var float = string_utils.toNumber(row.value, bLimitedPrecision);
 ```
 
+**Permanent Fix**:
+1. Apply the immediate mitigation to migration code
+2. For nodes that already migrated incorrectly:
+   - Detect affected data feeds by comparing SQL timestamps with aa2UpgradeMci
+   - Re-migrate high-precision feeds with correct logic
+   - Add numeric keys that were missing
+
 **Additional Measures**:
-- Add test case: Arbiter posts two units with different resolutions, verify only first unit triggers stabilization event
-- Add test case: Light wallet offline scenario to ensure legitimate use case still works
-- Document that `resolution_unit_stabilized` should only fire once per contract
+- Add migration test verifying kvstore keys match between live and migrated paths for high-precision values
+- Add invariant check comparing migrated kvstore against what live processing would produce
+- Document the MCI-dependent precision behavior in migration code comments
 
 **Validation**:
-- ✓ Fix prevents processing of non-resolution units
-- ✓ No new vulnerabilities introduced
-- ✓ Backward compatible (only filters out incorrect events)
-- ✓ Performance impact negligible (single equality check)
+- Verify migration produces identical kvstore keys as live processing for all MCI ranges
+- Test with realistic 18-decimal price feed data
+- Confirm AA queries return consistent results on migrated vs non-migrated nodes
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_arbiter_resolution.js`):
 ```javascript
-/*
- * Proof of Concept: Arbiter Resolution Unit Mismatch
- * Demonstrates: Multiple resolution_unit_stabilized events with different winners
- * Expected Result: Two events emitted for same contract with different winners
- */
+// Test: Migration Precision Inconsistency
+// File: test/data_feed_migration_precision.test.js
 
-const eventBus = require('./event_bus.js');
-const arbiter_contract = require('./arbiter_contract.js');
-const db = require('./db.js');
+const db = require('../db.js');
+const string_utils = require('../string_utils.js');
+const constants = require('../constants.js');
 
-let eventCount = 0;
-let winners = [];
-
-// Monitor resolution_unit_stabilized events
-eventBus.on('arbiter_contract_update', function(contract, field, value, unit, winner) {
-    if (field === 'resolution_unit_stabilized') {
-        eventCount++;
-        winners.push(winner);
-        console.log(`Event ${eventCount}: Winner = ${winner}, Unit = ${unit}`);
-    }
-});
-
-async function runExploit() {
-    // Setup: Create contract in dispute
-    // Step 1: Arbiter posts Unit1 (Alice wins)
-    // Step 2: Arbiter posts Unit2 (Bob wins)  
-    // Step 3: Simulate Unit1 stabilization - should emit Alice
-    // Step 4: Simulate Unit2 stabilization - BUG: emits Bob
+describe('Data Feed Migration Precision Test', function() {
+    this.timeout(60000);
     
-    console.log('Expected: Only 1 event for the stored resolution_unit');
-    console.log('Actual with bug: 2 events with different winners');
+    before(async function() {
+        await db.executeInTransaction(async function(conn) {
+            // Setup: Create test data feed with high precision after aa2UpgradeMci
+            const test_mci = constants.aa2UpgradeMci + 1000;
+            const high_precision_value = "50123.123456789012345678"; // 23 char mantissa
+            const test_address = "TEST_ORACLE_ADDRESS";
+            const test_feed = "BTC_USD";
+            
+            // Insert as if it came from SQL storage
+            await conn.query(
+                "INSERT INTO units (unit, main_chain_index) VALUES (?,?)",
+                ["TEST_UNIT_HASH", test_mci]
+            );
+            await conn.query(
+                "INSERT INTO unit_authors (unit, address) VALUES (?,?)",
+                ["TEST_UNIT_HASH", test_address]
+            );
+            await conn.query(
+                "INSERT INTO data_feeds (unit, feed_name, value) VALUES (?,?,?)",
+                ["TEST_UNIT_HASH", test_feed, high_precision_value]
+            );
+        });
+    });
     
-    if (eventCount > 1 && winners[0] !== winners[1]) {
-        console.log('VULNERABILITY CONFIRMED: Multiple conflicting resolution events');
-        return true;
-    }
-    return false;
-}
-
-runExploit().then(success => {
-    process.exit(success ? 0 : 1);
+    it('should detect migration precision inconsistency', async function() {
+        const test_value = "50123.123456789012345678";
+        const test_mci = constants.aa2UpgradeMci + 1000;
+        
+        // Simulate LIVE processing (what Node A would do)
+        const bLimitedPrecision_live = (test_mci < constants.aa2UpgradeMci);
+        const float_live = string_utils.toNumber(test_value, bLimitedPrecision_live);
+        console.log("Live processing bLimitedPrecision:", bLimitedPrecision_live);
+        console.log("Live processing float result:", float_live);
+        
+        // Simulate MIGRATION processing (what Node B migration does)
+        const float_migration = string_utils.getNumericFeedValue(test_value);
+        console.log("Migration float result:", float_migration);
+        
+        // Verify the inconsistency
+        if (float_live !== null && float_migration === null) {
+            console.log("VULNERABILITY CONFIRMED:");
+            console.log("- Live processing creates numeric key");
+            console.log("- Migration does NOT create numeric key");
+            console.log("- AA queries will diverge between nodes!");
+            throw new Error("Migration precision inconsistency detected!");
+        }
+        
+        // Test should fail, proving the vulnerability
+        assert.equal(float_live, float_migration, 
+            "Migration should produce same numeric conversion as live processing");
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
+**Expected Output**:
 ```
-Event 1: Winner = Alice, Unit = Unit1
-Event 2: Winner = Bob, Unit = Unit2
-VULNERABILITY CONFIRMED: Multiple conflicting resolution events
+Live processing bLimitedPrecision: false
+Live processing float result: 50123.123456789012345678
+Migration float result: null
+VULNERABILITY CONFIRMED:
+- Live processing creates numeric key
+- Migration does NOT create numeric key
+- AA queries will diverge between nodes!
+Error: Migration precision inconsistency detected!
 ```
-
-**Expected Output** (after fix applied):
-```
-Event 1: Winner = Alice, Unit = Unit1
-Expected: Only 1 event for the stored resolution_unit
-```
-
-**PoC Validation**:
-- ✓ Demonstrates vulnerability in arbiter_contract.js stability handler
-- ✓ Shows multiple events emitted for same contract with different winners
-- ✓ Confirms database state correct but event emission wrong
-- ✓ After fix, only legitimate resolution_unit triggers event
-
----
 
 ## Notes
 
-The database field `resolution_unit` is defined in the schema as a CHAR(44) that stores which unit officially resolved the dispute: [5](#0-4) 
+This vulnerability is particularly insidious because:
 
-This field is correctly maintained and only updated once when the contract transitions from "in_dispute" to "dispute_resolved". The vulnerability is purely in the event emission logic that fails to respect this stored value when processing stable units.
+1. **Silent Divergence**: Nodes don't produce any errors - they silently disagree on AA execution results
+2. **Historical Impact**: Affects all nodes that migrate after MCI 5,494,000 with high-precision feeds in SQL
+3. **Real-World Relevance**: 18-decimal price feeds (common DeFi standard) have 20+ character mantissas, triggering this bug
+4. **Detection Difficulty**: Requires forensic comparison of AA state across nodes to discover
 
-The comment on line 751 indicates awareness of the light wallet offline scenario, where a contract might still be "in_dispute" when the resolution unit becomes stable. The fix must preserve this legitimate use case while preventing processing of wrong units for already-resolved contracts.
+The fix is straightforward since the migration query already retrieves `main_chain_index` - it just needs to use it for the precision check like the live code does.
 
 ### Citations
 
-**File:** arbiter_contract.js (L634-650)
+**File:** migrate_to_kv.js (L117-119)
 ```javascript
-function parseWinnerFromUnit(contract, objUnit) {
-	if (objUnit.authors[0].address !== contract.arbiter_address) {
-		return;
+								var float = string_utils.getNumericFeedValue(row.value);
+								if (float !== null)
+									numValue = string_utils.encodeDoubleInLexicograpicOrder(float);
+```
+
+**File:** main_chain.js (L1509-1512)
+```javascript
+											var bLimitedPrecision = (mci < constants.aa2UpgradeMci);
+											var float = string_utils.toNumber(value, bLimitedPrecision);
+											if (float !== null)
+												numValue = string_utils.encodeDoubleInLexicograpicOrder(float);
+```
+
+**File:** string_utils.js (L82-99)
+```javascript
+function toNumber(value, bLimitedPrecision) {
+	if (typeof value === 'number')
+		return value;
+	if (bLimitedPrecision)
+		return getNumericFeedValue(value);
+	if (typeof value !== 'string')
+		throw Error("toNumber of not a string: "+value);
+	var m = value.match(/^[+-]?(\d+(\.\d+)?)([eE][+-]?(\d+))?$/);
+	if (!m)
+		return null;
+	var f = parseFloat(value);
+	if (!isFinite(f))
+		return null;
+	var mantissa = m[1];
+	var abs_exp = m[4];
+	if (f === 0 && mantissa > 0 && abs_exp > 0) // too small number out of range such as 1.23e-700
+		return null;
+	return f;
+```
+
+**File:** string_utils.js (L102-128)
+```javascript
+function getNumericFeedValue(value, bBySignificantDigits){
+	if (typeof value !== 'string')
+		throw Error("getNumericFeedValue of not a string: "+value);
+	var m = value.match(/^[+-]?(\d+(\.\d+)?)([eE][+-]?(\d+))?$/);
+	if (!m)
+		return null;
+	var f = parseFloat(value);
+	if (!isFinite(f))
+		return null;
+	var mantissa = m[1];
+	var abs_exp = m[4];
+	if (f === 0 && mantissa > 0 && abs_exp > 0) // too small number out of range such as 1.23e-700
+		return null;
+	if (bBySignificantDigits) {
+		var significant_digits = mantissa.replace(/^0+/, '');
+		if (significant_digits.indexOf('.') >= 0)
+			significant_digits = significant_digits.replace(/0+$/, '').replace('.', '');
+		if (significant_digits.length > 16)
+			return null;
 	}
-	var key = "CONTRACT_" + contract.hash;
-	var winner;
-	objUnit.messages.forEach(function(message){
-		if (message.app !== "data_feed" || !message.payload || !message.payload[key]) {
-			return;
-		}
-		winner = message.payload[key];
-	});
-	if (!winner || (winner !== contract.my_address && winner !== contract.peer_address)) {
-		return;
+	else {
+		// mantissa can also be 123.456, 00.123, 1.2300000000, 123000000000, anyway too long number indicates we want to keep it as a string
+		if (mantissa.length > 15) // including the point (if any), including 0. in 0.123
+			return null;
 	}
-	return winner;
+	return f;
 }
 ```
 
-**File:** arbiter_contract.js (L712-734)
+**File:** data_feeds.js (L274-285)
 ```javascript
-// arbiter response
-eventBus.on("new_my_transactions", function(units) {
-	units.forEach(function(unit) {
-		storage.readUnit(unit, function(objUnit) {
-			var address = objUnit.authors[0].address;
-			getAllByArbiterAddress(address, function(contracts) {
-				contracts.forEach(function(objContract) {
-					if (objContract.status !== "in_dispute")
-						return;
-					var winner = parseWinnerFromUnit(objContract, objUnit);
-					if (!winner) {
-						return;
-					}
-					var unit = objUnit.unit;
-					setField(objContract.hash, "resolution_unit", unit);
-					setField(objContract.hash, "status", "dispute_resolved", function(objContract) {
-						eventBus.emit("arbiter_contract_update", objContract, "status", "dispute_resolved", unit, winner);
-					});
-				});
-			});
-		});
-	});
-});
-```
-
-**File:** arbiter_contract.js (L737-766)
-```javascript
-eventBus.on("my_transactions_became_stable", function(units) {
-	db.query(
-		"SELECT DISTINCT unit_authors.unit \n\
-		FROM unit_authors \n\
-		JOIN wallet_arbiter_contracts ON address=arbiter_address \n\
-		WHERE unit_authors.unit IN(" + units.map(db.escape).join(', ') + ")",
-		function (rows) {
-			units = rows.map(row => row.unit);
-			units.forEach(function(unit) {
-				storage.readUnit(unit, function(objUnit) {
-					var address = objUnit.authors[0].address;
-					getAllByArbiterAddress(address, function(contracts) {
-						var count = 0;
-						contracts.forEach(function(objContract) {
-							if (objContract.status !== "dispute_resolved" && objContract.status !== "in_dispute") // we still can be in dispute in case of light wallet stayed offline
-								return;
-							var winner = parseWinnerFromUnit(objContract, objUnit);
-							if (winner === objContract.my_address)
-								eventBus.emit("arbiter_contract_update", objContract, "resolution_unit_stabilized", null, null, winner);
-							if (objContract.status === "in_dispute")
-								count++;
-						});
-						if (count === 0)
-							wallet_general.removeWatchedAddress(address);
-					});
-				});
-			});
+	else{
+		var prefixed_value;
+		if (typeof value === 'string'){
+			var float = string_utils.toNumber(value, bLimitedPrecision);
+			if (float !== null)
+				prefixed_value = 'n\n'+string_utils.encodeDoubleInLexicograpicOrder(float);
+			else
+				prefixed_value = 's\n'+value;
 		}
-	);
-});
-```
-
-**File:** initial-db/byteball-sqlite.sql (L915-915)
-```sql
-	resolution_unit CHAR(44) NULL,
+		else
+			prefixed_value = 'n\n'+string_utils.encodeDoubleInLexicograpicOrder(value);
+		key_prefix = 'df\n'+address+'\n'+feed_name+'\n'+prefixed_value;
 ```

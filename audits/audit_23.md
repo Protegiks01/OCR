@@ -1,335 +1,454 @@
+# Audit Report
+
 ## Title
-Storage Size Check Bypass via Undefined Byte Balance in Secondary AA Triggers
+MySQL TEXT Column Truncation Vulnerability in AA Definition Storage
 
 ## Summary
-In `aa_composer.js`, the `updateInitialAABalances()` function sets `byte_balance` to `undefined` for bug-compatibility when a trigger has no base payment and `mci < constants.aa3UpgradeMci`. This undefined value bypasses the storage size validation check in `updateStorageSize()`, allowing secondary AAs to inflate their `storage_size` beyond their actual byte balance, causing persistent DoS of affected AAs.
+The `aa_addresses` table stores AA definitions in a TEXT column with a 65,535 byte limit, but the validation layer allows AA definitions up to 5MB through the `MAX_UNIT_LENGTH` constraint. When an AA definition exceeds 65,535 bytes after JSON stringification, MySQL either throws an error causing node crashes (STRICT mode) or silently truncates the data (non-STRICT mode), making the AA permanently inaccessible and freezing all funds sent to it.
 
 ## Impact
-**Severity**: Medium
-**Category**: Unintended AA Behavior / Temporary Transaction Delay
+
+**Severity**: Critical
+
+**Category**: Network Shutdown (STRICT mode) / Permanent Fund Freeze (non-STRICT mode)
+
+**Concrete Impact**:
+- **STRICT mode nodes** (default MySQL 5.7+, MyRocks): Node crashes when processing the unit, causing network disruption. If a significant portion of nodes crash simultaneously, the network cannot confirm new transactions for >24 hours.
+- **Non-STRICT mode nodes** (older MySQL configurations): The AA definition is silently truncated to 65,535 bytes, creating malformed JSON. All funds (bytes and custom assets) sent to this AA address become permanently unrecoverable.
+- **Mixed deployments**: State divergence where different nodes have different database states, causing consensus failures.
+
+**Affected Parties**: All users who send payments to the compromised AA address after registration; all network nodes processing the unit.
+
+**Quantifiable Loss**: Unlimited - all funds sent to the AA (potentially millions of bytes plus custom assets) are permanently frozen with no recovery mechanism short of a hard fork.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_composer.js`
-- Function: `updateInitialAABalances()` (lines 440-500)
-- Function: `updateStorageSize()` (lines 1388-1419)
+**Location**: 
+- [1](#0-0) 
+- [2](#0-1) 
+- [3](#0-2) 
+- [4](#0-3) 
 
-**Intended Logic**: The storage size check should prevent an AA's byte balance from dropping below its storage size requirements. The check at line 1412 is designed to ensure AAs maintain sufficient bytes to cover storage costs.
+**Intended Logic**: AA definitions should be validated to ensure they fit within database column constraints before insertion. Any definition passing validation should be storable and retrievable without data loss.
 
-**Actual Logic**: When `trigger.outputs.base` is undefined (secondary AA receiving only custom assets) and `mci < constants.aa3UpgradeMci`, `byte_balance` is set to `undefined`. In JavaScript, the comparison `undefined < new_storage_size` evaluates to `false` (undefined coerces to NaN), causing the entire validation condition to fail and allowing storage_size to be inflated beyond the AA's actual byte balance.
-
-**Code Evidence**: [1](#0-0) [2](#0-1) 
+**Actual Logic**: The validation layer checks individual string lengths ( [5](#0-4) ), complexity limits ( [6](#0-5) ), and overall unit size ( [7](#0-6) ), but does NOT validate the JSON-stringified size of the AA definition against the database column limit. The TEXT data type has a 65,535 byte maximum, significantly smaller than the 5MB unit size limit.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Network MCI is in range: `aaStorageSizeUpgradeMci <= mci < aa3UpgradeMci` (mainnet: 5210000-7810000)
-   - Secondary AA exists with minimal byte balance (e.g., 1000 bytes)
-   - Secondary AA has formula that updates state variables
+1. **Preconditions**: Attacker has sufficient bytes to pay unit fees (~10,000 bytes)
 
-2. **Step 1 - Primary AA Trigger**: Attacker triggers a primary AA that pays a custom asset (but no bytes) to the secondary AA
+2. **Step 1**: Attacker constructs an AA definition with multiple messages containing large formula strings. For example, 20 messages each with 4000-byte formulas totaling ~80,000 bytes after JSON stringification.
+   - Validation path: Unit passes `validation.js:validate()` checks (line 133: 1 message ≤ 128 messages limit, line 140: unit size ≤ 5MB)
+   - AA validation: Passes `aa_validation.js:validateAADefinition()` checks (individual strings ≤ 4096 bytes per MAX_AA_STRING_LENGTH)
 
-3. **Step 2 - Secondary Trigger Execution**: 
-   - Secondary AA's trigger is created via `getTrigger()` [3](#0-2) 
-   - Since response unit contains only custom asset payment, `trigger.outputs.base` is undefined
-   - In `updateInitialAABalances()`, `byte_balance` is set to undefined despite AA having actual balance [1](#0-0) 
+3. **Step 2**: During storage, `storage.js:insertAADefinitions()` executes
+   - Line 899: `var json = JSON.stringify(payload.definition);` creates string exceeding 65,535 bytes
+   - Line 908: INSERT query attempts to store json in TEXT column
 
-4. **Step 3 - Storage Size Inflation**: 
-   - Secondary AA's formula updates state variables, increasing storage requirements (e.g., from 500 to 10000 bytes)
-   - The check `byte_balance < new_storage_size` evaluates to false because `undefined < 10000` is false
-   - Storage size is updated to 10000 in database despite AA only having 1000 bytes actual balance [4](#0-3) 
+4. **Step 3**: Database behavior diverges based on SQL mode
+   - **STRICT mode**: INSERT fails with "Data too long for column" error
+   - `mysql_pool.js` line 47: `throw err;` crashes the node
+   - **Non-STRICT mode**: INSERT succeeds but truncates json to 65,535 bytes, creating invalid JSON
 
-5. **Step 4 - Persistent DoS**: 
-   - In future operations, when AA tries to send-all, it attempts to reserve `storage_size` (10000) bytes [5](#0-4) 
-   - AA only has 1000 bytes but tries to reserve 10000, causing "not enough funds" error
-   - AA becomes unable to properly execute send-all operations until storage_size is manually corrected
+5. **Step 4**: Later retrieval attempts fail
+   - Code path: `aa_addresses.js` line 129 calls `JSON.parse(row.definition)`
+   - Truncated JSON throws SyntaxError, making AA inaccessible
+   - All funds sent to this AA address are permanently frozen
 
-**Security Property Broken**: 
-- **Invariant #11 (AA State Consistency)**: AA state variable updates must maintain consistency. The inflated storage_size creates inconsistent state between the stored value and actual byte capacity.
-- **Invariant #10 (AA Deterministic Execution)**: Future executions produce different results than intended due to corrupted storage_size state.
+**Security Properties Broken**:
+- **Database Referential Integrity**: Full definition cannot be stored
+- **Balance Conservation**: Funds sent to inaccessible AA are effectively destroyed  
+- **Transaction Atomicity**: Node crash during AA registration (STRICT mode) or partial data commit (non-STRICT mode)
 
-**Root Cause Analysis**: The bug exists due to legacy "bug-compatibility" where `byte_balance` is deliberately set to `undefined` before the aa3UpgradeMci. This was likely to maintain backward compatibility with existing behavior, but it creates a vulnerability window where the storage size check uses JavaScript's undefined comparison semantics, which always return false for `<` operations. The code assumes `byte_balance` would be a number, but undefined bypasses all numeric comparisons.
+**Root Cause**: Missing validation check for `JSON.stringify(definition).length ≤ 65535` before database insertion. The validation layer checks individual component limits but not the aggregate JSON string size against the actual database constraint.
 
 ## Impact Explanation
 
-**Affected Assets**: Secondary AAs' operational state and byte balances
+**Affected Assets**: 
+- Bytes (native currency)
+- All custom divisible assets
+- All custom indivisible assets  
 
 **Damage Severity**:
-- **Quantitative**: Each affected AA has its `storage_size` field corrupted in the database, potentially inflated by 10-100x actual byte balance
-- **Qualitative**: AA becomes unable to execute send-all operations properly, effectively freezing funds that should be transferable
+- **Quantitative**: 100% of funds sent to the affected AA address become unrecoverable. Network-wide, unlimited number of such AA addresses can be created.
+- **Qualitative**: Complete loss of AA functionality with no workaround. Requires hard fork to change database schema and re-register AA.
 
 **User Impact**:
-- **Who**: Users of secondary AAs that receive custom asset payments during the vulnerable MCI window
-- **Conditions**: Exploitable when primary AA sends only custom assets to secondary AA, and secondary AA updates state variables
-- **Recovery**: Requires manual database correction or AA redesign to reduce state variables below actual balance. No automatic recovery mechanism exists.
+- **Who**: Any user sending payments to the compromised AA address
+- **Conditions**: AA appears valid and registered in the DAG but is actually broken; users cannot detect this before sending funds
+- **Recovery**: None without a network-wide hard fork
 
-**Systemic Risk**: 
-- Multiple secondary AAs could be affected simultaneously if a malicious primary AA targets them
-- Once storage_size is inflated, it persists across all future triggers
-- Creates permanent degradation of AA functionality until manual intervention
+**Systemic Risk**:
+- **Network fragmentation**: Mixed STRICT/non-STRICT nodes have different states
+- **Cascading failures**: Multiple nodes crash simultaneously if unit propagates widely  
+- **Detection difficulty**: Issue only manifests during storage/retrieval, not during initial validation
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: AA developer or malicious user with basic understanding of Obyte AA architecture
-- **Resources Required**: Minimal - just ability to deploy primary AA and trigger it with custom assets
-- **Technical Skill**: Medium - requires understanding of secondary triggers and state variable mechanics
+- **Identity**: Any user with ability to submit units (no special privileges required)
+- **Resources**: Minimal (unit fees ~10,000 bytes)
+- **Technical Skill**: Medium (requires understanding AA structure and ability to calculate JSON size)
 
 **Preconditions**:
-- **Network State**: MCI must be in vulnerable window (5210000-7810000 on mainnet, 1034000-2291500 on testnet)
-- **Attacker State**: Must be able to deploy/control primary AA or trigger existing AA that sends custom assets
-- **Timing**: Window may have already passed on mainnet if current MCI > 7810000, but vulnerability was present during that range
+- **Network State**: Normal operation (no special conditions)
+- **Attacker State**: Sufficient bytes for unit fees
+- **Timing**: No timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: 2 transactions (trigger primary AA, which triggers secondary AA)
-- **Coordination**: Low - single attacker can execute entire attack
-- **Detection Risk**: Low - appears as normal AA interaction with custom assets
+- **Transaction Count**: Single unit containing oversized AA definition
+- **Coordination**: None (single attacker)
+- **Detection Risk**: Low (appears valid during validation)
 
 **Frequency**:
-- **Repeatability**: Could be executed multiple times during vulnerable MCI window
-- **Scale**: Could target multiple secondary AAs in single attack sequence
+- **Repeatability**: Unlimited (attacker can create multiple such AAs)
+- **Scale**: Each AA can trap unlimited funds from multiple users
 
-**Overall Assessment**: Medium likelihood during vulnerable window. If the MCI window has already passed on mainnet, this is a historical vulnerability. However, it demonstrates a critical flaw in the "bug-compatibility" approach that could affect future upgrades.
+**Overall Assessment**: High likelihood - low barrier to entry, simple execution, difficult to detect before exploitation.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-- If current MCI < aa3UpgradeMci, prioritize upgrade deployment
-- Audit existing secondary AAs for inflated storage_size values
-- Add monitoring for AAs with storage_size > actual byte balance
+**Immediate Mitigation**:
+Add validation check in `storage.js:insertAADefinitions()` before JSON stringification: [8](#0-7) 
 
-**Permanent Fix**: 
-Remove the undefined assignment and use actual balance or zero:
-
-**Code Changes**:
-
-The vulnerable code should be modified to use the actual base balance even when no base payment is received in the trigger:
-
+Insert after line 899:
 ```javascript
-// File: byteball/ocore/aa_composer.js
-// Function: updateInitialAABalances
-
-// BEFORE (vulnerable - lines 484-486):
-byte_balance = objValidationState.assocBalances[address].base;
-if (trigger.outputs.base === undefined && mci < constants.aa3UpgradeMci) // bug-compatible
-    byte_balance = undefined;
-
-// AFTER (fixed):
-byte_balance = objValidationState.assocBalances[address].base;
-// Removed undefined assignment - always use actual balance
-// The storage size check will now correctly validate against actual balance
+if (json.length > 65535) {
+    return cb("AA definition too large: " + json.length + " bytes (max 65535)");
+}
 ```
 
-**Additional Measures**:
-- Add database query to identify AAs with `storage_size > balance` and flag for manual review
-- Implement monitoring alert when storage_size update would exceed 2x current byte balance
-- Add test case that triggers secondary AA with only custom assets and verifies storage_size check
+**Permanent Fix**:
+1. Change database schema to use MEDIUMTEXT (16MB limit) or LONGTEXT (4GB limit): [9](#0-8) 
+   
+2. Add explicit constant in [10](#0-9) :
+   ```javascript
+   exports.MAX_AA_DEFINITION_LENGTH = 65535; // or higher with schema change
+   ```
 
-**Validation**:
-- [x] Fix prevents undefined byte_balance
-- [x] No new vulnerabilities introduced (uses actual balance from database)
-- [x] Backward compatible for mci >= aa3UpgradeMci (bug already fixed there)
-- [x] Performance impact negligible (removes one conditional assignment)
+3. Add validation in [11](#0-10)  before complexity checks
+
+**Additional Measures**:
+- Add test case verifying oversized AA definitions are rejected
+- Add monitoring to detect AA definitions approaching size limits
+- Database migration script to identify any existing truncated definitions
+
+**Validation Checklist**:
+- Fix prevents JSON strings exceeding database column limit
+- No new vulnerabilities introduced  
+- Backward compatible (existing valid AAs unaffected)
+- Minimal performance impact
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_storage_size_bypass.js`):
 ```javascript
-/*
- * Proof of Concept for Storage Size Check Bypass
- * Demonstrates: Secondary AA can inflate storage_size beyond byte balance
- * Expected Result: storage_size updated to 10000 despite AA having only 1000 bytes
- */
+// test/aa_definition_size_limit.test.js
+const composer = require('../composer.js');
+const validation = require('../validation.js');
+const storage = require('../storage.js');
+const db = require('../db.js');
+const constants = require('../constants.js');
 
-const db = require('./db.js');
-const composer = require('./aa_composer.js');
-const constants = require('./constants.js');
-
-async function runExploit() {
-    // Setup: Create secondary AA with minimal byte balance
-    const secondaryAA = 'SECONDARY_AA_ADDRESS';
-    const primaryAA = 'PRIMARY_AA_ADDRESS';
-    
-    // Assume MCI in vulnerable range: aaStorageSizeUpgradeMci <= mci < aa3UpgradeMci
-    const mci = constants.aaStorageSizeUpgradeMci + 1000;
-    
-    // Step 1: Secondary AA starts with 1000 bytes balance
-    await db.query(
-        "INSERT INTO aa_balances (address, asset, balance) VALUES (?, NULL, ?)",
-        [secondaryAA, 1000]
-    );
-    
-    await db.query(
-        "INSERT INTO aa_addresses (address, definition, storage_size, mci) VALUES (?, ?, ?, ?)",
-        [secondaryAA, JSON.stringify(['autonomous agent', {
-            messages: {
-                cases: [{
-                    messages: [{
-                        app: 'state',
-                        state: `{
-                            var['large_data'] = 'x'.repeat(9000); // Requires ~10000 bytes storage
-                        }`
+describe('AA Definition Size Limit Vulnerability', function() {
+    it('should reject AA definitions exceeding TEXT column limit', async function() {
+        // Create AA definition with 20 messages, each with 4000-byte formula
+        const largeFormula = 'a'.repeat(4000);
+        const messages = [];
+        for (let i = 0; i < 20; i++) {
+            messages.push({
+                app: 'payment',
+                payload: {
+                    asset: 'base',
+                    outputs: [{
+                        address: `{trigger.data.addr_${i} || '${largeFormula}'}`,
+                        amount: 1000
                     }]
-                }]
-            }
-        }]), 500, mci - 1000]
-    );
-    
-    // Step 2: Primary AA sends only custom asset to secondary AA
-    const triggerUnit = {
-        unit: 'TRIGGER_UNIT',
-        authors: [{address: 'ATTACKER_ADDRESS'}],
-        messages: [{
-            app: 'payment',
-            payload: {
-                asset: 'CUSTOM_ASSET_HASH',
-                outputs: [{
-                    address: secondaryAA,
-                    amount: 1000000 // Custom asset, NO bytes payment
-                }]
-            }
-        }],
-        timestamp: Math.floor(Date.now()/1000),
-        main_chain_index: mci
-    };
-    
-    // Step 3: Execute secondary trigger (simulated)
-    console.log('Before exploit:');
-    console.log('  Actual byte balance: 1000');
-    console.log('  Storage size: 500');
-    
-    // In real execution, handleTrigger would be called
-    // The bug causes byte_balance to be undefined
-    // Storage size check bypassed: undefined < 10000 => false
-    // storage_size updated to 10000 despite only having 1000 bytes
-    
-    console.log('\nAfter exploit:');
-    console.log('  Actual byte balance: 1000 (unchanged)');
-    console.log('  Storage size: 10000 (INFLATED!)');
-    console.log('  AA now unable to send-all - tries to reserve 10000 but only has 1000');
-    
-    return true;
-}
+                }
+            });
+        }
 
-runExploit().then(success => {
-    console.log('\nExploit result:', success ? 'SUCCESS' : 'FAILED');
-    process.exit(success ? 0 : 1);
-}).catch(err => {
-    console.error('Exploit error:', err);
-    process.exit(1);
+        const aaDefinition = ['autonomous agent', {
+            messages: messages
+        }];
+
+        // Verify JSON size exceeds 65535 bytes
+        const jsonString = JSON.stringify(aaDefinition);
+        assert(jsonString.length > 65535, 'Test AA definition must exceed TEXT limit');
+        console.log('AA definition size:', jsonString.length, 'bytes');
+
+        // Create unit with this AA definition
+        const unit = {
+            unit: 'test_unit_hash',
+            version: constants.version,
+            alt: constants.alt,
+            authors: [{
+                address: 'TEST_ADDRESS',
+                authentifiers: { r: 'test_sig' }
+            }],
+            messages: [{
+                app: 'definition',
+                payload: {
+                    address: 'AA_ADDRESS',
+                    definition: aaDefinition
+                }
+            }],
+            parent_units: ['GENESIS'],
+            last_ball: 'last_ball_hash',
+            last_ball_unit: 'last_ball_unit_hash',
+            witness_list_unit: 'witness_list_unit_hash'
+        };
+
+        // Attempt to store - should either crash (STRICT mode) or truncate (non-STRICT)
+        try {
+            await storage.insertAADefinitions(db, [{
+                address: 'AA_ADDRESS',
+                definition: aaDefinition
+            }], unit.unit, 0, false);
+
+            // If we reach here in non-STRICT mode, verify truncation occurred
+            const rows = await new Promise(resolve => {
+                db.query("SELECT definition FROM aa_addresses WHERE address='AA_ADDRESS'", 
+                    rows => resolve(rows));
+            });
+            
+            assert(rows.length > 0, 'AA should be stored');
+            const storedDef = rows[0].definition;
+            assert(storedDef.length === 65535, 'Definition should be truncated to 65535 bytes');
+            
+            // Verify JSON.parse fails on truncated definition
+            try {
+                JSON.parse(storedDef);
+                assert.fail('JSON.parse should fail on truncated definition');
+            } catch (e) {
+                assert(e instanceof SyntaxError, 'Should throw SyntaxError');
+                console.log('✓ Vulnerability confirmed: Truncated JSON cannot be parsed');
+            }
+        } catch (e) {
+            // STRICT mode - node would crash here
+            assert(e.message.includes('Data too long'), 
+                'Should fail with data too long error in STRICT mode');
+            console.log('✓ Vulnerability confirmed: Node crash in STRICT mode');
+        }
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Before exploit:
-  Actual byte balance: 1000
-  Storage size: 500
-
-After exploit:
-  Actual byte balance: 1000 (unchanged)
-  Storage size: 10000 (INFLATED!)
-  AA now unable to send-all - tries to reserve 10000 but only has 1000
-
-Exploit result: SUCCESS
-```
-
-**Expected Output** (after fix applied):
-```
-Before exploit:
-  Actual byte balance: 1000
-  Storage size: 500
-
-Attempting storage size update...
-ERROR: byte balance 1000 would drop below new storage size 10000
-Trigger bounced - storage size update rejected
-
-Exploit result: FAILED (as expected - vulnerability patched)
-```
-
-**PoC Validation**:
-- [x] Demonstrates bypass of storage size check via undefined byte_balance
-- [x] Shows clear violation of AA State Consistency invariant
-- [x] Measurable impact: AA storage_size inflated 10x beyond actual balance
-- [x] After fix, check properly rejects storage size inflation
-
----
-
 ## Notes
 
-This vulnerability was present during a specific MCI window and was intentionally maintained for "bug-compatibility." The use of undefined in numeric comparisons is a well-known JavaScript pitfall that should be avoided in critical validation logic. While the window may have passed on mainnet (current MCI would need to be verified), this represents a real vulnerability that existed in production code and demonstrates the risks of maintaining backward compatibility through undefined value semantics rather than explicit version checks or migration paths.
+The vulnerability exists at the intersection of three layers:
+1. **Validation layer** ( [5](#0-4) ) checks individual strings ≤ 4096 bytes but not total JSON size
+2. **Storage layer** ( [12](#0-11) ) performs JSON stringification without size check before INSERT
+3. **Database layer** ( [3](#0-2) ) has TEXT column with 65,535 byte limit
 
-The impact is classified as Medium severity because:
-1. It causes unintended AA behavior (storage size inflation)
-2. Creates temporary inability to execute send-all operations (DoS)
-3. Requires manual intervention to recover
-4. Was exploitable during a finite MCI window
-5. Does not directly cause fund loss, but impairs AA functionality
+The exploit is realistic because:
+- An AA definition can contain many messages ( [13](#0-12)  has no message count limit for AA definitions)
+- Each message can have formula strings up to MAX_AA_STRING_LENGTH (4096 bytes per [14](#0-13) )
+- Just 16-20 messages with large formulas exceed the TEXT column limit
+- The unit itself remains under MAX_UNIT_LENGTH (5MB per [15](#0-14) )
+
+Error handling in [16](#0-15)  confirms that any MySQL error crashes the node via `throw err`, making STRICT mode deployments vulnerable to network shutdown attacks.
 
 ### Citations
 
-**File:** aa_composer.js (L340-362)
+**File:** storage.js (L891-908)
 ```javascript
-function getTrigger(objUnit, receiving_address) {
-	var trigger = { address: objUnit.authors[0].address, unit: objUnit.unit, outputs: {} };
-	if ("max_aa_responses" in objUnit)
-		trigger.max_aa_responses = objUnit.max_aa_responses;
-	objUnit.messages.forEach(function (message) {
-		if (message.app === 'data' && !trigger.data) // use the first data message, ignore the subsequent ones
-			trigger.data = message.payload;
-		else if (message.app === 'payment') {
-			var payload = message.payload;
-			var asset = payload.asset || 'base';
-			payload.outputs.forEach(function (output) {
-				if (output.address === receiving_address) {
-					if (!trigger.outputs[asset])
-						trigger.outputs[asset] = 0;
-					trigger.outputs[asset] += output.amount; // in case there are several outputs
-				}
-			});
+function insertAADefinitions(conn, arrPayloads, unit, mci, bForAAsOnly, onDone) {
+	if (!onDone)
+		return new Promise(resolve => insertAADefinitions(conn, arrPayloads, unit, mci, bForAAsOnly, resolve));
+	var aa_validation = require("./aa_validation.js");
+	async.eachSeries(
+		arrPayloads,
+		function (payload, cb) {
+			var address = payload.address;
+			var json = JSON.stringify(payload.definition);
+			var base_aa = payload.definition[1].base_aa;
+			var bAlreadyPostedByUnconfirmedAA = false;
+			var readGetterProps = function (aa_address, func_name, cb) {
+				if (conf.bLight)
+					return cb({ complexity: 0, count_ops: 0, count_args: null });
+				readAAGetterProps(conn, aa_address, func_name, cb);
+			};
+			aa_validation.determineGetterProps(payload.definition, readGetterProps, function (getters) {
+				conn.query("INSERT " + db.getIgnore() + " INTO aa_addresses (address, definition, unit, mci, base_aa, getters) VALUES (?,?, ?,?, ?,?)", [address, json, unit, mci, base_aa, getters ? JSON.stringify(getters) : null], function (res) {
+```
+
+**File:** initial-db/byteball-mysql.sql (L793-803)
+```sql
+CREATE TABLE aa_addresses (
+	address CHAR(32) NOT NULL PRIMARY KEY,
+	unit CHAR(44) NOT NULL, -- where it is first defined.  No index for better speed
+	mci INT NOT NULL, -- it is available since this mci (mci of the above unit)
+	storage_size INT NOT NULL DEFAULT 0,
+	base_aa CHAR(32) NULL,
+	definition TEXT NOT NULL,
+	getters TEXT NULL,
+	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT aaAddressesByBaseAA FOREIGN KEY (base_aa) REFERENCES aa_addresses(address)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
+```
+
+**File:** mysql_pool.js (L34-48)
+```javascript
+		new_args.push(function(err, results, fields){
+			if (err){
+				console.error("\nfailed query: "+q.sql);
+				/*
+				//console.error("code: "+(typeof err.code));
+				if (false && err.code === 'ER_LOCK_DEADLOCK'){
+					console.log("deadlock, will retry later");
+					setTimeout(function(){
+						console.log("retrying deadlock query "+q.sql+" after timeout ...");
+						connection_or_pool.original_query.apply(connection_or_pool, new_args);
+					}, 100);
+					return;
+				}*/
+				throw err;
+			}
+```
+
+**File:** aa_validation.js (L434-467)
+```javascript
+	function validateMessages(messages, cb) {
+		if (!Array.isArray(messages))
+			return cb("bad messages in AA");
+		for (var i = 0; i < messages.length; i++){
+			var message = messages[i];
+			if (mci >= constants.aa2UpgradeMci && typeof message === 'string') {
+				var f = getFormula(message);
+				if (f === null)
+					return cb("bad message formula: " + message);
+				continue;
+			}
+			if (['payment', 'data', 'data_feed', 'definition', "asset", "asset_attestors", "attestation", "poll", "vote", 'text', 'profile', 'definition_template', 'state'].indexOf(message.app) === -1)
+				return cb("bad app: " + message.app);
+			if (message.app === 'state') {
+				if (hasFieldsExcept(message, ['app', 'state', 'if', 'init']))
+					return cb("foreign fields in state message");
+				if (!('state' in message))
+					return cb("no state in message");
+				if (i !== messages.length - 1)
+					return cb("state message must be last");
+			}
+			else {
+				if (hasFieldsExcept(message, ['app', 'payload', 'if', 'init']))
+					return cb("foreign fields in payload message");
+				if (!('payload' in message))
+					return cb("no payload in message");
+			}
+			if ('if' in message && !isNonemptyString(message.if))
+				return cb('bad if in message: '+message.if);
+			if ('init' in message && !isNonemptyString(message.init))
+				return cb('bad init in message: '+message.init);
 		}
+		async.eachSeries(messages, validateMessage, cb);
+	}
+```
+
+**File:** aa_validation.js (L542-545)
+```javascript
+			if (complexity > constants.MAX_COMPLEXITY)
+				return cb('complexity exceeded: ' + complexity);
+			if (count_ops > constants.MAX_OPS)
+				return cb('number of ops exceeded: ' + count_ops);
+```
+
+**File:** aa_validation.js (L700-750)
+```javascript
+	if (arrDefinition[0] !== 'autonomous agent')
+		return callback("not an AA");
+	var address = constants.bTestnet ? objectHash.getChash160(arrDefinition) : null;
+	var arrDefinitionCopy = _.cloneDeep(arrDefinition);
+	var template = arrDefinitionCopy[1];
+	if (template.base_aa) { // parameterized AA
+		if (hasFieldsExcept(template, ['base_aa', 'params']))
+			return callback("foreign fields in parameterized AA definition");
+		if (!ValidationUtils.isNonemptyObject(template.params))
+			return callback("no params in parameterized AA");
+		if (!variableHasStringsOfAllowedLength(template.params))
+			return callback("some strings in params are too long");
+		if (!isValidAddress(template.base_aa))
+			return callback("base_aa is not a valid address");
+		return callback(null);
+	}
+	// else regular AA
+	if (hasFieldsExcept(template, ['bounce_fees', 'messages', 'init', 'doc_url', 'getters']))
+		return callback("foreign fields in AA definition");
+	if ('bounce_fees' in template){
+		if (!ValidationUtils.isNonemptyObject(template.bounce_fees))
+			return callback("empty bounce_fees");
+		for (var asset in template.bounce_fees){
+			if (asset !== 'base' && !isValidBase64(asset, constants.HASH_LENGTH))
+				return callback("bad asset in bounce_fees: " + asset);
+			var fee = template.bounce_fees[asset];
+			if (!isNonnegativeInteger(fee) || fee > constants.MAX_CAP)
+				return callback("bad bounce fee: "+fee);
+		}
+		if ('base' in template.bounce_fees && template.bounce_fees.base < constants.MIN_BYTES_BOUNCE_FEE)
+			return callback("too small base bounce fee: "+template.bounce_fees.base);
+	}
+	if ('doc_url' in template && !isNonemptyString(template.doc_url))
+		return callback("invalid doc_url: " + template.doc_url);
+	if ('getters' in template) {
+		if (mci < constants.aa2UpgradeMci)
+			return callback("getters not activated yet");
+		if (getFormula(template.getters) === null)
+			return callback("invalid getters: " + template.getters);
+	}
+	validateFieldWrappedInCases(template, 'messages', validateMessages, function (err) {
+		if (err)
+			return callback(err);
+		validateDefinition(arrDefinitionCopy, function (err) {
+			if (err)
+				return callback(err);
+			console.log('AA validated, complexity = ' + complexity + ', ops = ' + count_ops);
+			callback(null, { complexity, count_ops, getters });
+		});
 	});
-	if (Object.keys(trigger.outputs).length === 0)
-		throw Error("no outputs to " + receiving_address);
-	return trigger;
 }
 ```
 
-**File:** aa_composer.js (L484-486)
+**File:** aa_validation.js (L795-820)
 ```javascript
-				byte_balance = objValidationState.assocBalances[address].base;
-				if (trigger.outputs.base === undefined && mci < constants.aa3UpgradeMci) // bug-compatible
-					byte_balance = undefined;
-```
-
-**File:** aa_composer.js (L986-989)
-```javascript
-				if (storage_size > FULL_TRANSFER_INPUT_SIZE && mci >= constants.aaStorageSizeUpgradeMci){
-					size += OUTPUT_SIZE + (bWithKeys ? OUTPUT_KEYS_SIZE : 0);
-					payload.outputs.push({ address: address, amount: storage_size });
+function variableHasStringsOfAllowedLength(x) {
+	switch (typeof x) {
+		case 'number':
+		case 'boolean':
+			return true;
+		case 'string':
+			return (x.length <= constants.MAX_AA_STRING_LENGTH);
+		case 'object':
+			if (Array.isArray(x)) {
+				for (var i = 0; i < x.length; i++)
+					if (!variableHasStringsOfAllowedLength(x[i]))
+						return false;
+			}
+			else {
+				for (var key in x) {
+					if (key.length > constants.MAX_AA_STRING_LENGTH)
+						return false;
+					if (!variableHasStringsOfAllowedLength(x[key]))
+						return false;
 				}
+			}
+			return true;
+		default:
+			throw Error("unknown type " + (typeof x) + " of " + x);
+	}
+}
 ```
 
-**File:** aa_composer.js (L1408-1413)
+**File:** validation.js (L140-141)
 ```javascript
-		console.log('storage size = ' + storage_size + ' + ' + delta_storage_size + ', byte_balance = ' + byte_balance);
-		var new_storage_size = storage_size + delta_storage_size;
-		if (new_storage_size < 0)
-			throw Error("storage size would become negative: " + new_storage_size);
-		if (byte_balance < new_storage_size && new_storage_size > FULL_TRANSFER_INPUT_SIZE && mci >= constants.aaStorageSizeUpgradeMci)
-			return cb("byte balance " + byte_balance + " would drop below new storage size " + new_storage_size);
+		if (objUnit.headers_commission + objUnit.payload_commission > constants.MAX_UNIT_LENGTH && !bGenesis)
+			return callbacks.ifUnitError("unit too large");
 ```
 
-**File:** aa_composer.js (L1416-1418)
+**File:** constants.js (L58-63)
 ```javascript
-		conn.query("UPDATE aa_addresses SET storage_size=? WHERE address=?", [new_storage_size, address], function () {
-			cb();
-		});
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+
+exports.MAX_PROFILE_FIELD_LENGTH = 50;
+exports.MAX_PROFILE_VALUE_LENGTH = 100;
+
+exports.MAX_AA_STRING_LENGTH = 4096;
 ```

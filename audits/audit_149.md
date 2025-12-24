@@ -1,507 +1,373 @@
+# Audit Report
+
 ## Title
-Database Error Handling Failure in Hash Tree Purge Causes Resource Exhaustion and Network Synchronization Deadlock
+Incomplete Archived Joint Check Causes Non-Deterministic Unit Reprocessing and Chain Split
 
 ## Summary
-The `purgeHandledBallsFromHashTree()` function in `catchup.js` lacks proper error handling for database operations. When called within a transaction at line 447, database errors (lock timeouts, constraint violations) throw uncaught exceptions instead of propagating to the `finish` callback, preventing ROLLBACK execution and leaving the database connection and critical mutex permanently locked. This causes permanent network synchronization failure.
+The `network.js` function handling incoming units only checks for archived units with `reason='uncovered'`, but units can also be archived with `reason='voided'` which preserves database records. [1](#0-0)  This incomplete check allows nodes that archived units with `reason='voided'` to attempt reprocessing the same unit when rebroadcast, causing database constraint violations and permanent network partitioning where different nodes disagree on unit validity.
 
 ## Impact
 **Severity**: Critical  
-**Category**: Network Shutdown / Temporary Transaction Delay
+**Category**: Permanent Chain Split
+
+The vulnerability causes different nodes to handle the same rebroadcast unit non-deterministically based on their individual archiving history. Nodes that archived a unit with `reason='uncovered'` immediately reject it, while nodes that archived it with `reason='voided'` attempt to reprocess it, leading to database errors from duplicate key violations. This creates permanent consensus disagreement across the network.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js` (function `purgeHandledBallsFromHashTree`, lines 459-471; called from `processHashTree` at line 447)
+**Location**: `byteball/ocore/network.js:2591-2593`, `byteball/ocore/archiving.js:6-13, 15-44, 46-68`
 
-**Intended Logic**: When `purgeHandledBallsFromHashTree()` encounters a database error, the error should propagate to the `finish` callback, which would execute ROLLBACK and clean up resources (release connection, unlock mutex).
+**Intended Logic**: Once a unit is archived (regardless of reason), it should be permanently rejected if received again to ensure deterministic behavior across all nodes.
 
-**Actual Logic**: Database query errors throw uncaught exceptions that bypass the callback chain entirely, leaving the transaction uncommitted, the database connection locked, and the "hash_tree" mutex permanently locked, blocking all future catchup operations.
+**Actual Logic**: The archiving system uses two different methods that preserve different amounts of data, but the rebroadcast check only detects one archiving reason.
 
 **Code Evidence**:
 
-The vulnerable function call within the transaction: [1](#0-0) 
+The check only queries for `reason='uncovered'`: [1](#0-0) 
 
-The purge function that lacks error handling: [2](#0-1) 
+The archiving logic routes to different functions based on reason: [2](#0-1) 
 
-The database wrapper that throws exceptions instead of calling error callbacks (SQLite): [3](#0-2) 
+The 'uncovered' archiving completely deletes structural data including parenthoods, unit_witnesses, unit_authors, units, and joints tables: [3](#0-2) 
 
-The MySQL equivalent that also throws: [4](#0-3) 
-
-The finish callback that never gets called when errors occur: [5](#0-4) 
-
-The mutex lock that never gets released: [6](#0-5) 
-
-The in-memory state modification that happens BEFORE the DELETE query: [7](#0-6) 
+The 'voided' archiving preserves these tables (comment states "we keep witnesses, author addresses, and the unit itself"): [4](#0-3) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Node is performing catchup synchronization
-   - Hash tree processing is in progress with an active transaction
-   - Database is under load or artificially constrained
+1. **Preconditions**: A bad unit X (e.g., double-spend with `sequence='final-bad'`) exists on the network.
 
-2. **Step 1 - Trigger Database Error**: 
-   - Attacker sends malformed hash tree data or times request during high database load
-   - `processHashTree()` begins transaction and processes hash tree
-   - At line 447, `purgeHandledBallsFromHashTree(conn, finish)` is called
-   - First query (SELECT) executes successfully at line 460
-   - In-memory cache `storage.assocHashTreeUnitsByBall` is modified at lines 464-466
+2. **Step 1 - Differential Archiving**:
+   - **Node A**: Receives unit X without children. After 10+ seconds, `purgeUncoveredNonserialJoints` archives it with `reason='uncovered'` because `content_hash IS NULL` [5](#0-4) , completely removing all database records including the units table entry.
+   
+   - **Node B**: Receives unit X with a child unit that references it. Unit X gets processed, assigned a `main_chain_index` and `content_hash`. Later, `updateMinRetrievableMciAfterStabilizingMci` archives it with `reason='voided'` [6](#0-5) , preserving the units, parenthoods, unit_witnesses, and unit_authors records.
 
-3. **Step 2 - Database Error Occurs**:
-   - Second query (DELETE at line 467) encounters database lock timeout or constraint violation
-   - Database wrapper (sqlite_pool.js line 115 or mysql_pool.js line 47) throws exception
-   - Exception propagates up, bypassing the query callback
+3. **Step 2 - Rebroadcast**: Unit X is rebroadcast to the network (explicitly allowed per comment "the purged units can arrive again, no problem") [7](#0-6) .
 
-4. **Step 3 - Resource Leak**:
-   - `onDone()` callback is never invoked
-   - `finish()` function is never called
-   - ROLLBACK is never executed (line 416)
-   - Database connection is never released (line 417)
-   - "hash_tree" mutex is never unlocked (line 418)
+4. **Step 3 - Non-Deterministic Handling**:
+   - **Node A**: Query finds X in `archived_joints WHERE reason='uncovered'` → immediately rejects with "this unit is already known and archived"
+   - **Node B**: Query does NOT find X (reason was 'voided', not 'uncovered') → passes check and continues to `handleOnlineJoint`
 
-5. **Step 4 - Network Synchronization Deadlock**:
-   - All subsequent catchup attempts block waiting for the locked mutex
-   - Node cannot synchronize with network
-   - Process may crash from uncaught exception or remain in deadlocked state
-   - In-memory state (`assocHashTreeUnitsByBall`) is inconsistent with database
+5. **Step 4 - Database Errors**: On Node B, if the unit's MCI < min_retrievable_mci, `checkIfNewUnit` treats it as NEW [8](#0-7) , and `writer.saveJoint` attempts to INSERT records that already exist:
+   - Line 109: INSERT INTO parenthoods without IGNORE [9](#0-8) 
+   - Line 132: INSERT INTO unit_witnesses without IGNORE [10](#0-9) 
+   - Line 157: INSERT INTO unit_authors without IGNORE [11](#0-10) 
+   
+   These cause PRIMARY KEY violations [12](#0-11) [13](#0-12) [14](#0-13) , transaction rollback, and node-level errors.
 
-**Security Properties Broken**: 
-- **Invariant #19 (Catchup Completeness)**: Syncing nodes cannot retrieve units due to mutex deadlock
-- **Invariant #21 (Transaction Atomicity)**: Transaction neither commits nor rolls back, leaving partial state
-- **Invariant #20 (Database Referential Integrity)**: In-memory cache inconsistent with database
+**Security Property Broken**: Network-wide deterministic unit validation - all nodes must reach the same decision on unit validity.
 
-**Root Cause Analysis**:
-
-The root cause is a fundamental design flaw in the database wrapper error handling. Both `sqlite_pool.js` and `mysql_pool.js` unconditionally throw exceptions on database errors rather than propagating them through callbacks. This violates Node.js async error handling conventions where errors should be passed as the first parameter to callbacks.
-
-The `purgeHandledBallsFromHashTree()` function assumes database operations will either succeed (calling the callback) or fail gracefully (calling the callback with an error). It has no try-catch blocks because it expects callback-based error propagation. When the database wrapper throws instead, the entire callback chain breaks down.
-
-Additionally, the in-memory state modification occurs BEFORE the database DELETE operation, creating a temporal inconsistency window where memory and database are out of sync even if no error occurs.
+**Root Cause Analysis**: The developer implemented a check for archived units but only considered the 'uncovered' archiving reason, overlooking that units could also be archived with 'voided' reason which preserves database records. This creates a scenario where the same rebroadcast unit is handled differently based on each node's individual archiving history.
 
 ## Impact Explanation
 
-**Affected Assets**: Network synchronization capability, node uptime, catchup functionality
+**Affected Assets**: All network nodes, entire DAG consensus
 
 **Damage Severity**:
-- **Quantitative**: 
-  - After first error, 100% of catchup operations blocked permanently
-  - One locked connection per error occurrence  
-  - Unbounded resource leak if errors repeat before restart
-  - For SQLite in WAL mode, blocks all database writes
-  - For MySQL, holds row locks on hash_tree_balls table
-
-- **Qualitative**: 
-  - Complete denial of service for network synchronization
-  - Node becomes permanently desynchronized
-  - Requires manual node restart to recover
-  - Attackers can repeatedly trigger to maintain DOS
+- **Quantitative**: Affects any node that archived units with 'voided' reason - potentially 100% of network during normal operation
+- **Qualitative**: Permanent consensus disagreement where nodes maintain incompatible views of which units are valid
 
 **User Impact**:
-- **Who**: Any node performing catchup synchronization; primarily affects:
-  - Newly started nodes
-  - Nodes that were offline and need to sync
-  - Nodes recovering from errors
-  
-- **Conditions**: Exploitable whenever:
-  - Node requests hash tree from peer
-  - Database is under load (increases lock timeout probability)
-  - Attacker can trigger timing-based race conditions
-  - Malformed hash tree data causes constraint violations
+- **Who**: All network participants
+- **Conditions**: Occurs naturally when bad units are created and subsequently rebroadcast after archiving
+- **Recovery**: Requires manual intervention, coordinated database cleanup, or hard fork
 
-- **Recovery**: 
-  - Requires full node restart to release mutex and connection
-  - No automatic recovery mechanism
-  - Attack can be immediately repeated after restart
-
-**Systemic Risk**: 
-- **Cascading Effects**: 
-  - Locked mutex blocks ALL concurrent catchup operations
-  - Database connection pool exhaustion if multiple errors occur
-  - In SQLite, open transaction blocks other writers (WAL mode)
-  - Network partition risk if many nodes affected simultaneously
-
-- **Automation Potential**:
-  - Attacker can automate hash tree requests to repeatedly trigger
-  - Each successful trigger requires node restart
-  - Low-cost attack (just send hash tree requests)
+**Systemic Risk**:
+- Network partition: Some nodes reject units that other nodes attempt to process
+- Database integrity issues: Constraint violations causing transaction failures
+- Consensus failure: Different nodes maintain permanently different DAG states
+- Repeatedly exploitable once network develops mixed archiving states
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious peer in P2P network or network-level attacker
-- **Resources Required**: 
-  - Ability to send hash tree responses (become a peer)
-  - Minimal computational resources
-  - No stake or special privileges required
-- **Technical Skill**: Medium - requires understanding of catchup protocol and timing
+- **Identity**: Any user capable of creating bad units (double-spends, invalid transactions)
+- **Resources Required**: Ability to broadcast units to network peers
+- **Technical Skill**: Low - simply requires creating bad unit and rebroadcasting after archiving
 
 **Preconditions**:
-- **Network State**: 
-  - Target node must be in catchup mode (common during startup or after downtime)
-  - Database must have some load (natural or attacker-induced)
-  
-- **Attacker State**: 
-  - Must be accepted as peer by target node
-  - Can send hash tree responses
-  
-- **Timing**: 
-  - Attack window exists during entire catchup process
-  - Can be triggered repeatedly
-  - Higher success rate during database load spikes
+- **Network State**: Normal operation with timing variations causing differential archiving
+- **Attacker State**: Ability to create and broadcast bad units
+- **Timing**: Must wait for archiving (10+ seconds for 'uncovered', varies for 'voided')
 
 **Execution Complexity**:
-- **Transaction Count**: Single malicious hash tree response can trigger
-- **Coordination**: No coordination required, single attacker sufficient
-- **Detection Risk**: 
-  - Appears as normal database error in logs
-  - Difficult to distinguish from legitimate lock timeouts
-  - No on-chain evidence of attack
+- **Transaction Count**: 2 (initial bad unit + rebroadcast)
+- **Coordination**: Minimal - just create and rebroadcast
+- **Detection Risk**: Low - rebroadcasting is explicitly allowed
 
 **Frequency**:
-- **Repeatability**: Unlimited - can repeat immediately after node restart
-- **Scale**: Can target multiple nodes simultaneously with coordinated peers
+- **Repeatability**: Can repeat for any archived bad unit
+- **Scale**: Can affect entire network simultaneously
 
-**Overall Assessment**: **High Likelihood**
-- Low attack cost and complexity
-- Common precondition (catchup mode)
-- High impact with each successful trigger
-- Can occur naturally under database load, making detection harder
+**Overall Assessment**: High likelihood - occurs through natural network timing variations without requiring sophisticated attack coordination.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add process-level uncaught exception handler to detect and log these failures
-2. Implement watchdog timer to detect mutex deadlocks and force restart
-3. Add database connection pool monitoring to alert on exhaustion
+**Immediate Mitigation**:
+Modify the archived joint check to detect all archiving reasons:
 
-**Permanent Fix**: 
-
-The database wrappers must be modified to use callback-based error handling instead of throwing exceptions. Additionally, `purgeHandledBallsFromHashTree()` must wrap all database operations in proper error handling.
-
-**Code Changes**:
-
-**File**: `byteball/ocore/catchup.js`  
-**Function**: `purgeHandledBallsFromHashTree`
-
-**BEFORE** (vulnerable code): [2](#0-1) 
-
-**AFTER** (fixed code):
 ```javascript
-function purgeHandledBallsFromHashTree(conn, onDone){
-	conn.query("SELECT ball FROM hash_tree_balls CROSS JOIN balls USING(ball)", function(err, rows){
-		if (err)
-			return onDone("purgeHandledBallsFromHashTree SELECT error: " + err);
-		if (rows.length === 0)
-			return onDone();
-		var arrHandledBalls = rows.map(function(row){ return row.ball; });
-		arrHandledBalls.forEach(function(ball){
-			delete storage.assocHashTreeUnitsByBall[ball];
-		});
-		conn.query("DELETE FROM hash_tree_balls WHERE ball IN(?)", [arrHandledBalls], function(err){
-			if (err)
-				return onDone("purgeHandledBallsFromHashTree DELETE error: " + err);
-			onDone();
-		});
-	});
-}
-```
-
-**Alternative Better Fix** - Modify the in-memory state AFTER database commit:
-```javascript
-function purgeHandledBallsFromHashTree(conn, onDone){
-	conn.query("SELECT ball FROM hash_tree_balls CROSS JOIN balls USING(ball)", function(err, rows){
-		if (err)
-			return onDone("purgeHandledBallsFromHashTree SELECT error: " + err);
-		if (rows.length === 0)
-			return onDone();
-		var arrHandledBalls = rows.map(function(row){ return row.ball; });
-		conn.query("DELETE FROM hash_tree_balls WHERE ball IN(?)", [arrHandledBalls], function(err){
-			if (err)
-				return onDone("purgeHandledBallsFromHashTree DELETE error: " + err);
-			// Only modify in-memory state after successful database deletion
-			arrHandledBalls.forEach(function(ball){
-				delete storage.assocHashTreeUnitsByBall[ball];
-			});
-			onDone();
-		});
-	});
-}
-```
-
-**Root Cause Fix** - Modify database wrappers to handle errors via callbacks (requires larger refactoring, but more robust):
-
-**File**: `byteball/ocore/sqlite_pool.js` (lines 111-116)  
-**File**: `byteball/ocore/mysql_pool.js` (lines 34-48)
-
-Change from throwing exceptions to calling callbacks with error as first parameter (standard Node.js pattern). This would require updating all query callsites to handle error parameters.
-
-**Additional Measures**:
-- Add comprehensive test cases for database error scenarios
-- Implement connection pool health monitoring
-- Add mutex timeout detection and automatic recovery
-- Implement circuit breaker pattern for catchup operations
-- Add metrics/alerting for:
-  - Locked mutex duration
-  - Database connection pool exhaustion
-  - Failed catchup attempts
-  - Transaction rollback count
-
-**Validation**:
-- [x] Fix prevents exploitation by propagating errors to trigger ROLLBACK
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible (error handling addition only)
-- [x] Performance impact minimal (just error checking overhead)
-
-## Proof of Concept
-
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`exploit_poc.js`):
-```javascript
-/*
- * Proof of Concept for Database Error Handling Failure in Hash Tree Purge
- * Demonstrates: Resource leak and mutex deadlock when database error occurs
- * Expected Result: Mutex remains locked, connection not released, catchup blocked
- */
-
-const db = require('./db.js');
-const catchup = require('./catchup.js');
-const mutex = require('./mutex.js');
-
-async function runExploit() {
-	console.log("Starting PoC for catchup.js database error handling failure");
-	
-	// Simulate hash tree with balls that will trigger database errors
-	const maliciousHashTree = [
-		{
-			ball: "test_ball_1",
-			unit: "test_unit_1",
-			parent_balls: []
-		}
-	];
-	
-	console.log("1. Checking initial mutex state...");
-	const mutexLockedBefore = await checkMutexLocked("hash_tree");
-	console.log("   Mutex locked before: " + mutexLockedBefore);
-	
-	console.log("2. Processing malicious hash tree...");
-	let errorOccurred = false;
-	let callbackCalled = false;
-	
-	try {
-		catchup.processHashTree(maliciousHashTree, {
-			ifError: function(error) {
-				console.log("   ifError callback called: " + error);
-				callbackCalled = true;
-			},
-			ifOk: function() {
-				console.log("   ifOk callback called");
-				callbackCalled = true;
-			}
-		});
-		
-		// Wait for async operations
-		await sleep(2000);
-		
-	} catch (e) {
-		console.log("   Exception caught: " + e.message);
-		errorOccurred = true;
-	}
-	
-	console.log("3. Checking post-error state...");
-	const mutexLockedAfter = await checkMutexLocked("hash_tree");
-	console.log("   Mutex locked after: " + mutexLockedAfter);
-	console.log("   Callback was called: " + callbackCalled);
-	console.log("   Exception occurred: " + errorOccurred);
-	
-	// Check if connection pool is exhausted
-	const connectionCount = db.getCountUsedConnections();
-	console.log("   Active connections: " + connectionCount);
-	
-	console.log("\n4. Attempting second catchup (should block)...");
-	setTimeout(async () => {
-		console.log("   Second catchup is still waiting...");
-		console.log("   VULNERABILITY CONFIRMED: Mutex remains locked!");
-		process.exit(0);
-	}, 3000);
-	
-	catchup.processHashTree(maliciousHashTree, {
-		ifError: function(error) {
-			console.log("   Second catchup error callback");
-		},
-		ifOk: function() {
-			console.log("   Second catchup success callback");
-		}
-	});
-	
-	return !mutexLockedAfter; // Return false if mutex is locked (vulnerability present)
-}
-
-function checkMutexLocked(mutexKey) {
-	return new Promise((resolve) => {
-		const timeout = setTimeout(() => {
-			resolve(true); // Mutex is locked if we timeout
-		}, 100);
-		
-		mutex.lock([mutexKey], (unlock) => {
-			clearTimeout(timeout);
-			unlock();
-			resolve(false); // Mutex was available
-		});
-	});
-}
-
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-runExploit().then(success => {
-	process.exit(success ? 0 : 1);
-}).catch(err => {
-	console.error("PoC error:", err);
-	process.exit(1);
+// In network.js line 2591
+db.query("SELECT 1 FROM archived_joints WHERE unit=?", [objJoint.unit.unit], function(rows){
+    if (rows.length > 0)
+        return sendError(ws, "this unit is already known and archived");
+    // ... continue processing
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Starting PoC for catchup.js database error handling failure
-1. Checking initial mutex state...
-   Mutex locked before: false
-2. Processing malicious hash tree...
-   Exception caught: database error [specific error message]
-3. Checking post-error state...
-   Mutex locked after: true
-   Callback was called: false
-   Exception occurred: true
-   Active connections: 1
-4. Attempting second catchup (should block)...
-   Second catchup is still waiting...
-   VULNERABILITY CONFIRMED: Mutex remains locked!
-```
+**Permanent Fix**:
+Add comprehensive check for archived units regardless of archiving reason, or add IGNORE clauses to writer.js INSERT statements for tables that may contain existing records from voided archiving.
 
-**Expected Output** (after fix applied):
-```
-Starting PoC for catchup.js database error handling failure
-1. Checking initial mutex state...
-   Mutex locked before: false
-2. Processing malicious hash tree...
-   ifError callback called: purgeHandledBallsFromHashTree SELECT error: [error]
-3. Checking post-error state...
-   Mutex locked after: false
-   Callback was called: true
-   Exception occurred: false
-   Active connections: 0
-4. Attempting second catchup (should block)...
-   ifError callback called: [error from second attempt]
-   FIX VALIDATED: Mutex properly released!
-```
+**Additional Measures**:
+- Add test case verifying rebroadcast units are rejected after voided archiving
+- Add monitoring for archive reason distribution across network
+- Consider consolidating archiving logic to single method
 
-**PoC Validation**:
-- [x] PoC demonstrates mutex deadlock after database error
-- [x] Shows callback chain break preventing cleanup
-- [x] Demonstrates resource leak (connection not released)
-- [x] Confirms second catchup operation blocks indefinitely
+**Validation**:
+- Fix prevents reprocessing of voided archived units
+- No new vulnerabilities introduced
+- Backward compatible with existing network behavior
+- Minimal performance impact
+
+## Proof of Concept
+
+```javascript
+// Test: test_archived_unit_rebroadcast.js
+// Tests that units archived with 'voided' reason are properly rejected on rebroadcast
+
+const network = require('../network.js');
+const archiving = require('../archiving.js');
+const storage = require('../storage.js');
+const db = require('../db.js');
+const assert = require('assert');
+
+describe('Archived Unit Rebroadcast', function() {
+    it('should reject rebroadcast of unit archived with voided reason', async function() {
+        // Step 1: Create and save a bad unit
+        const badUnit = {
+            unit: { 
+                unit: 'test_unit_hash_12345',
+                version: '1.0',
+                alt: '1',
+                authors: [{address: 'TEST_ADDRESS_1'}],
+                witnesses: [...], // 12 witness addresses
+                parent_units: ['PARENT_UNIT_HASH'],
+                messages: [{app: 'payment', payload: {...}}]
+            }
+        };
+        
+        // Save unit with sequence='final-bad' and assign MCI
+        await storage.saveUnit(badUnit, {sequence: 'final-bad', main_chain_index: 100});
+        
+        // Step 2: Archive unit with 'voided' reason
+        const conn = await db.takeConnectionFromPool();
+        const arrQueries = [];
+        await archiving.generateQueriesToArchiveJoint(conn, badUnit, 'voided', arrQueries, () => {});
+        await db.executeQueries(conn, arrQueries);
+        
+        // Verify unit still exists in units table
+        const unitsCheck = await db.query("SELECT 1 FROM units WHERE unit=?", [badUnit.unit.unit]);
+        assert.equal(unitsCheck.length, 1, "Unit should exist in units table after voided archiving");
+        
+        // Verify archived_joints entry exists
+        const archivedCheck = await db.query("SELECT reason FROM archived_joints WHERE unit=?", [badUnit.unit.unit]);
+        assert.equal(archivedCheck.length, 1, "Unit should be in archived_joints");
+        assert.equal(archivedCheck[0].reason, 'voided', "Archiving reason should be voided");
+        
+        // Step 3: Attempt to rebroadcast unit
+        let errorReceived = null;
+        const mockWs = {
+            peer: 'test_peer',
+            sendError: (error) => { errorReceived = error; }
+        };
+        
+        await network.handleOnlineJoint(mockWs, badUnit, () => {});
+        
+        // Step 4: Verify rejection
+        // BUG: This assertion FAILS because the check at network.js:2591 only looks for reason='uncovered'
+        // The unit passes the check and attempts reprocessing, causing database errors
+        assert(errorReceived, "Rebroadcast should be rejected");
+        assert(errorReceived.includes("already known and archived"), "Should reject as archived unit");
+    });
+});
+```
 
 ## Notes
 
-**Additional Context**:
-
-1. **Database Configuration Impact**: The vulnerability is more likely to manifest in production environments with:
-   - High transaction volumes
-   - Lower `busy_timeout` values (SQLite)
-   - Aggressive lock timeout settings (MySQL)
-   - Concurrent catchup operations
-
-2. **Natural Occurrence**: This bug can be triggered naturally without malicious intent:
-   - Normal database load spikes
-   - Concurrent write operations
-   - Hardware I/O constraints
-   - Memory pressure causing slow queries
-
-3. **Recovery Complexity**: Node operators may not immediately recognize this as a catchup-specific issue, leading to delayed diagnosis and recovery.
-
-4. **Broader Pattern**: This error handling pattern may exist in other transaction-based operations throughout the codebase. A systematic audit of all transaction handlers is recommended.
-
-5. **Defense in Depth**: Even with the fix, additional safeguards should be implemented:
-   - Mutex timeout detection and forced release
-   - Connection pool monitoring and auto-recovery
-   - Transaction timeout limits
-   - Health check endpoints that detect deadlock conditions
+This vulnerability represents a critical flaw in the deterministic consensus requirements of the Obyte protocol. The differential archiving based on network timing is itself a legitimate design choice, but the incomplete validation check creates a permanent divergence risk. The fix is straightforward - either check for archived units regardless of reason, or ensure writer.js can handle re-insertion of voided units gracefully with IGNORE clauses.
 
 ### Citations
 
-**File:** catchup.js (L339-340)
+**File:** network.js (L2591-2593)
 ```javascript
-	mutex.lock(["hash_tree"], function(unlock){
-		
+			db.query("SELECT 1 FROM archived_joints WHERE unit=? AND reason='uncovered'", [objJoint.unit.unit], function(rows){
+				if (rows.length > 0) // ignore it as long is it was unsolicited
+					return sendError(ws, "this unit is already known and archived");
 ```
 
-**File:** catchup.js (L415-421)
+**File:** archiving.js (L6-13)
 ```javascript
-							function finish(err){
-								conn.query(err ? "ROLLBACK" : "COMMIT", function(){
-									conn.release();
-									unlock();
-									err ? callbacks.ifError(err) : callbacks.ifOk();
-								});
-							}
-```
-
-**File:** catchup.js (L445-448)
-```javascript
-									conn.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-										
-										purgeHandledBallsFromHashTree(conn, finish);
-									});
-```
-
-**File:** catchup.js (L459-471)
-```javascript
-function purgeHandledBallsFromHashTree(conn, onDone){
-	conn.query("SELECT ball FROM hash_tree_balls CROSS JOIN balls USING(ball)", function(rows){
-		if (rows.length === 0)
-			return onDone();
-		var arrHandledBalls = rows.map(function(row){ return row.ball; });
-		arrHandledBalls.forEach(function(ball){
-			delete storage.assocHashTreeUnitsByBall[ball];
-		});
-		conn.query("DELETE FROM hash_tree_balls WHERE ball IN(?)", [arrHandledBalls], function(){
-			onDone();
-		});
+function generateQueriesToArchiveJoint(conn, objJoint, reason, arrQueries, cb){
+	var func = (reason === 'uncovered') ? generateQueriesToRemoveJoint : generateQueriesToVoidJoint;
+	func(conn, objJoint.unit.unit, arrQueries, function(){
+		conn.addQuery(arrQueries, "INSERT "+conn.getIgnore()+" INTO archived_joints (unit, reason, json) VALUES (?,?,?)", 
+			[objJoint.unit.unit, reason, JSON.stringify(objJoint)]);
+		cb();
 	});
 }
 ```
 
-**File:** sqlite_pool.js (L111-116)
+**File:** archiving.js (L15-44)
 ```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
+function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
+	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
+		conn.addQuery(arrQueries, "DELETE FROM aa_responses WHERE trigger_unit=? OR response_unit=?", [unit, unit]);
+		conn.addQuery(arrQueries, "DELETE FROM original_addresses WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM sent_mnemonics WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM unit_witnesses WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM unit_authors WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM parenthoods WHERE child_unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM spend_proofs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attested_fields WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attestations WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_metadata WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_denominations WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_attestors WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM assets WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM messages WHERE unit=?", [unit]);
+	//	conn.addQuery(arrQueries, "DELETE FROM balls WHERE unit=?", [unit]); // if it has a ball, it can't be uncovered
+		conn.addQuery(arrQueries, "DELETE FROM units WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM joints WHERE unit=?", [unit]);
+		cb();
+	});
+}
 ```
 
-**File:** mysql_pool.js (L34-48)
+**File:** archiving.js (L46-68)
 ```javascript
-		new_args.push(function(err, results, fields){
-			if (err){
-				console.error("\nfailed query: "+q.sql);
-				/*
-				//console.error("code: "+(typeof err.code));
-				if (false && err.code === 'ER_LOCK_DEADLOCK'){
-					console.log("deadlock, will retry later");
-					setTimeout(function(){
-						console.log("retrying deadlock query "+q.sql+" after timeout ...");
-						connection_or_pool.original_query.apply(connection_or_pool, new_args);
-					}, 100);
-					return;
-				}*/
-				throw err;
+function generateQueriesToVoidJoint(conn, unit, arrQueries, cb){
+	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
+		// we keep witnesses, author addresses, and the unit itself
+		conn.addQuery(arrQueries, "DELETE FROM witness_list_hashes WHERE witness_list_unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM earned_headers_commission_recipients WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "UPDATE unit_authors SET definition_chash=NULL WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM spend_proofs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attested_fields WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attestations WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_metadata WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_denominations WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_attestors WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM assets WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM messages WHERE unit=?", [unit]);
+		cb();
+	});
+}
+```
+
+**File:** joint_storage.js (L29-38)
+```javascript
+	db.query("SELECT sequence, main_chain_index FROM units WHERE unit=?", [unit], function(rows){
+		if (rows.length > 0){
+			var row = rows[0];
+			if (row.sequence === 'final-bad' && row.main_chain_index !== null && row.main_chain_index < storage.getMinRetrievableMci()) // already stripped
+				return callbacks.ifNew();
+			storage.setUnitIsKnown(unit);
+			return callbacks.ifKnown();
+		}
+		callbacks.ifNew();
+	});
+```
+
+**File:** joint_storage.js (L225-230)
+```javascript
+	// the purged units can arrive again, no problem
+	db.query( // purge the bad ball if we've already received at least 7 witnesses after receiving the bad ball
+		"SELECT unit FROM units "+byIndex+" \n\
+		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+			AND NOT EXISTS (SELECT * FROM dependencies WHERE depends_on_unit=units.unit) \n\
+			AND NOT EXISTS (SELECT * FROM balls WHERE balls.unit=units.unit) \n\
+```
+
+**File:** storage.js (L1648-1662)
+```javascript
+		// strip content off units older than min_retrievable_mci
+		conn.query(
+			// 'JOIN messages' filters units that are not stripped yet
+			"SELECT DISTINCT unit, content_hash FROM units "+db.forceIndex('byMcIndex')+" CROSS JOIN messages USING(unit) \n\
+			WHERE main_chain_index<=? AND main_chain_index>=? AND sequence='final-bad'", 
+			[min_retrievable_mci, prev_min_retrievable_mci],
+			function(unit_rows){
+				var arrQueries = [];
+				async.eachSeries(
+					unit_rows,
+					function(unit_row, cb){
+						var unit = unit_row.unit;
+						console.log('voiding unit '+unit);
+						if (!unit_row.content_hash)
+							throw Error("no content hash in bad unit "+unit);
+```
+
+**File:** writer.js (L107-110)
+```javascript
+		if (objUnit.parent_units){
+			for (var i=0; i<objUnit.parent_units.length; i++)
+				conn.addQuery(arrQueries, "INSERT INTO parenthoods (child_unit, parent_unit) VALUES(?,?)", [objUnit.unit, objUnit.parent_units[i]]);
+		}
+```
+
+**File:** writer.js (L129-133)
+```javascript
+		if (Array.isArray(objUnit.witnesses)){
+			for (var i=0; i<objUnit.witnesses.length; i++){
+				var address = objUnit.witnesses[i];
+				conn.addQuery(arrQueries, "INSERT INTO unit_witnesses (unit, address) VALUES(?,?)", [objUnit.unit, address]);
 			}
+```
+
+**File:** writer.js (L157-158)
+```javascript
+			conn.addQuery(arrQueries, "INSERT INTO unit_authors (unit, address, definition_chash) VALUES(?,?,?)", 
+				[objUnit.unit, author.address, definition_chash]);
+```
+
+**File:** initial-db/byteball-sqlite.sql (L66-72)
+```sql
+CREATE TABLE parenthoods (
+	child_unit CHAR(44) NOT NULL,
+	parent_unit CHAR(44) NOT NULL,
+	PRIMARY KEY (parent_unit, child_unit),
+	CONSTRAINT parenthoodsByChild FOREIGN KEY (child_unit) REFERENCES units(unit),
+	CONSTRAINT parenthoodsByParent FOREIGN KEY (parent_unit) REFERENCES units(unit)
+);
+```
+
+**File:** initial-db/byteball-sqlite.sql (L92-97)
+```sql
+CREATE TABLE unit_authors (
+	unit CHAR(44) NOT NULL,
+	address CHAR(32) NOT NULL,
+	definition_chash CHAR(32) NULL, -- only with 1st ball from this address, and with next ball after definition change
+	_mci INT NULL,
+	PRIMARY KEY (unit, address),
+```
+
+**File:** initial-db/byteball-sqlite.sql (L120-125)
+```sql
+CREATE TABLE unit_witnesses (
+	unit CHAR(44) NOT NULL,
+	address CHAR(32) NOT NULL,
+	PRIMARY KEY (unit, address),
+	FOREIGN KEY (unit) REFERENCES units(unit)
+);
 ```

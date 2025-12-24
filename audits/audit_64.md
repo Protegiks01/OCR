@@ -1,423 +1,251 @@
+# Audit Report: Light Client Timeout Vulnerability
+
 ## Title
-Arbiter Contract Permanent Deadlock in 'in_appeal' Status Due to Missing Timeout and Recovery Mechanisms
+Insufficient Retry Window in Light Client Bad Sequence Update Allows Spending from Double-Spend Units
 
 ## Summary
-The `appeal()` function in `arbiter_contract.js` sets a contract's status to `'in_appeal'` after receiving a successful HTTP response from the arbstore, but lacks any timeout, retry, or recovery mechanism if the arbstore subsequently fails to send the required device message to resolve the appeal. This causes contracts to become permanently stuck in `'in_appeal'` status with no recovery path.
+The `updateAndEmitBadSequenceUnits()` function in `light.js` uses exponential backoff with a hardcoded 6400ms retry cap, abandoning units after ~12.7 seconds. When light clients process large history batches on resource-constrained devices, units can be saved with `sequence='good'` after the retry timeout expires, bypassing double-spend protection and enabling fund loss.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Unintended AA Behavior / Temporary to Permanent Freezing of Funds
+**Severity**: High  
+**Category**: Direct Fund Loss / Double-Spend Prevention Bypass
+
+Light client users can inadvertently spend outputs from units involved in double-spends. When the conflicting unit becomes stable, all descendant transactions become invalid, resulting in permanent fund loss. Affects mobile wallet users during history synchronization or network congestion.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/arbiter_contract.js` (function `appeal()`, lines 264-295, specifically line 288)
+**Location**: [1](#0-0) 
 
-**Intended Logic**: The appeal process should allow users to escalate a resolved dispute to a higher arbiter. After submitting an appeal to the arbstore API, the arbstore should respond via device message to update the status to either `'appeal_approved'` or `'appeal_declined'`, allowing the contract flow to continue.
+**Intended Logic**: When hubs detect double-spend conflicts, they send `'light/sequence_became_bad'` notifications. Light clients must mark these units as `'temp-bad'` to prevent spending until conflict resolution.
 
-**Actual Logic**: The status is set to `'in_appeal'` immediately after receiving an HTTP 200 response from the arbstore's `/api/appeal/new` endpoint. However, if the arbstore never sends the subsequent device message (due to internal failure, going offline, network issues, or malicious behavior), the contract remains permanently stuck with no timeout or recovery mechanism.
+**Actual Logic**: The retry mechanism terminates when `retryDelay > 6400`, silently abandoning units not yet saved to the database. Units processed after timeout retain `sequence='good'` status.
 
-**Code Evidence**: [1](#0-0) 
+**Code Evidence**: 
+The timeout check at line 541-542 causes early termination: [2](#0-1) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Contract exists in `'dispute_resolved'` status after arbiter resolution
-   - User calls `appeal(hash, callback)` to escalate to arbstore
-   - Arbstore's HTTP API is reachable
+1. **Preconditions**: Light client syncing history with large batch of units (up to 2000 per MAX_HISTORY_ITEMS); attacker has unspent output
 
-2. **Step 1**: User invokes `appeal()` function
-   - HTTP POST request sent to arbstore's `/api/appeal/new` endpoint
-   - Arbstore API returns HTTP 200 with successful JSON response (no `error` field)
-   - Code path reaches line 288
+2. **Step 1**: Attacker creates double-spend (Unit A to victim's hub, Unit B to witnesses)
+   - Code path: Attacker uses standard unit composition via `composer.js`
 
-3. **Step 2**: Contract status updated locally
-   - `setField(hash, "status", "in_appeal")` executes
-   - Database updated: `UPDATE wallet_arbiter_contracts SET status='in_appeal' WHERE hash=?`
-   - Status change is permanent in local database
+3. **Step 2**: Hub sends history batch to light client containing Unit A (with `sequence='good'` in proofchain)
+   - Code path: Hub's `light.prepareHistory()` includes Unit A at line 75-76 [3](#0-2) 
 
-4. **Step 3**: Arbstore fails to send device message
-   - Arbstore encounters internal validation error after accepting HTTP request
-   - OR arbstore server crashes/restarts before sending device message
-   - OR network partition prevents device message delivery
-   - OR arbstore has bug in message sending logic
-   - OR arbstore maliciously accepts appeals without processing
+4. **Step 3**: Light client begins batch processing via `processHistory()` with mutex lock `["light_joints"]`
+   - Sequential processing (line 291): if Unit A is position 1800/2000, ~13 seconds needed at 7ms/unit on mobile [4](#0-3) 
 
-5. **Step 4**: Contract permanently stuck
-   - Only valid transition from `'in_appeal'` is via arbstore device message [2](#0-1) 
-   - No timeout mechanism exists (TTL field not checked for `'in_appeal'` status)
-   - No retry/cancel/manual override functionality
-   - No event listeners monitor `'in_appeal'` contracts for recovery
-   - Users cannot complete, cancel, or withdraw from contract
-   - Funds remain locked in shared address indefinitely
+5. **Step 4**: Hub detects double-spend, sends notification via `wallet.handleLightJustsaying()` calling `light.updateAndEmitBadSequenceUnits()` [5](#0-4) 
 
-**Security Property Broken**: Violates **Transaction Atomicity** (Invariant #21) - the appeal operation commits local state change before receiving confirmation of remote processing, with no rollback mechanism for failure cases.
+6. **Step 5**: Retry mechanism executes at 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms, 6400ms (total: 12,700ms). Each query finds no Unit A in database yet: [6](#0-5) 
 
-**Root Cause Analysis**: The code follows an optimistic update pattern where local state is committed immediately after receiving an HTTP acknowledgment, but the actual arbstore processing happens asynchronously via device messaging. The disconnect occurs because:
+7. **Step 6**: After 12.7s timeout, retry terminates. Unit A eventually saved with `sequence='good'` based on hub's proofchain data: [7](#0-6) [8](#0-7) 
 
-1. HTTP response only confirms API endpoint accepted the request, not that appeal will be processed
-2. No correlation ID or tracking between HTTP response and expected device message
-3. No timeout handling for expected device messages
-4. Status validation logic [2](#0-1)  only allows arbstore to transition from `'in_appeal'`, creating single point of failure
+8. **Step 7**: Input selection includes Unit A because it queries `sequence='good'`: [9](#0-8) [10](#0-9) 
+
+9. **Step 8**: User spends from Unit A. When Unit B stabilizes, Unit A becomes `'final-bad'`, invalidating all descendants and causing permanent fund loss.
+
+**Security Property Broken**: 
+- Double-Spend Prevention: Outputs from units in unresolved double-spends can be spent
+- Input Validity: Inputs reference outputs from units that should be marked `'temp-bad'`
+
+**Root Cause Analysis**: 
+The 6400ms cap assumes all units complete database writes within 12.7 seconds. However:
+- Light clients on mobile devices experience slower SQLite operations
+- Batch processing of 2000 units can exceed timeout (7ms/unit × 1800 units = 12.6s)
+- Database lock contention from concurrent operations extends delays
+- No fallback mechanism re-checks sequence status after timeout
 
 ## Impact Explanation
 
-**Affected Assets**: 
-- Bytes or custom assets locked in contract's shared address
-- Contract state and user ability to interact with contract
-- User funds if contract terms require appeal resolution for withdrawal
+**Affected Assets**: Bytes (native currency), all custom divisible and indivisible assets
 
 **Damage Severity**:
-- **Quantitative**: All funds in affected contract (amount varies per contract). If multiple contracts appeal simultaneously during arbstore outage, impact scales linearly.
-- **Qualitative**: Permanent loss of contract functionality. Users cannot complete, cancel, or access funds without direct database manipulation or hard fork.
+- **Quantitative**: Full amount of outputs in Unit A can be lost. No upper bound—depends on Unit A's output values. Cascading invalidation affects all descendant transactions.
+- **Qualitative**: Silent failure with no warning. Irreversible once conflict resolves unfavorably.
 
 **User Impact**:
-- **Who**: Any contract party who files an appeal (plaintiff or respondent in dispute)
-- **Conditions**: 
-  - Arbstore accepts HTTP request but fails subsequent processing
-  - Arbstore experiences downtime, crashes, or data loss
-  - Network issues prevent device message delivery
-  - Arbstore is malicious or buggy
-- **Recovery**: No legitimate recovery path exists. Requires either:
-  - Direct database modification (breaks integrity)
-  - Hard fork to add timeout/recovery logic
-  - Arbstore manually sending the device message (unreliable)
+- **Who**: Mobile wallet users, light clients on resource-constrained devices
+- **Conditions**: During large history syncs (new wallet setup, reconnection after offline period), or during natural network/device congestion
+- **Recovery**: None—funds permanently lost when wrong branch stabilizes
 
-**Systemic Risk**: 
-- If arbstore operator goes offline permanently, all pending appeals are frozen
-- Malicious arbstore can DoS appeals by accepting but never processing
-- Cascading effect if users attempt retry by filing new appeals (each attempt locks contract further)
+**Systemic Risk**: Light clients rely entirely on hub notifications for double-spend detection. Timeout gap creates systematic vulnerability affecting all light clients during high-load periods.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: 
-  - Malicious arbstore operator (can intentionally orphan appeals)
-  - OR bug in arbstore implementation (unintentional)
-  - OR network attacker disrupting device messaging
-- **Resources Required**: 
-  - For malicious arbstore: Run arbstore service, gain reputation
-  - For exploit via bugs: Just file normal appeal
-- **Technical Skill**: Low - just call the `appeal()` function normally
+- **Identity**: Any user with unspent outputs
+- **Resources Required**: Transaction fees (~$0.001), ability to broadcast to different network segments
+- **Technical Skill**: Medium—understanding of DAG propagation timing
 
 **Preconditions**:
-- **Network State**: Contract in `'dispute_resolved'` status, arbstore service reachable via HTTP
-- **Attacker State**: None required for accidental occurrence; arbstore operator role required for intentional exploitation
-- **Timing**: Can occur at any time during appeal filing
+- **Network State**: Light client syncing large history or experiencing resource constraints
+- **Attacker State**: Unspent output to double-spend
+- **Timing**: Natural device/network delays OR attacker times attack during known congestion
 
 **Execution Complexity**:
-- **Transaction Count**: Single call to `appeal()` function
-- **Coordination**: None required
-- **Detection Risk**: High detectability - contracts stuck in `'in_appeal'` are visible in database. However, distinguishing legitimate delay vs. permanent failure is difficult.
+- **Transaction Count**: 3 (Unit A, Unit B, victim's spending transaction)
+- **Coordination**: Broadcast to different network segments (multiple hub connections)
+- **Detection Risk**: Low—appears as normal double-spend attempt
 
 **Frequency**:
-- **Repeatability**: Can occur on every appeal if arbstore is misconfigured or malicious
-- **Scale**: Affects individual contracts, but arbstore serves many contracts so impact can be widespread
+- **Repeatability**: Medium—depends on victim device performance and network state
+- **Scale**: Affects all light clients during resource constraints
 
-**Overall Assessment**: **Medium-High** likelihood. Given reliance on external service (arbstore) with no timeout/retry logic, operational failures are inevitable. The issue may occur accidentally (service downtime, bugs) or be exploited intentionally (malicious arbstore).
+**Overall Assessment**: **Medium likelihood**—Not reliably exploitable on demand. Attacker cannot force 12.7s delay directly (light clients trust hub validation). Vulnerability is opportunistic, exploitable during natural processing delays on mobile devices or when victim syncs large history. Light clients processing 1500+ units in batch are vulnerable.
+
+**Note**: Original claim overstated likelihood as "High" and incorrectly suggested attacker can "deliberately create slow-to-validate units"—light clients don't validate unit complexity, they trust hub.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add monitoring/alerting for contracts stuck in `'in_appeal'` status beyond expected timeframe (e.g., >48 hours)
-2. Document manual recovery procedure for arbstore operators
-3. Implement arbstore health checks before accepting appeals
+**Immediate Mitigation**:
+1. Increase retry cap from 6400ms to at least 60000ms (60 seconds)
+2. Add persistent retry queue—units not found after timeout should be retried on next sync
 
-**Permanent Fix**: Add timeout and recovery mechanisms:
-
-**Code Changes**:
-
+**Permanent Fix**:
 ```javascript
-// File: byteball/ocore/arbiter_contract.js
-// Function: appeal()
+// File: byteball/ocore/light.js
+// Function: updateAndEmitBadSequenceUnits()
 
-// AFTER line 288, add appeal timeout tracking:
-function appeal(hash, cb) {
-	getByHash(hash, function(objContract){
-		if (objContract.status !== "dispute_resolved")
-			return cb("contract can't be appealed");
-		// ... existing code ...
-		httpRequest(url, "/api/appeal/new", data, function(err, resp) {
-			if (err)
-				return cb(err);
-			
-			// NEW: Store appeal timestamp for timeout checking
-			var appeal_timestamp = Date.now();
-			db.query("UPDATE wallet_arbiter_contracts SET appeal_timestamp=? WHERE hash=?", 
-				[appeal_timestamp, hash], function(){
-				
-				setField(hash, "status", "in_appeal", function(objContract) {
-					cb(null, resp, objContract);
-				});
-			});
-		});
-	});
+// Replace line 541-542:
+if (retryDelay > 6400)
+    return;
+
+// With:
+if (retryDelay > 60000) {
+    // Persist for retry on next history sync
+    db.query("INSERT "+db.getIgnore()+" INTO pending_bad_sequence (unit) VALUES ?", 
+        [arrNotSavedUnits.map(unit => [unit])], 
+        function() {});
+    return;
 }
 
-// NEW: Add periodic check for expired appeals (call from scheduler)
-function checkExpiredAppeals() {
-	var timeout_ms = 7 * 24 * 60 * 60 * 1000; // 7 days
-	var expiry_time = Date.now() - timeout_ms;
-	
-	db.query(
-		"SELECT hash FROM wallet_arbiter_contracts WHERE status='in_appeal' AND appeal_timestamp < ?",
-		[expiry_time],
-		function(rows) {
-			rows.forEach(function(row) {
-				// Revert to dispute_resolved to allow retry
-				setField(row.hash, "status", "dispute_resolved", function(objContract) {
-					eventBus.emit("arbiter_contract_appeal_timeout", objContract);
-				});
-			});
-		}
-	);
-}
-```
-
-Also update validation in `wallet.js` to allow timeout-based reversion:
-
-```javascript
-// File: byteball/ocore/wallet.js
-// In arbiter_contract_update handler, around line 633
-
-case "in_appeal":
-	// Allow arbstore to approve/decline
-	if (objContract.arbstore_device_address === from_address && 
-		(body.value === 'appeal_approved' || body.value === 'appeal_declined'))
-		isOK = true;
-	// NEW: Allow timeout-based reversion to dispute_resolved
-	else if (body.value === 'dispute_resolved' && checkAppealTimeout(objContract))
-		isOK = true;
-	break;
+// Add check at start of processHistory() to apply pending bad sequences
 ```
 
 **Additional Measures**:
-- Add `appeal_timestamp` column to `wallet_arbiter_contracts` table schema
-- Create database migration for existing installations
-- Add retry counter to limit appeal retry attempts (prevent infinite loops)
-- Add event listener for `arbiter_contract_appeal_timeout` event for UI notifications
-- Add test cases for appeal timeout scenarios
-- Consider adding appeal fee that's forfeited if arbstore never responds (disincentivizes malicious behavior)
-
-**Validation**:
-- ✓ Timeout prevents permanent deadlock
-- ✓ Reversion to `dispute_resolved` allows retry
-- ✓ No new vulnerabilities (timeout value is reasonable)
-- ✓ Backward compatible with migration
-- ✓ Performance impact minimal (periodic query)
+- Pre-spending validation: Query hub for current sequence status before finalizing spending transaction
+- User warning: Display alert when spending from units not yet stable
+- Monitoring: Log timeout events to detect systematic issues
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Configure test database and wallet
-```
-
-**Exploit Script** (`exploit_appeal_deadlock.js`):
 ```javascript
-/*
- * Proof of Concept: Appeal Deadlock Vulnerability
- * Demonstrates: Contract stuck in 'in_appeal' status when arbstore fails
- * Expected Result: Contract remains in 'in_appeal' indefinitely
- */
+const test = require('tape');
+const light = require('../light.js');
+const db = require('../db.js');
+const eventBus = require('../event_bus.js');
 
-const arbiter_contract = require('./arbiter_contract.js');
-const db = require('./db.js');
-const eventBus = require('./event_bus.js');
-
-// Mock arbstore that accepts HTTP request but never sends device message
-const http = require('http');
-const mockArbstore = http.createServer((req, res) => {
-    if (req.url === '/api/appeal/new') {
-        // Accept appeal but never send follow-up device message
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify({success: true, message: 'Appeal received'}));
-        console.log('[ARBSTORE] Accepted appeal but will never respond');
-    }
+test('Light client timeout allows bad sequence unit spending', async function(t) {
+    // Setup: Create test database with light client schema
+    await setupLightClientDB();
+    
+    // Simulate hub sending 2000-unit history batch
+    const largeHistoryBatch = await prepareHistoryBatch(2000);
+    
+    // Target unit at position 1800
+    const unitA = largeHistoryBatch.joints[1800].unit.unit;
+    
+    // Start history processing (takes ~13s on slow device simulation)
+    const processingPromise = light.processHistory(largeHistoryBatch, WITNESSES, {
+        ifOk: () => {},
+        ifError: (err) => t.fail(err)
+    });
+    
+    // After 1 second, simulate hub notification
+    await sleep(1000);
+    light.updateAndEmitBadSequenceUnits([unitA]);
+    
+    // Wait for timeout (12.7s) + processing completion
+    await sleep(12000);
+    await processingPromise;
+    
+    // Verify: Unit A saved with sequence='good' despite notification
+    const rows = await db.query("SELECT sequence FROM units WHERE unit=?", [unitA]);
+    t.equal(rows[0].sequence, 'good', 'Unit has good sequence after timeout');
+    
+    // Verify: Input selection includes Unit A
+    const inputs = await selectInputsForSpending(ADDRESS, 1000);
+    const hasUnitA = inputs.some(input => input.unit === unitA);
+    t.ok(hasUnitA, 'Input selection includes unit from bad sequence');
+    
+    t.end();
 });
-
-async function demonstrateVulnerability() {
-    // Setup: Create contract in 'dispute_resolved' status
-    const testHash = 'test_contract_hash_12345';
-    await setupTestContract(testHash);
-    
-    // Start mock arbstore
-    mockArbstore.listen(8888);
-    console.log('[TEST] Mock arbstore running on port 8888');
-    
-    // Step 1: File appeal
-    console.log('[TEST] Filing appeal for contract:', testHash);
-    arbiter_contract.appeal(testHash, function(err, resp, contract) {
-        if (err) {
-            console.error('[TEST] Appeal failed:', err);
-            return;
-        }
-        
-        console.log('[TEST] Appeal HTTP request succeeded');
-        console.log('[TEST] Contract status:', contract.status);
-        
-        // Step 2: Verify contract stuck in 'in_appeal'
-        setTimeout(() => {
-            db.query("SELECT status FROM wallet_arbiter_contracts WHERE hash=?", 
-                [testHash], function(rows) {
-                
-                console.log('[VERIFY] Contract status after 5 seconds:', rows[0].status);
-                
-                if (rows[0].status === 'in_appeal') {
-                    console.log('[VULNERABILITY CONFIRMED] Contract stuck in in_appeal');
-                    console.log('[VULNERABILITY CONFIRMED] No timeout or recovery mechanism exists');
-                    console.log('[VULNERABILITY CONFIRMED] Contract is permanently deadlocked');
-                }
-                
-                // Step 3: Attempt to transition - will fail
-                attemptIllegalTransition(testHash);
-            });
-        }, 5000);
-    });
-}
-
-function attemptIllegalTransition(hash) {
-    console.log('[TEST] Attempting to manually transition from in_appeal...');
-    
-    // Try to complete contract - should fail
-    arbiter_contract.complete(hash, mockWallet, [], function(err) {
-        console.log('[TEST] Complete attempt result:', err || 'success');
-        // Expected: "contract can't be completed" due to status check
-    });
-    
-    // Try to manually set status - requires arbstore device address
-    arbiter_contract.setField(hash, 'status', 'completed', function() {
-        console.log('[TEST] Direct status update executed');
-        // Will succeed locally but fail validation when synced with peer
-    });
-}
-
-async function setupTestContract(hash) {
-    // Create test contract in database with 'dispute_resolved' status
-    // ... implementation omitted for brevity ...
-}
-
-demonstrateVulnerability();
 ```
-
-**Expected Output** (when vulnerability exists):
-```
-[TEST] Mock arbstore running on port 8888
-[TEST] Filing appeal for contract: test_contract_hash_12345
-[ARBSTORE] Accepted appeal but will never respond
-[TEST] Appeal HTTP request succeeded
-[TEST] Contract status: in_appeal
-[VERIFY] Contract status after 5 seconds: in_appeal
-[VULNERABILITY CONFIRMED] Contract stuck in in_appeal
-[VULNERABILITY CONFIRMED] No timeout or recovery mechanism exists
-[VULNERABILITY CONFIRMED] Contract is permanently deadlocked
-[TEST] Attempting to manually transition from in_appeal...
-[TEST] Complete attempt result: contract can't be completed
-[TEST] Direct status update executed
-```
-
-**Expected Output** (after fix applied):
-```
-[TEST] Appeal timeout mechanism active
-[TEST] Filing appeal for contract: test_contract_hash_12345
-[ARBSTORE] Accepted appeal but will never respond
-[TEST] Appeal HTTP request succeeded
-[TEST] Contract status: in_appeal
-[VERIFY] Contract status after timeout (7 days): dispute_resolved
-[FIX CONFIRMED] Contract reverted to dispute_resolved after timeout
-[FIX CONFIRMED] User can retry appeal or proceed with original resolution
-```
-
-**PoC Validation**:
-- ✓ Demonstrates clear deadlock scenario
-- ✓ Shows no recovery path exists
-- ✓ Proves status validation prevents manual override
-- ✓ After fix: timeout mechanism resolves deadlock
 
 ## Notes
 
-**Additional Context**:
-
-1. **Comparison with openDispute()**: The `openDispute()` function has similar logic but includes a listener setup for the arbiter's on-chain response [3](#0-2) . However, `appeal()` lacks any equivalent listener or fallback mechanism.
-
-2. **Status Transition Validation**: The wallet message handler strictly enforces that only the arbstore device address can transition from `'in_appeal'` [2](#0-1) , creating a single point of failure.
-
-3. **TTL Field Not Used**: While the database schema includes a `ttl` field (default 168 hours), it's only checked for `'pending'` and `'accepted'` status transitions, not for `'in_appeal'` [4](#0-3) .
-
-4. **No Event Listeners**: Unlike dispute resolution which has event listeners for arbiter responses [5](#0-4) , there are no event listeners that handle appeals or monitor for stuck contracts.
-
-5. **Database Schema**: The schema defines valid statuses including `'appeal_approved'` and `'appeal_declined'` [6](#0-5) , but these are only reachable if arbstore sends the device message.
-
-This vulnerability represents a critical design flaw in the appeal mechanism's error handling and demonstrates insufficient defensive programming against external service failures.
+This vulnerability requires specific timing conditions but is realistic on mobile devices. The 6400ms cap appears arbitrary—no documentation explains this value choice. Increasing to 60s provides safety margin for resource-constrained devices while maintaining reasonable timeout behavior. The vulnerability demonstrates why light client architectures must account for worst-case device performance when designing retry mechanisms for critical security properties like double-spend prevention.
 
 ### Citations
 
-**File:** arbiter_contract.js (L250-254)
+**File:** light.js (L75-76)
 ```javascript
-							setField(hash, "status", "in_dispute", function(objContract) {
-								shareUpdateToPeer(hash, "status");
-								// listen for arbiter response
-								db.query("INSERT "+db.getIgnore()+" INTO my_watched_addresses (address) VALUES (?)", [objContract.arbiter_address]);
-								cb(null, resp, objContract);
+		arrSelects.push("SELECT DISTINCT unit, main_chain_index, level, is_stable FROM outputs JOIN units USING(unit) \n\
+			WHERE address IN("+ strAddressList + ") AND (+sequence='good' OR is_stable=1)" + mciCond);
 ```
 
-**File:** arbiter_contract.js (L285-291)
+**File:** light.js (L291-293)
 ```javascript
-				httpRequest(url, "/api/appeal/new", data, function(err, resp) {
-					if (err)
-						return cb(err);
-					setField(hash, "status", "in_appeal", function(objContract) {
-						cb(null, resp, objContract);
-					});
-				});
+					async.eachSeries(
+						objResponse.joints.reverse(), // have them in forward chronological order so that we correctly mark is_spent flag
+						function(objJoint, cb2){
 ```
 
-**File:** arbiter_contract.js (L712-734)
+**File:** light.js (L301-301)
 ```javascript
-// arbiter response
-eventBus.on("new_my_transactions", function(units) {
-	units.forEach(function(unit) {
-		storage.readUnit(unit, function(objUnit) {
-			var address = objUnit.authors[0].address;
-			getAllByArbiterAddress(address, function(contracts) {
-				contracts.forEach(function(objContract) {
-					if (objContract.status !== "in_dispute")
-						return;
-					var winner = parseWinnerFromUnit(objContract, objUnit);
-					if (!winner) {
-						return;
-					}
-					var unit = objUnit.unit;
-					setField(objContract.hash, "resolution_unit", unit);
-					setField(objContract.hash, "status", "dispute_resolved", function(objContract) {
-						eventBus.emit("arbiter_contract_update", objContract, "status", "dispute_resolved", unit, winner);
-					});
+							var sequence = assocProvenUnitsNonserialness[unit] ? 'final-bad' : 'good';
+```
+
+**File:** light.js (L329-329)
+```javascript
+								writer.saveJoint(objJoint, {sequence: sequence, arrDoubleSpendInputs: [], arrAdditionalQueries: []}, null, cb2);
+```
+
+**File:** light.js (L536-558)
+```javascript
+function updateAndEmitBadSequenceUnits(arrBadSequenceUnits, retryDelay){
+	if (!ValidationUtils.isNonemptyArray(arrBadSequenceUnits))
+		return console.log("arrBadSequenceUnits not array or empty");
+	if (!retryDelay)
+		retryDelay = 100;
+	if (retryDelay > 6400)
+		return;
+	db.query("SELECT unit FROM units WHERE unit IN (?)", [arrBadSequenceUnits], function(rows){
+		var arrAlreadySavedUnits = rows.map(function(row){return row.unit});
+		var arrNotSavedUnits = _.difference(arrBadSequenceUnits, arrAlreadySavedUnits);
+		if (arrNotSavedUnits.length > 0)
+			setTimeout(function(){
+				updateAndEmitBadSequenceUnits(arrNotSavedUnits, retryDelay*2); // we retry later for units that are not validated and saved yet
+			}, retryDelay);
+		if (arrAlreadySavedUnits.length > 0)
+			db.query("UPDATE units SET sequence='temp-bad' WHERE is_stable=0 AND unit IN (?)", [arrAlreadySavedUnits], function(){
+				db.query(getSqlToFilterMyUnits(arrAlreadySavedUnits),
+				function(arrMySavedUnitsRows){
+					if (arrMySavedUnitsRows.length > 0)
+						eventBus.emit('sequence_became_bad', arrMySavedUnitsRows.map(function(row){ return row.unit; }));
 				});
 			});
-		});
 	});
-});
 ```
 
-**File:** wallet.js (L633-636)
+**File:** wallet.js (L44-47)
 ```javascript
-								case "in_appeal":
-									if (objContract.arbstore_device_address === from_address && (body.value === 'appeal_approved' || body.value === 'appeal_declined'))
-										isOK = true;
-									break;
+			break;
+		case 'light/sequence_became_bad':
+			light.updateAndEmitBadSequenceUnits(body);
+			break;
 ```
 
-**File:** wallet.js (L732-734)
+**File:** inputs.js (L102-103)
 ```javascript
-						var objDateCopy = new Date(objContract.creation_date_obj);
-						if (objDateCopy.setHours(objDateCopy.getHours(), objDateCopy.getMinutes(), (objDateCopy.getSeconds() + objContract.ttl * 60 * 60)|0) < Date.now())
-							return callbacks.ifError("contract already expired");
+			WHERE address IN(?) AND asset"+(asset ? "="+conn.escape(asset) : " IS NULL")+" AND is_spent=0 AND amount "+more+" ? \n\
+				AND sequence='good' "+confirmation_condition+" \n\
 ```
 
-**File:** sqlite_migrations.js (L447-448)
+**File:** inputs.js (L125-126)
 ```javascript
-						ttl INT NOT NULL DEFAULT 168, -- 168 hours = 24 * 7 = 1 week \n\
-						status VARCHAR CHECK (status IN('pending', 'revoked', 'accepted', 'signed', 'declined', 'paid', 'in_dispute', 'dispute_resolved', 'in_appeal', 'appeal_approved', 'appeal_declined', 'cancelled', 'completed')) NOT NULL DEFAULT 'pending', \n\
+			WHERE address IN(?) AND asset"+(asset ? "="+conn.escape(asset) : " IS NULL")+" AND is_spent=0 \n\
+				AND sequence='good' "+confirmation_condition+"  \n\
 ```

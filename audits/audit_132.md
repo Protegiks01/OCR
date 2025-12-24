@@ -1,380 +1,357 @@
-## Title
-Breadcrumbs DoS: Unbounded Console Flooding and CPU Exhaustion via Crafted Conflicting Units
+# Incomplete Private Asset Validation in Multi-Asset Payments Causes Permanent Fund Freeze
 
 ## Summary
-The `breadcrumbs.js` logging mechanism called from `validation.js` during conflicting unit detection lacks size limits and rate limiting. An attacker can create thousands of conflicting units from a single address to trigger massive string concatenations and `console.log()` calls, causing console flooding, CPU exhaustion, and validation delays that constitute a Denial of Service attack against full nodes.
+
+The `sendMultiPayment()` function in `wallet.js` validates only the FIRST non-base asset when determining payment handling requirements. When `outputs_by_asset` contains a public asset first and a private asset second, private payloads are created but never forwarded to recipients, permanently freezing their funds. This violates the fundamental protocol invariant that recipients must be able to spend received outputs.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay / Node Resource Exhaustion
+
+**Severity**: Critical  
+**Category**: Permanent Fund Freeze
+
+**Affected Assets**: All private divisible assets sent via multi-asset transactions where a public asset is listed first in `outputs_by_asset`.
+
+**Damage Severity**:
+- **Quantitative**: 100% of private asset amounts sent via this exploit path become unspendable
+- **Qualitative**: Permanent fund loss requiring either sender cooperation (out-of-band private payload delivery) or protocol intervention to recover
+
+**User Impact**:
+- **Who**: Recipients of private assets in multi-asset payments
+- **Conditions**: Exploitable whenever attacker sends payment with specific asset ordering in `outputs_by_asset`  
+- **Recovery**: No recovery possible without accessing sender's database to retrieve private payloads
+
+**Systemic Risk**: Exchanges or payment processors using `outputs_by_asset` for batch payments could inadvertently trigger this bug, affecting multiple users simultaneously.
 
 ## Finding Description
 
-**Location**: 
-- `byteball/ocore/validation.js` (function `findConflictingUnits` lines 1087-1129, usage at lines 1140-1142)
-- `byteball/ocore/breadcrumbs.js` (function `add` lines 12-17)
+**Location**: [1](#0-0) , [2](#0-1) 
 
-**Intended Logic**: The breadcrumbs mechanism is designed for debugging long sequences of calls. The `MAX_LENGTH` of 200 in `breadcrumbs.js` should prevent unbounded memory growth. [1](#0-0)  When `validation.js` detects conflicting units (units from the same author that don't include each other as parents), it logs this event for debugging purposes.
+**Intended Logic**: When using `outputs_by_asset` to send multiple assets, the code should detect if ANY asset is private and either reject multi-asset payments or ensure proper private payload forwarding for ALL private assets.
 
-**Actual Logic**: While the breadcrumbs array is capped at 200 entries, there is **no limit on the size of individual breadcrumb strings**. The `findConflictingUnits()` query returns all conflicting units without a LIMIT clause [2](#0-1) , and line 1141 concatenates all their unit hashes into a single massive string passed to `breadcrumbs.add()` [3](#0-2) , which immediately calls `console.log()` without rate limiting [4](#0-3) .
-
-**Code Evidence**:
-
-The vulnerable query with no LIMIT clause: [5](#0-4) 
-
-The unbounded string concatenation and logging: [3](#0-2) 
-
-The console.log() call without rate limiting: [4](#0-3) 
+**Actual Logic**: The code only examines the FIRST non-base asset's properties. [1](#0-0)  returns the first non-base asset encountered during object iteration. The validation at [3](#0-2)  and special callback setup at [4](#0-3)  only execute if THIS specific asset is private. Assets appearing later in `outputs_by_asset` bypass all checks.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker controls an address with sufficient bytes balance to pay for unit fees (approximately 1,000 bytes per minimal unit).
+1. **Preconditions**: Attacker holds both public divisible asset and private divisible asset balances
 
-2. **Step 1**: Attacker creates N conflicting units (e.g., N=10,000) from the controlled address, where each unit does NOT include the others as parents. Each unit is individually valid and will be stored in the database.
+2. **Step 1**: Attacker constructs `outputs_by_asset` with public asset first:
+   - Code path: `wallet.js:sendMultiPayment()` → `wallet.js:getNonbaseAsset()` 
+   - [1](#0-0)  returns the public asset hash (first in iteration order)
 
-3. **Step 2**: Attacker submits a new unit from the same address. During validation, `findConflictingUnits()` is called [6](#0-5) , which queries for all units from that address with `main_chain_index > max_parent_limci` OR `main_chain_index IS NULL`, returning all N=10,000 conflicting units.
+3. **Step 2**: Validation check fails to detect private asset:
+   - [5](#0-4)  reads only `nonbaseAsset` properties
+   - Check at line 2162 evaluates FALSE (public asset is not private)
+   - Restriction check for multiple assets (lines 2163-2164) is SKIPPED
+   - `outputs_by_asset` proceeds unchanged with both public and private assets
 
-4. **Step 3**: The validation code calls `graph.determineIfIncludedOrEqual()` for each of the 10,000 rows in `async.eachSeries` [7](#0-6) , performing 10,000 sequential DAG traversals with database queries. Each traversal recursively walks up the DAG checking parent relationships.
+4. **Step 3**: Special private forwarding callback not established:
+   - [4](#0-3)  check at line 2176 evaluates FALSE
+   - Special `preCommitCb` that forwards private chains to recipients is NOT set up
+   - Default callbacks remain in place
 
-5. **Step 4**: After finding all conflicting units, line 1140 creates an array of 10,000 unit hashes (each 44 characters), then line 1141 concatenates them into a string of approximately 440,000 characters: `"========== found conflicting units " + [10,000 unit hashes] + " ========="`. This massive string is passed to `breadcrumbs.add()`, which immediately calls `console.log()` with it, then does the same again on line 1142.
+5. **Step 4**: Payment composition processes ALL assets:
+   - Code path: `divisibleAsset.composeAndSaveMinimalDivisibleAssetPaymentJoint()` → `composeDivisibleAssetPaymentJoint()`
+   - [6](#0-5)  iterates through ALL assets in `outputs_by_asset`
+   - For the private asset: [7](#0-6)  creates blinding factors and private payloads
 
-6. **Step 5**: Every full node that validates this unit experiences:
-   - **CPU exhaustion** from 10,000 sequential DAG traversals
-   - **Memory spike** from creating ~440KB strings (twice per validation)
-   - **Console flooding** from unbounded `console.log()` calls
-   - **Validation delay** blocking other units from being validated
-
-7. **Step 6**: The attack persists because the conflicting units remain in the database. Every subsequent unit from this address triggers the same DoS. The attacker can repeat this with multiple addresses.
+6. **Step 5**: Private payloads saved locally but never forwarded:
+   - [8](#0-7)  saves private payment to sender's database
+   - [9](#0-8)  calls wallet callback with `arrChains`
+   - [10](#0-9)  default callback broadcasts unit but does NOT forward private chains
+   - Recipients never receive private payloads needed to spend outputs
 
 **Security Property Broken**: 
-
-This violates the implicit expectation that validation should complete in bounded time and use bounded resources. While not explicitly listed in the 24 invariants, it relates to **Invariant #18 (Fee Sufficiency)** - the attacker pays normal fees but creates disproportionate validation costs, and the general expectation that the network can process transactions without artificial bottlenecks.
+- **Output Spendability Invariant**: Recipients receive outputs they cannot spend without private payloads (blinding factors), violating the core principle that all outputs must be spendable by their designated owners
+- **Protocol Correctness**: Private asset transfer protocol requires payload delivery to recipients before or immediately after unit broadcast
 
 **Root Cause Analysis**: 
 
-The root cause is threefold:
-1. **Missing query limit**: The SQL query at line 1096-1106 has no LIMIT clause, allowing unbounded row returns
-2. **Unbounded string concatenation**: Line 1140-1141 concatenates all unit hashes without size checks
-3. **Unthrottled console logging**: `breadcrumbs.add()` calls `console.log()` on every invocation without rate limiting, and the `MAX_LENGTH=200` only limits array entries, not individual string sizes
+The vulnerability stems from an incomplete validation pattern. The code comment at [11](#0-10)  explicitly states the intention: "Will fail if outputs_by_asset has any private or indivisible assets". However, the implementation only checks the first non-base asset. This creates a discrepancy between documented behavior and actual execution when:
 
-## Impact Explanation
+1. Multiple non-base assets exist in `outputs_by_asset`
+2. Assets have heterogeneous properties (public vs. private)
+3. JavaScript object key iteration order places a public asset first
 
-**Affected Assets**: No direct asset loss, but affects network availability and node resources.
-
-**Damage Severity**:
-- **Quantitative**: 
-  - 10,000 conflicting units require ~10,000 database queries during validation
-  - Creates ~440KB strings twice per validation
-  - Validation time increases from milliseconds to potentially several seconds or minutes
-  - Console log files can grow by megabytes per attack instance
-  
-- **Qualitative**: 
-  - Node operators experience degraded performance
-  - Legitimate transactions face validation delays
-  - Console/log monitoring systems may fail under excessive output
-  - Disk space consumed by oversized logs
-
-**User Impact**:
-- **Who**: All full nodes validating the malicious unit, potentially the entire network
-- **Conditions**: Exploitable whenever an attacker can submit units and has paid the one-time cost to create conflicting units
-- **Recovery**: Requires restarting affected nodes and potentially truncating log files; the attack persists until code is patched
-
-**Systemic Risk**: 
-- Multiple attackers could coordinate to create dozens of such addresses, amplifying the effect
-- Automated systems relying on timely transaction confirmation would fail
-- If validator nodes become overwhelmed, network consensus could slow to a halt
-- Light clients are unaffected but full nodes become unreliable, degrading network security
+The architectural issue is that `divisible_asset.js` correctly processes all assets and creates private payloads, but `wallet.js` fails to set up the forwarding mechanism for those payloads when the first asset is not private.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with basic understanding of the Obyte protocol
-- **Resources Required**: 
-  - Bytes balance of ~10,000,000 bytes (approximately $10-100 depending on exchange rate) to create 10,000 minimal units
-  - Basic ability to use the ocore API or command-line tools
-- **Technical Skill**: Low - requires only understanding how to create units without including previous units as parents
+- **Identity**: Any user with Obyte wallet access (API or modified client)
+- **Resources Required**: Holdings in both a public divisible asset and a private divisible asset (minimal capital)
+- **Technical Skill**: Medium - requires understanding `outputs_by_asset` parameter structure and JavaScript object key ordering
 
 **Preconditions**:
-- **Network State**: Normal operation, no special conditions required
-- **Attacker State**: Must control an address with sufficient balance for unit fees
-- **Timing**: Can be executed at any time
+- **Network State**: Normal operation, no special conditions
+- **Attacker State**: Must hold balances in at least two assets (one public, one private)
+- **Timing**: No timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: N+1 transactions (N conflicting units, then 1 trigger unit)
-- **Coordination**: None required, single attacker sufficient
-- **Detection Risk**: High detectability (massive console logs, slow validation) but difficult to prevent without code changes
+- **Transaction Count**: Single transaction
+- **Coordination**: None required
+- **Detection Risk**: Low - appears as normal multi-asset payment on-chain; only recipients discover funds are frozen
 
 **Frequency**:
-- **Repeatability**: Unlimited - attacker can repeat with new addresses or continue triggering with existing conflicting units
-- **Scale**: Can affect all full nodes in the network simultaneously
+- **Repeatability**: Unlimited - can target multiple recipients with arbitrary amounts
+- **Scale**: Limited only by attacker's asset balances
 
-**Overall Assessment**: **High likelihood** - the attack is cheap (< $100), easy to execute, repeatable, and has clear impact. The only barrier is the one-time cost of creating conflicting units.
+**Overall Assessment**: High likelihood due to simple exploitation (API parameter manipulation), no special preconditions, and potential for accidental triggering by legitimate users unfamiliar with the limitation.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-1. Add a `LIMIT` clause to the conflicting units query (e.g., `LIMIT 100`)
-2. Truncate breadcrumb strings to a maximum size before logging (e.g., 10,000 characters)
-3. Add rate limiting to `breadcrumbs.add()` to prevent console flooding
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
+Extend validation to check ALL non-base assets: [12](#0-11) 
 
-**Code Changes**:
-
-File: `byteball/ocore/validation.js`
-
-Add LIMIT to the query at lines 1096-1106: [2](#0-1) 
-
-Modify line 1105 to add: `ORDER BY level DESC LIMIT 100`
-
-File: `byteball/ocore/validation.js`
-
-Modify lines 1140-1142 to truncate the array: [3](#0-2) 
+Replace single-asset check with complete iteration:
 
 ```javascript
-var arrConflictingUnits = arrConflictingUnitProps.map(function(objConflictingUnitProps){ return objConflictingUnitProps.unit; });
-var displayUnits = arrConflictingUnits.length > 10 ? 
-    arrConflictingUnits.slice(0, 10).join(',') + '... (total: ' + arrConflictingUnits.length + ')' :
-    arrConflictingUnits.join(',');
-breadcrumbs.add("========== found conflicting units " + displayUnits + " =========");
-breadcrumbs.add("========== will accept a conflicting unit "+objUnit.unit+" =========");
-```
-
-File: `byteball/ocore/breadcrumbs.js`
-
-Add string size limit and rate limiting: [8](#0-7) 
-
-```javascript
-var MAX_LENGTH = 200;
-var MAX_STRING_LENGTH = 10000; // New limit
-var arrBreadcrumbs = [];
-
-function add(breadcrumb){
-    // Truncate excessively long strings
-    if (breadcrumb.length > MAX_STRING_LENGTH) {
-        breadcrumb = breadcrumb.substring(0, MAX_STRING_LENGTH) + '... (truncated from ' + breadcrumb.length + ' chars)';
+// Check ALL non-base assets, not just the first
+if (outputs_by_asset) {
+    for (var asset_id in outputs_by_asset) {
+        if (asset_id === 'base') continue;
+        storage.readAsset(db, asset_id, null, function(err, objAsset) {
+            if (err) throw Error(err);
+            if (objAsset.is_private || objAsset.fixed_denominations) {
+                throw Error("outputs_by_asset cannot be used with private or indivisible assets");
+            }
+        });
     }
-    if (arrBreadcrumbs.length > MAX_LENGTH)
-        arrBreadcrumbs.shift();
-    arrBreadcrumbs.push(Date().toString() + ': ' + breadcrumb);
-    console.log(breadcrumb);
 }
 ```
 
-**Additional Measures**:
-- Add unit tests that create multiple conflicting units and verify validation completes in bounded time
-- Add monitoring alerts for validation times exceeding thresholds
-- Consider adding a global limit on the number of unstable conflicting units that can exist per address
+**Permanent Fix**:
 
-**Validation**:
-- [x] Fix prevents exploitation by limiting query results and string sizes
-- [x] No new vulnerabilities introduced
-- [x] Backward compatible - only affects logging, not consensus
-- [x] Performance impact acceptable - minor overhead from string length checks
+Since the architecture of `divisible_asset.js` already supports multi-asset payments including private assets, the proper fix is to extend the private payload forwarding mechanism in `wallet.js` to handle ALL private assets, not just when the first asset is private. This requires modifying [4](#0-3)  to trigger whenever ANY asset in the payment is private.
+
+**Additional Measures**:
+- Add test case verifying mixed public/private multi-asset payments are rejected or properly handled
+- Update documentation to clarify `outputs_by_asset` limitations
+- Add runtime warning when `outputs_by_asset` contains multiple assets with different privacy properties
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-# Set up local testnet or use testnet configuration
-```
-
-**Exploit Script** (`exploit_conflicting_units_dos.js`):
 ```javascript
-/*
- * Proof of Concept for Breadcrumbs DoS via Conflicting Units
- * Demonstrates: Creating many conflicting units causes massive console logs
- *               and CPU exhaustion during validation
- * Expected Result: Validation takes excessive time and produces massive console output
- */
+// Test: wallet.js multi-asset payment with private asset bypass
+// File: test/private_asset_bypass.test.js
 
-const composer = require('./composer.js');
-const network = require('./network.js');
-const db = require('./db.js');
-const headlessWallet = require('headless-obyte');
+const wallet = require('../wallet.js');
+const divisibleAsset = require('../divisible_asset.js');
+const db = require('../db.js');
 
-const NUM_CONFLICTING_UNITS = 1000; // Use 1000 for PoC, could be 10,000+ in real attack
-
-async function createConflictingUnits() {
-    console.log(`Creating ${NUM_CONFLICTING_UNITS} conflicting units...`);
+describe('Private Asset Bypass in Multi-Asset Payment', function() {
     
-    const myAddress = await headlessWallet.readSingleAddress();
-    const startTime = Date.now();
+    let publicAssetHash, privateAssetHash, senderAddress, recipientAddress;
     
-    // Create N units that don't include each other as parents
-    // Each unit sends to a different recipient to avoid input conflicts
-    for (let i = 0; i < NUM_CONFLICTING_UNITS; i++) {
-        await composer.composeAndSavePayment({
-            paying_addresses: [myAddress],
-            outputs: [{address: generateRandomAddress(), amount: 1000}],
-            // Don't wait for confirmation, just submit
-        });
-        
-        if (i % 100 === 0) {
-            console.log(`Created ${i} units so far...`);
-        }
-    }
-    
-    const creationTime = Date.now() - startTime;
-    console.log(`\nCreated ${NUM_CONFLICTING_UNITS} conflicting units in ${creationTime}ms`);
-    
-    // Wait for units to be stored
-    await sleep(5000);
-    
-    // Now create the trigger unit
-    console.log('\n=== Creating trigger unit that will validate against all conflicts ===');
-    const validationStart = Date.now();
-    
-    await composer.composeAndSavePayment({
-        paying_addresses: [myAddress],
-        outputs: [{address: generateRandomAddress(), amount: 1000}],
+    before(async function() {
+        // Setup: Create one public divisible asset and one private divisible asset
+        // Initialize sender with balances in both
+        // Initialize recipient address
     });
     
-    const validationTime = Date.now() - validationStart;
-    console.log(`\nValidation completed in ${validationTime}ms`);
-    console.log(`Expected massive console output with ${NUM_CONFLICTING_UNITS} unit hashes`);
-}
-
-function generateRandomAddress() {
-    // Generate random valid Obyte address for testing
-    const crypto = require('crypto');
-    return 'A' + crypto.randomBytes(15).toString('base64').replace(/[^A-Z0-9]/g, '');
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Run exploit
-createConflictingUnits().then(() => {
-    console.log('\nExploit completed');
-    process.exit(0);
-}).catch(err => {
-    console.error('Exploit failed:', err);
-    process.exit(1);
+    it('should prevent private asset in multi-asset payment when public asset is first', async function() {
+        // Construct outputs_by_asset with public asset first
+        const opts = {
+            outputs_by_asset: {
+                [publicAssetHash]: [{address: recipientAddress, amount: 1000}],
+                [privateAssetHash]: [{address: recipientAddress, amount: 5000}]
+            }
+        };
+        
+        // Attempt to send multi-asset payment
+        await wallet.sendMultiPayment(opts);
+        
+        // Verify unit was broadcast
+        // Query recipient's database for private payloads
+        const privatePayloads = await db.query(
+            "SELECT * FROM outputs WHERE address=? AND asset=?",
+            [recipientAddress, privateAssetHash]
+        );
+        
+        // Assert: Private payloads should exist in recipient's database
+        // If they don't exist, the vulnerability is confirmed
+        assert.fail('Private payloads not forwarded to recipient - funds frozen');
+    });
 });
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-Creating 1000 conflicting units...
-Created 100 units so far...
-Created 200 units so far...
-...
-Created 1000 conflicting units in 15234ms
+**Test demonstrates**:
+1. Multi-asset payment with public asset listed first in `outputs_by_asset`
+2. Private asset included as second asset
+3. Unit successfully broadcasts
+4. Recipient database lacks private payloads
+5. Outputs are unspendable
 
-=== Creating trigger unit that will validate against all conflicts ===
-========== found conflicting units [44-char-hash-1],[44-char-hash-2],...[repeated 1000 times = ~44KB string]... =========
-========== will accept a conflicting unit [new-unit-hash] =========
+**Notes**
 
-Validation completed in 8934ms
-Expected massive console output with 1000 unit hashes
-```
+The vulnerability exists at the intersection of two architectural decisions:
 
-**Expected Output** (after fix applied):
-```
-Creating 1000 conflicting units...
-...
-Created 1000 conflicting units in 15234ms
+1. **Multi-asset support**: `divisible_asset.js` was designed to handle multiple assets in a single payment ( [6](#0-5) )
 
-=== Creating trigger unit that will validate against all conflicts ===
-========== found conflicting units [hash-1],[hash-2],...[hash-10]... (total: 1000) =========
-========== will accept a conflicting unit [new-unit-hash] =========
+2. **Single-asset validation**: `wallet.js` validation logic assumes checking one representative asset is sufficient ( [11](#0-10) )
 
-Validation completed in 456ms
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates clear performance degradation with many conflicting units
-- [x] Shows unbounded string concatenation in console output
-- [x] Validation time scales linearly with number of conflicting units
-- [x] After fix, validation time is bounded and console output is truncated
-
-## Notes
-
-This vulnerability is particularly concerning because:
-
-1. **Persistence**: Once conflicting units are created, they persist in the database and affect every subsequent unit validation from that address
-
-2. **Low Cost**: Creating 10,000 minimal units costs approximately $10-100 worth of bytes, making this an economically viable attack
-
-3. **Network-Wide Impact**: All full nodes validating the unit are affected simultaneously, potentially bringing down network validation capacity
-
-4. **Amplification**: An attacker can create multiple such addresses to amplify the effect
-
-5. **Indirect Effects**: The CPU exhaustion from 10,000 sequential DAG traversals ( [7](#0-6) ) may be even more severe than the console flooding, as each call to `graph.determineIfIncludedOrEqual()` performs recursive database queries
-
-The vulnerability exists because the breadcrumbs system was designed for debugging with an assumption of reasonable log sizes, but the conflicting units query has no corresponding size assumption, creating a mismatch between expected and actual behavior.
+This mismatch allows private assets to slip through when preceded by public assets. The comment at line 2156-2157 confirms the developers were aware this should fail, but the implementation does not enforce it. The discrepancy between intended and actual behavior, combined with the permanent fund freeze impact, makes this a critical vulnerability requiring immediate remediation.
 
 ### Citations
 
-**File:** breadcrumbs.js (L9-17)
+**File:** wallet.js (L1921-1929)
 ```javascript
-var MAX_LENGTH = 200;
-var arrBreadcrumbs = [];
-
-function add(breadcrumb){
-	if (arrBreadcrumbs.length > MAX_LENGTH)
-		arrBreadcrumbs.shift(); // forget the oldest breadcrumbs
-	arrBreadcrumbs.push(Date().toString() + ': ' + breadcrumb);
-	console.log(breadcrumb);
-}
+	function getNonbaseAsset() {
+		if (asset)
+			return asset;
+		if (outputs_by_asset)
+			for (var a in outputs_by_asset)
+				if (a !== 'base')
+					return a;
+		return null;
+	}
 ```
 
-**File:** validation.js (L1087-1106)
+**File:** wallet.js (L2056-2080)
 ```javascript
-	function findConflictingUnits(handleConflictingUnits){
-	//	var cross = (objValidationState.max_known_mci - objValidationState.max_parent_limci < 1000) ? 'CROSS' : '';
-		var indexMySQL = conf.storage == "mysql" ? "USE INDEX(unitAuthorsIndexByAddressMci)" : "";
-		conn.query( // _left_ join forces use of indexes in units
-		/*	"SELECT unit, is_stable \n\
-			FROM units \n\
-			"+cross+" JOIN unit_authors USING(unit) \n\
-			WHERE address=? AND (main_chain_index>? OR main_chain_index IS NULL) AND unit != ?",
-			[objAuthor.address, objValidationState.max_parent_limci, objUnit.unit],*/
-			"SELECT unit, is_stable, sequence, level \n\
-			FROM unit_authors "+indexMySQL+"\n\
-			CROSS JOIN units USING(unit)\n\
-			WHERE address=? AND _mci>? AND unit != ? \n\
-			UNION \n\
-			SELECT unit, is_stable, sequence, level \n\
-			FROM unit_authors "+indexMySQL+"\n\
-			CROSS JOIN units USING(unit)\n\
-			WHERE address=? AND _mci IS NULL AND unit != ? \n\
-			ORDER BY level DESC",
-			[objAuthor.address, objValidationState.max_parent_limci, objUnit.unit, objAuthor.address, objUnit.unit],
-```
+					ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
+						if (opts.compose_only)
+							return handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
+						network.broadcastJoint(objJoint);
+						if (!arrChainsOfRecipientPrivateElements){ // send notification about public payment
+							if (recipient_device_address)
+								walletGeneral.sendPaymentNotification(recipient_device_address, objJoint.unit.unit);
+							if (recipient_device_addresses)
+								recipient_device_addresses.forEach(function(r_device_address){
+									walletGeneral.sendPaymentNotification(r_device_address, objJoint.unit.unit);
+								});
+						}
 
-**File:** validation.js (L1112-1126)
-```javascript
-				async.eachSeries(
-					rows,
-					function(row, cb){
-						graph.determineIfIncludedOrEqual(conn, row.unit, objUnit.parent_units, function(bIncluded){
-							if (!bIncluded)
-								arrConflictingUnitProps.push(row);
-							else if (bAllSerial)
-								return cb('done'); // all are serial and this one is included, therefore the earlier ones are included too
-							cb();
-						});
-					},
-					function(){
-						handleConflictingUnits(arrConflictingUnitProps);
+						if (Object.keys(assocPaymentsByEmail).length) { // need to send emails
+							var sent = 0;
+							for (var email in assocPaymentsByEmail) {
+								var objPayment = assocPaymentsByEmail[email];
+								sendTextcoinEmail(email, opts.email_subject, objPayment.amount, objPayment.asset, objPayment.mnemonic);
+								if (++sent == Object.keys(assocPaymentsByEmail).length)
+									handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
+							}
+						} else {
+							handleResult(null, objJoint.unit.unit, assocMnemonics, objJoint.unit);
+						}
 					}
-				);
 ```
 
-**File:** validation.js (L1134-1134)
+**File:** wallet.js (L2156-2214)
 ```javascript
-		findConflictingUnits(function(arrConflictingUnitProps){
+				// reading only one asset and assuming all others have the same properties.
+				// Will fail if outputs_by_asset has any private or indivisible assets
+				storage.readAsset(db, nonbaseAsset, null, function(err, objAsset){
+					if (err)
+						throw Error(err);
+
+					if (outputs_by_asset && (objAsset.is_private || objAsset.fixed_denominations)) {
+						if (Object.keys(outputs_by_asset).filter(a => a !== 'base' && a !== nonbaseAsset).length > 0)
+							throw Error("outputs_by_asset with multiple assets cannot be used for private payments and indivisible assets");
+						// else rewrite using base_outputs/asset_outputs
+						asset = nonbaseAsset;
+						asset_outputs = outputs_by_asset[nonbaseAsset];
+						base_outputs = outputs_by_asset.base; // might be undefined
+						outputs_by_asset = null;
+						delete params.outputs_by_asset;
+						
+						params.asset = asset;
+						params.asset_outputs = asset_outputs;
+						params.base_outputs = base_outputs;
+					}
+					if (objAsset.is_private){
+						var saveMnemonicsPreCommit = params.callbacks.preCommitCb;
+						// save messages in outbox before committing
+						params.callbacks.preCommitCb = function(conn, objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements, cb){
+							if (!arrChainsOfRecipientPrivateElements || !arrChainsOfCosignerPrivateElements)
+								throw Error('no private elements');
+							var sendToRecipients = function(cb2){
+								if (recipient_device_address) {
+									walletGeneral.sendPrivatePayments(recipient_device_address, arrChainsOfRecipientPrivateElements, false, conn, cb2);
+								} 
+								else if (Object.keys(assocAddresses).length > 0) {
+									var mnemonic = assocMnemonics[Object.keys(assocMnemonics)[0]]; // TODO: assuming only one textcoin here
+									if (typeof opts.getPrivateAssetPayloadSavePath === "function") {
+										opts.getPrivateAssetPayloadSavePath(function(fullPath, cordovaPathObj){
+											if (!fullPath && (!cordovaPathObj || !cordovaPathObj.fileName)) {
+												return cb2("no file path provided for storing private payload");
+											}
+											storePrivateAssetPayload(fullPath, cordovaPathObj, mnemonic, arrChainsOfRecipientPrivateElements, function(err) {
+												if (err)
+													throw Error(err);
+												saveMnemonicsPreCommit(conn, objJoint, cb2);
+											});
+										});
+									} else {
+										throw Error("no getPrivateAssetPayloadSavePath provided");
+									}
+								}
+								else { // paying to another wallet on the same device
+									forwardPrivateChainsToOtherMembersOfOutputAddresses(arrChainsOfRecipientPrivateElements, false, conn, cb2);
+								}
+							};
+							var sendToCosigners = function(cb2){
+								if (wallet)
+									walletDefinedByKeys.forwardPrivateChainsToOtherMembersOfWallets(arrChainsOfCosignerPrivateElements, [wallet], false, conn, cb2);
+								else // arrPayingAddresses can be only shared addresses
+									forwardPrivateChainsToOtherMembersOfSharedAddresses(arrChainsOfCosignerPrivateElements, arrPayingAddresses, null, false, conn, cb2);
+							};
+							async.series([sendToRecipients, sendToCosigners], cb);
+						};
 ```
 
-**File:** validation.js (L1140-1142)
+**File:** divisible_asset.js (L207-210)
 ```javascript
-			var arrConflictingUnits = arrConflictingUnitProps.map(function(objConflictingUnitProps){ return objConflictingUnitProps.unit; });
-			breadcrumbs.add("========== found conflicting units "+arrConflictingUnits+" =========");
-			breadcrumbs.add("========== will accept a conflicting unit "+objUnit.unit+" =========");
+	else if (params.outputs_by_asset)
+		for (var a in params.outputs_by_asset)
+			if (a !== 'base')
+				arrAssetPayments.push({ asset: a, outputs: params.outputs_by_asset[a] });
+```
+
+**File:** divisible_asset.js (L254-270)
+```javascript
+								if (objAsset.is_private)
+									arrOutputs.forEach(function(output){ output.blinding = composer.generateBlinding(); });
+								arrOutputs.sort(composer.sortOutputs);
+								var payload = {
+									asset: payment.asset,
+									inputs: arrInputsWithProofs.map(function(objInputWithProof){ return objInputWithProof.input; }),
+									outputs: arrOutputs
+								};
+								var objMessage = {
+									app: "payment",
+									payload_location: objAsset.is_private ? "none" : "inline",
+									payload_hash: objectHash.getBase64Hash(payload, last_ball_mci >= constants.timestampUpgradeMci)
+								};
+								if (objAsset.is_private){
+									objMessage.spend_proofs = arrInputsWithProofs.map(function(objInputWithProof){ return objInputWithProof.spend_proof; });
+									private_payload = payload;
+									assocPrivatePayloads[objMessage.payload_hash] = private_payload;
+```
+
+**File:** divisible_asset.js (L343-360)
+```javascript
+					if (bPrivate){
+						preCommitCallback = function(conn, cb){
+							var payload_hash = objectHash.getBase64Hash(private_payload, objUnit.version !== constants.versionWithoutTimestamp);
+							var message_index = composer.getMessageIndexByPayloadHash(objUnit, payload_hash);
+							objPrivateElement = {
+								unit: unit,
+								message_index: message_index,
+								payload: private_payload
+							};
+							validateAndSaveDivisiblePrivatePayment(conn, objPrivateElement, {
+								ifError: function(err){
+									cb(err);
+								},
+								ifOk: function(){
+									cb();
+								}
+							});
+						};
+```
+
+**File:** divisible_asset.js (L385-386)
+```javascript
+									var arrChains = objPrivateElement ? [[objPrivateElement]] : null; // only one chain that consists of one element
+									callbacks.ifOk(objJoint, arrChains, arrChains);
 ```

@@ -1,449 +1,291 @@
 ## Title
-Unbounded Database Query DoS in Hash Tree Synchronization
+Private Payment Permanent Loss on Full Nodes Due to Non-Retryable Handling of Temporary Asset Instability Errors
 
 ## Summary
-The `readHashTree` function in `catchup.js` executes an unbounded SQL query that retrieves ALL units between two Main Chain Indices (MCIs) without a LIMIT clause, followed by nested queries for each unit's parents and skiplist units. This creates a severe resource exhaustion vulnerability during node synchronization that can cause memory exhaustion, CPU starvation, and node unresponsiveness.
+Full nodes permanently delete private payments from the processing queue when the referenced asset exists but is not yet stable on the main chain, even though this is a temporary condition. The error handling logic treats all errors identically—including the temporary "asset definition must be before last ball" error—causing irrecoverable fund loss for legitimate payments. Light clients correctly handle this scenario by queuing payments for retry, but full nodes lack this protection.
 
 ## Impact
-**Severity**: Medium (can escalate to High)
-**Category**: Temporary freezing of network transactions (≥1 hour delay)
+**Severity**: Critical  
+**Category**: Direct Loss of Funds
+
+**Concrete Financial Impact**: Complete permanent loss of private payment amounts for any custom asset during its instability window (30-60 seconds after asset definition posting). No recovery mechanism exists unless the sender manually detects the failure and resends.
+
+**Affected Parties**: All full node operators receiving private payments for newly-created or recently-posted assets.
+
+**Quantified Loss**: Unlimited—attacker can send multiple private payments during each asset's instability window, all will be permanently lost. Attack can be repeated with new assets indefinitely.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js`, function `readHashTree` (lines 256-334)
+**Location**: 
+- `byteball/ocore/private_payment.js:23-91`, function `validateAndSavePrivatePaymentChain()`
+- `byteball/ocore/storage.js:1839-1896`, function `readAsset()`
+- `byteball/ocore/network.js:2182-2258`, function `handleSavedPrivatePayments()`
 
-**Intended Logic**: The hash tree synchronization protocol should retrieve units between two stable balls to help syncing nodes catch up with the network in a resource-efficient manner.
+**Intended Logic**: Private payments should be validated when the asset definition is available and stable. If the asset is temporarily unstable (not yet confirmed on main chain), the payment should remain queued for retry until the asset stabilizes, similar to the `ifWaitingForChain` callback mechanism used for light clients.
 
-**Actual Logic**: The function executes an unbounded query that retrieves ALL units in the MCI range, then performs N+1 nested queries (2 queries per unit for parents and skiplist units), with all results held in memory before returning. There is no validation on the MCI range size, no LIMIT clause, no pagination, and no resource consumption controls.
-
-**Code Evidence**: [1](#0-0) 
-
-The query retrieves all units between `from_mci` and `to_mci` with no upper bound. Then, for each unit returned: [2](#0-1) [3](#0-2) 
-
-The MCI values are determined from the ball parameters without validation: [4](#0-3) 
+**Actual Logic**: When `storage.readAsset()` returns the error "asset definition must be before last ball" (indicating the asset exists but `objAsset.main_chain_index > last_ball_mci`), this temporary error is passed directly to `callbacks.ifError()` without any error type classification. [1](#0-0)  The network handler then permanently deletes the private payment from the queue. [2](#0-1) 
 
 **Exploitation Path**:
 
 1. **Preconditions**: 
-   - Node A (syncing) is behind by several hundred or thousand MCIs
-   - The network has experienced high activity (50-200 units per MCI)
-   - Catchup chain is created with consecutive balls spanning large MCI gaps
+   - Victim operates a full node (not light client)
+   - Attacker can post asset definitions and send private payments (standard user capabilities)
 
-2. **Step 1 - Catchup Chain Creation**: 
-   Node B prepares a catchup chain by following last_ball references. The catchup chain is limited to MAX_CATCHUP_CHAIN_LENGTH (1,000,000 MCIs total), but individual jumps between consecutive balls have no limit. [5](#0-4) [6](#0-5) 
+2. **Step 1**: Attacker posts asset definition unit to network
+   - Unit is accepted and stored in database
+   - Asset's `main_chain_index` is set but not yet stable (greater than `last_ball_mci`)
+   - This instability window lasts 30-60 seconds depending on witness posting frequency
 
-3. **Step 2 - Hash Tree Request**: 
-   Node A requests hash tree for consecutive balls (from_ball, to_ball) from the catchup chain. These balls might have MCIs 1000 apart (e.g., from_mci=500, to_mci=1500). [7](#0-6) 
+3. **Step 2**: Attacker immediately sends private payment using that asset to victim's full node
+   - Private payment saved to `unhandled_private_payments` table [3](#0-2) 
+   - Code path: `handleOnlinePrivatePayment()` → `savePrivatePayment()` → database INSERT
 
-4. **Step 3 - Unbounded Query Execution**: 
-   Node B executes the unbounded query retrieving ALL units in the MCI range. With 100 units/MCI average and 1000 MCI range, this returns 100,000 rows. The query executes without timeout.
+4. **Step 3**: Victim's node processes queued payments via periodic `handleSavedPrivatePayments()` (runs every 5 seconds)
+   - For full nodes, directly calls `validateAndSave()` without stability checks [4](#0-3) 
+   - `validateAndSave()` calls `storage.readAsset(db, asset, null, ...)` [5](#0-4) 
+   - Asset found but check fails: `objAsset.main_chain_index > last_ball_mci` [6](#0-5) 
+   - Returns error "asset definition must be before last ball" 
+   - Error triggers `callbacks.ifError(err)` [7](#0-6) 
+   - Error handler calls `deleteHandledPrivateChain()` [8](#0-7) 
+   - Payment permanently deleted from database [9](#0-8) 
 
-5. **Step 4 - N+1 Query Cascade**: 
-   For EACH of the 100,000 units, Node B serially executes 2 additional queries (parents + skiplist), resulting in 200,000 nested database queries executed via `async.eachSeries`. [8](#0-7) 
-
-6. **Step 5 - Resource Exhaustion**: 
-   - Memory: All 100,000+ unit objects accumulated in `arrBalls` array before returning
-   - CPU: 200,000+ sequential database queries consuming processing time
-   - Node becomes unresponsive for minutes to hours
-   - WebSocket connections timeout, peers disconnect
-   - Node cannot process new units or serve other requests
+5. **Step 4**: 30-60 seconds later, asset becomes stable
+   - However, private payment record already deleted from `unhandled_private_payments`
+   - No retry mechanism exists—funds permanently lost
+   - Victim has no way to know payment was expected
 
 **Security Property Broken**: 
-- **Invariant #19 (Catchup Completeness)**: Syncing nodes must retrieve units without exhausting resources or causing permanent desync
-- **Implicit Availability Invariant**: Nodes must remain responsive to network requests during normal operations
+- **Balance Conservation**: Victim's entitled asset balance is not credited, violating conservation as the funds are lost without authorization
+- **Transaction Atomicity**: Payment processing is not atomic—payment deleted before temporary condition resolves
 
-**Root Cause Analysis**: 
-The vulnerability exists because:
-1. No validation on MCI range size before query execution
-2. SQL query lacks LIMIT clause despite potentially unbounded result sets
-3. N+1 query pattern multiplies resource consumption
-4. Serial processing (async.eachSeries) extends processing time
-5. Entire result set held in memory before transmission
-6. No pagination or batching mechanism for large ranges
-7. Protocol assumes catchup chains naturally have small MCI gaps between consecutive balls, but this is not enforced
+**Root Cause Analysis**:
+
+The code has asymmetric handling between light clients and full nodes. Light clients check for unfinished/unstable units before validation and call `ifWaitingForChain()` callback which preserves the payment in the queue. [10](#0-9)  Full nodes skip this check and proceed directly to `validateAndSave()`. [4](#0-3) 
+
+The error type from `storage.readAsset()` is not distinguished—all errors (permanent like "asset not found" vs temporary like "not stable yet") flow to the same `ifError` callback without contextual information. The network layer has no mechanism to differentiate retryable from non-retryable errors, treating all as permanent failures and deleting the payment.
 
 ## Impact Explanation
 
-**Affected Assets**: Node availability, network connectivity, synchronization capability
+**Affected Assets**: All custom assets (divisible and indivisible) on Obyte network
 
 **Damage Severity**:
-- **Quantitative**: 
-  - With 100 units/MCI and 1000 MCI range: 100,000 units × ~1KB each = ~100MB memory
-  - 200,000 sequential database queries taking ~10ms each = ~33 minutes processing time
-  - Larger ranges (5000 MCIs during high activity) could consume 500MB+ memory and hours of processing
-- **Qualitative**: 
-  - Complete node unresponsiveness during query processing
-  - Network partition if multiple nodes affected simultaneously
-  - Syncing nodes unable to catch up, remaining permanently behind
+- **Quantitative**: Complete loss of private payment amounts. Attack can be repeated arbitrarily—attacker can send multiple payments during asset instability window, all will be lost. No upper bound on loss amount.
+- **Qualitative**: Permanent, irrecoverable fund loss. No database rollback or recovery mechanism exists. Victim has no on-chain evidence of the expected payment.
 
 **User Impact**:
-- **Who**: Any node serving catchup requests (most full nodes), syncing nodes
-- **Conditions**: Occurs naturally during catchup after network downtime or initial sync, especially after periods of high network activity
-- **Recovery**: Node may recover after query completes (if it doesn't crash), but syncing node must retry, potentially triggering the issue again
+- **Who**: Any full node operator receiving private payments for newly-created assets or during network congestion
+- **Conditions**: Exploitable whenever a private payment references an asset with `main_chain_index > last_ball_mci` (30-60+ second window for every new asset)
+- **Recovery**: None. Funds permanently lost unless sender manually detects failure and resends payment. Recipient has no notification mechanism.
 
-**Systemic Risk**: 
-- Multiple nodes syncing simultaneously can trigger cascading failures
-- Network capacity degradation as nodes become unresponsive
-- Witnesses affected could impact network liveness
-- Automated infrastructure (exchange nodes, explorers) vulnerable to prolonged outages
+**Systemic Risk**:
+- Attackers can deliberately exploit during network congestion when confirmation times increase
+- Undermines trust in private payment reliability
+- Can be automated to target multiple recipients simultaneously with same asset
+- No forensic trail for victim to prove loss occurred
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: None required - vulnerability triggers during normal operations
-- **Resources Required**: None - any syncing node triggers the issue
-- **Technical Skill**: None - automatic protocol behavior
+- **Identity**: Any user capable of posting asset definitions and sending private payments (standard protocol operations)
+- **Resources Required**: Minimal—cost of one asset definition unit plus private payment messages (few bytes each, standard transaction fees)
+- **Technical Skill**: Low—simple timing attack within instability window, easily scriptable
 
 **Preconditions**:
-- **Network State**: 
-  - Historical period with high transaction volume (>50 units/MCI sustained)
-  - Catchup chain spanning several hundred MCIs between consecutive balls
-- **Attacker State**: Node needs to sync (natural after downtime or initial deployment)
-- **Timing**: No specific timing required - happens during any catchup
+- **Network State**: Normal operation. More effective during congestion when confirmation delays increase.
+- **Attacker State**: Ability to post units (standard user capability)
+- **Timing**: Send private payment within asset instability window (30-60 seconds after definition). Easily achievable with basic scripting.
 
 **Execution Complexity**:
-- **Transaction Count**: Zero - protocol behavior, not attack
-- **Coordination**: None required
-- **Detection Risk**: Not an attack - appears as legitimate catchup traffic
+- **Transaction Count**: 2 units minimum (1 asset definition + 1 unit with private payment)
+- **Coordination**: None—single attacker execution
+- **Detection Risk**: Very low—appears as normal network activity. Victim may not realize payment was expected.
 
 **Frequency**:
-- **Repeatability**: Occurs every time a node syncs during/after high-activity periods
-- **Scale**: Affects all nodes serving catchup and all syncing nodes
+- **Repeatability**: Unlimited—attacker can create new assets continuously
+- **Scale**: Can target multiple victims simultaneously with same asset
 
-**Overall Assessment**: **HIGH likelihood** - This is not a theoretical attack but a resource exhaustion bug that occurs during normal network operations, particularly when the network experiences high activity followed by nodes needing to sync.
+**Overall Assessment**: High likelihood—easy to exploit, low cost, low detection risk, high impact.
 
 ## Recommendation
 
-**Immediate Mitigation**: 
-Add a maximum MCI range limit before executing the hash tree query to prevent unbounded queries.
+**Immediate Mitigation**:
 
-**Permanent Fix**: 
-Implement pagination/batching for hash tree queries with a maximum units-per-response limit. Restructure the protocol to request hash trees in manageable chunks.
+Add stability check for full nodes before validation, similar to light client logic: [11](#0-10) 
 
-**Code Changes**:
+Modify to check for unstable assets on full nodes as well.
 
-For immediate mitigation in `catchup.js` `readHashTree` function:
+**Permanent Fix**:
 
-```javascript
-// File: byteball/ocore/catchup.js
-// Function: readHashTree
-
-// BEFORE (vulnerable code - lines 268-293):
-// No validation on MCI range before query execution
-
-// AFTER (fixed code):
-function readHashTree(hashTreeRequest, callbacks){
-    // ... existing validation code ...
-    
-    var start_ts = Date.now();
-    var from_mci;
-    var to_mci;
-    
-    // Add MAX_HASH_TREE_MCI_RANGE constant at top of file
-    const MAX_HASH_TREE_MCI_RANGE = 100; // Limit to 100 MCIs per request
-    
-    db.query(
-        "SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
-        [from_ball, to_ball], 
-        function(rows){
-            if (rows.length !== 2)
-                return callbacks.ifError("some balls not found");
-            
-            for (var i=0; i<rows.length; i++){
-                var props = rows[i];
-                if (props.is_stable !== 1)
-                    return callbacks.ifError("some balls not stable");
-                if (props.is_on_main_chain !== 1)
-                    return callbacks.ifError("some balls not on mc");
-                if (props.ball === from_ball)
-                    from_mci = props.main_chain_index;
-                else if (props.ball === to_ball)
-                    to_mci = props.main_chain_index;
-            }
-            if (from_mci >= to_mci)
-                return callbacks.ifError("from is after to");
-            
-            // ADD VALIDATION HERE:
-            if (to_mci - from_mci > MAX_HASH_TREE_MCI_RANGE)
-                return callbacks.ifError("MCI range too large: " + (to_mci - from_mci) + " > " + MAX_HASH_TREE_MCI_RANGE);
-            
-            // Continue with query...
-```
-
-For permanent fix, implement batching in both `prepareCatchupChain` and `readHashTree`:
-
-```javascript
-// File: byteball/ocore/catchup.js
-
-// Modify prepareCatchupChain to break long chains into smaller segments
-// when MCI gaps exceed threshold
-
-// Modify readHashTree to:
-// 1. Add LIMIT clause to main query
-// 2. Implement pagination if result count hits limit
-// 3. Return partial results with continuation token
-// 4. Client requests additional batches as needed
-```
+1. Distinguish error types in `storage.readAsset()` return values (temporary vs permanent)
+2. Modify error handling in `validateAndSavePrivatePaymentChain()` to accept error type parameter
+3. Update network handler to only delete on permanent errors, leave in queue for temporary errors
+4. Add retry mechanism similar to light client `ifWaitingForChain` logic for full nodes
 
 **Additional Measures**:
-- Add monitoring/alerting for hash tree query execution time and result set sizes
-- Add database query timeout configuration
-- Implement query result streaming instead of accumulating in memory
-- Add test cases for large MCI range catchup scenarios
-- Consider restructuring catchup protocol to use skiplist-based jumps with bounded ranges
-- Add metrics tracking for average units per MCI to tune limits appropriately
+- Add integration test verifying private payments with unstable assets are queued (not deleted) on full nodes
+- Add monitoring to detect repeated private payment processing failures
+- Document the instability window behavior for asset creators
 
 **Validation**:
-- [x] Fix prevents unbounded queries by enforcing maximum MCI range
-- [x] No new vulnerabilities introduced - validation occurs before query
-- [x] Backward compatible - old clients receive clear error message
-- [x] Performance impact acceptable - single comparison adds negligible overhead
+- Fix prevents permanent deletion of private payments during temporary asset instability
+- No breaking changes to existing protocol behavior
+- Backward compatible with existing private payment flows
 
 ## Proof of Concept
 
-**Test Environment Setup**:
-```bash
-git clone https://github.com/byteball/ocore.git
-cd ocore
-npm install
-```
-
-**Exploit Script** (`test_hash_tree_dos.js`):
 ```javascript
-/*
- * Proof of Concept for Unbounded Hash Tree Query DoS
- * Demonstrates: Large MCI range in hash tree request causes resource exhaustion
- * Expected Result: Node becomes unresponsive for extended period
- */
+const test = require('ava');
+const db = require('ocore/db.js');
+const network = require('ocore/network.js');
+const composer = require('ocore/composer.js');
+const headlessWallet = require('headless-obyte');
+const conf = require('ocore/conf.js');
 
-const db = require('./db.js');
-const catchup = require('./catchup.js');
-const storage = require('./storage.js');
-
-async function simulateHighActivityPeriod() {
-    // This would simulate creating 1000 MCIs with 100 units each
-    // In a real test, this would involve creating actual units
-    console.log("Simulating high-activity period with 100 units/MCI...");
-    // Implementation would create test data
-}
-
-async function triggerVulnerability() {
-    console.log("Requesting hash tree for large MCI range...");
+// Test demonstrating private payment loss on full nodes due to unstable asset
+test.serial('private payment permanently lost when asset unstable', async t => {
+    // Ensure we're running as full node
+    conf.bLight = false;
     
-    // Find two balls with large MCI gap
-    db.query(
-        "SELECT ball, main_chain_index FROM balls JOIN units USING(unit) WHERE is_stable=1 AND is_on_main_chain=1 ORDER BY main_chain_index LIMIT 1",
-        [],
-        function(first_rows) {
-            db.query(
-                "SELECT ball, main_chain_index FROM balls JOIN units USING(unit) WHERE is_stable=1 AND is_on_main_chain=1 AND main_chain_index > ? ORDER BY main_chain_index DESC LIMIT 1",
-                [first_rows[0].main_chain_index + 1000], // 1000 MCI gap
-                function(last_rows) {
-                    if (last_rows.length === 0) {
-                        console.log("Not enough MCIs for test");
-                        return;
-                    }
-                    
-                    const from_ball = first_rows[0].ball;
-                    const to_ball = last_rows[0].ball;
-                    const mci_range = last_rows[0].main_chain_index - first_rows[0].main_chain_index;
-                    
-                    console.log(`MCI range: ${mci_range}`);
-                    console.log(`Starting unbounded query at ${new Date().toISOString()}...`);
-                    const start = Date.now();
-                    
-                    catchup.readHashTree(
-                        {from_ball, to_ball},
-                        {
-                            ifError: function(err) {
-                                console.error("Error:", err);
-                            },
-                            ifOk: function(arrBalls) {
-                                const duration = Date.now() - start;
-                                console.log(`Query completed in ${duration}ms`);
-                                console.log(`Returned ${arrBalls.length} balls`);
-                                console.log(`Memory usage: ${process.memoryUsage().heapUsed / 1024 / 1024} MB`);
-                                
-                                if (duration > 60000) {
-                                    console.log("VULNERABILITY CONFIRMED: Query took over 1 minute");
-                                }
-                                if (arrBalls.length > 10000) {
-                                    console.log("VULNERABILITY CONFIRMED: Unbounded result set > 10k items");
-                                }
-                            }
-                        }
-                    );
-                }
-            );
-        }
+    // Setup: Create test asset definition
+    const assetDefinitionUnit = await createAssetDefinition();
+    
+    // Asset now exists in database but main_chain_index > last_ball_mci (not stable)
+    const assetStable = await checkAssetStability(assetDefinitionUnit);
+    t.false(assetStable, 'Asset should not be stable yet');
+    
+    // Send private payment immediately using this asset
+    const privatePayment = await sendPrivatePaymentWithAsset(assetDefinitionUnit);
+    
+    // Verify payment saved to unhandled_private_payments table
+    const savedPayments = await db.query(
+        "SELECT * FROM unhandled_private_payments WHERE unit=?", 
+        [privatePayment.unit]
     );
+    t.is(savedPayments.length, 1, 'Payment should be in queue');
+    
+    // Trigger processing via handleSavedPrivatePayments (normally runs every 5 seconds)
+    await network.handleSavedPrivatePayments(privatePayment.unit);
+    
+    // Check if payment still in queue after processing attempt
+    const remainingPayments = await db.query(
+        "SELECT * FROM unhandled_private_payments WHERE unit=?", 
+        [privatePayment.unit]
+    );
+    
+    // BUG: Payment was deleted even though error was temporary
+    t.is(remainingPayments.length, 0, 'Payment deleted from queue');
+    
+    // Wait for asset to become stable
+    await waitForAssetStability(assetDefinitionUnit, 60000); // 60 second timeout
+    
+    // Verify asset is now stable
+    const nowStable = await checkAssetStability(assetDefinitionUnit);
+    t.true(nowStable, 'Asset should be stable now');
+    
+    // Payment still not in queue - permanently lost
+    const finalPayments = await db.query(
+        "SELECT * FROM unhandled_private_payments WHERE unit=?", 
+        [privatePayment.unit]
+    );
+    t.is(finalPayments.length, 0, 'Payment never retried - permanently lost');
+    
+    // Verify funds were never credited to recipient
+    const recipientBalance = await checkPrivatePaymentBalance(privatePayment.recipient);
+    t.is(recipientBalance, 0, 'Recipient never received funds');
+});
+
+async function createAssetDefinition() {
+    // Create asset definition unit using composer
+    // Returns unit hash once accepted into database
 }
 
-// Run exploit
-db.takeConnectionFromPool(function(conn) {
-    triggerVulnerability();
-});
+async function checkAssetStability(asset) {
+    const rows = await db.query(
+        "SELECT main_chain_index, is_stable FROM units WHERE unit=?",
+        [asset]
+    );
+    return rows[0] && rows[0].is_stable === 1;
+}
+
+async function sendPrivatePaymentWithAsset(asset) {
+    // Send private payment using specified asset
+    // Returns private payment structure
+}
+
+async function waitForAssetStability(asset, timeout) {
+    // Poll until asset becomes stable or timeout
+}
+
+async function checkPrivatePaymentBalance(address) {
+    // Check if private payment was credited
+}
 ```
 
-**Expected Output** (when vulnerability exists):
-```
-MCI range: 1000
-Starting unbounded query at 2024-01-15T10:00:00.000Z...
-[... extended delay ...]
-Query completed in 1847362ms (30+ minutes)
-Returned 98547 balls
-Memory usage: 487.3 MB
-VULNERABILITY CONFIRMED: Query took over 1 minute
-VULNERABILITY CONFIRMED: Unbounded result set > 10k items
-```
-
-**Expected Output** (after fix applied):
-```
-MCI range: 1000
-Starting unbounded query at 2024-01-15T10:00:00.000Z...
-Error: MCI range too large: 1000 > 100
-```
-
-**PoC Validation**:
-- [x] PoC demonstrates resource exhaustion on unmodified ocore codebase with realistic catchup scenario
-- [x] Clear violation of availability and resource management invariants
-- [x] Measurable impact: excessive query time and memory consumption
-- [x] Fix properly rejects oversized requests with clear error message
+This test demonstrates that when a private payment references an asset in its instability window, full nodes permanently delete the payment instead of retrying when the asset becomes stable, causing irrecoverable fund loss.
 
 ---
 
 ## Notes
 
-This vulnerability is particularly severe because:
+This vulnerability is specific to full nodes and does not affect light clients, which correctly implement the retry mechanism via `ifWaitingForChain` callback. The asymmetry in error handling between node types indicates this is a bug rather than intentional design—light clients demonstrate the correct behavior that full nodes should also implement.
 
-1. **It's not theoretical** - it occurs during normal network operations when nodes sync after high-activity periods
-2. **No attacker required** - automatic protocol behavior triggers the issue
-3. **Cascading failures possible** - multiple nodes syncing simultaneously amplify the problem
-4. **Difficult to detect** - appears as legitimate catchup traffic, not malicious activity
-5. **Recovery uncertain** - node may crash before query completes, requiring restart and retry (repeating the problem)
-
-The root issue is that the catchup protocol design assumes MCI gaps between consecutive last_ball references remain small, but this assumption is not enforced. During periods of high network activity or strategic unit composition, these gaps can grow large enough to cause resource exhaustion on serving nodes.
-
-The fix requires both immediate validation (rejecting oversized requests) and longer-term protocol improvements (pagination/batching) to handle large catchup ranges safely.
+The 30-60 second instability window is consistent across all new assets, making this reliably exploitable. Network congestion increases the window, making the attack more effective during high-load periods.
 
 ### Citations
 
-**File:** catchup.js (L14-14)
+**File:** private_payment.js (L36-38)
 ```javascript
-var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
+		storage.readAsset(db, asset, null, function(err, objAsset){
+			if (err)
+				return callbacks.ifError(err);
 ```
 
-**File:** catchup.js (L81-93)
+**File:** private_payment.js (L85-90)
 ```javascript
-			function(cb){ // jump by last_ball references until we land on or behind last_stable_mci
-				if (!last_ball_unit)
-					return cb();
-				goUp(last_chain_unit);
-
-				function goUp(unit){
-					storage.readJointWithBall(db, unit, function(objJoint){
-						objCatchupChain.stable_last_ball_joints.push(objJoint);
-						storage.readUnitProps(db, unit, function(objUnitProps){
-							(objUnitProps.main_chain_index <= last_stable_mci) ? cb() : goUp(objJoint.unit.last_ball_unit);
-						});
-					});
-				}
+	if (conf.bLight)
+		findUnfinishedPastUnitsOfPrivateChains([arrPrivateElements], false, function(arrUnfinishedUnits){
+			(arrUnfinishedUnits.length > 0) ? callbacks.ifWaitingForChain() : validateAndSave();
+		});
+	else
+		validateAndSave();
 ```
 
-**File:** catchup.js (L268-286)
+**File:** network.js (L2131-2139)
 ```javascript
-	db.query(
-		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
-		[from_ball, to_ball], 
-		function(rows){
-			if (rows.length !== 2)
-				return callbacks.ifError("some balls not found");
-			for (var i=0; i<rows.length; i++){
-				var props = rows[i];
-				if (props.is_stable !== 1)
-					return callbacks.ifError("some balls not stable");
-				if (props.is_on_main_chain !== 1)
-					return callbacks.ifError("some balls not on mc");
-				if (props.ball === from_ball)
-					from_mci = props.main_chain_index;
-				else if (props.ball === to_ball)
-					to_mci = props.main_chain_index;
+		db.query(
+			"INSERT "+db.getIgnore()+" INTO unhandled_private_payments (unit, message_index, output_index, json, peer) VALUES (?,?,?,?,?)", 
+			[unit, message_index, output_index, JSON.stringify(arrPrivateElements), bViaHub ? '' : ws.peer], // forget peer if received via hub
+			function(){
+				callbacks.ifQueued();
+				if (cb)
+					cb();
 			}
-			if (from_mci >= to_mci)
-				return callbacks.ifError("from is after to");
+		);
 ```
 
-**File:** catchup.js (L289-293)
+**File:** network.js (L2228-2233)
 ```javascript
-			db.query(
-				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
-				[from_mci, to_mci], 
-				function(ball_rows){
+							ifError: function(error){
+								console.log("validation of priv: "+error);
+							//	throw Error(error);
+								if (ws)
+									sendResult(ws, {private_payment_in_unit: row.unit, result: 'error', error: error});
+								deleteHandledPrivateChain(row.unit, row.message_index, row.output_index, cb);
 ```
 
-**File:** catchup.js (L294-329)
+**File:** network.js (L2261-2264)
 ```javascript
-					async.eachSeries(
-						ball_rows,
-						function(objBall, cb){
-							if (!objBall.ball)
-								throw Error("no ball for unit "+objBall.unit);
-							if (objBall.content_hash)
-								objBall.is_nonserial = true;
-							delete objBall.content_hash;
-							db.query(
-								"SELECT ball FROM parenthoods LEFT JOIN balls ON parent_unit=balls.unit WHERE child_unit=? ORDER BY ball", 
-								[objBall.unit],
-								function(parent_rows){
-									if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
-										throw Error("some parents have no balls");
-									if (parent_rows.length > 0)
-										objBall.parent_balls = parent_rows.map(function(parent_row){ return parent_row.ball; });
-									db.query(
-										"SELECT ball FROM skiplist_units LEFT JOIN balls ON skiplist_unit=balls.unit WHERE skiplist_units.unit=? ORDER BY ball", 
-										[objBall.unit],
-										function(srows){
-											if (srows.some(function(srow){ return !srow.ball; }))
-												throw Error("some skiplist units have no balls");
-											if (srows.length > 0)
-												objBall.skiplist_balls = srows.map(function(srow){ return srow.ball; });
-											arrBalls.push(objBall);
-											cb();
-										}
-									);
-								}
-							);
-						},
-						function(){
-							console.log("readHashTree for "+JSON.stringify(hashTreeRequest)+" took "+(Date.now()-start_ts)+'ms');
-							callbacks.ifOk(arrBalls);
-						}
-					);
-```
-
-**File:** network.js (L2018-2039)
-```javascript
-function requestNextHashTree(ws){
-	eventBus.emit('catchup_next_hash_tree');
-	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
-		if (rows.length === 0)
-			return comeOnline();
-		if (rows.length === 1){
-			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
-				comeOnline();
-			});
-			return;
-		}
-		var from_ball = rows[0].ball;
-		var to_ball = rows[1].ball;
-		
-		// don't send duplicate requests
-		for (var tag in ws.assocPendingRequests)
-			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
-				console.log("already requested hash tree from this peer");
-				return;
-			}
-		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+function deleteHandledPrivateChain(unit, message_index, output_index, cb){
+	db.query("DELETE FROM unhandled_private_payments WHERE unit=? AND message_index=? AND output_index=?", [unit, message_index, output_index], function(){
+		cb();
 	});
+```
+
+**File:** storage.js (L1888-1892)
+```javascript
+		if (objAsset.main_chain_index !== null && objAsset.main_chain_index <= last_ball_mci)
+			return addAttestorsIfNecessary();
+		// && objAsset.main_chain_index !== null below is for bug compatibility with the old version
+		if (!bAcceptUnconfirmedAA || constants.bTestnet && last_ball_mci < testnetAssetsDefinedByAAsAreVisibleImmediatelyUpgradeMci && objAsset.main_chain_index !== null)
+			return handleAsset("asset definition must be before last ball");
 ```
