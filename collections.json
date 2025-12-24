@@ -26925,889 +26925,889 @@
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [async.eachSeries timing] The async.eachSeries at line 125-137 is used to find the first parent that includes the target unit. If graph.determineIfIncluded() is very slow for some parents, could an attacker create DAG structures that cause this loop to take excessive time, DoSing proof chain construction (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_708839f5-3b57-471f-ae19-09961b8ee25b",
     "timestamp": "2025-12-23 16:48:57.212268",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [findParent recursion] The findParent function at line 115-140 calls addBall, which calls findParent again at line 107, creating mutual recursion. If the DAG structure has very long off-chain paths (many units between MC unit and target unit), could this cause stack overflow (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4127b126-c088-40e6-b5f2-a64f233a8e29",
     "timestamp": "2025-12-23 16:49:16.133987",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Nested callback hell] The addBall function has three nested database queries (lines 25, 32-34, 40-44) with callbacks. If one of these queries hangs or times out, would the entire proof chain construction hang indefinitely? Could an attacker exploit this by causing database query delays (e.g., via resource exhaustion) to DoS proof chain construction (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e65a341a-9a01-4761-b7e6-d8d42282f509",
     "timestamp": "2025-12-23 16:49:36.158427",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Recursive addBall calls] The addBall function at line 22-67 recursively calls itself at lines 54 and 61. If database queries are slow or if the recursion depth is very large (e.g., earlier_mci = 0, later_mci = 1000000), could this cause stack overflow or exceed callback limits in Node.js (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e4006b6-7227-4ac3-91a1-0639d8b646b0",
     "timestamp": "2025-12-23 16:49:56.881474",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Callback ordering] The main buildProofChain function at line 14-16 calls buildProofChainOnMc, then buildLastMileOfProofChain in sequence. If the onDone callback from buildProofChainOnMc is called before arrBalls is fully populated (e.g., due to async timing), could buildLastMileOfProofChain receive an incomplete array? Would this create incomplete proof chains (Critical severity - fake proofs)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_412e62e1-2240-42ee-991d-7fd9937bff8e",
     "timestamp": "2025-12-23 16:50:18.999017",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Parent iteration order] The async.eachSeries at line 125-137 iterates through parents in array order and returns the first parent that includes the target unit (line 129: cb(parent_unit) terminates iteration). If the parent order from the database query is non-deterministic (e.g., dependent on database implementation), could different nodes select different parents, creating divergent proof chains (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f8540a0-7265-4c50-8047-687b2ba01e85",
     "timestamp": "2025-12-23 16:50:41.721720",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [determineIfIncluded dependency] The path selection relies on graph.determineIfIncluded() at line 128-130. If this function has bugs or returns inconsistent results under certain DAG structures, could different nodes build different proof chains for the same unit, causing chain splits (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_129b4d72-5be5-41b0-991e-c9c8c50e7387",
     "timestamp": "2025-12-23 16:51:04.671091",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [No valid parent found] At line 133-134, if no parent includes the target unit, an error is thrown. Could this occur in legitimate scenarios (e.g., during reorganizations or if the target unit is in a different branch)? Would this cause proof chain requests to fail, making certain units permanently unverifiable by light clients (High severity - permanent fund freezing)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f5a5b04a-49de-4a30-aeb6-e57070c41c28",
     "timestamp": "2025-12-23 16:51:27.986561",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Single parent optimization] At line 123-124, if there is only one parent, it is selected immediately without calling determineIfIncluded(). Could an attacker exploit this by creating units with only one parent that doesn't actually include the target unit, causing the proof chain to select an incorrect path (Critical severity - fake proof allowing fund theft)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_88e7fc5c-ac09-40b3-ad8f-8a7c5159eb8b",
     "timestamp": "2025-12-23 16:51:52.980061",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Parent selection on MC] The findParent() function at line 115-140 queries for parent units that have the same main_chain_index as the current interim_unit (line 117-118). What happens if multiple parents exist at the same MCI? The code uses graph.determineIfIncluded() to find which parent includes the target unit. Could an attacker create a DAG structure where multiple parents at the same MCI include the target unit, causing non-deterministic path selection (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_224b23dd-f4a7-4852-b60b-0311be4b2d35",
     "timestamp": "2025-12-23 16:52:17.999361",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Missing skiplist MCI coverage] If skiplist units are supposed to provide O(log N) traversal but some ranges have no skiplist coverage (e.g., gaps in MCI assignments), could this degrade to O(N) traversal in worst case? While not a direct security issue, could an attacker exploit this to create proof chains that take excessive time to construct, causing DoS (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b1444e6e-0336-4e5b-88eb-4f0ee9201422",
     "timestamp": "2025-12-23 16:52:44.252255",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist boundary conditions] When next_skiplist_mci < next_mci && next_skiplist_mci >= earlier_mci at line 58, the code updates next_mci. What happens if a skiplist entry has main_chain_index = earlier_mci exactly? Would this be included in the proof chain or skipped? Could this ambiguity lead to different nodes producing different proof chains for the same MCI range (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a372127-58cf-46f7-8ad7-57759cee8497",
     "timestamp": "2025-12-23 16:53:10.568058",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist infinite loop] At line 56-60, the loop iterates through skiplist entries to find next_mci. If the skiplist contains circular references (e.g., unit A has skiplist to unit B which has skiplist back to A), could this cause the proof chain construction to loop infinitely or revisit the same MCIs, never reaching earlier_mci (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e372991d-a92b-4332-a23f-f12cee445fdf",
     "timestamp": "2025-12-23 16:53:37.034500",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist MCI calculation] At line 55-61, the code calculates next_mci by finding the minimum skiplist MCI that is still >= earlier_mci. If skiplist MCIs are maliciously crafted to all be either < earlier_mci or >>> later_mci, could this cause inefficient traversal or skip critical validation points in the proof chain (Medium severity - incorrect proof construction)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3dd6cdc9-5ea2-49bd-82ef-6f29d3734675",
     "timestamp": "2025-12-23 16:54:05.371237",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist-free chain] At line 53-54, if there are no skiplist units (srows.length === 0), the code falls back to linear traversal with addBall(mci-1). Could an attacker manipulate the skiplist construction (in the unit creation phase) to create long chains without skiplist entries, forcing proof chain construction to traverse every single MCI sequentially? This could cause DoS by making proof chain construction take O(N) time instead of O(log N) where N is MCI distance (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bfdf505e-18e5-4043-a37e-08591c56fe6d",
     "timestamp": "2025-12-23 16:54:34.887025",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Last mile skiplist balls] At line 100-101, skiplist balls in the last mile are checked. Since last mile units are not on the main chain, their skiplist references might point to units in different branches. Could this create situations where proof chains cannot be completed because skiplist units in other branches don't have balls from the perspective of the current chain (Critical severity - permanent fund freezing)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d3ef5904-fc68-4abd-a7d3-3e4d6a20ec2b",
     "timestamp": "2025-12-23 16:55:05.004383",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Last mile parent balls] At line 90-91, parent balls are checked for existence similar to buildProofChainOnMc. In the last mile section (off-MC units), are there any edge cases where a unit's parents might legitimately not have balls yet (e.g., if they're in different branches)? Would this prevent proof chain completion and make certain units unverifiable by light clients (High severity - permanent fund freezing)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f84c29f3-6fd3-4ced-a24d-0e125dd9b571",
     "timestamp": "2025-12-23 16:55:35.418598",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Skiplist ball completeness] At line 46-47, the code verifies all skiplist units have balls. If a skiplist_unit entry points to a unit that is not yet stable (no ball assigned), would this throw an error? Could an attacker exploit skiplist construction logic to insert skiplist references to unstable units, causing proof chain construction to fail for the entire chain (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d335d4f0-778b-4350-b3bc-e4794b6d9047",
     "timestamp": "2025-12-23 16:56:06.933781",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Partial ball assignment] The query at line 33-34 uses LEFT JOIN, meaning parent units without balls will return null in parent_row.ball. If the balls table is inconsistent (e.g., some stable units missing ball entries due to database corruption), could this cause the some() check at line 36 to throw errors unpredictably, causing non-deterministic proof chain failures across nodes (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdb25383-53f4-49a6-8834-dbe6dad5155c",
     "timestamp": "2025-12-23 16:57:24.876834",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Parent balls missing] At line 36-37, the code checks if any parent units don't have balls (i.e., parent_row.ball is null). What happens if a unit's parent was marked as final-bad or nonserial after the unit was created? Would this throw an error and prevent proof chain construction for all descendants of that unit, permanently freezing funds in those units (High severity - permanent fund freezing)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b7140748-6fdf-4074-b9ee-5e23ebafa92e",
     "timestamp": "2025-12-23 16:57:37.511543",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [MC unit uniqueness] At line 143-145, the query retrieves the unit at main_chain_index=mci with is_on_main_chain=1. If database corruption results in rows.length !== 1, an error is thrown. Could this error propagate to light clients in a way that makes them unable to verify any transactions, causing permanent operational failure requiring hard fork (Critical severity - permanent fund freezing)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_868f5117-2440-4ecd-9079-eb69875a28aa",
     "timestamp": "2025-12-23 16:57:50.841136",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildLastMileOfProofChain()] [Missing unit in last mile] At line 79-81, the query expects exactly one unit with the given unit hash. If a malicious peer requests a proof chain for a unit that doesn't exist in the local database, the error thrown here propagates up. Could an attacker flood nodes with proof chain requests for non-existent units to cause DoS via exception handling overhead (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4befd5b2-d073-4a96-95a3-800e56d8e787",
     "timestamp": "2025-12-23 16:58:05.293702",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Non-deterministic query results] If two units somehow have the same main_chain_index and is_on_main_chain=1 (database consistency violation), the query at line 25 would return multiple rows. Would different nodes potentially select different units from these results, creating non-deterministic proof chains that cause permanent chain split (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a906664f-1e63-4b71-8c2b-9e8da2d9a587",
     "timestamp": "2025-12-23 16:58:19.609136",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [Missing MC unit] The database query at line 25 expects exactly one unit with main_chain_index=mci and is_on_main_chain=1, throwing an error at line 26-27 if rows.length !== 1. Can an attacker manipulate the database (e.g., via SQL injection in another component or database corruption) to have zero or multiple units claiming the same MCI, causing all proof chain construction to fail and halting light client operations (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_977aea96-ea2e-4a4f-aaf3-35bce0580ab0",
     "timestamp": "2025-12-23 16:58:34.773882",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI equality short-circuit] At line 71-72, if earlier_mci === later_mci, onDone() is called immediately without adding any balls to arrBalls. Could an attacker craft a proof chain request where earlier_mci === later_mci to receive an empty proof chain, then use this to convince light clients that a unit is valid without any actual proof (Critical severity - direct fund loss via fake proofs)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_69aef910-0214-46b1-b71a-77e484a13bcf",
     "timestamp": "2025-12-23 16:58:51.343353",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI ordering violation] At line 69-70, the code checks if earlier_mci > later_mci and throws an error. But what if the database contains corrupted data where a unit's MCI is incorrectly assigned (e.g., through a previous bug)? Would this check prevent proof chain construction, causing all light clients to fail verification for legitimate transactions (Critical severity - permanent chain split)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_091938c5-a5e7-4c5c-8261-8a859f01478b",
     "timestamp": "2025-12-23 16:59:09.484238",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChainOnMc()] [MCI underflow] At line 23-24, if mci < 0, an error is thrown. However, what happens during skiplist traversal at line 61 when addBall(next_mci) is called with a computed next_mci that could be negative due to integer underflow or malicious skiplist_mci values? Could this crash the node or create infinite recursion (Critical severity - network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_456c9697-0bed-4f30-a212-74583e3e856b",
     "timestamp": "2025-12-23 16:59:27.988580",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [MCI equality edge case] When later_mci === earlier_mci at line 12, the code skips buildProofChainOnMc and goes directly to buildLastMileOfProofChain. Can an attacker exploit this by requesting proof chains with equal MCIs to bypass certain validation steps or produce incomplete proof chains that light clients incorrectly accept (Critical severity - incorrect chain verification)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8a3ee783-6c21-40ef-a382-b156a458ed10",
     "timestamp": "2025-12-23 16:59:46.978501",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/proof_chain.js] [Function: buildProofChain()] [Null MCI handling] When earlier_mci is null, the function throws an error at line 10-11, but what happens if a malicious caller provides earlier_mci=null for a unit that legitimately exists but hasn't been assigned an MCI yet? Could this cause legitimate light client proof requests to fail, resulting in temporary network partition where light clients cannot verify valid transactions (Medium severity - transaction delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_648bcfc9-1954-4037-a6a8-cccda69efd9e",
     "timestamp": "2025-12-23 17:00:07.412393",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [State assumption] The SIGINT handler assumes profiler state is consistent and printable - if signal arrives during a profiler operation (e.g., mid-stop()), can race conditions cause the handler to access inconsistent state and crash during shutdown?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7b5723a1-f637-4f4a-9382-77c3efc6ca8f",
     "timestamp": "2025-12-23 17:00:29.136295",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [Process termination] Line 223 calls process.exit() after printing results - does this immediate exit prevent database connections from closing properly or in-flight validation operations from completing, potentially corrupting the database?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_de251970-b0e4-414e-95dc-68dd43435e09",
     "timestamp": "2025-12-23 17:00:51.327259",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Signal Handler] [Uncaught exception] Lines 217-225 register SIGINT handler that calls print_on_log() and process.exit() - if profiler state is corrupted when SIGINT occurs, can print_on_log() throw an exception that prevents graceful shutdown and leaves database transactions uncommitted?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f20d34cc-2c5e-4d2a-a5c8-a08bbf5cd84c",
     "timestamp": "2025-12-23 17:01:15.017479",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: print_on_screen()] [Console flooding] Line 114 uses console.error to print profiling results - if printOnScreenPeriodInSeconds is set very low, can this flood the console and degrade performance or make it impossible to see critical error messages?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a94c3b12-8554-4aa6-afb3-b646d18749c3",
     "timestamp": "2025-12-23 17:01:39.029148",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Console Override] [Information suppression] Line 219 restores console.log = clog in SIGINT handler - if console.log was overridden and SIGINT is never received, can important validation errors or security warnings be permanently suppressed?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_056d5138-a2c7-42c4-ab9e-235463ee7e20",
     "timestamp": "2025-12-23 17:02:04.198791",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Console Override] [Debugging artifact] Line 240 saves original console.log to clog and line 241 (commented out) would override console.log - if the commented line is uncommented in production, can this suppress critical error logs from validation.js, storage.js, or other modules?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_27dcf488-48ce-42c6-b44c-106c84d471ed",
     "timestamp": "2025-12-23 17:02:30.637223",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: mark_end()] [Missing start] Line 57 returns early if timers[tag] doesn't exist - can this silently fail to record timing data if mark_start was never called, causing incomplete profiling results that hide performance issues?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c9948814-5cac-424b-aafb-db8d4a36b443",
     "timestamp": "2025-12-23 17:02:57.979269",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [ID collision] Line 48 defaults id to 0 if not provided - if multiple operations use mark_start(tag) without specifying unique IDs, can they collide and cause 'multiple start marks' errors even for logically separate operations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_85a354d0-6c65-451c-8740-34401ea7cc08",
     "timestamp": "2025-12-23 17:03:26.526708",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [CPU usage calculation] Lines 194-197 use process.cpuUsage() to calculate CPU percentages - if the profiler runs for very long periods, can integer overflow in usage.user or usage.system cause incorrect or negative percentage calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0643d3e-9d09-49d7-9582-71f02a2953fa",
     "timestamp": "2025-12-23 17:03:54.357432",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [Number overflow] Lines 182-189 calculate sum, max, min over timing results arrays - for very large result sets accumulated over long periods, can sum overflow Number.MAX_SAFE_INTEGER causing incorrect statistics?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a3922f03-0b5c-4b04-aa66-14d14ebb08c5",
     "timestamp": "2025-12-23 17:04:23.049353",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: pad_right()] [String operations] Lines 201-204 use String.repeat() which may fail for very large padding lengths - can an attacker cause tag names or formatting to require excessive padding lengths, causing memory exhaustion or CPU spikes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d40672fb-df2d-4f2b-a457-96b80d185205",
     "timestamp": "2025-12-23 17:04:51.716182",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: pad_left()] [Type coercion] Line 207 coerces str to string with str+'' - if numeric values or objects are passed, can this cause unexpected string representations that break formatting in console output or file writing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2009373b-2dc0-4c9a-8ec6-39c49be5cef1",
     "timestamp": "2025-12-23 17:05:20.254395",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Global State Reset] [Race condition] Lines 129-135 reset all profiling state variables after MCI file writing - if concurrent validation threads are reading these variables during reset, can this cause them to see inconsistent state (e.g., times[tag] exists but counters[tag] is undefined)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f3bfad6f-d44e-4106-80ad-346f6d4ed1c3",
     "timestamp": "2025-12-23 17:05:46.902066",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Division by zero] Line 153 calculates times_for_tag/count where count could be 0 if increment() is never called - although line 146 returns early, can the early return be bypassed if times is populated but count is 0?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d4dbdde-96d5-4dcb-80a3-b55347ac0568",
     "timestamp": "2025-12-23 17:06:12.890452",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Division by zero] Line 146 checks if count === 0 but line 152 calculates times_for_tag/counter_for_tag without checking if counter_for_tag is 0 - can a scenario where times[tag] exists but counters[tag] is 0 cause NaN or division by zero errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8dd6e67c-003c-49dc-84f9-340f6709bba3",
     "timestamp": "2025-12-23 17:07:26.008606",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [State corruption] Lines 82-87 update times[tag] and counters[tag] - if these operations are interrupted mid-execution by errors or crashes, can partial updates cause counters to be incremented without corresponding time additions, corrupting average calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e6245715-47c3-4759-bdb9-3dbc386ebfeb",
     "timestamp": "2025-12-23 17:07:38.652338",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: increment()] [State corruption] Line 214 increments count without checking for integer overflow - can an extremely long-running node eventually overflow count causing division by zero errors in getFormattedResults() at line 146 or line 165?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5bf3882b-6e0e-4ff4-ad82-e00bb6c95475",
     "timestamp": "2025-12-23 17:07:51.739629",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: paid_witnessing.js] [Witness payments] paid_witnessing.js uses profiler (17 calls) during witness reward distribution - if profiler errors crash witness payment calculations, can this cause witnesses to not receive payments and stop posting units, freezing the network?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f248b519-22c1-4f66-a44a-582cac842103",
     "timestamp": "2025-12-23 17:08:06.350689",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: main_chain.js] [Consensus impact] main_chain.js has 27 profiler calls during main chain index calculation and stability determination - if profiler errors interrupt MC updates, can this cause nodes to have different MCI assignments leading to permanent chain splits?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2290d7b-9d9f-494b-8b9c-39c9ef1c568d",
     "timestamp": "2025-12-23 17:08:20.883186",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: writer.js] [Crash risk] writer.js uses profiler extensively (34 calls) during unit writing to storage - if profiler errors occur during atomic database transactions, can this cause transaction rollbacks that leave the DAG in an inconsistent state with partially written units?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf528b7e-5dc3-41a8-b60b-d74d1f8026dd",
     "timestamp": "2025-12-23 17:08:36.355253",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [Error masking] validation.js checks profiler.isStarted() at line 313 to conditionally stop profiling - if this check is wrong due to race conditions, can incorrect profiler state mask validation errors or cause incorrect error handling paths to execute?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d06d7df1-7619-4d8f-8faf-3ba352a12a7e",
     "timestamp": "2025-12-23 17:08:53.627967",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [State corruption] validation.js calls profiler.stop() with different tags throughout the validation pipeline (lines 252-341) - if a validation error occurs mid-pipeline leaving profiler in started state, can subsequent validations fail with 'profiler already started' errors causing a cascade of unit rejections?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_512be99b-bde4-43a4-b7f7-a847f5136275",
     "timestamp": "2025-12-23 17:09:11.424331",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Integration: validation.js] [Error propagation] validation.js calls profiler.start() at line 248 within async.series before checkDuplicate - if profiler.start() throws an error due to already being started, does this bypass checkDuplicate and allow duplicate units to pass validation?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02c3ba0d-73aa-4e0f-9952-60fdc9d52340",
     "timestamp": "2025-12-23 17:09:30.203782",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Desktop App Dependency] [Module loading] Lines 19-20 require desktop_app.js and call getAppDataDir() - if desktop_app is not available (in server environments), can this cause the module to crash on load and break all code that imports profiler.js?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2e0492ab-2010-4d6b-ad4b-b8089f5f2528",
     "timestamp": "2025-12-23 17:09:49.904488",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Event Bus Dependency] [Module loading] Line 18 requires event_bus.js which may have circular dependencies with other modules - if event_bus initialization fails or is delayed, can the profiler event listener registration at line 123 fail silently and cause profiling files to never be written despite printOnFileMciPeriod > 0?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_394defe6-4e26-4bab-b9bc-81fedca85dff",
     "timestamp": "2025-12-23 17:10:10.439646",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Conditional Exports] [API inconsistency] Lines 243-250 conditionally export real implementations only if bOn is true, otherwise exports are no-ops - if code calls profiler functions expecting side effects but bOn is false, can this cause logic errors where validation assumes profiling occurred?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb44b570-df15-4d3d-84fa-558c7b5a407d",
     "timestamp": "2025-12-23 17:10:30.982473",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Configuration] [State inconsistency] Line 27 calculates bOn = bPrintOnExit || printOnScreenPeriodInSeconds > 0 at module load time - if configuration changes after module initialization, does bOn remain stale while actual profiling behavior changes, causing mismatches?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_30431fb0-2289-475b-950a-3109ceaf8db1",
     "timestamp": "2025-12-23 17:10:52.291038",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Configuration] [Undefined behavior] Lines 22-27 define configuration variables bPrintOnExit, printOnScreenPeriodInSeconds, printOnFileMciPeriod that are hardcoded to false/0 - if these are dynamically set at runtime via conf.js, can changing them mid-operation cause state inconsistencies or errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7693fe80-cfcc-40db-a406-a71d86be7706",
     "timestamp": "2025-12-23 17:11:14.609466",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Export: time_in_db] [Information disclosure] Line 256 exports profiler.time_in_db variable that tracks database operation time - if this is logged publicly, can it reveal database performance characteristics that help attackers optimize database-level DoS attacks?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9493646c-2462-4df4-a6b2-c6bce3fef6a2",
     "timestamp": "2025-12-23 17:11:37.905926",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: print_results_on_log()] [Information disclosure] Lines 189-190 log tag.padding(50), avg, max, min timing statistics - can an attacker use this information to craft malicious units that maximize validation time and execute DoS attacks?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea868c3f-b34c-43e1-be20-313d9457ea59",
     "timestamp": "2025-12-23 17:12:01.066491",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: getFormattedResults()] [Information disclosure] Lines 143-176 calculate and format detailed timing statistics including per-operation and per-unit averages - can this data expose protocol inefficiencies or reveal which types of units are most expensive to validate?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53fa416c-4522-476d-9222-d22eac2d88b7",
     "timestamp": "2025-12-23 17:12:24.661329",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: print_on_screen()] [Information disclosure] Line 114 logs formatted profiling results to console.error including timing breakdowns - if console output is monitored by attackers, can this reveal which validation steps are slow and guide DoS attacks targeting expensive operations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_05add7c5-2ca5-4dff-81af-194f4fb4cb3e",
     "timestamp": "2025-12-23 17:12:48.897069",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: add_result()] [Information disclosure] Line 70 collects consumed_time values from validation.js and other critical components - can timing data reveal sensitive information about transaction processing patterns, validation complexity, or system performance that aids side-channel attacks?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e0e7d166-3258-432a-9d80-b4766bc881d4",
     "timestamp": "2025-12-23 17:13:14.081422",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: Date.now()] [Non-determinism] The profiler uses Date.now() at lines 41, 52, 61, 76, 84, 94, 102, 136, 191-192 for timing measurements - if profiler results are logged or influence any conditional logic in validation or consensus code, can timestamp differences across nodes cause non-deterministic behavior leading to chain splits?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1792bbff-fe98-416f-b3c0-486a12e1db66",
     "timestamp": "2025-12-23 17:13:40.807972",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Security risk] Adding methods to built-in prototypes can be exploited if any protocol code iterates over string properties using for-in loops without hasOwnProperty checks - can this cause validation or hashing logic to process unexpected properties?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9aebec1d-9e15-42da-ab79-98a931863e9e",
     "timestamp": "2025-12-23 17:14:08.323066",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Non-determinism] The String.prototype.padding function uses Math.abs and Array.join which may have different implementations across Node.js versions - can this cause non-deterministic string formatting in profiler output that, if somehow used in protocol logic, leads to chain splits?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9e259593-bff1-4455-8323-0c572a69a24c",
     "timestamp": "2025-12-23 17:14:36.602445",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Prototype Modification] [Global pollution] Lines 227-238 modify String.prototype.padding globally - can this affect other modules' string operations and cause unexpected behavior in validation.js, object_hash.js, or signature.js where string manipulation must be deterministic?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d6d13227-5224-4707-a672-bf64990794e0",
     "timestamp": "2025-12-23 17:15:03.869723",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [File Operations] [Race condition] Lines 128-136 reset profiling state (count=0, times={}, etc.) after writing files - if concurrent validation operations are accessing these variables during reset, can this cause race conditions where timing data is corrupted or lost?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d3ac3f9-9574-45da-afc6-7a51352f7e92",
     "timestamp": "2025-12-23 17:15:30.631847",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [File Operations] [Unhandled errors] Lines 122 and 128 use fs.mkdir and fs.writeFile with empty error callbacks () => {} - if file operations fail silently (permissions, disk full, etc.), can this cause the profiler state to become inconsistent with assumptions in validation code that expects profiling to work correctly?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef50acf3-77fb-42ed-ae53-a3733c10126c",
     "timestamp": "2025-12-23 17:15:58.121056",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [File Operations] [Disk exhaustion] Lines 128-136 write profiling results to files every printOnFileMciPeriod without size limits or rotation - can an attacker spam the network to rapidly advance MCI and fill the disk with profiling files, causing node crashes when disk space is exhausted?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2c56894d-56a5-477a-94ab-5c539c930992",
     "timestamp": "2025-12-23 17:17:16.358525",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [File Operations] [Path injection] Line 128 writes files with name 'mci-' + mci + '-' + (total/count).toFixed(2) + ' ms' where mci comes from the blockchain - if an attacker can manipulate MCI values or the event bus, can they inject path traversal characters or overwrite critical system files?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5795915-065a-42dc-a0b5-e541daacc5c3",
     "timestamp": "2025-12-23 17:17:28.831324",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [File Operations] [Directory traversal] Line 122 creates directory appDataDir + '/' + directoryName where directoryName is set to 'profiler' - if configuration allows directoryName to be user-controlled or modified, can an attacker use directory traversal sequences (../) to create directories outside appDataDir?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_789992a9-900a-41db-b868-1a101d339843",
     "timestamp": "2025-12-23 17:17:41.793159",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Event Handler] [Unbounded accumulation] The mci_became_stable event handler writes files for every printOnFileMciPeriod MCI but fs.mkdir and fs.writeFile callbacks at lines 122-139 don't handle errors - can an attacker cause the file system to fill up by triggering frequent MCI advancement, leading to disk exhaustion and node crashes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4e4a8850-3170-4cc6-9e03-2e1c1d4f11b0",
     "timestamp": "2025-12-23 17:17:55.291800",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: setInterval] [Resource leak] Line 44 calls setInterval(print_on_screen, ...) but never stores the interval ID or clears it - if the node runs indefinitely or the profiler configuration changes, can this cause resource leaks with unclearable intervals consuming CPU?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0e236b6e-6293-42e2-b580-ef7b67f64751",
     "timestamp": "2025-12-23 17:18:09.429381",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Event Handler] [Memory leak] Line 123 registers an event listener on eventBus for 'mci_became_stable' but never removes it - if the profiler module is reloaded or disabled, does this event handler persist and cause memory leaks or unexpected behavior?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d87a8e19-1b0d-472f-be8c-c0d4ea5df416",
     "timestamp": "2025-12-23 17:18:25.511344",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: mark_end()] [Memory leak] Line 61 pushes timing results into timers_results[tag] array but line 62 sets timers[tag][id] = 0 instead of deleting it - does this cause the timers object to accumulate entries indefinitely, leading to memory leaks over long-running nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d06f0b5-ef9f-407a-823d-227b57e1c4b1",
     "timestamp": "2025-12-23 17:18:41.852525",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: add_result()] [Memory exhaustion] Line 70 pushes consumed_time values into timers_results[tag] array without any size limits - if validation.js or writer.js generates millions of results over time, can this cause memory exhaustion that crashes the node during peak network activity?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f0a2514-e72c-4520-87e2-d2ab74435fe1",
     "timestamp": "2025-12-23 17:18:59.254811",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Global State] [Memory exhaustion] The times, counters, timers, times_sl1, counters_sl1, and timers_results objects are never bounded in size - can an attacker flood the network with diverse validation tag names to cause unbounded memory growth in these objects, eventually causing node crashes via OOM and network shutdown?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bde44839-c38e-4abf-b5ca-62d467b49204",
     "timestamp": "2025-12-23 17:19:17.481378",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [Error propagation] Line 51 throws Error for multiple start marks - although the function has early return on line 47, if profiling is enabled and concurrent writer.js operations use the same mark_start ID, can this crash the unit writing process and block network confirmation?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_446e0b90-f161-4cb1-91bb-c05379428887",
     "timestamp": "2025-12-23 17:19:36.370832",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: stop_sl1()] [Error propagation] Line 99 throws Error('profiler not started') - if main_chain.js calls this without matching start_sl1() due to early returns in conditional logic, can the thrown error cause main chain updates to abort and prevent MCI advancement?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3913410e-5209-4149-ac86-5eb81e9958af",
     "timestamp": "2025-12-23 17:19:56.062799",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: start_sl1()] [Error propagation] Line 93 throws Error('profiler already started') for start_ts_sl1 - can this error be triggered in paid_witnessing.js or main_chain.js operations and cause witness payment calculations or MC updates to fail, disrupting consensus?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6faad581-b744-4e44-9fe3-98ab844449ed",
     "timestamp": "2025-12-23 17:20:17.175003",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [Error propagation] Line 81 throws Error('profiler not started') if start_ts is 0 - if an exception occurs between profiler.start() and profiler.stop() in validation.js causing stop() to be called without start(), does this error crash the validation and prevent unit acceptance?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e8107409-0d61-43e6-85d6-c2e3072c037a",
     "timestamp": "2025-12-23 17:20:38.494942",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: start()] [Error propagation] Line 75 throws Error('profiler already started') if start_ts is already set - when this error is thrown during validation.js profiler.start() calls in the async.series pipeline, does it bypass the validation error handlers and crash the entire validation process?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2407aec5-03f7-49e0-8802-c2df3ee03ab1",
     "timestamp": "2025-12-23 17:21:00.131680",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Global State] [Race condition] The global variables times, counters, timers, times_sl1, counters_sl1 are all accessed without locks - can concurrent modifications from parallel validation/storage/writer operations cause memory corruption or non-deterministic behavior that leads to chain splits between nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2ec54dee-0949-411e-82bb-31a08d565bdc",
     "timestamp": "2025-12-23 17:21:21.005343",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: mark_start()] [Race condition] The function checks if timers[tag][id] exists and throws an error for 'multiple start marks' - can an attacker trigger concurrent operations with the same tag/id combination to cause this error to be thrown during critical validation steps, crashing the node?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_237bf491-26d8-4c2a-baa6-08e174862dbe",
     "timestamp": "2025-12-23 17:21:40.834494",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: stop_sl1()] [Race condition] When stop_sl1() updates times_sl1[tag] and counters_sl1[tag] without synchronization, can concurrent calls from different validation threads cause data races that result in corrupted timing statistics or lost counter increments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cdcc6407-a2d3-4413-908b-9765dd57c17a",
     "timestamp": "2025-12-23 17:22:00.322332",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: start_sl1()] [Race condition] The start_ts_sl1 variable is checked and set without atomic operations - if multiple concurrent operations call start_sl1() simultaneously, can this cause incorrect timing measurements or error throwing that disrupts critical protocol operations in main_chain.js or paid_witnessing.js?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c2b84e3d-7cfc-40e0-a770-240b66312c64",
     "timestamp": "2025-12-23 17:22:20.840379",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: stop()] [Race condition] If profiler.stop(tag) is called without a prior profiler.start() due to race conditions or exception in validation code, it throws 'profiler not started' error - can this exception propagate to validation.js async.series() error handler and cause units to be incorrectly rejected, leading to consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d64d0812-0018-42d0-926e-58ce751f6355",
     "timestamp": "2025-12-23 17:22:42.992853",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/profiler.js] [Function: start()] [Race condition] If two concurrent validation threads call profiler.start() simultaneously before either calls stop(), the second call throws 'profiler already started' error - can this crash the validation pipeline in validation.js during concurrent unit processing, causing a network halt by preventing new units from being confirmed?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e608b0d7-d302-4b65-b8ec-0c6ae6436a46",
     "timestamp": "2025-12-23 17:23:05.153658",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Expensive filterNewOrUnstableUnits query] At line 19, storage.filterNewOrUnstableUnits() executes a database query with a potentially large IN clause (all units from all chains) - can an attacker send private payment chains with thousands of referenced units, causing this query to be extremely slow and blocking the validation thread, delaying all subsequent private payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4393c728-5438-4eab-8405-fffcef7920f5",
     "timestamp": "2025-12-23 17:23:27.586700",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Storage.readAsset cache poisoning] If storage.readAsset() at line 36 uses a cache, can an attacker flood the network with private payments for many different assets, evicting legitimate asset definitions from cache and causing cache misses that slow down all private payment validation, delaying transaction processing for >1 hour?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc594734-fa37-4684-852c-e8a3b0937bd4",
     "timestamp": "2025-12-23 17:23:50.502483",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Connection pool exhaustion] If an attacker sends many private payment chains that fail validation late in the process (after db.takeConnectionFromPool() at line 41 but during asset module validation at line 77), and these validations are slow, can they hold database connections for extended periods, exhausting the connection pool and preventing legitimate transactions from being processed for >1 day?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4468377a-9581-469a-9ee6-105dbe97dd37",
     "timestamp": "2025-12-23 17:24:14.802292",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset definition leak via error messages] If storage.readAsset() fails at line 37, the error message is propagated to callbacks.ifError() - if this error contains sensitive information about the asset structure or ownership, can an attacker learn private asset details by intentionally triggering validation failures?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f38be086-2ef9-4a30-9166-2a0e302de8c3",
     "timestamp": "2025-12-23 17:24:36.131358",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Private payment deanonymization via timing] The duplicate detection logic at lines 72-74 returns immediately if a duplicate is found with existing address - can an attacker probe the network by sending the same private payment multiple times with slight variations and measuring response times to determine if a specific output has already been revealed, breaking the privacy guarantee of private payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_72b7287a-4d5f-4cbf-ba30-421736c11519",
     "timestamp": "2025-12-23 17:24:58.169700",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Partial chain acceptance] If arrPrivateElements contains multiple elements (for indivisible assets), and validation succeeds for some elements but fails for others, does the rollback at line 45 ensure that no partial state is committed, or could intermediate elements be saved while later elements fail, creating broken chain references in the database?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00bdb5cf-6579-4bdf-8c74-02c9e18de623",
     "timestamp": "2025-12-23 17:26:13.068647",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset definition race condition] Between storage.readAsset() at line 36 and the actual validation at line 77, if the asset definition changes (e.g., asset is capped or frozen via a new unit), can the validation proceed with stale asset info, allowing operations that should be forbidden under the new definition?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_683c066b-6cd8-4219-b0f2-959bba57c6d8",
     "timestamp": "2025-12-23 17:26:25.660125",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Cross-chain state dependency] The function validates a single chain in isolation, but if multiple private payment chains for the same asset/address arrive concurrently and are processed in parallel (different database connections), can they both pass validation independently but collectively violate balance constraints when committed, enabling double-spending across chains?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fa1efedb-2cda-45a7-bdc9-3348a4084be0",
     "timestamp": "2025-12-23 17:26:39.142030",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Error callback recursion] If callbacks.ifError() at line 47 internally triggers another call to validateAndSavePrivatePaymentChain() (e.g., retry logic), and that also fails, can this create deep callback recursion that exhausts the stack or connection pool, causing node-wide failure to process private payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_42192bbf-0a25-46b9-a7b3-1586a4adccfa",
     "timestamp": "2025-12-23 17:26:52.579866",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Nested transaction commit failure] If COMMIT at line 51 fails (e.g., due to constraint violation or deadlock), the code doesn't catch this error - will the connection be released in a failed transaction state, and can subsequent queries on that connection execute in undefined transaction context, causing data corruption?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b0cf1e98-fccf-4911-b9a6-c81f696dceea",
     "timestamp": "2025-12-23 17:27:07.152072",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Incomplete rollback on asset module error] If the asset-specific validateAndSavePrivatePaymentChain() at line 77 performs some database writes (e.g., updating spend_proofs table for divisible assets) before calling transaction_callbacks.ifError(), will the ROLLBACK at line 45 properly undo those writes, or could there be cross-table inconsistencies if some tables were not included in the transaction?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_070d286c-3a50-48ad-8062-cd216da073ab",
     "timestamp": "2025-12-23 17:27:22.430588",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset issuance vs transfer confusion] The code doesn't distinguish between private payments that are asset issuance vs transfers - can an attacker craft a private payment chain that claims to be issuing new assets (with properly formatted issuance inputs) but actually references existing outputs as if they were transfers, bypassing supply cap checks and inflating asset supply beyond max_cap?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c63dc0e4-cf9d-4c44-98f9-f090b312f6b4",
     "timestamp": "2025-12-23 17:27:39.382701",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing spent output verification] The duplicate detection at lines 58-74 checks if an output exists and has an address, but doesn't verify if the output is already marked as spent (is_spent=1) - can an attacker replay a private payment chain after the output has been spent, and if the address was previously hidden (NULL), have it accepted again, enabling double-spending of the same private funds?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67e1c240-291d-4a93-b399-50ab68b6a9ea",
     "timestamp": "2025-12-23 17:27:57.228469",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Time-of-check-time-of-use in duplicate detection] At lines 66-79, there's a gap between the SELECT query checking for duplicates (lines 66-69) and the INSERT performed by the asset module (line 77) - during this window, can another thread/process insert the same output, causing both insertions to succeed and enabling double-spend of the private payment?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0eff8b08-f80c-45bb-8de9-432b86727fa9",
     "timestamp": "2025-12-23 17:28:16.160418",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Callback contract violation propagation] If the calling code (network.js or wallet.js) provides callbacks object that doesn't implement all three expected callbacks (ifError, ifOk, ifWaitingForChain), but private_payment.js doesn't validate this, can calling a non-existent callback cause exceptions that bypass transaction rollback logic and leave database in inconsistent state?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64bc8467-8bc0-4586-a137-200eb4f2dbaa",
     "timestamp": "2025-12-23 17:28:36.788606",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Network.js integration - missing validation] This function is called from network.js without prior validation of the arrPrivateElements structure beyond the checks at lines 24-33 - can an attacker craft a malicious network message with a private payment chain that passes network.js validation but exploits weaknesses in the asset-specific modules, causing node crashes or database corruption?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f3f5cff-4a86-4f55-81dd-dfad94a3c9b4",
     "timestamp": "2025-12-23 17:28:57.298572",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Dependency on external module state] The code delegates to divisibleAsset or indivisibleAsset modules at line 77 - if these modules have their own internal state or caches that can become inconsistent with the database, can an attacker exploit this by sending private payments that are validated correctly by private_payment.js but fail in asset-specific validation, causing transaction_callbacks.ifError() to be called after the transaction BEGIN, and leaving the database transaction open?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c00be9ec-5856-4e3d-a8be-d70b67ed9265",
     "timestamp": "2025-12-23 17:29:19.005916",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Storage.filterNewOrUnstableUnits timing sensitivity] At line 19, storage.filterNewOrUnstableUnits() checks current unit stability - if this is called during a stability point transition (unit becoming stable), different nodes might get different results based on timing, causing some nodes to wait for the chain while others proceed with validation, potentially leading to divergent private payment acceptance?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9ea296e2-af2c-483b-b12d-3ded479d85e7",
     "timestamp": "2025-12-23 17:29:42.242577",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Light client conditional execution non-determinism] Lines 85-90 execute different code paths for conf.bLight vs full nodes - if a node's configuration changes (bLight toggled), can previously validated private payments become invalid or vice versa, causing the node to diverge from consensus and reject otherwise valid units, contributing to network partition?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_87461da0-f41c-4211-929a-9e1f10c96965",
     "timestamp": "2025-12-23 17:30:06.079900",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Non-deterministic validation order] The validation flow depends on storage.readAsset() which queries the database - if two nodes have different asset cache states or database query execution orders, could they validate the same private payment chain differently, causing some nodes to accept it while others reject it, leading to permanent chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_77184259-e367-4191-915b-0736f044b199",
     "timestamp": "2025-12-23 17:30:30.529396",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Dynamic SQL construction risk] The SQL query at line 58 is modified at line 63 by appending additional WHERE clauses - if objAsset.fixed_denominations is manipulated or incorrectly cached, can this cause the query to be constructed incorrectly (missing output_index check when needed, or including it when not), leading to false duplicate detection or allowing true duplicates to pass?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a9e55cf-220e-439f-b617-0950fe9c96ba",
     "timestamp": "2025-12-23 17:30:56.059958",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [SQL injection via unit/message_index] At lines 58-64, the SQL query uses parameterized queries with headElement.unit and headElement.message_index - however, if these values are not properly validated earlier (only isNonnegativeInteger check for message_index), could specially crafted values cause SQL injection, allowing an attacker to modify the query logic and bypass duplicate detection or corrupt the outputs table?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8f14d80-a389-47e2-9851-07b83aebf2cd",
     "timestamp": "2025-12-23 17:31:23.369821",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [ifWaitingForChain callback missing implementation] At line 87, callbacks.ifWaitingForChain() is called but there's no corresponding implementation in the transaction_callbacks object defined at lines 43-56 - if the calling code doesn't provide this callback, will this cause an undefined function call error that crashes the private payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b69f4356-529e-4bb7-af29-5dd10bdee8ce",
     "timestamp": "2025-12-23 17:31:50.961007",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Undefined objAsset handling] If storage.readAsset() succeeds but objAsset is null/undefined (asset doesn't exist), line 39 will attempt to access objAsset.fixed_denominations, causing TypeError - is this caught by try/catch in the calling code, or will it crash the node and prevent all subsequent private payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91cd2ccb-7f26-4e28-b1b2-be5b30c49e93",
     "timestamp": "2025-12-23 17:32:19.920268",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [storage.readAsset error not specific] At line 37, if storage.readAsset() returns an error, it's passed directly to callbacks.ifError() without context - if the error is due to asset not existing vs database error vs invalid asset format, can this cause the caller to handle all errors identically, potentially retrying non-retryable errors or not retrying transient errors, leading to lost private payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a506ba9e-a047-4b55-8df4-86be722fd573",
     "timestamp": "2025-12-23 17:32:49.659686",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing headElement.payload null check] At line 27, the code checks if (!headElement.payload) and returns error, but at line 29, it immediately accesses headElement.payload.asset - if payload exists but is not an object (e.g., payload is a string or number), can this cause a TypeError that crashes the validation process and is not caught by the error handling at lines 44-48?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_376cdaa7-45ac-47f4-8585-4882259ba370",
     "timestamp": "2025-12-23 17:33:19.133814",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Nested callback stack overflow] The validation flow involves multiple nested callbacks: validateAndSave -> storage.readAsset -> db.takeConnectionFromPool -> conn.query -> asset module validation - if an attacker triggers deep recursion by crafting chains that reference each other, could this cause stack overflow and crash the node, preventing any private payments from being processed?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_046fbc12-3e52-4f12-99d8-dc8314f9f076",
     "timestamp": "2025-12-23 17:33:47.115199",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Storage.readAsset unbounded callback delay] At line 36, storage.readAsset() is called without timeout - if the storage layer is experiencing issues or the asset doesn't exist, can this callback never fire, causing the function to never return and the database connection at line 41 to remain held indefinitely, leading to connection pool exhaustion?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f03c941-cf6d-4758-9fb3-6cffc95578a9",
     "timestamp": "2025-12-23 17:34:15.431080",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Unbounded assocUnits object] At lines 13-17, assocUnits is populated from all units in all chains without size limits - if an attacker sends a private payment chain with thousands of elements (or multiple chains), can they cause excessive memory allocation in the assocUnits object and the arrUnits array at line 18, potentially leading to out-of-memory errors and node crashes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5ccddf6e-d10f-4fce-af2e-785771b7c4bb",
     "timestamp": "2025-12-23 17:34:44.967454",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Missing validation of arrPrivateElements structure] The function iterates through arrPrivateElements at lines 15-16 without validating that each element has the required 'unit' property - if an attacker provides a chain with malformed elements (missing .unit), can this cause undefined values to be added to assocUnits and passed to storage.filterNewOrUnstableUnits(), potentially causing database query errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0cf40855-cbd7-4189-bf44-5bfcf5f83576",
     "timestamp": "2025-12-23 17:35:13.942808",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Duplicate unit handling across chains] If arrChains contains multiple chains that reference the same intermediate units (overlapping chains), lines 13-17 will add the same unit to assocUnits multiple times (last write wins) - can this cause storage.filterNewOrUnstableUnits() to behave incorrectly, or does the use of object keys handle this safely?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d01629e7-f74a-44d0-a5c2-9b7086bb81c7",
     "timestamp": "2025-12-23 17:36:35.712022",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Empty chain handling] If arrChains is an empty array, or all elements have empty arrPrivateElements, lines 13-17 will produce an empty assocUnits object - will storage.filterNewOrUnstableUnits([]) at line 19 handle an empty array correctly, or could it trigger database errors, undefined behavior, or bypass filtering and call handleUnits with unexpected results?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0da43e45-7c43-403b-9e3e-d7373d756908",
     "timestamp": "2025-12-23 17:36:48.499965",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Asset definition unit ambiguity] At line 14, assocUnits[arrPrivateElements[0].payload.asset] = true treats the asset hash as a unit identifier - but asset is a hash of the asset definition unit, not the unit hash itself - does storage.filterNewOrUnstableUnits() at line 19 correctly interpret this as needing to check the asset definition unit's stability, or will it fail to find the unit and incorrectly return it as 'unfinished'?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3e06f1e8-fa13-4958-bbff-5feb67406a86",
     "timestamp": "2025-12-23 17:37:01.453112",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [includeLatestElement parameter inconsistency] At line 15, the loop starts at index 0 if includeLatestElement is true, else 1 - however, at line 86, this function is called with includeLatestElement=false, skipping the head element - if the head element itself is unstable, will storage.filterNewOrUnstableUnits() still catch it via the asset definition check at line 14, or could unstable head elements be validated prematurely?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9b44da49-6f95-41ce-95a5-d1ace8317a92",
     "timestamp": "2025-12-23 17:37:15.177513",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Light client vs full node inconsistency] Lines 85-90 implement different logic for light clients (checking unfinished units) vs full nodes (direct validation) - can this create a scenario where a private payment is accepted by light clients but rejected by full nodes, or vice versa, causing disagreement on valid asset balances and potential chain splits between light and full nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a87f2d9c-181a-49d6-b545-23ef40e369a4",
     "timestamp": "2025-12-23 17:37:29.466947",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Missing asset definition validation in light client] At line 14, the function adds the asset definition unit to assocUnits, but in light client mode, if this asset definition unit is not yet stable or not received, and filterNewOrUnstableUnits() at line 19 doesn't properly detect this, can the subsequent validateAndSave() proceed without having the asset definition, causing validation errors or accepting payments for undefined assets?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f0410335-1c24-4717-b8f2-72af3a0256be",
     "timestamp": "2025-12-23 17:37:44.992847",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Light client premature validation] At lines 85-90, in light client mode (conf.bLight), if findUnfinishedPastUnitsOfPrivateChains returns an empty array (no unfinished units), validation proceeds immediately - can an attacker craft a private payment chain that references future units not yet received by the light client, bypass the waiting logic, and have the payment validated against incomplete DAG state, potentially accepting invalid payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_add2ea32-f851-43d4-9ef5-2d646eb47485",
     "timestamp": "2025-12-23 17:38:01.586818",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module exception propagation] If the asset-specific validateAndSavePrivatePaymentChain() at line 77 validates successfully but then throws an exception during the database write phase, will the transaction be rolled back properly by the BEGIN/ROLLBACK logic at lines 42-48, or could the exception bypass the rollback mechanism and leave partial writes in the outputs/inputs tables?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fe566f5e-59ab-4ef1-bc52-70cc04fb53fe",
     "timestamp": "2025-12-23 17:38:20.075345",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module callback contract violation] The code assumes divisibleAsset and indivisibleAsset modules will call either transaction_callbacks.ifError or transaction_callbacks.ifOk exactly once - if a buggy or malicious asset module calls both callbacks, or neither, can this cause double-rollback/double-commit errors or connection leaks that accumulate over time and eventually halt all transaction processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf8b560d-88af-4291-9d70-762b5574ce90",
     "timestamp": "2025-12-23 17:38:39.174242",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset module selection timing attack] At line 76, assetModule is selected based on objAsset.fixed_denominations, then line 77 calls its validateAndSavePrivatePaymentChain() - if objAsset data is cached and becomes stale (asset definition changed from divisible to indivisible), can this cause the wrong module to process the payment, leading to incorrect output format in database (amount+blinding vs denomination+output_hash) and permanent corruption of asset balance tracking?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_53f087d2-a56d-4687-bf35-7b03cf284bea",
     "timestamp": "2025-12-23 17:38:59.364907",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Early return on duplicate without proper cleanup] At line 74, if a duplicate is detected, transaction_callbacks.ifOk() is called directly without rolling back the transaction started at line 42 - does this mean the transaction is committed even though no work was done, potentially causing issues if the connection is reused with uncommitted state, or leading to deadlocks in high-concurrency scenarios?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f119cb6-3dce-4cbc-91d8-c9c4428cc013",
     "timestamp": "2025-12-23 17:39:19.705589",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Multiple rows exception] At lines 70-71, if more than one row is returned from the duplicate check query, an Error is thrown but not caught - can an attacker intentionally corrupt the database state to create duplicate outputs that trigger this condition, causing all subsequent private payment validations to crash and freeze private payment processing network-wide?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5292e120-8cef-47c7-8a79-201212cbec2e",
     "timestamp": "2025-12-23 17:39:40.995535",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Incomplete duplicate check for divisible assets] At lines 58-64, the duplicate detection query for divisible assets (non-fixed_denominations) does not include output_index in the WHERE clause - if a single unit/message has multiple outputs, can an attacker replay the same private payment chain multiple times, each time revealing a different output_index, and have all of them accepted as non-duplicates, inflating the asset supply?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cff4b51d-a4aa-4cab-bb9f-f726f1b1429d",
     "timestamp": "2025-12-23 17:40:03.755472",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Duplicate detection bypass via NULL address] At lines 72-74, the code considers an output duplicate only if rows[0].address is truthy - if an attacker can somehow cause a NULL address to be stored in the outputs table for their private payment, can they then send the same private payment again and bypass the duplicate check, enabling unlimited double-spends?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed930974-255e-4f8b-8e7d-e450a6cf1b19",
     "timestamp": "2025-12-23 17:40:27.332747",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Nested transaction BEGIN without check] Line 42 executes BEGIN unconditionally after taking a connection from the pool - if the connection was already in a transaction state (due to connection pool bug or improper release), can this cause nested transaction errors that crash the validation process and prevent all private payments from being processed, causing temporary network freeze?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f7255c39-425d-4d9d-b376-9c166a90978a",
     "timestamp": "2025-12-23 17:40:52.268956",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Non-atomic commit/callback] At lines 51-54, callbacks.ifOk() is called inside the COMMIT callback - if the COMMIT succeeds but callbacks.ifOk() triggers an exception (e.g., in event emission code), is the connection still released properly, or could this cause the connection to be returned to the pool in an undefined transaction state, corrupting subsequent queries?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fc4bf308-af92-4c3b-bdcb-1232bfc61eb3",
     "timestamp": "2025-12-23 17:41:17.592157",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Connection leak on error] If the asset-specific validateAndSavePrivatePaymentChain() call at line 77 throws an exception instead of calling transaction_callbacks.ifError(), the connection obtained at line 41 will never be released (no conn.release() in catch block), potentially exhausting the connection pool and causing network-wide transaction processing delays exceeding 1 day?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f731851c-95b4-48c6-ae7b-7d3d58c547f0",
     "timestamp": "2025-12-23 17:41:43.553243",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Transaction rollback failure] At lines 45-48, if conn.query('ROLLBACK') fails due to connection loss or database error, the connection is still released at line 46 without verifying the rollback succeeded - can this leave the database in a partially committed state where some outputs/inputs from the private payment chain are stored but not all, causing permanent inconsistency and potential fund loss?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7a4b65e-5fa9-4101-92c2-1b815920cb88",
     "timestamp": "2025-12-23 17:42:10.439891",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Race condition on duplicate detection] At lines 58-74, the duplicate detection query checks if an output already exists, then inserts if not - if two identical private payment chains arrive simultaneously from different peers and both execute this code concurrently, can both pass the SELECT check before either INSERT commits, causing duplicate outputs to be stored and enabling a double-spend of the same private payment?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_527b6e09-5ac9-4a60-9cee-6866dc06e55f",
     "timestamp": "2025-12-23 17:42:37.986130",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Null/undefined asset] If headElement.payload.asset is explicitly set to null or undefined (bypassing line 30 check somehow), will the storage.readAsset() call at line 36 handle this gracefully, or could it cause the callback to never fire, resulting in a connection leak when db.takeConnectionFromPool() at line 41 never releases the connection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2af6122d-146a-4e70-aef8-fd69d672d46d",
     "timestamp": "2025-12-23 17:43:05.961254",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing output_index validation] At lines 61-64, output_index validation only checks isNonnegativeInteger for fixed_denominations assets - can an attacker provide an extremely large output_index value that exceeds the actual number of outputs in the unit, causing the SQL query to insert invalid references into the outputs table and potentially enabling double-spend by referencing non-existent outputs?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aca98feb-ce50-41da-8c59-21fcc0b34f15",
     "timestamp": "2025-12-23 17:43:34.052395",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Missing message_index validation] At line 32-33, only non-negative integer validation is performed on message_index, but there's no upper bound check - can an attacker supply an extremely large message_index value (e.g., 2^31-1) that could cause integer overflow in downstream SQL queries at lines 58-64 or in the asset-specific validation modules, potentially corrupting the outputs table or causing database errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_24a027b9-0f5d-4722-b361-64d65fe91797",
     "timestamp": "2025-12-23 17:44:03.171187",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Asset type confusion] At lines 39-40, the code checks if objAsset.fixed_denominations matches the presence of headElement.payload.denomination - if an attacker crafts a private payment with denomination field present for a divisible asset (or absent for indivisible), can they bypass this check by manipulating the payload structure before it reaches this validation, causing the wrong asset module (divisible vs indivisible) to process the payment at line 76-77?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2f355e79-3171-422a-b4ff-7823e92005c2",
     "timestamp": "2025-12-23 17:44:33.139187",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: validateAndSavePrivatePaymentChain()] [Input validation bypass] If arrPrivateElements is an empty array [], the isNonemptyArray check at line 24 will fail, but what happens if an attacker passes an array with a single null or undefined element - can this bypass validation and reach asset reading logic, potentially causing downstream crashes or undefined behavior in divisibleAsset/indivisibleAsset modules?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_688c8922-bda0-4ed4-861d-0c6665b8f5a0",
     "timestamp": "2025-12-23 17:45:04.897935",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/private_payment.js] [Function: findUnfinishedPastUnitsOfPrivateChains()] [Duplicate unit handling across chains] If arrChains contains multiple chains that reference the same intermediate units (overlapping chains), lines 13-17 will add the same unit to assocUnits multiple times (last write wins) - can this cause storage.filterNewOrUnstableUnits() to behave incorrectly, or does the use of object keys handle this safely?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_00058373-8444-4004-9784-641ba5cb61a1",
     "timestamp": "2025-12-23 17:45:33.524345",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Units not on main chain] At line 504, the query includes units where 'main_chain_index IS NULL OR main_chain_index > max_parent_limci'. Can including non-MC units as replacement parents cause consensus issues?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e65af715-879d-4fba-be0c-6c2592b52f09",
     "timestamp": "2025-12-23 17:46:52.561916",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Replacement parent query] At lines 501-506, the query finds parent units of excluded parents. Can this query return duplicate parents if multiple excluded parents share the same parent, and does this cause issues in subsequent logic?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c25110e-3408-4a6f-9d4a-c6204082be3a",
     "timestamp": "2025-12-23 17:47:05.198263",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Other parents calculation] At line 511, other_parents is calculated by concatenating filtered_prows units and remaining replacement parents. Can this array become very large if many replacements exist, causing memory issues?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e861cfb2-836f-44ef-a41a-a402189d2e0e",
     "timestamp": "2025-12-23 17:47:18.367539",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Inclusion check loop] At lines 509-518, for each replacement parent, graph.determineIfIncludedOrEqual is called. Can this loop be exploited to cause O(n\u00b2) complexity if many replacement parents exist, causing DoS?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cbeac651-0d2b-4bca-92b0-cb31f859333a",
     "timestamp": "2025-12-23 17:47:31.640913",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: replaceParents()] [Max parent LIMCI calculation] At line 500, max_parent_limci is calculated from filtered_prows or defaults to -1. Can this -1 default value cause the subsequent query to return all units in the database, leading to performance issues or incorrect replacement parents?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_873d298d-20e6-4b14-b66c-a3e48c1057bd",
     "timestamp": "2025-12-23 17:47:45.934439",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: filterParentsByTpsFeeAndReplace()] [TPS fee calculation race] At lines 437-440, paid_tps_fee and count_units are read from storage. Can concurrent updates to TPS fee state cause different nodes to calculate different paid_tps_fee_per_unit values, leading to different parent filtering decisions?",
@@ -27819,900 +27819,900 @@
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [TPS fee filtering] At line 383, filterParentsByTpsFeeAndReplace is called asynchronously. Can this async operation complete in different orders on different nodes, causing non-deterministic parent selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8db4d82b-28ae-4850-a898-84051f9b80e1",
     "timestamp": "2025-12-23 17:53:59.154040",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [v4 upgrade boundary] At lines 381-382, if max_parent_last_ball_mci < constants.v4UpgradeMci, the old parent selection logic is used. Can nodes with different cached values of v4UpgradeMci select parents using different algorithms, causing chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_03bce808-6c48-4731-847f-28699cdba189",
     "timestamp": "2025-12-23 17:54:11.650988",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [All AA responses] At lines 378-379, if all free units are AA responses, the error 'no usable non-AA free units' is returned. Can an attacker trigger many AA responses to fill the free unit pool, preventing normal users from creating transactions?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_18eebf12-a6c5-4d40-8a66-e9eb4ac63452",
     "timestamp": "2025-12-23 17:54:24.559266",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [No usable free units] At lines 376-377, if prows.length === 0, the error 'no usable free units' is returned. Can an attacker flood the database with archived or invalid units, causing this condition to always be true and preventing all new transactions (Critical severity: network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_975fddc0-abee-40e3-a8c2-36d83cc0f63c",
     "timestamp": "2025-12-23 17:54:38.843722",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBall()] [Promise wrapper race condition] At lines 354-362, if onDone is not provided, a Promise wrapper is created. Can concurrent calls with and without callbacks cause race conditions in the shared database connection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3166502a-a696-460f-90da-75c1843c396d",
     "timestamp": "2025-12-23 17:54:53.392361",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Nested function call chain] This function calls findLastStableMcBall \u2192 adjustLastStableMcBallAndParents \u2192 trimParentList \u2192 findWitnessListUnit \u2192 determineIfHasWitnessListMutationsAlongMc. Can errors in any of these nested calls propagate incorrectly, causing transaction failures?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0c5073b2-2519-41c2-b8d5-83a10c287c15",
     "timestamp": "2025-12-23 17:55:09.029410",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Witness list mutations error] At lines 340-342, if determineIfHasWitnessListMutationsAlongMc returns an error, it's propagated. Can an attacker craft a DAG topology where witness list mutations are detected incorrectly, causing valid transactions to be rejected?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d7203e79-0091-43ab-8b80-208724837bb9",
     "timestamp": "2025-12-23 17:55:25.499306",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Version constant] At line 336, constants.version3 is hardcoded. If nodes are running different versions and use different version constants, can this cause different witness list mutation checking results?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ffb3c9d-ce21-44f2-8130-80f0df995714",
     "timestamp": "2025-12-23 17:55:43.592999",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Fake unit construction] At lines 336-338, a fake unit objFakeUnit is constructed with parent_units and optional witness_list_unit. Can this fake unit fail validation in storage.determineIfHasWitnessListMutationsAlongMc if the constructed object doesn't match real unit structure?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_737850af-5c56-4172-8960-ebaec53e5ae4",
     "timestamp": "2025-12-23 17:56:02.034735",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastBallAndAdjust()] [Witness list unit determination] At line 335, storage.findWitnessListUnit is called to determine the witness_list_unit. Can this function return different results on different nodes due to timing, causing objFakeUnit to have different witness_list_unit values and leading to chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc0225ee-dbf7-4d6c-9800-4e84e3d74726",
     "timestamp": "2025-12-23 17:56:21.736555",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Secondary pickParentsDeeper] At lines 317-318, a secondary call to pickParentsDeeper can occur if the first deep parent selection fails. Can an attacker create conditions where this secondary call always fails, causing legitimate transactions to never find suitable parents?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a0df214f-cb8d-4af4-84da-9fb3da2620d7",
     "timestamp": "2025-12-23 17:56:42.302594",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Nested callback race condition] The function uses nested callbacks at lines 296-306 and 312-322. Can concurrent calls to this function with overlapping parent selections cause race conditions in the shared depth counter or database state?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e1956a03-fc36-43d4-88c7-08f36c12d192",
     "timestamp": "2025-12-23 17:57:03.713710",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [findLastBallAndAdjust error handling] At lines 300-302, if findLastBallAndAdjust returns an error, pickParentsDeeper is called. Can this error condition be triggered repeatedly, causing the function to dig deeper indefinitely until MAX_PARENT_DEPTH is reached?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2d7c49a1-125f-4372-b836-7033cc84f625",
     "timestamp": "2025-12-23 17:57:26.140448",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsAndLastBallBeforeOpVote()] [Infinite depth loop] At lines 309-311, if depth > conf.MAX_PARENT_DEPTH, an error is returned. Can conf.MAX_PARENT_DEPTH be set to undefined or Infinity, allowing infinite recursion in pickParentsDeeper and causing a DoS?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e42c4ada-38c3-4890-a21f-3852c9bb63c2",
     "timestamp": "2025-12-23 17:57:50.082597",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Limit enforcement] At line 286, results are limited to MAX_PARENTS_PER_UNIT. If this constant is changed mid-operation, can different nodes trim to different parent counts, causing consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_68f084f8-9e7d-45e3-af1a-64a3cc05b71b",
     "timestamp": "2025-12-23 17:58:14.772739",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [SQL escaping] At line 283, arrParentUnits is mapped through db.escape. If any parent unit hash contains SQL metacharacters, can this cause query errors or inconsistent trimming results?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_be5a58ce-1524-47fd-aeb8-3c375bea3e83",
     "timestamp": "2025-12-23 17:58:40.133247",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Witness address priority] At line 285, units authored by addresses in arrWitnesses are prioritized. Can an attacker who controls a witness address ensure their units are always included in the parent set, potentially manipulating confirmation times?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5425eea-9dbb-4ad4-abd2-95cc02da59ef",
     "timestamp": "2025-12-23 17:59:06.868742",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Random ordering] At line 285, db.getRandom() is used for random ordering. If different database implementations return different random values for the same seed, can this cause non-deterministic parent trimming across nodes with different DB engines (SQLite vs MySQL)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c46d9d4f-6837-4523-a593-f512edeeb85b",
     "timestamp": "2025-12-23 17:59:33.906498",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [AA address filtering] At lines 282-284, AA addresses with latest_included_mc_index > last_stable_mci are excluded from trimming. Can an attacker create many AA addresses to prevent certain parents from being trimmed, manipulating the final parent set?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0587bab4-5b44-4031-a606-3269d928ee77",
     "timestamp": "2025-12-23 18:00:02.010932",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: trimParentList()] [Single parent bypass] At lines 276-277, if arrParentUnits.length === 1, the function returns immediately without trimming. Can an attacker force all transactions to have single parents by manipulating the parent selection logic earlier, breaking DAG structure?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_fad7d85a-8a6e-4dce-aacc-05084a68dff8",
     "timestamp": "2025-12-23 18:00:31.817591",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Commented out single parent selection] At lines 242-249, there's commented-out code for selecting only one parent. If this code is uncommented in production, can it break multi-parent DAG structure and cause consensus issues?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_461dfb33-8270-4a00-9e3c-c88334dea30f",
     "timestamp": "2025-12-23 18:01:00.522066",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Parent last ball unit ordering] At lines 258-268, the function queries for the parent unit with the highest last_ball_unit main_chain_index. Can multiple parents have the same main_chain_index, causing non-deterministic next_last_ball_unit selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c187f14b-e866-4be5-943c-0a87a3cf36ed",
     "timestamp": "2025-12-23 18:01:28.919280",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Graph inclusion check] At line 254, graph.determineIfIncluded checks if next_last_ball_unit is included in arrParentUnits. If this function has a bug or race condition, can it return incorrect results, causing the adjustment logic to diverge across nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5cae08da-b552-4088-8e4a-c73adc3f8e26",
     "timestamp": "2025-12-23 18:01:58.883309",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Best parent not found] At lines 251-252, if objUnitProps.best_parent_unit is null, an error is thrown. Can legitimate genesis units or units with special properties lack a best parent, causing this function to fail for valid transactions?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dfb200f5-41c3-4bf3-81e9-6d66695e2bc2",
     "timestamp": "2025-12-23 18:02:28.638730",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Recursive adjustment infinite loop] At line 256, the function recursively calls itself with next_last_ball_unit. Can an attacker craft a DAG where this recursion never terminates, causing stack overflow or infinite loop (Critical severity: network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_936d158b-1b08-41b6-b24e-bc5a9dac873e",
     "timestamp": "2025-12-23 18:02:58.858663",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Not 1 ball by unit error] At lines 234-235, if rows.length !== 1, an error is thrown. Can a unit have multiple balls due to database corruption, or zero balls if the ball hasn't been created yet, causing this function to fail?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cb401a0a-9097-4728-a80d-fd7637ca8241",
     "timestamp": "2025-12-23 18:04:15.467065",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustLastStableMcBallAndParents()] [Stability check race condition] At line 230, main_chain.determineIfStableInLaterUnitsWithMaxLastBallMciFastPath checks if last_stable_mc_ball_unit is stable. If stability changes between this check and the subsequent ball query, can this cause incorrect last ball selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_59955bf5-73f7-4777-b3c1-5713af3b8349",
     "timestamp": "2025-12-23 18:04:27.996582",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [Max parent last ball MCI] At line 205, storage.readMaxLastBallMci is called. If this function has a race condition or returns stale data, can it cause findLastStableMcBall to select an inconsistent last stable ball across nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_71b80d86-8722-4691-b79c-b69f87bc9341",
     "timestamp": "2025-12-23 18:04:41.382113",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [ORDER BY DESC with LIMIT 1] At line 216, the query orders by main_chain_index DESC and limits to 1. If multiple units have the same max main_chain_index, which one is selected, and can this cause non-deterministic last ball selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_391580ab-e639-4ccc-9747-4532d0bb741b",
     "timestamp": "2025-12-23 18:04:54.633075",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [IFNULL latest_included_mc_index] At line 210, IFNULL returns 0 if no unit in arrParentUnits has latest_included_mc_index. Can this cause the query to return a very old stable ball when it should fail, leading to incorrect last ball selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_da955ada-de26-4ca5-aa4b-8d862951583c",
     "timestamp": "2025-12-23 18:05:08.602355",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [Witness count requirement] At line 218, the query requires COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses. Can an attacker exploit witness list mutations to make no stable MC units meet this requirement, causing findLastStableMcBall to fail?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_02df6de5-c906-4880-a51d-e6c519c51d6e",
     "timestamp": "2025-12-23 18:05:23.697186",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [No stable ball found] At lines 220-221, if no stable ball is found, the error 'failed to find last stable ball' is returned. Can an attacker manipulate the witness list or max_parent_last_ball_mci to make this condition always true, preventing all new transactions (Critical severity: network halt)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f0913b9-3b98-45a7-a674-f7f7c88d8a57",
     "timestamp": "2025-12-23 18:05:40.587446",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: findLastStableMcBall()] [bAdvanceLastStableUnit flag] At line 209, the comparison operator is '>=' if bAdvanceLastStableUnit is true, '=' otherwise. Can inconsistent values of this constant across nodes cause different last stable ball selection, leading to chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b8f19de3-0686-4fe7-a51e-e24fb76cc3a8",
     "timestamp": "2025-12-23 18:05:58.789220",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Witnessed level retreat message] At lines 192-195, the function checks if child_witnessed_level >= max_parent_wl. If this check fails multiple times, can the repeated 'will look for older parents' messages lead to infinite recursion between this function and pickDeepParentUnits/pickParentUnitsUnderWitnessedLevel?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6a6ab6b7-1bc7-472d-8eff-713cc3888efc",
     "timestamp": "2025-12-23 18:06:17.616955",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [No best parent scenario] At line 194, if best_parent_unit is null, the error message says 'no best parent'. Can this occur in legitimate scenarios, and does it cause permanent transaction failure for certain DAG topologies?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aee5c406-bcb3-4903-badc-c78184dcee57",
     "timestamp": "2025-12-23 18:06:37.869129",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Retry logic divergence] At lines 198-200, bRetryDeeper determines whether to call pickDeepParentUnits or pickParentUnitsUnderWitnessedLevel. Can this boolean flag be in different states on different nodes due to timing, causing nodes to select different parent sets?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_46d7ec15-dfae-467a-bb03-3303654f98d9",
     "timestamp": "2025-12-23 18:06:58.720627",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: checkWitnessedLevelNotRetreatingAndLookLower()] [Hub early exit] At lines 196-197, if conf.bServeAsHub is true, the function returns an error immediately without retrying. Can attackers exploit this by sending malicious requests to hubs, causing hubs to fail parent selection for legitimate users?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_82936a13-51ca-49c3-9c56-98b81fd22025",
     "timestamp": "2025-12-23 18:07:20.593881",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Multiple parents with max WL] At lines 170-174, the query selects the unit with maximum witnessed_level. If multiple parents have the same max witnessed_level, which one is selected, and can this cause non-deterministic parent ordering across nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3c6f5956-14e1-4933-ab75-f87e04d6c531",
     "timestamp": "2025-12-23 18:07:41.908769",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Version parameter] At line 168, constants.version3 is passed to determineWitnessedLevelAndBestParent. If different nodes use different version constants due to upgrade timing, can this cause different witnessed level calculations and chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_706df343-bd78-4e5b-adb6-9e4fdb262aca",
     "timestamp": "2025-12-23 18:08:05.384374",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Witnessed level consistency] At lines 177-180, if bestParentProps.witnessed_level equals max_parent_wl, parent_with_max_wl is updated. Can a race condition cause bestParentProps to be stale, leading to incorrect parent_with_max_wl identification and witnessed level retreat?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2de277d6-bf0d-4d63-a599-6b3f59147b2c",
     "timestamp": "2025-12-23 18:08:29.870635",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [No best parent handling] At lines 175-176, if best_parent_unit is null, handleResult is called without it. Can this null value propagate through subsequent logic and cause errors or incorrect witnessed level comparisons?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b4d91a80-e89c-4fe7-b2ac-3f14ec41139d",
     "timestamp": "2025-12-23 18:08:55.442496",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: determineWitnessedLevels()] [Best parent race condition] At lines 168-181, storage.determineWitnessedLevelAndBestParent is called followed by a query for max witnessed_level. If units are being added concurrently, can best_parent_unit become outdated between these calls, causing incorrect parent_with_max_wl selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ef6a7e3c-f119-4387-a1cf-4db98591824c",
     "timestamp": "2025-12-23 18:09:21.506529",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Timestamp condition consistency] At lines 144-145, the timestamp condition is only applied if bWithTimestamp is true. Can nodes with different storage.getMinRetrievableMci() values select different deep parents, causing a chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_91cede0d-48bd-4bc0-8971-4ec5e9a3439e",
     "timestamp": "2025-12-23 18:09:48.996651",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Single parent vulnerability] At lines 160-161, pickDeepParentUnits returns a single parent unit. Can forcing all units to use a single deep parent create a bottleneck where all transactions must reference the same parent, slowing confirmation times (Medium severity: 1+ hour delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6c80d511-8ef5-47a9-89fc-7796c705dc53",
     "timestamp": "2025-12-23 18:10:17.350552",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Latest included MC index ordering] At line 155, results are ordered by 'latest_included_mc_index DESC LIMIT 1'. Can an attacker manipulate latest_included_mc_index values to control which deep unit gets selected, potentially causing nodes to select different deep parents based on database state timing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_3eea52a0-7412-4bcd-99d8-13a3b53592d0",
     "timestamp": "2025-12-23 18:10:46.654472",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [No deep units error] At lines 158-159, if no compatible deep units are found, an error 'failed to find compatible parents: no deep units' is returned. Can an attacker create a situation where all compatible deep units are archived or invalidated, causing all new transactions to fail permanently (Critical severity: network shutdown)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_feb47405-9276-4833-beb1-60e4a8c23570",
     "timestamp": "2025-12-23 18:11:16.769342",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickDeepParentUnits()] [Main chain requirement] At line 143, when max_wl is not null, the query requires 'is_on_main_chain=1'. Can an attacker cause the main chain determination to be delayed or incorrect, making this query return no results and causing pickDeepParentUnits to fail repeatedly?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cf2ea6a5-80c5-4549-8841-8f2d87c37fd8",
     "timestamp": "2025-12-23 18:11:47.562014",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [LIMIT bypass] At line 125, results are limited to MAX_PARENTS_PER_UNIT. If MAX_PARENTS_PER_UNIT is set to 1 in configuration, does this force all units to have single parents, breaking the DAG structure and potentially causing chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_67cb4b0b-5bbd-407c-af12-ac98f9d194a8",
     "timestamp": "2025-12-23 18:12:18.978156",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [ORDER BY manipulation] At line 125, results are ordered by 'witnessed_level DESC, level DESC'. Can an attacker flood the database with units at specific witnessed_level and level values to manipulate which units get selected as parents, potentially causing all nodes to select the same attacker-controlled parents?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12ed0666-7701-41a0-bafd-b1d128d0fbe9",
     "timestamp": "2025-12-23 18:12:51.494572",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Witness compatibility count] At line 126, the query requires COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses. Can an attacker exploit the exact boundary condition by creating units with exactly this many matching witnesses but incompatible overall witness lists?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_dc4d3ac4-1a0c-4f41-b201-30e906692c88",
     "timestamp": "2025-12-23 18:13:23.792163",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Empty result set] At lines 128-129, if rows.length === 0, pickDeepParentUnits is called. Can an attacker create a scenario where no free units exist under max_wl but deep parent selection also fails, causing an infinite recursion or transaction failure?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_55a1db6e-af6e-4c66-9c73-04a76644dd82",
     "timestamp": "2025-12-23 18:14:42.987920",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Witnessed level boundary] At line 119, units with witnessed_level < max_wl are selected. Can an attacker create units with witnessed_level exactly equal to max_wl - 1 and flood the database, causing this query to return attacker-controlled parents exclusively?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bff1c033-a18c-4c9d-a240-8df976848fa1",
     "timestamp": "2025-12-23 18:14:55.876686",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnitsUnderWitnessedLevel()] [Timestamp bypass] At lines 114-115, the timestamp condition is only applied if storage.getMinRetrievableMci() >= constants.timestampUpgradeMci. Can units with future timestamps be selected as parents before this upgrade, allowing attackers to manipulate parent selection timing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_737dba4f-875b-4ce2-9e68-83f82a64692a",
     "timestamp": "2025-12-23 18:15:08.729202",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Concurrent modification] At line 60, arrExcludedUnits is concatenated with arrNewExcludedUnits. If multiple threads/processes call this function concurrently with overlapping parent sets, can arrExcludedUnits become corrupted, leading to incorrect parent replacement decisions?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a8265a02-a0d4-47b5-9120-f68547353d1c",
     "timestamp": "2025-12-23 18:15:22.389030",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [SQL string escaping] At line 67, arrExcludedUnits is mapped through db.escape and joined. If db.escape has a bug or doesn't handle certain edge cases, can malicious unit hashes in arrExcludedUnits cause SQL injection or query errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f89eb48b-cf80-43e0-a144-9f3b0c415cf8",
     "timestamp": "2025-12-23 18:15:36.738566",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Witnessed level retreat detection] At lines 93-95, the function checks if child_witnessed_level >= max_parent_wl. If this condition passes but best_parent_unit is null, does the function return successfully with inconsistent state, potentially allowing witnessed level retreat?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8bdb7a44-def9-45f1-b8e0-6c9f929e3bb4",
     "timestamp": "2025-12-23 18:15:52.048811",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Best parent manipulation] At lines 93-101, if arrCurrentParentUnits.length <= MAX_PARENTS_PER_UNIT, parents are returned immediately. Otherwise, best_parent_unit is moved to position 0 and the list is sliced. Can an attacker craft parents where the best_parent_unit changes between determineWitnessedLevels calls, causing non-deterministic parent ordering across nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cc984837-a464-4e03-bc0b-c7d71d0ffb06",
     "timestamp": "2025-12-23 18:16:09.500541",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Parent replacement consistency] At lines 62-82, when replacing an excluded parent with its parents, the logic excludes candidates that have other children. Can an attacker create a specific DAG topology where this exclusion logic removes all valid replacement candidates, causing the function to throw an error and halt transaction creation?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f21f1b7e-ac17-4907-8570-02856d100531",
     "timestamp": "2025-12-23 18:16:28.375762",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [replaceExcludedParent() race condition] At lines 54-83, replaceExcludedParent performs multiple database queries. If units are being added/removed from the database concurrently, can this cause arrCandidateReplacements or arrReplacementParents to include invalid units, leading to consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8e50cb1d-136e-4d34-82a3-e48a06daaa9f",
     "timestamp": "2025-12-23 18:16:47.561640",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Empty parent set error] At lines 77-78, if arrNewParents.length === 0, the function throws an error. Can this occur in legitimate scenarios where all parents must be excluded, causing valid transactions to fail permanently and potentially freezing funds if no alternative parent set exists?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e5466943-8468-48f1-ae5a-8ec7bf66a743",
     "timestamp": "2025-12-23 18:17:08.447228",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [MAX_PARENT_DEPTH bypass] At lines 89-90, if iterations >= conf.MAX_PARENT_DEPTH, an error is returned. Can an attacker set conf.MAX_PARENT_DEPTH to an extremely high value or null through configuration manipulation, allowing infinite loops that halt transaction processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac42661d-25c1-43a8-a79f-e0d2b2732d5d",
     "timestamp": "2025-12-23 18:17:29.116335",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: adjustParentsToNotRetreatWitnessedLevel()] [Infinite loop] At lines 87-88, if arrExcludedUnits.length === 0 after iterations > 0, an error is thrown to prevent infinite cycles. However, can an attacker craft a DAG structure where arrExcludedUnits never becomes empty but the function keeps iterating indefinitely, causing a DoS?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b74a0716-3047-473d-b443-ae6a2c818ca0",
     "timestamp": "2025-12-23 18:17:50.656615",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Index hint manipulation] At line 29, the query uses 'INDEXED BY byFree' for SQLite. If this index is corrupted or missing, does the query fail silently or return incorrect results, causing nodes to select invalid parents?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9f82b366-e0cc-4e34-9a71-415b12a96672",
     "timestamp": "2025-12-23 18:18:14.019836",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [SQL injection via witness list] At line 33, arrWitnesses is passed directly to the SQL query. If arrWitnesses contains maliciously crafted address strings (e.g., with SQL metacharacters), can this cause SQL injection or query errors that prevent parent selection?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8313b584-8ca2-4846-926b-afba5eae8305",
     "timestamp": "2025-12-23 18:18:37.932263",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Race condition in witness counting] The subquery at lines 25-27 counts matching witnesses. If witness_list_unit is being modified concurrently for a unit, can this cause non-deterministic witness counts across different nodes, leading to different parent selection decisions and a chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a5664e63-b616-4c14-b254-700a2a6082fc",
     "timestamp": "2025-12-23 18:19:02.442050",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Empty parent set] At lines 39-40, if all free units have count_matching_witnesses < count_required_matches, the function calls pickDeepParentUnits. Can an attacker deliberately create many incompatible free units to force all nodes to pick deep parents simultaneously, causing a network-wide slowdown (Medium severity: 1+ day delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c096a8bd-49a4-4e1e-8f6c-0340a9df56ad",
     "timestamp": "2025-12-23 18:19:28.152645",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Archived joint bypass] At line 30, archived joints are excluded with 'archived_joints.unit IS NULL'. If an attacker can cause a unit to be archived and then received again without proper cleanup, can this unit be selected as a parent despite being archived, potentially causing consensus issues when other nodes reject it?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_64f64c36-83d3-448d-b082-f24354d5d746",
     "timestamp": "2025-12-23 18:19:54.608451",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Timestamp manipulation] At lines 20-21, the timestamp condition 'timestamp<=' is only applied when storage.getMinRetrievableMci() >= constants.timestampUpgradeMci. Can an attacker submit units with future timestamps before this upgrade point to bypass timestamp checks and cause units to reference parents that shouldn't be reachable, breaking temporal ordering?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_136b87b0-5ff3-4373-b9f5-07471a245be7",
     "timestamp": "2025-12-23 18:20:21.209411",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Version/alt network attack] At lines 35-36, if an attacker manages to get a unit with unsupported version or wrong alt value stored in the database with sequence='good' and is_free=1, does the 'wrong network' error cause all subsequent parent selection attempts to fail, leading to network-wide transaction halt?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ffb78cfa-497b-4ae2-9fdb-deacfddb0ae3",
     "timestamp": "2025-12-23 18:20:48.816630",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/parent_composer.js] [Function: pickParentUnits()] [Witness compatibility bypass] In the query at line 22-31 that selects free units with matching witnesses, can an attacker flood the network with units that have exactly COUNT_WITNESSES - MAX_WITNESS_LIST_MUTATIONS matching witnesses but are on incompatible witness lists, causing legitimate transactions to select incompatible parents and create a permanent chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6f2ffc55-99f1-4acb-b06f-b4bf43f7cb71",
     "timestamp": "2025-12-23 18:21:18.071265",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Witness eligibility timing] If a witness address becomes disqualified between when buildPaidWitnesses() queries descendants (line 235) and when payments are calculated (line 162), can ineligible witnesses still receive payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35db650a-5a12-44d5-a118-58dde9585885",
     "timestamp": "2025-12-23 18:21:48.111487",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Double payment risk] If count_paid_witnesses in balls table is set but witnessing_outputs insert fails (e.g., constraint violation), can the unit be reprocessed, causing witnesses to be paid twice for the same unit?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_20b7e857-9e0c-4f27-9e46-48830570c904",
     "timestamp": "2025-12-23 18:22:18.857131",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Equal distribution fairness] When count_paid_witnesses === 0 (lines 268-271), all witnesses get paid equally regardless of their actual network contribution - can attackers deliberately create units with no witness descendants to manipulate payment distribution unfairly?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_60ebe268-1bc7-49f7-95b8-0f43a6fd64f5",
     "timestamp": "2025-12-23 18:22:49.313535",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Payload_commission overflow] If payload_commission values are near Number.MAX_SAFE_INTEGER, can the division at line 162 lose precision, causing incorrect payment amounts?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_885b9cbb-ffaa-4a53-9cc5-9376b343d5c4",
     "timestamp": "2025-12-23 18:23:19.309859",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Count_paid_witnesses overflow] If count_paid_witnesses becomes very large (e.g., database corruption), can the division at line 162 produce near-zero or zero amounts, effectively stealing witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e31b82db-a0b9-45f8-b0de-ab30e5814421",
     "timestamp": "2025-12-23 18:23:48.766380",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Negative payload_commission] Can corrupted or malicious units have negative payload_commission values? If so, does line 162 create negative witness payments that could drain the witnessing_outputs table?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_09a4b7f9-1763-40e3-a90d-edab037824e7",
     "timestamp": "2025-12-23 18:25:00.665282",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Zero payload_commission units] If a unit has payload_commission = 0, line 162 calculates 0 / count_paid_witnesses = 0 - but does the witnessing_outputs table still get entries, and can empty entries accumulate causing storage bloat?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8b06e977-4f49-443f-bdd8-731b6ff8409f",
     "timestamp": "2025-12-23 18:25:13.128681",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Payment correctness] [Rounding loss accumulation] Using Math.round() at line 162 for each unit's payment can accumulate rounding errors - over millions of units, can the total paid differ significantly from total payload_commission, creating inflation or deflation in witness rewards?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7dd9e99c-7194-4c89-b3f9-fcdcb27f2b09",
     "timestamp": "2025-12-23 18:25:26.206021",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [Type parameter in calcWitnessEarnings] The 'type' parameter (line 15) is passed to mc_outputs.calcEarnings() without validation - can arbitrary type strings access unintended database tables or cause errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_769c757f-4eb2-4bc4-b065-91c1e2c553ee",
     "timestamp": "2025-12-23 18:25:39.544245",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [Address format validation] Addresses used in queries (lines 22, 157, 169, 248) are not validated for proper length (32 chars) or character set - can malformed addresses cause SQL errors or security issues?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_32c9bc1b-bb49-4d2a-afae-9bc0dc19058f",
     "timestamp": "2025-12-23 18:25:53.555267",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [MCI value range] Main_chain_index values are used without validation - can negative MCIs, MCIs exceeding current network state, or non-integer MCIs cause SQL errors or incorrect calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12e1e553-ffce-4c22-bd40-c1c418084799",
     "timestamp": "2025-12-23 18:26:08.865905",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [objUnitProps validation] The objUnitProps parameter in buildPaidWitnesses() (line 222) is assumed to have .unit and .main_chain_index properties - can passing malformed objects cause undefined behavior or crashes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5854d208-3a07-454a-80c8-c7623b1a220c",
     "timestamp": "2025-12-23 18:26:25.263654",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Validation] [arrWitnesses validation missing] The arrWitnesses parameter in buildPaidWitnesses() (line 222) and multiple other functions is used directly without validating array length = 12 or that addresses are valid - can passing invalid witness arrays corrupt witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d4b58409-cf5c-4d30-98ad-be45a695e7ae",
     "timestamp": "2025-12-23 18:26:43.478373",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Database collation differences] The queries at lines 245-250 compare addresses - if database collations differ between nodes (case-sensitive vs case-insensitive), can witness filtering produce different results?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_053e56a1-1f13-492c-8fce-f4042d3a6ad5",
     "timestamp": "2025-12-23 18:27:02.305665",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Lodash library version differences] Heavy use of Lodash functions (_.countBy, _.reduce, _.map, etc.) - can different Lodash versions on different nodes produce different results for edge cases, causing consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a95693ec-c543-4945-aa2e-42ed8ead9eed",
     "timestamp": "2025-12-23 18:27:22.497491",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Timestamp dependencies] The profiler calls (e.g., lines 64, 66, 73, 124) use Date.now() for timing - while this shouldn't affect payments, can any logic accidentally depend on timing, causing non-deterministic behavior?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_12bfcf59-8ce1-4033-a26a-9f5c4c6a89e4",
     "timestamp": "2025-12-23 18:27:43.338126",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [conf.bFaster mode divergence] Lines 114, 121, 136, 142, 168, 209, 262, 264 have different code paths based on conf.bFaster flag - if nodes have different configurations, can they calculate different witness payments, leading to consensus failure?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_52965711-70ea-4abc-a07b-d56e2546c6d2",
     "timestamp": "2025-12-23 18:28:05.327762",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Array ordering non-determinism] Lines 109-113, 135-139, 183-186 compare arrays using _.isEqual() which is order-sensitive - if database query result ordering differs between nodes (different DB versions, locale settings), can this cause throwError() on some nodes but not others, creating chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8516b31d-83b4-490c-8c73-bc20ea1d5058",
     "timestamp": "2025-12-23 18:28:28.509381",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Consensus] [Floating-point precision] Math.round() at line 162 can have platform-dependent precision - can different hardware (x86 vs ARM) or JavaScript engines (Node.js vs browser) produce different rounding results, causing nodes to calculate different witness payment amounts?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d9014878-b24f-48af-b1ea-4284cb58fb2d",
     "timestamp": "2025-12-23 18:28:53.103533",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Database transaction isolation] Without explicit transaction BEGIN/COMMIT, can read-write conflicts between concurrent operations cause inconsistent reads, where stability checks pass but unit state has changed?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7d081005-ce27-4488-8c23-be8ec2c55a39",
     "timestamp": "2025-12-23 18:29:18.074075",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [buildPaidWitnesses() parallelization] Although async.eachSeries() at line 141 processes units sequentially, if buildPaidWitnesses() itself has async operations that overlap, can race conditions in paidWitnessEvents array cause payment mixing between units?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6477bcc5-02a5-484b-9595-3629d6f7dc68",
     "timestamp": "2025-12-23 18:29:43.724154",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Last stable MCI advancement] Between readLastStableMcIndex() at line 65 and processing at lines 72-98, if last_stable_mci advances significantly, can the function process MCIs that are no longer at the stability boundary, violating the stability invariant?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_39e82017-daad-4bd7-82c1-d3e46cf929ec",
     "timestamp": "2025-12-23 18:30:09.927266",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [RAM cache invalidation timing] If storage.assocStableUnits is modified while buildPaidWitnessesForMainChainIndex() iterates through units (lines 141-195), can iterator see partial/inconsistent state leading to incorrect payment calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7bc1d6ec-19d5-4583-ac3c-daf0e6025dcd",
     "timestamp": "2025-12-23 18:30:36.631040",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Concurrency] [Multiple updatePaidWitnesses() calls] If updatePaidWitnesses() is called concurrently from different event handlers (e.g., new stable unit notifications), can two executions process the same MCIs simultaneously, causing duplicate or conflicting witnessing_outputs entries?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8cbc6dff-e915-4510-8a28-6c55a28a26d1",
     "timestamp": "2025-12-23 18:31:04.879556",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [cquery vs query inconsistency] The code uses both conn.query() and conn.cquery() - if these have different transaction semantics or error handling, can mixing them cause consistency issues in witness payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_08b153f6-7c8f-4c70-8bc6-b2e7becc4fd1",
     "timestamp": "2025-12-23 18:31:33.131567",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Temporary table persistence] If process crashes while temporary table paid_witness_events_tmp exists (created at line 128), does it persist across restarts causing CREATE TABLE to fail and permanently break witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5fbce293-ac61-45dc-bfd8-94c16ab5db80",
     "timestamp": "2025-12-23 18:32:01.071131",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [SQLite vs MySQL differences] The code has SQLite-specific (line 74 'CROSS') and MySQL-specific (line 238 'FORCE INDEX') optimizations - can behavioral differences between databases cause non-deterministic witness payment amounts, leading to consensus failure?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ac9f4f2e-15a8-48e8-8492-9e400e9fce26",
     "timestamp": "2025-12-23 18:32:29.722174",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Connection pool exhaustion] Multiple nested queries (e.g., lines 103-196) hold database connections - can deep nesting or concurrent executions exhaust the connection pool, causing deadlocks that freeze witness payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aaae68c1-a7b5-4b00-b0dd-689102f0436f",
     "timestamp": "2025-12-23 18:32:58.308760",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Index coverage] The queries at lines 17, 55, 76, 104, 132, 170, 211 rely on database indexes - if indexes are missing or corrupted, can query performance degrade to point of causing network freeze (Medium severity - \u22651 hour delay)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_a6bbcae4-2476-4f74-b554-036467247278",
     "timestamp": "2025-12-23 18:33:27.062414",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Duplicate payment prevention] Is there a unique constraint on (main_chain_index, address) in witnessing_outputs? If buildPaidWitnessesForMainChainIndex() runs twice for same MCI, can it create duplicate payment records, inflating witness earnings?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b23da834-2216-4349-860b-d98515651e36",
     "timestamp": "2025-12-23 18:33:55.446465",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Foreign key constraints] The witnessing_outputs table is populated without explicit foreign key checks - if referenced units or addresses become invalid, can orphaned payment records corrupt the earnings calculation system?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b837cfc6-eed5-492e-a743-c6df6243f279",
     "timestamp": "2025-12-23 18:35:05.230126",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Database] [Witnessing_outputs integrity] The INSERT at lines 169-179 adds witnessing_outputs rows - if database crashes after insert but before count_paid_witnesses update at line 225, can witnesses claim the same payments twice on recovery?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_285b6819-2091-4787-8cfa-100ed61ce351",
     "timestamp": "2025-12-23 18:35:18.207595",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Cross-function] [mc_outputs.calcEarnings dependency] Line 22 delegates earnings calculation to mc_outputs module - if that module has vulnerabilities (overflow, rounding errors, SQL injection), can they be exploited through the calcWitnessEarnings() wrapper to steal witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0ba297af-b671-47f6-8259-6a54615be034",
     "timestamp": "2025-12-23 18:35:31.184607",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Cross-function] [graph.readDescendantUnitsByAuthorsBeforeMcIndex dependency] Line 235 calls this graph traversal function - if it has bugs returning incorrect descendant sets, can witnesses be systematically underpaid or overpaid, accumulating to significant fund loss over time?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c5d4bc7d-2841-480f-a53b-a80508c32b1c",
     "timestamp": "2025-12-23 18:35:44.888671",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Cross-function] [Storage module dependency] Heavy reliance on storage.assocStableUnits and storage.assocStableUnitsByMci (lines 109, 135, 158, 208, 257) - if these caches become desynchronized from database state, can it cause systematic incorrect witness payments across multiple MCIs?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b71aeb4d-3e87-442e-b1b5-fceac995759b",
     "timestamp": "2025-12-23 18:35:59.690720",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Cross-function] [Callback error propagation] Most functions use callback-based error handling with callbacks.ifError() or throwing - can error propagation failures cause some errors to be silently ignored, allowing invalid states to persist?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_17667b01-7603-4519-a05b-55d8504d2cee",
     "timestamp": "2025-12-23 18:36:15.860947",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Cross-function] [Transaction isolation] None of the functions explicitly begin/commit database transactions - can partial updates during crashes leave the database in inconsistent state where some units have count_paid_witnesses set but no corresponding witnessing_outputs entries?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5df6d160-6ec3-4851-96fb-298401a897d1",
     "timestamp": "2025-12-23 18:36:32.863009",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Module-level] [throwError() behavior difference] The throwError() function at lines 293-300 either throws or emits 'nonfatal_error' depending on window existence - can the window-based branch in browser environments allow errors to be silently suppressed, causing consensus divergence between desktop and browser nodes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6ebf4266-9a0f-4008-806f-c83693143f13",
     "timestamp": "2025-12-23 18:36:50.708787",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Module-level] [et/rt global timing variables] Lines 134 and 221 declare 'var et, rt' globals used for timing measurements - can concurrent function invocations cause these timing variables to interfere with each other, and could manipulation of these affect payment calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_b9850895-4598-4b51-9ca0-442a412f33a2",
     "timestamp": "2025-12-23 18:37:09.321418",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Module-level] [paidWitnessEvents global state] The paidWitnessEvents array at line 13 is module-level global state that gets mutated - can multiple concurrent invocations of updatePaidWitnesses() cause race conditions where events from different MCIs get mixed together, corrupting witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_65a685a6-63ff-413c-b4db-71e90e20e11f",
     "timestamp": "2025-12-23 18:37:28.784384",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: getMaxSpendableMciForLastBallMci()] [Constant change impact] If constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING changes via governance or fork, does this function's calculation remain consistent across nodes, or can different constants cause consensus divergence in which MCIs are considered spendable?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_d8eebc0b-6645-42b5-bd30-d81ed525a8a1",
     "timestamp": "2025-12-23 18:37:49.517019",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: getMaxSpendableMciForLastBallMci()] [Early network bootstrap] During initial network startup when last_ball_mci is very small (e.g., < 102), this function returns negative values - does updatePaidWitnesses() properly handle this at line 68, or can it attempt to process invalid MCI ranges?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bc4cc903-61c7-4d19-887e-968f153c7715",
     "timestamp": "2025-12-23 18:38:11.616817",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: getMaxSpendableMciForLastBallMci()] [Integer underflow] The calculation at line 290 subtracts 'last_ball_mci - 1 - constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING' - if last_ball_mci is less than (1 + COUNT_MC_BALLS_FOR_PAID_WITNESSING), can the result become negative, and how do callers handle negative max_spendable_mci values?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_45b002a0-05c4-44e9-b8c4-2c75de8dd252",
     "timestamp": "2025-12-23 18:38:34.950743",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [updateCountPaidWitnesses not atomic] The function updateCountPaidWitnesses() at lines 224-229 updates balls.count_paid_witnesses separately from inserting witnessing_outputs - if the process crashes between these operations, can partial state cause witness payments to be recalculated incorrectly on restart?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_9a5d725d-e081-4c4e-af02-5f3d55404f68",
     "timestamp": "2025-12-23 18:39:00.186280",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [paidWitnessEvents array mutation] Lines 271 and 275 mutate the global paidWitnessEvents array with _.concat() - can concurrent executions or race conditions cause events to be duplicated or lost, leading to incorrect witness payment amounts?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6e791317-be2f-411c-a224-c97f5cf085e9",
     "timestamp": "2025-12-23 18:39:25.879150",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Count mismatch between branches] The count_paid_witnesses is set to rows.length (line 267) or arrWitnesses.length (line 269) - can edge cases cause these counts to differ from what's later used in payment calculations at line 162, causing inflation/deflation?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_73580f72-3c6c-4aaf-86c0-10d4fef269f1",
     "timestamp": "2025-12-23 18:39:52.123752",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Temporary table INSERT injection] Lines 280 constructs INSERT with arrValues joining escaped values - if escaping fails or values contain unexpected data, can SQL injection occur when inserting into paid_witness_events_tmp?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_62ed48f8-0a69-42b4-a395-52292819024f",
     "timestamp": "2025-12-23 18:40:19.112919",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Division of payload_commission] When count_paid_witnesses === 0 and all witnesses get paid equally (lines 268-271), the division of payload_commission by arrWitnesses.length at line 162 may differ from the division by actual paid witnesses - can this create payment amount mismatches?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_f9ae2d37-d301-4af1-b5c8-01cf0aaa46e2",
     "timestamp": "2025-12-23 18:40:47.044506",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Zero paid witnesses fallback] Lines 268-271 handle count_paid_witnesses === 0 by paying all witnesses equally - but does this accurately reflect the protocol's intention, or can attackers deliberately create units with no witness descendants to manipulate payment distribution?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ea59d6ad-553d-4cda-be6e-393ce96c87a3",
     "timestamp": "2025-12-23 18:41:15.684936",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Non-deterministic intersection] Line 260 uses _.intersection(unitProps.author_addresses, arrWitnesses) - if arrWitnesses contains duplicates or is in different order on different nodes, can this cause non-deterministic payment distribution?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_c7594b1e-ba2d-421c-8e7f-8fae04cd7f7c",
     "timestamp": "2025-12-23 18:41:44.764387",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [RAM cache miss] Lines 257-259 throw Error if storage.assocStableUnits[_unit] is not found - but during network catchup or cache invalidation, can legitimate stable units be missing from cache, causing the witness payment process to crash?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_898cebeb-0fe2-4011-83d1-c51855c9ec6d",
     "timestamp": "2025-12-23 18:42:14.680948",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Sequence check loose equality] Line 248 uses '+sequence='good'' with unary + - can units with sequence='temp-good' or numeric sequence values bypass this check through type coercion, allowing bad sequences to generate witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_61c355a8-4710-4ec8-87e5-ce1f1b80aa21",
     "timestamp": "2025-12-23 18:42:44.845174",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Address filtering bypass] The query at line 248 filters '+address IN(?)' using unary + operator - can this optimization bypass be exploited to include non-witness addresses in the results, allowing non-witnesses to receive witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_112bf2b4-6480-4b89-99ef-fbb114462c1a",
     "timestamp": "2025-12-23 18:43:15.696659",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Force index manipulation] Line 238 uses 'FORCE INDEX (PRIMARY)' for MySQL - can this query hint cause performance issues or incorrect results if the primary key structure changes, leading to DoS or payment calculation errors?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5c676062-0513-4837-8b63-5d2f50a91dfa",
     "timestamp": "2025-12-23 18:43:45.927074",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Empty arrUnits handling] When arrUnits.length === 0, strUnitsList is set to 'NULL' at line 239 - does the SQL query at lines 245-250 with 'WHERE unit IN(NULL)' return empty results or cause SQL error, and can this be exploited to skip witness payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1a280c3e-e681-4229-8ecb-363581cd8ddf",
     "timestamp": "2025-12-23 18:44:14.371635",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [strUnitsList SQL injection] Lines 239-240 construct strUnitsList by joining conn.escape(unit) - if arrUnits contains malicious strings that bypass escaping, can this enable SQL injection in the query at lines 242-250?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_6d536ee9-bc29-4abf-8b93-5f6e9aefcea1",
     "timestamp": "2025-12-23 18:45:29.613077",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Integer overflow in to_main_chain_index] Line 232 calculates 'objUnitProps.main_chain_index + constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING' - if main_chain_index is near MAX_SAFE_INTEGER, can this overflow, causing graph.readDescendantUnitsByAuthorsBeforeMcIndex() to query incorrect MCI ranges?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_8d26f5c6-2874-4a81-a201-59298f015162",
     "timestamp": "2025-12-23 18:45:42.473859",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnesses()] [Unit hash validation missing] The objUnitProps.unit at line 231 is used directly in database queries without validating it's a proper 44-character base64 unit hash - can passing malformed unit values cause SQL errors or injection attacks?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_5a0f492a-1982-4497-bae5-4b45ffca9363",
     "timestamp": "2025-12-23 18:45:55.225405",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [storage.readWitnessList() trust] Both code paths (lines 210 and 217) call storage.readWitnessList() without validating the returned witness array - can this function return invalid witness lists (wrong length, duplicate addresses, null values) that corrupt witness payment calculations?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4de49bdf-c47e-4add-a8b7-5e80508c8be6",
     "timestamp": "2025-12-23 18:46:08.640560",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Multiple MC units] The query at line 211 expects exactly 1 row with is_on_main_chain=1 (check at line 212) - but if database corruption causes multiple rows, the throw at line 213 crashes the entire witness payment process - can this be triggered intentionally to DoS the network?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_df62c00c-2fa1-4fa5-93e1-3baf072e70aa",
     "timestamp": "2025-12-23 18:46:22.773229",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [RAM inconsistency not caught in bFaster] Lines 215-216 check witness_list_unit consistency between DB and RAM, throwing if different - but this check is skipped when conf.bFaster=true (line 209-210) - can bFaster mode allow RAM corruption to go undetected, causing incorrect witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1d2afd4c-4717-427e-b5ad-061ba0d40238",
     "timestamp": "2025-12-23 18:46:38.008504",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [Witness list unit selection] Lines 208-218 select witness_list_unit from MC, using the unit itself if witness_list_unit is NULL (line 214) - can an attacker craft units with manipulated witness_list_unit references pointing to units with favorable witness lists to redirect witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_35a713fd-a4c4-43ac-8892-661c80c9c825",
     "timestamp": "2025-12-23 18:46:54.359614",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: readMcUnitWitnesses()] [v4UpgradeMci boundary] At line 206, if main_chain_index >= constants.v4UpgradeMci, it uses storage.getOpList() which returns operators instead of witnesses - can units at exactly the v4UpgradeMci boundary be processed inconsistently across nodes that upgraded at slightly different times, causing consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_56c9fec4-d4da-4a9d-addc-13cdc51f2671",
     "timestamp": "2025-12-23 18:47:12.294867",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Global variable mutation] Line 140 sets 'paidWitnessEvents = []' which is a module-level global (line 13) - if buildPaidWitnessesForMainChainIndex() is called concurrently, can race conditions on this shared array cause payments to be assigned to wrong MCIs or witnesses?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e49f5f17-fd95-4197-b2f3-1b7035129fb7",
     "timestamp": "2025-12-23 18:47:30.986882",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Async.eachSeries ordering] The async.eachSeries at lines 141-195 processes units sequentially - but if unit order in RAM differs from database order (lines 136-139), can this cause non-deterministic execution order, leading to different paidWitnessEvents arrays and consensus divergence?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cd1c1297-536c-48c8-9366-b41572daffc9",
     "timestamp": "2025-12-23 18:47:50.762579",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [RAM cache poisoning] Lines 135-139 use storage.assocStableUnitsByMci[main_chain_index] - if an attacker can manipulate this RAM cache to add/remove units, can they cause different witness payment amounts to be calculated without detection (when conf.bFaster=true), leading to fund theft?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_aa7cdbd0-4fa5-4617-a997-78a873ec9145",
     "timestamp": "2025-12-23 18:48:10.632748",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Temporary table cleanup failure] Line 187 drops the temporary table paid_witness_events_tmp - if this DROP fails due to database lock or error, does the table persist and cause CREATE TABLE failure on next invocation, permanently breaking witness payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ed358ea8-b9f4-4e38-9668-6df3c0921769",
     "timestamp": "2025-12-23 18:48:31.920509",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Determinism failure] Lines 183-186 compare database results with RAM-calculated arrPaidAmounts2 - if they differ, throwError() is called - but does this properly handle floating-point precision differences that might occur legitimately, or can precision errors cause false positives that crash nodes unnecessarily?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_1f240970-9142-4d1d-8946-7cc626644e07",
     "timestamp": "2025-12-23 18:48:54.058588",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [SQL injection in bFaster mode] At line 169, when conf.bFaster=true, the query is constructed by string concatenation with db.escape() - can escaping be bypassed if address contains special characters, allowing SQL injection to manipulate witnessing_outputs?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_e72869fc-ed79-4beb-8a11-750caf391eca",
     "timestamp": "2025-12-23 18:49:16.535697",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Sequence filtering bypass] Line 161 checks 'objUnit.sequence == 'good'' - can an attacker craft units with sequence='temp-bad' or other non-'good' values that bypass this check due to loose equality (== vs ===), allowing bad sequence units to generate witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_2cb50d39-3f24-4597-9231-05fdf2769e23",
     "timestamp": "2025-12-23 18:49:40.526025",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Rounding error accumulation] Line 162 uses Math.round(objUnit.payload_commission / countPaidWitnesses[v.unit]) which can lose fractional bytes - if this rounding error accumulates across millions of units, can it create significant inflation or deflation in total witness payments compared to actual payload_commission amounts?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_0df26fe5-a8bc-4186-aef9-fd0c2ae317dc",
     "timestamp": "2025-12-23 18:50:05.453014",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Division by zero in payment] At lines 156-164, payments are divided by countPaidWitnesses[v.unit] - if countPaidWitnesses is somehow 0 for a unit, does Math.round(objUnit.payload_commission / 0) return Infinity or NaN, corrupting the witnessing_outputs table with invalid amounts?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cfd820cf-bf6b-4ca6-bca5-837134bf9f46",
     "timestamp": "2025-12-23 18:50:31.526677",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Witness list manipulation] Line 126 reads witnesses from MC unit via readMcUnitWitnesses() - can a malicious unit author manipulate their witness list on side chains to flip the witness list used for payment calculations, directing commissions to their own witnesses instead of the legitimate ones?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4235b74b-915b-463d-a43d-6a2bcc099319",
     "timestamp": "2025-12-23 18:50:57.885353",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Temporary table collision] The CREATE TEMPORARY TABLE at lines 128-130 doesn't use 'IF NOT EXISTS' - if buildPaidWitnessesForMainChainIndex() is called concurrently or if a previous execution didn't clean up, can the table creation fail, breaking witness payment processing?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_ad0f7c10-d2d0-448d-bdae-c97c454b5d35",
     "timestamp": "2025-12-23 18:51:24.042705",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [Stability assumption violation] Line 119 checks count_on_stable_mc === count, but what if units become unstable between the query and this check due to DAG reorganization? Can this throw at line 120 halt witness payment processing permanently?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_7f5dba19-ad80-4516-a1fe-b12b46b906b2",
     "timestamp": "2025-12-23 18:51:51.341368",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [RAM vs DB inconsistency] Lines 109-123 compare countRAM from storage.assocStableUnits against database count - if they differ, throwError() is called at line 122 but only when !conf.bFaster - can an attacker manipulate RAM cache to cause inconsistencies that are not detected in bFaster mode, leading to incorrect witness payments?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_459b04a8-2c3c-4feb-b969-242873634e2b",
     "timestamp": "2025-12-23 18:52:18.546422",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesForMainChainIndex()] [COUNT constant mismatch] The validation at lines 115-116 requires exactly 'constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING+2' units - if this constant changes between nodes or after a protocol upgrade, can nodes disagree on whether a MCI is processable, causing permanent consensus divergence and chain split?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_4d7db7a4-d2fd-4b81-8de5-700279b222e5",
     "timestamp": "2025-12-23 18:52:48.223239",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [Early termination bypass] The check at line 80-81 returns early if min_main_chain_index > to_main_chain_index - but what if min_main_chain_index is undefined/NULL? Does JavaScript coercion cause unexpected behavior allowing the function to proceed incorrectly?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_23410414-83e0-437b-9759-fc4fe27300bf",
     "timestamp": "2025-12-23 18:53:18.498163",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [MCI gap handling] If to_main_chain_index is much larger than min_main_chain_index (e.g., after long network downtime), can the sequential processing of thousands of MCIs cause this function to block for extended periods, freezing transaction confirmation for hours (Medium severity - temporary freeze \u22651 hour)?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_bce6afd5-cad2-4214-859d-031a54240f1f",
     "timestamp": "2025-12-23 18:53:48.089474",
-    "report_generated": false
+    "report_generated": true
   },
   {
     "question": "[File: byteball/ocore/paid_witnessing.js] [Function: buildPaidWitnessesTillMainChainIndex()] [Error handling suppression] The comment 'if (err) // impossible' at line 84 assumes errors cannot occur - but if buildPaidWitnessesForMainChainIndex() does return an error, the throw at line 85 crashes the entire process - can an attacker craft malicious units that trigger this throw, causing network-wide daemon crashes?",
     "url": "https://deepwiki.com/search/-you-are-an-elite-distributed_cace7fb8-57a7-4072-b315-79fb099b266c",
     "timestamp": "2025-12-23 18:54:17.257914",
-    "report_generated": false
+    "report_generated": true
   }
 ]
