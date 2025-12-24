@@ -1194,7 +1194,7 @@ A claim is **VALID** only if **ALL** are true:
 
 **If VALID (extremely rare—be ruthlessly sure):**
 
-Produce a full audit report with these sections:
+Produce a full audit report with these sections and please make it short:
 
 #### **Title**
 Precise vulnerability name (e.g., "Race Condition in validation.js Allows Double-Spend Attack")
@@ -1328,7 +1328,7 @@ async function validate(unit) {{..
 
 #### **Proof of Concept**
 Note the proof of concept has to be a complete test using their test setup that must run so pls u must always a very
-good test function and dont go out of concept,
+good test function and dont go out of concept that must proove the issue if its valid ,
 ---
 
 **If INVALID (default when any condition fails):**

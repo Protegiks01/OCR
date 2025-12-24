@@ -79,7 +79,8 @@ class Validator:
             # type the question
             textarea.click()
             textarea.clear()
-            formatted_question = validation_format(question_gotten)
+            used_question = f"{question_gotten}".split("## Recommendation")[0]
+            formatted_question = validation_format(used_question)
 
             # Use JavaScript to set the textarea value directly. It's more reliable for large text.
             self.driver.execute_script("arguments[0].value = arguments[1];", textarea, formatted_question)
@@ -90,7 +91,7 @@ class Validator:
 
             textarea.send_keys(Keys.ENTER)
 
-            time.sleep(30)
+            time.sleep(10)
             current_url = self.driver.current_url
 
             # add the current url to validated
