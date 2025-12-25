@@ -1,264 +1,163 @@
-# Audit Report: Uncaught Exception in Divisible Asset Private Payment Duplicate Check
+# NoVulnerability found for this question.
 
-## Summary
+## Validation Summary
 
-The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, returning all outputs. The code incorrectly interprets multiple rows as database corruption and throws inside an async callback, causing immediate Node.js process termination.
+After thorough code review and validation against the Immunefi Obyte bug bounty framework, I confirm the original assessment is **CORRECT** - this is NOT a valid security vulnerability.
 
-## Impact
+## Critical Finding: Factual Error in Original Analysis
 
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay / Node Availability
+The analysis claims: "The archiving process performs non-atomic SELECT then UPDATE operations **without acquiring a write mutex**."
 
-Individual nodes crash when processing resent divisible asset private payments. Each crash requires manual restart. While affected nodes are down, their users' private payments are delayed. Persistent attacks targeting multiple nodes could delay private payment processing network-wide for ≥1 hour, meeting Medium severity criteria.
+**This claim is factually incorrect.** My code review reveals ALL archiving paths on full nodes ARE protected by write mutex:
 
-## Finding Description
+1. **Archiving of uncovered units**: Acquires write mutex [1](#0-0) 
 
-**Location**: `byteball/ocore/private_payment.js:70-71`, function `validateAndSavePrivatePaymentChain()`
+2. **Archiving during stability updates**: Acquires write mutex before calling markMcIndexStable [2](#0-1) 
 
-**Intended Logic**: Duplicate check should detect already-processed private payments and return early via `ifOk()` callback.
+3. **Light client archiving**: Uses database transactions [3](#0-2) , though light clients don't rely on `is_spent` for security validation
 
-**Actual Logic**: For divisible assets, the duplicate check query omits `output_index` from WHERE clause. When multiple outputs exist (standard for payment + change), the query returns multiple rows. Line 70 checks if `rows.length > 1`, and line 71 throws before proper duplicate handling at line 72 executes.
+**Therefore, no race condition exists between archiving and unit writing, as both operations hold the same write mutex.**
 
-**Code Evidence**:
+## Defense-in-Depth Verification
 
-The duplicate check for divisible assets (NOT fixed_denominations) omits `output_index`: [1](#0-0) 
+Even if the (non-existent) race condition existed, the system has multiple protection layers:
 
-The throw occurs in async callback before proper duplicate handling: [2](#0-1) 
+### Layer 1: Database UNIQUE Constraint
+The inputs table enforces uniqueness preventing double-spends at the database level [4](#0-3) 
 
-Divisible assets save multiple outputs with same `unit` and `message_index` but different `output_index`: [3](#0-2) 
+### Layer 2: Direct Inputs Table Validation  
+Double-spend detection queries the `inputs` table directly [5](#0-4) [6](#0-5) , not the `is_spent` flag.
 
-**Exploitation Path**:
+The validation logic processes conflicting spends based on entries in the inputs table [7](#0-6) 
 
-1. **Preconditions**: Node has processed a divisible asset private payment with 2+ outputs (payment + change)
+### Layer 3: is_spent is Non-Critical Cache
+When validating transfer inputs, the code queries output details but does NOT check `is_spent` [8](#0-7) 
 
-2. **Step 1 - Initial Processing**:
-   - Divisible asset private payment processed normally
-   - Multiple outputs saved: output_index=0 (payment), output_index=1 (change)
-   - All have same (unit, message_index) pair
+The `is_spent` flag is only used for balance queries [9](#0-8) , not security-critical validation.
 
-3. **Step 2 - Resend Attack**:
-   - Attacker resends identical private payment
-   - Entry point: [4](#0-3) 
-   - Unit existence check: [5](#0-4) 
-   - Returns `ifKnown` callback, calls `validateAndSavePrivatePaymentChain()`: [6](#0-5) 
+## Immunefi Impact Assessment
 
-4. **Step 3 - Crash**:
-   - Duplicate check query: `SELECT address FROM outputs WHERE unit=? AND message_index=?`
-   - Returns 2 rows (both outputs from step 1)
-   - Line 70: `if (rows.length > 1)` evaluates to true
-   - Line 71: `throw Error(...)` executes inside async database callback
-   - Database query callbacks call user callback directly without try-catch: [7](#0-6) 
-   - Exception becomes uncaught (no global handlers in production code)
-   - Node.js process terminates
+**No Severity Criteria Met:**
 
-5. **Step 4 - Impact**:
-   - Node crashes, stops processing all transactions
-   - Requires manual restart
-   - Attacker can repeat after restart
+- ❌ **Critical**: No network shutdown, chain split, fund theft, or permanent freeze
+- ❌ **High**: No permanent fund freeze
+- ❌ **Medium**: No transaction delays ≥1 hour
 
-**Security Property Broken**: Process availability and proper async error handling
-
-**Root Cause Analysis**:
-- Divisible assets inherently create multiple outputs per message (payment + change)
-- Duplicate check incorrectly omits `output_index` for divisible assets, unlike indivisible assets which include it
-- Code assumes `rows.length > 1` indicates database corruption
-- Using synchronous `throw` in async callback bypasses error callback mechanism
-- Line 70 check executes BEFORE line 72's proper duplicate handling
-
-## Impact Explanation
-
-**Affected Assets**: All divisible asset private payments (bytes and custom divisible assets)
-
-**Damage Severity**:
-- **Quantitative**: Single resend crashes one node in <1 second. No automatic recovery. Attacker can target multiple nodes.
-- **Qualitative**: DoS against individual nodes' private payment processing. Node operators must manually monitor and restart.
-
-**User Impact**:
-- **Who**: Users running nodes that have processed divisible asset private payments with 2+ outputs
-- **Conditions**: Exploitable immediately after any such private payment is processed
-- **Recovery**: Manual node restart required per incident
-
-**Systemic Risk**: Limited to private payment functionality. Main DAG consensus and public transactions continue normally. If attackers persistently target multiple nodes, aggregate private payment processing could be delayed ≥1 hour.
-
-## Likelihood Explanation
-
-**Attacker Profile**:
-- **Identity**: Any network participant with P2P connectivity
-- **Resources**: One divisible asset private payment (few dollars), ability to resend messages
-- **Technical Skill**: Low - basic understanding of private payment protocol
-
-**Preconditions**:
-- **Network State**: Target node has processed divisible asset private payment with 2+ outputs (common scenario)
-- **Attacker State**: One legitimate private payment (easily created)
-- **Timing**: No special timing required
-
-**Execution Complexity**: Single legitimate transaction, then resend the private payload
-
-**Frequency**: Unlimited repeatability, per-node targeting
-
-**Overall Assessment**: High likelihood - trivially exploitable with minimal resources
-
-## Recommendation
-
-**Immediate Mitigation**: Add `output_index` to duplicate check for divisible assets OR change line 70-71 to handle multiple rows gracefully as duplicates.
-
-**Permanent Fix**:
-```javascript
-// File: byteball/ocore/private_payment.js
-// Lines 70-71: Replace throw with proper duplicate handling
-
-if (rows.length > 0 && rows[0].address){ 
-    console.log("duplicate private payment "+params.join(', '));
-    return transaction_callbacks.ifOk();
-}
-```
-
-**Alternative Fix**: Include `output_index` in query for divisible assets (requires passing output_index from caller).
-
-**Additional Measures**:
-- Add try-catch wrapper around database query callbacks
-- Add test case verifying resent private payments are handled gracefully
-- Add monitoring for repeated private payment processing attempts
-
-## Proof of Concept
-
-```javascript
-const test = require('ava');
-const db = require('../db.js');
-const network = require('../network.js');
-const privatePayment = require('../private_payment.js');
-
-test.serial('resending divisible asset private payment should not crash', async t => {
-    // Setup: Create and process initial divisible asset private payment with 2 outputs
-    const arrPrivateElements = [{
-        unit: 'test_unit_hash',
-        message_index: 0,
-        payload: {
-            asset: 'test_asset_hash',
-            inputs: [/* valid inputs */],
-            outputs: [
-                { address: 'ADDR1', amount: 1000, blinding: 'blind1' },
-                { address: 'ADDR2', amount: 500, blinding: 'blind2' } // change output
-            ]
-        }
-    }];
-    
-    // Step 1: Process initial private payment (saves 2 outputs)
-    await insertTestData(); // Inserts unit and 2 outputs into database
-    
-    // Step 2: Resend same private payment - should NOT crash
-    await t.notThrowsAsync(async () => {
-        return new Promise((resolve, reject) => {
-            privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-                ifOk: resolve,
-                ifError: reject
-            });
-        });
-    });
-});
-```
+**Actual Impact (if race existed):**
+- Temporary incorrect balance displays (cosmetic database consistency issue)
+- Individual transaction failures (non-critical, immediately recoverable)
+- No exploitation path due to defense-in-depth
 
 ## Notes
 
-This vulnerability affects **divisible asset private payments only**. Indivisible assets (fixed_denominations) correctly include `output_index` in the duplicate check query and are not affected. The issue occurs because divisible assets commonly have multiple outputs per message (recipient + change), but the duplicate detection logic wasn't designed for this scenario.
+The original assessment correctly concludes this is not a vulnerability, though it contains a factual error about mutex protection. The correct reasoning is:
 
-The fix is straightforward: either handle multiple rows as duplicates (since all rows from the query represent the same private payment being reprocessed), or include `output_index` in the query to check each output individually.
+1. **No race condition exists**: Write mutex protects both archiving and unit writing
+2. **Even if race existed**: UNIQUE constraint + direct inputs table queries prevent double-spend
+3. **is_spent is a cache**: Not the source of truth for double-spend prevention
+4. **No Immunefi impact**: Does not meet Critical/High/Medium severity criteria
+
+While archiving code quality could be improved (e.g., making SELECT-UPDATE atomic within the transaction), this is a code quality consideration, not a security vulnerability meeting Immunefi's bug bounty scope.
 
 ### Citations
 
-**File:** private_payment.js (L58-65)
+**File:** joint_storage.js (L243-243)
 ```javascript
-					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
-					var params = [headElement.unit, headElement.message_index];
-					if (objAsset.fixed_denominations){
-						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
-							return transaction_callbacks.ifError("no output index in head private element");
-						sql += " AND output_index=?";
-						params.push(headElement.output_index);
-					}
+			mutex.lock(["write"], function(unlock) {
 ```
 
-**File:** private_payment.js (L66-79)
+**File:** main_chain.js (L1163-1163)
+```javascript
+		mutex.lock(["write"], async function(unlock){
+```
+
+**File:** light.js (L318-318)
+```javascript
+										db.executeInTransaction(function doWork(conn, cb3){
+```
+
+**File:** initial-db/byteball-sqlite.sql (L305-305)
+```sql
+	UNIQUE  (src_unit, src_message_index, src_output_index, is_unique), -- UNIQUE guarantees there'll be no double spend for type=transfer
+```
+
+**File:** validation.js (L1455-1502)
+```javascript
+function checkForDoublespends(conn, type, sql, arrSqlArgs, objUnit, objValidationState, onAcceptedDoublespends, cb){
+	conn.query(
+		sql, 
+		arrSqlArgs,
+		function(rows){
+			if (rows.length === 0)
+				return cb();
+			var arrAuthorAddresses = objUnit.authors.map(function(author) { return author.address; } );
+			async.eachSeries(
+				rows,
+				function(objConflictingRecord, cb2){
+					if (arrAuthorAddresses.indexOf(objConflictingRecord.address) === -1)
+						throw Error("conflicting "+type+" spent from another address?");
+					if (conf.bLight) // we can't use graph in light wallet, the private payment can be resent and revalidated when stable
+						return cb2(objUnit.unit+": conflicting "+type);
+					graph.determineIfIncludedOrEqual(conn, objConflictingRecord.unit, objUnit.parent_units, function(bIncluded){
+						if (bIncluded){
+							var error = objUnit.unit+": conflicting "+type+" in inner unit "+objConflictingRecord.unit;
+
+							// too young (serial or nonserial)
+							if (objConflictingRecord.main_chain_index > objValidationState.last_ball_mci || objConflictingRecord.main_chain_index === null)
+								return cb2(error);
+
+							// in good sequence (final state)
+							if (objConflictingRecord.sequence === 'good')
+								return cb2(error);
+
+							// to be voided: can reuse the output
+							if (objConflictingRecord.sequence === 'final-bad')
+								return cb2();
+
+							throw Error("unreachable code, conflicting "+type+" in unit "+objConflictingRecord.unit);
+						}
+						else{ // arrAddressesWithForkedPath is not set when validating private payments
+							if (objValidationState.arrAddressesWithForkedPath && objValidationState.arrAddressesWithForkedPath.indexOf(objConflictingRecord.address) === -1)
+								throw Error("double spending "+type+" without double spending address?");
+							cb2();
+						}
+					});
+				},
+				function(err){
+					if (err)
+						return cb(err);
+					onAcceptedDoublespends(cb);
+				}
+			);
+		}
+	);
+```
+
+**File:** validation.js (L2037-2037)
+```javascript
+				var doubleSpendQuery = "SELECT "+doubleSpendFields+" FROM inputs " + doubleSpendIndexMySQL + " JOIN units USING(unit) WHERE "+doubleSpendWhere;
+```
+
+**File:** validation.js (L2175-2176)
+```javascript
+					doubleSpendWhere = "type=? AND src_unit=? AND src_message_index=? AND src_output_index=?";
+					doubleSpendVars = [type, input.unit, input.message_index, input.output_index];
+```
+
+**File:** validation.js (L2211-2216)
 ```javascript
 					conn.query(
-						sql, 
-						params, 
-						function(rows){
-							if (rows.length > 1)
-								throw Error("more than one output "+sql+' '+params.join(', '));
-							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
-								console.log("duplicate private payment "+params.join(', '));
-								return transaction_callbacks.ifOk();
-							}
-							var assetModule = objAsset.fixed_denominations ? indivisibleAsset : divisibleAsset;
-							assetModule.validateAndSavePrivatePaymentChain(conn, arrPrivateElements, transaction_callbacks);
-						}
-					);
+						"SELECT amount, is_stable, sequence, address, main_chain_index, denomination, asset \n\
+						FROM units \n\
+						LEFT JOIN outputs ON units.unit=outputs.unit AND message_index=? AND output_index=? \n\
+						WHERE units.unit=?",
+						[input.message_index, input.output_index, input.unit],
 ```
 
-**File:** divisible_asset.js (L32-38)
+**File:** balances.js (L15-18)
 ```javascript
-			for (var j=0; j<payload.outputs.length; j++){
-				var output = payload.outputs[j];
-				conn.addQuery(arrQueries, 
-					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
-					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
-				);
-			}
-```
-
-**File:** network.js (L2114-2120)
-```javascript
-function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
-	if (!ValidationUtils.isNonemptyArray(arrPrivateElements))
-		return callbacks.ifError("private_payment content must be non-empty array");
-	
-	var unit = arrPrivateElements[0].unit;
-	var message_index = arrPrivateElements[0].message_index;
-	var output_index = arrPrivateElements[0].payload.denomination ? arrPrivateElements[0].output_index : -1;
-```
-
-**File:** network.js (L2151-2153)
-```javascript
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-```
-
-**File:** joint_storage.js (L29-35)
-```javascript
-	db.query("SELECT sequence, main_chain_index FROM units WHERE unit=?", [unit], function(rows){
-		if (rows.length > 0){
-			var row = rows[0];
-			if (row.sequence === 'final-bad' && row.main_chain_index !== null && row.main_chain_index < storage.getMinRetrievableMci()) // already stripped
-				return callbacks.ifNew();
-			storage.setUnitIsKnown(unit);
-			return callbacks.ifKnown();
-```
-
-**File:** sqlite_pool.js (L111-133)
-```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
-					// note that sqlite3 sets nonzero this.changes even when rows were matched but nothing actually changed (new values are same as old)
-					// this.changes appears to be correct for INSERTs despite the documentation states the opposite
-					if (!bSelect && !bCordova)
-						result = {affectedRows: this.changes, insertId: this.lastID};
-					if (bSelect && bCordova) // note that on android, result.affectedRows is 1 even when inserted many rows
-						result = result.rows || [];
-					//console.log("changes="+this.changes+", affected="+result.affectedRows);
-					var consumed_time = Date.now() - start_ts;
-				//	var profiler = require('./profiler.js');
-				//	if (!bLoading)
-				//		profiler.add_result(sql.substr(0, 40).replace(/\n/, '\\n'), consumed_time);
-					if (consumed_time > 25)
-						console.log("long query took "+consumed_time+"ms:\n"+new_args.filter(function(a, i){ return (i<new_args.length-1); }).join(", ")+"\nload avg: "+require('os').loadavg().join(', '));
-					self.start_ts = 0;
-					self.currentQuery = null;
-					last_arg(result);
-				});
+		"SELECT asset, is_stable, SUM(amount) AS balance \n\
+		FROM outputs "+join_my_addresses+" CROSS JOIN units USING(unit) \n\
+		WHERE is_spent=0 AND "+where_condition+" AND sequence='good' \n\
+		GROUP BY asset, is_stable",
 ```

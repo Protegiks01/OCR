@@ -1,242 +1,353 @@
-# Audit Report: Unbounded TPS Fee Parameters Enable Permanent Network Halt via Governance Attack
+# Audit Report: Stack Overflow in Unit Payload Size Calculation
 
 ## Summary
 
-System variable validation for TPS fee parameters lacks economic bounds enforcement, accepting any positive finite number. The protocol's governance mechanism allows stakeholders controlling 10% of supply to vote extreme values that render the exponential fee formula catastrophically high, permanently halting all transaction processing with no emergency recovery mechanism.
+The `getLength()` function performs unbounded recursion when calculating unit payload sizes. During validation, deeply nested data structures (~15,000 array nesting levels) exhaust the JavaScript call stack before AA-specific depth validation executes, causing unhandled `RangeError` exceptions that crash all nodes processing the malicious unit. [1](#0-0) 
 
 ## Impact
 
 **Severity**: Critical  
 **Category**: Network Shutdown
 
-Complete network shutdown affecting all 1e15 bytes in circulation. Once extreme fee parameters take effect, all transaction submissions fail validation because calculated `min_tps_fee` exceeds maximum possible user balance. Recovery requires hard fork since governance system cannot function without transaction processing capability.
+A single malicious unit with deeply nested arrays (~30KB payload, well under the 5MB limit) crashes all validating nodes network-wide. The attack requires only minimal transaction fees and causes indefinite network downtime until emergency patching and unit blacklisting. All transaction processing halts, witness consensus stops, requiring coordinated manual intervention for recovery.
+
+**Affected Parties**: All network nodes (full nodes, witnesses, light clients validating units), all users unable to transact during outage.
+
+**Quantified Impact**: Single unit causes complete network shutdown affecting all participants indefinitely until emergency response completed.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/validation.js:1692-1698`, function `validateMessage()`
+**Location**: `byteball/ocore/object_length.js:9-40`, function `getLength()`  
+Called from: `byteball/ocore/validation.js:138` via `getTotalPayloadSize()`
 
-**Intended Logic**: System variable validation should enforce economic bounds preventing catastrophic network failure, consistent with how `threshold_size` has minimum bounds of 1000 bytes to ensure operational viability.
+**Intended Logic**: 
+Validation should calculate unit payload size, verify it matches declared `payload_commission`, and reject oversized units. AA definitions exceeding depth limits should be rejected by `MAX_DEPTH=100` validation during message-specific checks. [2](#0-1) [3](#0-2) 
 
-**Actual Logic**: Validation only checks positive finite number constraint without considering economic implications of the exponential fee formula. [1](#0-0) 
+**Actual Logic**: 
 
-Compare with `threshold_size` which demonstrates awareness of bounds validation: [2](#0-1) 
+The `getLength()` function recursively traverses objects and arrays without any depth limit or recursion counter. For arrays, each element triggers another recursive call; for objects, each property does the same. [4](#0-3) 
+
+During validation, `getTotalPayloadSize()` is invoked without try-catch protection to verify the payload commission matches the calculated size. [5](#0-4) 
+
+This function calls `getLength()` to traverse the entire unit structure including deeply nested payloads. [6](#0-5) 
+
+With approximately 15,000 nesting levels, the JavaScript V8 engine's call stack limit (~10,000-15,000 frames depending on environment) is exceeded, throwing `RangeError: Maximum call stack size exceeded`. This exception is NOT caught because there is no try-catch wrapper around the size calculation calls.
+
+The AA depth validation with `MAX_DEPTH=100` protection exists at line 1577 but executes much later during message-specific validation, never reached due to the earlier crash. [7](#0-6) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker controls addresses holding ≥10% of total supply (1e14 bytes). Threshold defined: [3](#0-2) [4](#0-3) 
+1. **Initial bypass of ratio check**: When the unit is first received via WebSocket, `getRatio()` is called which DOES have try-catch protection and returns 1 on stack overflow, allowing the unit to pass this initial check. [8](#0-7) [9](#0-8) 
 
-2. **Step 1**: Attacker submits `system_vote` messages voting `base_tps_fee = 1e50`. Validation accepts since 1e50 satisfies positive finite number check (lines 1695-1696).
+2. **Proceeds to validation**: The unit passes to `handleOnlineJoint()` which calls `handleJoint()` and then `validation.validate()`. [10](#0-9) [11](#0-10) 
 
-3. **Step 2**: After sufficient balance accumulation, `system_vote_count` message triggers vote counting: [5](#0-4) 
+3. **Unprotected size calculation**: At validation line 138, `getTotalPayloadSize()` is called WITHOUT try-catch protection.
 
-4. **Step 3**: Vote counting calculates balance-weighted median and stores directly without bounds validation: [6](#0-5) 
+4. **Stack overflow occurs**: `getLength()` recursively descends through 15,000 nesting levels, exhausts the call stack, and throws uncaught `RangeError`.
 
-5. **Step 4**: TPS fee calculation retrieves extreme value and applies exponential formula: [7](#0-6) 
+5. **Process crashes**: The exception bubbles up through the call stack with no handler, terminating the Node.js process.
 
-   With `base_tps_fee = 1e50`, `tps_interval = 1`, `tps_fee_multiplier = 10`, and minimal `tps ≈ 1`:
-   - Formula: `Math.round(10 * 1e50 * (Math.exp(1) - 1))` ≈ 1.72e51 bytes
-   - This exceeds total supply (1e15) by factor of 1.72e36
+6. **Network-wide impact**: All nodes receiving the unit experience identical crashes and cannot recover until the unit is blacklisted.
 
-6. **Step 5**: All subsequent transactions fail validation: [8](#0-7) 
+**Security Property Broken**: 
+Network Resilience Invariant - Nodes must validate and gracefully reject malformed units without crashing.
 
-   With `min_tps_fee ≈ 1.72e51`, no user can satisfy balance requirement since maximum possible balance is 1e15 bytes.
-
-7. **Step 6**: Emergency recovery impossible. Emergency vote counting only supports `op_list`: [9](#0-8) 
-
-   Fee parameters (lines 1787-1811) have no emergency override mechanism. Normal governance cannot rectify the situation since all transaction processing is blocked.
-
-**Security Property Broken**: Network liveness invariant - the protocol must maintain ability for legitimate users to submit valid transactions under all governance-approved parameter configurations.
-
-**Root Cause Analysis**: 
-
-The codebase demonstrates explicit awareness of bounds validation through `threshold_size` minimum enforcement, yet fails to apply equivalent economic bounds to TPS fee parameters despite the exponential formula making extreme values network-destroying. No maximum bounds, overflow protections, or emergency recovery mechanisms exist for these parameters, creating an irreversible denial-of-service vector through legitimate governance channels.
+**Root Cause**:
+- `getLength()` lacks depth parameter, recursion counter, or maximum depth check
+- No try-catch protection around size calculations in validation.js lines 136-139
+- Validation ordering places size calculation before message-specific validation containing depth limits
+- AA depth protection at line 1577 bypassed by earlier crash
 
 ## Impact Explanation
 
-**Affected Assets**: All bytes (native currency), custom assets, autonomous agent operations, entire network functionality
+**Affected Assets**: Network availability, all pending transactions, consensus mechanism.
 
 **Damage Severity**:
-- **Quantitative**: 100% of network transactions permanently blocked. All 1e15 bytes effectively frozen. Recovery requires coordinated hard fork across all nodes.
-- **Qualitative**: Complete loss of network utility. All economic activity ceases. Smart contracts cannot execute. Users cannot access funds until hard fork deployment.
+- **Quantitative**: Single 30KB unit causes complete network shutdown. All nodes crash simultaneously. Network downtime continues indefinitely (hours to days) until coordinated emergency response.
+- **Qualitative**: Total loss of network availability. Users cannot send transactions, witnesses cannot post heartbeats, consensus mechanism halts.
 
 **User Impact**:
-- **Who**: All network participants - users, witnesses, exchanges, DApp operators, autonomous agents
-- **Conditions**: Immediately upon malicious vote taking effect at next MCI stabilization
-- **Recovery**: Requires hard fork with manual intervention since governance system cannot function without transaction processing
+- **Who**: All network participants - full nodes, light clients, witnesses, all users
+- **Conditions**: Exploitable during any network state; no special conditions required
+- **Recovery**: Requires emergency coordination to blacklist malicious unit hash, deploy patched node software, and restart all nodes
 
 **Systemic Risk**:
-- Attack executes atomically - entire network halts simultaneously
-- No gradual degradation or early warning signals
-- Cannot be reversed through any protocol mechanism
-- Enables ransom attacks or competitor sabotage
+- **Attack Cost**: Minimal (only transaction fees, ~1000 bytes or less)
+- **Detection**: Attack succeeds immediately; nodes crash before logging malicious unit
+- **Repeatability**: Attacker can submit multiple such units with different hashes until network implements blacklist
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Large stakeholder, compromised exchange, coordinated group, or nation-state actor
-- **Resources Required**: Control of 1e14 bytes (10% of supply)
-- **Technical Skill**: Medium - requires understanding governance system and ability to submit system_vote messages
+- **Identity**: Any user with Obyte address capable of broadcasting units to network
+- **Resources Required**: Minimal - transaction fees only (under $1 equivalent)
+- **Technical Skill**: Low - generating deeply nested JSON arrays is trivial with any programming language
 
 **Preconditions**:
-- **Network State**: Normal operation with v4 upgrade active: [10](#0-9) 
-- **Attacker State**: Must control or coordinate 10% supply holders to vote extreme values
-- **Timing**: Vote counting triggers when sufficient balance votes accumulate
+- **Network State**: Normal operation; no special conditions required
+- **Attacker State**: Only needs ability to broadcast units to any peer
+- **Timing**: No timing constraints; attack succeeds upon validation
 
 **Execution Complexity**:
-- **Transaction Count**: Single `system_vote` message (or coordinated set totaling 10%+ supply), plus one `system_vote_count` message
-- **Coordination**: Requires either single large holder or multi-party coordination
-- **Detection Risk**: Votes visible on-chain but appear legitimate until effects manifest
+- **Transaction Count**: Single malicious unit sufficient
+- **Coordination**: No coordination required
+- **Detection Risk**: None - attack succeeds before detection possible
 
-**Overall Assessment**: Medium-High likelihood. While 10% threshold creates barrier, exchanges routinely hold such amounts. Economic incentives exist for short sellers, ransom attackers, or competing projects. Catastrophic impact and lack of emergency reversal mechanism elevate risk.
+**Frequency**:
+- **Repeatability**: Unlimited - attacker can craft multiple variants
+- **Scale**: Single unit affects entire network
+
+**Overall Assessment**: Very High - Trivial to execute, guaranteed success, network-wide impact, minimal cost.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add economic bounds validation for TPS fee parameters consistent with `threshold_size` precedent:
+Add maximum depth limit to `getLength()` function:
 
 ```javascript
-// File: byteball/ocore/validation.js
-// Lines 1692-1698
+// File: byteball/ocore/object_length.js
+// Add depth parameter and check
 
-case "base_tps_fee":
-case "tps_interval":
-case "tps_fee_multiplier":
-    if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
-        return callback(payload.subject + " must be a positive number");
-    // Add maximum bounds to prevent network halt
-    const MAX_BASE_TPS_FEE = 1e9; // Example: 1GB max base fee
-    const MAX_TPS_INTERVAL = 1000; // Example: max interval
-    const MAX_TPS_FEE_MULTIPLIER = 1000; // Example: max multiplier
-    if (payload.subject === "base_tps_fee" && payload.value > MAX_BASE_TPS_FEE)
-        return callback("base_tps_fee exceeds maximum " + MAX_BASE_TPS_FEE);
-    if (payload.subject === "tps_interval" && payload.value > MAX_TPS_INTERVAL)
-        return callback("tps_interval exceeds maximum " + MAX_TPS_INTERVAL);
-    if (payload.subject === "tps_fee_multiplier" && payload.value > MAX_TPS_FEE_MULTIPLIER)
-        return callback("tps_fee_multiplier exceeds maximum " + MAX_TPS_FEE_MULTIPLIER);
-    callback();
-    break;
+function getLength(value, bWithKeys, depth) {
+    if (!depth) depth = 0;
+    if (depth > 1000) // reasonable limit well below stack size
+        throw Error("data structure nesting too deep: " + depth);
+    // ... existing logic, passing depth+1 to recursive calls
+}
 ```
 
 **Permanent Fix**:
-1. Add emergency recovery mechanism for TPS fee parameters in `main_chain.js:countVotes()` similar to existing `op_list` emergency support
-2. Implement sanity checks in `storage.js:getLocalTpsFee()` that cap calculated fees at reasonable maximums
-3. Add monitoring alerts when TPS fee parameters approach dangerous thresholds
+Wrap size calculation calls in try-catch blocks:
+
+```javascript
+// File: byteball/ocore/validation.js
+// Lines 136-139
+
+try {
+    if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
+        return callbacks.ifJointError("wrong headers commission");
+    if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
+        return callbacks.ifJointError("wrong payload commission");
+} catch(e) {
+    return callbacks.ifJointError("size calculation failed: " + e);
+}
+```
 
 **Additional Measures**:
-- Add test case verifying extreme parameter values are rejected
-- Add database trigger preventing insertion of out-of-bounds system variable values
-- Document rationale for chosen bounds in protocol specification
+- Add test case verifying deeply nested structures are rejected gracefully
+- Add monitoring to detect units causing validation exceptions
+- Consider applying depth limits during JSON parsing phase
 
-## Notes
+## Proof of Concept
 
-The critical distinction is between trusting governance participants versus ensuring governance cannot vote parameters that fundamentally break network operation. The protocol already demonstrates this principle through `threshold_size` bounds validation. The inconsistency in applying bounds to TPS fee parameters, combined with their exponential formula and lack of emergency recovery, represents a design oversight rather than intentional governance flexibility. The 10% voting threshold is a governance mechanism, not a security boundary - the protocol should prevent any governance outcome that renders the network inoperable.
+```javascript
+const composer = require('ocore/composer.js');
+const network = require('ocore/network.js');
+
+// Generate deeply nested array
+function createDeeplyNestedArray(depth) {
+    let result = [];
+    for (let i = 0; i < depth; i++) {
+        result = [result];
+    }
+    return result;
+}
+
+// Create malicious AA definition with 15000 nesting levels
+const maliciousDefinition = [
+    'autonomous agent',
+    {
+        messages: [
+            {
+                app: 'payment',
+                payload: {
+                    asset: 'base',
+                    outputs: [
+                        {
+                            address: 'ATTACKER_ADDRESS',
+                            amount: 1000
+                        }
+                    ]
+                },
+                if: createDeeplyNestedArray(15000) // This will cause stack overflow
+            }
+        ]
+    }
+];
+
+// Compose and broadcast unit with malicious definition
+composer.composeJoint({
+    paying_addresses: ['ATTACKER_ADDRESS'],
+    outputs: [],
+    messages: [
+        {
+            app: 'definition',
+            payload: {
+                definition: maliciousDefinition
+            }
+        }
+    ],
+    signer: headersSigner,
+    callbacks: {
+        ifOk: function(objJoint) {
+            // Broadcast to network - all validating nodes will crash
+            network.broadcastJoint(objJoint);
+        },
+        ifError: function(err) {
+            console.error('Composition error:', err);
+        }
+    }
+});
+
+// Expected result: All nodes attempting to validate this unit will crash with:
+// RangeError: Maximum call stack size exceeded
+// at getLength (object_length.js:24)
+// at getLength (object_length.js:24)
+// ... [repeated ~15000 times]
+```
+
+**Notes**
+
+The vulnerability exists because:
+
+1. **Early protection catches but doesn't prevent**: The `getRatio()` check at network message reception has try-catch protection, but it returns 1 on error allowing the unit to proceed to validation. [12](#0-11) 
+
+2. **Critical validation lacks protection**: The size calculation during validation has NO try-catch wrapper despite performing the same recursive traversal. [13](#0-12) 
+
+3. **Depth limit exists but executes too late**: AA-specific depth validation with `MAX_DEPTH=100` exists but only executes during message validation at line 1577, after the size calculation has already crashed the process. [7](#0-6) 
+
+4. **Size vs depth**: A 30KB payload with 15,000 nesting levels easily fits within the 5MB `MAX_UNIT_LENGTH` limit but far exceeds JavaScript's stack size. [14](#0-13) 
+
+This is a critical network resilience failure where malformed input causes complete node failure rather than graceful rejection.
 
 ### Citations
 
-**File:** validation.js (L916-917)
+**File:** object_length.js (L9-40)
 ```javascript
-		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
-			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
-```
-
-**File:** validation.js (L1646-1647)
-```javascript
-			if (objValidationState.last_ball_mci < constants.v4UpgradeMci && !constants.bDevnet)
-				return callback("cannot vote for system params yet");
-```
-
-**File:** validation.js (L1683-1690)
-```javascript
-				case "threshold_size":
-					if (!isPositiveInteger(payload.value))
-						return callback(payload.subject + " must be a positive integer");
-					if (!constants.bTestnet || objValidationState.last_ball_mci > 3543000) {
-						if (payload.value < 1000)
-							return callback(payload.subject + " must be at least 1000");
-					}
-					callback();
-```
-
-**File:** validation.js (L1692-1698)
-```javascript
-				case "base_tps_fee":
-				case "tps_interval":
-				case "tps_fee_multiplier":
-					if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
-						return callback(payload.subject + " must be a positive number");
-					callback();
-					break;
-```
-
-**File:** constants.js (L15-15)
-```javascript
-exports.TOTAL_WHITEBYTES = process.env.TOTAL_WHITEBYTES || 1e15;
-```
-
-**File:** constants.js (L71-71)
-```javascript
-exports.SYSTEM_VOTE_COUNT_FEE = 1e9;
-```
-
-**File:** constants.js (L72-72)
-```javascript
-exports.SYSTEM_VOTE_MIN_SHARE = 0.1;
-```
-
-**File:** main_chain.js (L1645-1648)
-```javascript
-async function countVotes(conn, mci, subject, is_emergency = 0, emergency_count_command_timestamp = 0) {
-	console.log('countVotes', mci, subject, is_emergency, emergency_count_command_timestamp);
-	if (is_emergency && subject !== "op_list")
-		throw Error("emergency vote count supported for op_list only, got " + subject);
-```
-
-**File:** main_chain.js (L1787-1818)
-```javascript
-		case "base_tps_fee":
-		case "tps_interval":
-		case "tps_fee_multiplier":
-			const rows = await conn.query(`SELECT value, SUM(balance) AS total_balance
-				FROM numerical_votes
-				CROSS JOIN voter_balances USING(address)
-				WHERE timestamp>=? AND subject=?
-				GROUP BY value
-				ORDER BY value`,
-				[since_timestamp, subject]
-			);
-			console.log(`total votes for`, subject, rows);
-			const total_voted_balance = rows.reduce((acc, row) => acc + row.total_balance, 0);
-			let accumulated = 0;
-			for (let { value: v, total_balance } of rows) {
-				accumulated += total_balance;
-				if (accumulated >= total_voted_balance / 2) {
-					value = v;
-					break;
+function getLength(value, bWithKeys) {
+	if (value === null)
+		return 0;
+	switch (typeof value){
+		case "string": 
+			return value.length;
+		case "number": 
+			if (!isFinite(value))
+				throw Error("invalid number: " + value);
+			return 8;
+			//return value.toString().length;
+		case "object":
+			var len = 0;
+			if (Array.isArray(value))
+				value.forEach(function(element){
+					len += getLength(element, bWithKeys);
+				});
+			else    
+				for (var key in value){
+					if (typeof value[key] === "undefined")
+						throw Error("undefined at "+key+" of "+JSON.stringify(value));
+					if (bWithKeys)
+						len += key.length;
+					len += getLength(value[key], bWithKeys);
 				}
-			}
-			if (value === undefined)
-				throw Error(`no median value for ` + subject);
-			storage.systemVars[subject].unshift({ vote_count_mci: mci, value, is_emergency });
-			break;
-		
+			return len;
+		case "boolean": 
+			return 1;
 		default:
-			throw Error("unknown subject in countVotes: " + subject);
+			throw Error("unknown type="+(typeof value)+" of "+value);
 	}
-	console.log(`new`, subject, value);
-	// a repeated emergency vote on the same mci would overwrite the previous one
-	await conn.query(`${is_emergency || mci === 0 ? 'REPLACE' : 'INSERT'} INTO system_vars (subject, value, vote_count_mci, is_emergency) VALUES (?, ?, ?, ?)`, [subject, value, mci === 0 ? -1 : mci, is_emergency]);
+}
 ```
 
-**File:** storage.js (L1292-1301)
+**File:** object_length.js (L61-67)
 ```javascript
-async function getLocalTpsFee(conn, objUnitProps, count_units = 1) {
-	const objLastBallUnitProps = await readUnitProps(conn, objUnitProps.last_ball_unit);
-	const last_ball_mci = objLastBallUnitProps.main_chain_index;
-	const base_tps_fee = getSystemVar('base_tps_fee', last_ball_mci); // unit's mci is not known yet
-	const tps_interval = getSystemVar('tps_interval', last_ball_mci);
-	const tps_fee_multiplier = getSystemVar('tps_fee_multiplier', last_ball_mci);
-	const tps = await getLocalTps(conn, objUnitProps, count_units);
-	console.log(`local tps at ${objUnitProps.unit} ${tps}`);
-	const tps_fee_per_unit = Math.round(tps_fee_multiplier * base_tps_fee * (Math.exp(tps / tps_interval) - 1));
-	return count_units * tps_fee_per_unit;
+function getTotalPayloadSize(objUnit) {
+	if (objUnit.content_hash)
+		throw Error("trying to get payload size of stripped unit");
+	var bWithKeys = (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes);
+	const { temp_data_length, messages_without_temp_data } = extractTempData(objUnit.messages);
+	return Math.ceil(temp_data_length * constants.TEMP_DATA_PRICE) + getLength({ messages: messages_without_temp_data }, bWithKeys);
+}
+```
+
+**File:** object_length.js (L104-113)
+```javascript
+function getRatio(objUnit) {
+	try {
+		if (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes)
+			return 1;
+		return getLength(objUnit, true) / getLength(objUnit);
+	}
+	catch (e) {
+		return 1;
+	}
+}
+```
+
+**File:** aa_validation.js (L28-28)
+```javascript
+var MAX_DEPTH = 100;
+```
+
+**File:** aa_validation.js (L472-473)
+```javascript
+		if (depth > MAX_DEPTH)
+			return cb("cases for " + field + " go too deep");
+```
+
+**File:** validation.js (L136-141)
+```javascript
+		if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
+			return callbacks.ifJointError("wrong headers commission, expected "+objectLength.getHeadersSize(objUnit));
+		if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
+			return callbacks.ifJointError("wrong payload commission, unit "+objUnit.unit+", calculated "+objectLength.getTotalPayloadSize(objUnit)+", expected "+objUnit.payload_commission);
+		if (objUnit.headers_commission + objUnit.payload_commission > constants.MAX_UNIT_LENGTH && !bGenesis)
+			return callbacks.ifUnitError("unit too large");
+```
+
+**File:** validation.js (L1577-1577)
+```javascript
+			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
+```
+
+**File:** network.js (L1025-1027)
+```javascript
+	var validate = function(){
+		mutex.lock(['handleJoint'], function(unlock){
+			validation.validate(objJoint, {
+```
+
+**File:** network.js (L1190-1210)
+```javascript
+function handleOnlineJoint(ws, objJoint, onDone){
+	if (!onDone)
+		onDone = function(){};
+	var unit = objJoint.unit.unit;
+	delete objJoint.unit.main_chain_index;
+	delete objJoint.unit.actual_tps_fee;
+	
+	handleJoint(ws, objJoint, false, false, {
+		ifUnitInWork: onDone,
+		ifUnitError: function(error){
+			sendErrorResult(ws, unit, error);
+			onDone();
+		},
+		ifTransientError: function(error) {
+			sendErrorResult(ws, unit, error);
+			onDone();
+			if (error.includes("tps fee"))
+				setTimeout(handleOnlineJoint, 10 * 1000, ws, objJoint);
+		},
+		ifJointError: function(error){
+			sendErrorResult(ws, unit, error);
+```
+
+**File:** network.js (L2594-2595)
+```javascript
+				if (objectLength.getRatio(objJoint.unit) > 3)
+					return sendError(ws, "the total size of keys is too large");
+```
+
+**File:** constants.js (L58-58)
+```javascript
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
 ```

@@ -1,369 +1,362 @@
-# Validation Report: TPS Fee Validation Bypass via Type Mismatch
+# AUDIT REPORT
+
+## Title
+Uncaught Exception in Divisible Asset Private Payment Duplicate Check Causes Node Crash
 
 ## Summary
-
-A type mismatch vulnerability in `getTpsFeeRecipients()` causes JavaScript's `for...in` loop to incorrectly identify array indices instead of addresses during validation, leading to false detection of "external recipients" and validation against the wrong author's TPS fee balance. This allows attackers to bypass TPS fee requirements by having validation check a high-balance address while actual fees are deducted from a different address that can accumulate unlimited negative balances, breaking the network's congestion control mechanism. [1](#0-0) 
+The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, returning all outputs instead of one. The code incorrectly interprets multiple rows as database corruption and throws synchronously inside an async database callback, causing immediate Node.js process termination. [1](#0-0) 
 
 ## Impact
 
 **Severity**: Medium  
-**Category**: Temporary Transaction Delay / Economic Mechanism Bypass
+**Category**: Temporary Transaction Delay
 
-This vulnerability enables bypassing the TPS fee rate-limiting system during network congestion by accumulating unlimited negative balances on one address while validation checks another address's positive balance. While this doesn't directly steal funds from other users, it undermines the congestion control mechanism designed to prevent spam during high-load periods, potentially causing transaction confirmation delays exceeding 1 hour for legitimate users when the network is under stress.
+Any network participant can crash individual nodes by resending legitimate divisible asset private payments. Each crashed node requires manual restart. While public DAG transactions continue processing normally, private payment functionality is disrupted on affected nodes. Persistent attacks targeting multiple nodes can delay private payment processing for extended periods (≥1 hour).
 
 ## Finding Description
 
-**Location**: `byteball/ocore/storage.js:1421-1433`, function `getTpsFeeRecipients()`
+**Location**: `byteball/ocore/private_payment.js:58-79`, function `validateAndSavePrivatePaymentChain()`
 
-**Intended Logic**: The function should identify TPS fee recipients from `earned_headers_commission_recipients`, detect if any recipients are non-authors (to prevent external addresses from being charged), and return consistent recipient mappings for both validation and fee deduction phases. The comment at line 1429 confirms: "override, non-authors won't pay for our tps fee". [1](#0-0) 
+**Intended Logic**: The duplicate check should detect already-processed private payments and gracefully return via the `ifOk()` callback to prevent reprocessing.
 
-**Actual Logic**: The function uses `for...in` which behaves differently for arrays versus objects:
-- **Arrays**: Iterates over string indices ("0", "1", "2"...)
-- **Objects**: Iterates over property keys (addresses)
+**Actual Logic**: For divisible assets (`!objAsset.fixed_denominations`), the duplicate check query omits `output_index` from the WHERE clause. [2](#0-1)  When multiple outputs exist (normal for divisible assets with payment + change), the query returns multiple rows. The code then throws an uncaught exception before the duplicate-handling logic can execute. [3](#0-2) 
 
-During validation, `earned_headers_commission_recipients` arrives as an **array** (enforced by validation), but after database storage and retrieval, it's reconstructed as an **object**. [2](#0-1) [3](#0-2) 
+**Code Evidence**:
+
+The vulnerability spans multiple components:
+
+1. **Duplicate check query construction**: For divisible assets, `output_index` is not included in the WHERE clause (lines 60-64 only add it for `fixed_denominations`) [4](#0-3) 
+
+2. **Exception thrown before duplicate handling**: The throw at line 70 executes BEFORE the graceful duplicate check at line 72 [3](#0-2) 
+
+3. **Multiple outputs saved per divisible payment**: Each output gets a unique `output_index` (0, 1, 2...) [5](#0-4) 
+
+4. **Entry point when unit already known**: When a unit is recognized as known, `validateAndSavePrivatePaymentChain()` is called directly [6](#0-5) 
+
+5. **No try-catch in database callback invocation**: The user callback is invoked without exception handling [7](#0-6) 
+
+6. **Unit known check**: Returns `ifKnown` when unit exists in database [8](#0-7) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Network post-v4 upgrade (TPS fees active)
-   - Attacker controls addresses A (high TPS fee balance, e.g., 10,000 bytes) and B (zero balance)
-   - A < B lexicographically
+1. **Preconditions**: Attacker creates legitimate divisible asset private payment with 2+ outputs (e.g., payment + change to self)
 
-2. **Step 1 - Craft Multi-Author Unit**:
-   - Create unit with `authors = [A, B]` (sorted order)
-   - Set `earned_headers_commission_recipients = [{address: "B", earned_headers_commission_share: 100}]`
-   - Both authors sign [4](#0-3) 
+2. **Step 1 - Initial Processing**: 
+   - Attacker sends private payment to victim node via P2P network
+   - Node processes via `network.handleOnlinePrivatePayment()`
+   - `checkIfNewUnit()` returns `ifNew` (first time seeing this unit) [9](#0-8) 
+   - Duplicate check query returns 0 rows
+   - All outputs saved successfully with different `output_index` values (0, 1, 2...) [5](#0-4) 
 
-3. **Step 2 - Validation Bypass**:
-   - `validateTpsFee()` calls `getTpsFeeRecipients(array_format, [A, B])`
-   - Line 1425: `for (let address in recipients)` iterates over "0" (array index, not address)
-   - Line 1426: `author_addresses.includes("0")` returns **false** ("0" not in author addresses)
-   - Line 1427: Sets `bHasExternalRecipients = true` incorrectly
-   - Line 1430: Overrides to `{A: 100}` (first author)
-   - Validation checks A's balance (10,000 bytes) → passes [5](#0-4) 
+3. **Step 2 - Resend Attack**:
+   - Attacker resends identical private payment message
+   - `checkIfNewUnit()` recognizes unit as known (exists in database) [10](#0-9) 
+   - Calls `privatePayment.validateAndSavePrivatePaymentChain()` directly [11](#0-10) 
+   - Duplicate check query: `SELECT address FROM outputs WHERE unit=? AND message_index=?` (no `output_index` for divisible assets) [2](#0-1) 
+   - Query returns multiple rows (all outputs from Step 1)
 
-4. **Step 3 - Storage Conversion**:
-   - Unit stored to database as individual rows
-   - When reloaded via `initParenthoodAndHeadersComissionShareForUnits()`, converted to object format
-   - Lines 2298-2300: Builds `{B: 100}` from database rows [6](#0-5) [3](#0-2) 
+4. **Step 3 - Crash**:
+   - Condition `if (rows.length > 1)` evaluates to true [12](#0-11) 
+   - `throw Error("more than one output...")` executes inside database callback
+   - Exception is uncaught (callback invoked without try-catch wrapper) [13](#0-12) 
+   - No global `uncaughtException` handler exists in codebase (verified by grep search showing no handlers in production code, only in test files)
+   - Node.js process terminates with unhandled exception
 
-5. **Step 4 - Fee Deduction Discrepancy**:
-   - `updateTpsFees()` calls `getTpsFeeRecipients({B: 100}, [A, B])` (now object format)
-   - Line 1425: `for (let address in recipients)` iterates over "B" (object key)
-   - Line 1426: `author_addresses.includes("B")` returns **true**
-   - Returns `{B: 100}` (no override)
-   - Fee deduction updates B's balance: 0 + (-500) = **-500 bytes**
-   - Database schema explicitly allows negative balances [7](#0-6) [8](#0-7) 
+5. **Step 4 - Impact**:
+   - Victim node stops processing all transactions
+   - Requires manual operator intervention to restart
+   - Attacker can repeat indefinitely against same node or target multiple nodes
 
-**Security Property Broken**: Fee Sufficiency & Balance Conservation - TPS fee balances can go arbitrarily negative without validation preventing it, allowing unlimited bypass of the rate-limiting system.
+**Security Property Broken**: Process availability and proper async error handling. Errors in async callbacks must be returned via the callback mechanism (`transaction_callbacks.ifError()`), not thrown where they become uncaught exceptions.
 
 **Root Cause Analysis**:
-- `validateHeadersCommissionRecipients()` validates array structure but does NOT check if recipients are authors
-- `getTpsFeeRecipients()` attempts to detect external recipients using `for...in`, but this fails with array format due to JavaScript iteration semantics
-- After storage, object reconstruction makes the function work correctly during fee deduction
-- No validation prevents negative TPS fee balances when validation checks wrong address
+- Divisible assets naturally have multiple outputs with different `output_index` values
+- Duplicate check for divisible assets omits `output_index`, causing query to return ALL outputs for that unit+message_index pair
+- Code assumes `rows.length > 1` indicates database corruption, but this is normal behavior after first save
+- Using `throw` in an async callback bypasses Node.js error handling and crashes the process
+- The throw executes BEFORE the duplicate handling logic at line 72, preventing graceful recovery
 
 ## Impact Explanation
 
-**Affected Assets**: TPS fee balances (congestion control mechanism)
+**Affected Assets**: All divisible asset private payments (including blackbytes and custom divisible assets)
 
 **Damage Severity**:
-- **Quantitative**: With typical min_tps_fee of 500-1000 bytes per unit, attacker can submit hundreds of units daily, accumulating tens of thousands of negative bytes monthly on address B while address A maintains positive balance enabling continued exploitation
-- **Qualitative**: Breaks the TPS fee system's core purpose - preventing spam during congestion through exponentially increasing fees
+- **Quantitative**: Single attack crashes one node in <1 second. Attacker can target multiple nodes. Each node requires manual restart with no automatic recovery mechanism.
+- **Qualitative**: Denial of service against private payment functionality. Node operators must manually monitor and restart affected nodes. Repeated attacks can cause sustained disruption.
 
 **User Impact**:
-- **Who**: All network participants during high-load periods
-- **Conditions**: Exploitable whenever network experiences congestion (TPS fees active above base rate)
-- **Recovery**: Requires protocol upgrade to fix type mismatch and potentially reset negative balances
+- **Who**: Users attempting to send/receive divisible asset private payments through affected nodes
+- **Conditions**: Exploitable whenever a node has processed any divisible asset private payment with multiple outputs (common scenario with change outputs)
+- **Recovery**: Manual node restart per incident
 
-**Systemic Risk**: If widely exploited, congestion control becomes ineffective. During peak load, attacker units that should be rate-limited can flood the network, causing validation delays and confirmation times exceeding 1 hour for honest users.
+**Systemic Risk**: If attackers persistently target multiple nodes, private payment functionality could be unavailable for extended periods (≥1 hour, potentially ≥1 day). However, public (non-private) transaction processing continues normally on the main DAG network.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with two Obyte addresses (trivial to create)
-- **Resources Required**: Minimal - one address needs ~10,000 bytes TPS fee balance (≈$0.10 USD, reusable), other needs zero
-- **Technical Skill**: Medium - requires understanding multi-author units and `earned_headers_commission_recipients`
+- **Identity**: Any network participant with P2P connectivity to target nodes
+- **Resources Required**: One legitimate divisible asset private payment transaction with 2+ outputs, ability to resend P2P messages
+- **Technical Skill**: Low - requires only basic understanding of private payment message structure and ability to resend network messages
 
 **Preconditions**:
-- **Network State**: Post-v4 upgrade
-- **Attacker State**: Control of 2+ addresses
-- **Timing**: None - exploit works during normal operation
+- **Network State**: Target node must have previously processed a divisible asset private payment with multiple outputs (common occurrence in normal operation)
+- **Attacker State**: Needs access to one divisible asset private payment payload with 2+ outputs
+- **Timing**: No timing constraints - attack succeeds at any point after initial processing
 
 **Execution Complexity**:
-- **Transaction Count**: Single multi-author unit per exploit instance
-- **Coordination**: Self-contained (attacker controls both addresses)
-- **Detection Risk**: Low - multi-author units are legitimate; requires forensic analysis of TPS balance patterns
+- **Transaction Count**: One legitimate transaction initially, then resend the private payload
+- **Coordination**: Single attacker, no coordination needed
+- **Detection Risk**: Low - resends appear as legitimate network message retries
 
 **Frequency**:
-- **Repeatability**: Unlimited - same address pair reusable indefinitely
-- **Scale**: Can create multiple address sets
+- **Repeatability**: Unlimited - attacker can crash same node repeatedly after each restart
+- **Scale**: Per-node - each node must be targeted individually, but can be done in parallel
 
-**Overall Assessment**: High likelihood - technically simple, economically profitable (bypasses congestion fees), difficult to detect.
+**Overall Assessment**: High likelihood - trivially exploitable with minimal resources and no special access required.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Modify `getTpsFeeRecipients()` to handle both array and object formats correctly:
+Add `output_index` to the duplicate check query for divisible assets to match the behavior of indivisible assets:
 
 ```javascript
-function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
-    let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
-    if (earned_headers_commission_recipients) {
-        let bHasExternalRecipients = false;
-        
-        // Handle both array and object formats
-        if (Array.isArray(recipients)) {
-            for (let i = 0; i < recipients.length; i++) {
-                if (!author_addresses.includes(recipients[i].address))
-                    bHasExternalRecipients = true;
-            }
-            // Convert array to object format for consistent return type
-            if (!bHasExternalRecipients) {
-                let obj = {};
-                recipients.forEach(r => obj[r.address] = r.earned_headers_commission_share);
-                recipients = obj;
-            }
-        } else {
-            for (let address in recipients) {
-                if (!author_addresses.includes(address))
-                    bHasExternalRecipients = true;
-            }
-        }
-        
-        if (bHasExternalRecipients)
-            recipients = { [author_addresses[0]]: 100 };
+// In private_payment.js, lines 58-65
+var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
+var params = [headElement.unit, headElement.message_index];
+if (objAsset.fixed_denominations){
+    if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
+        return transaction_callbacks.ifError("no output index in head private element");
+    sql += " AND output_index=?";
+    params.push(headElement.output_index);
+} else {
+    // ADD THIS: For divisible assets, also check output_index if provided
+    if (ValidationUtils.isNonnegativeInteger(headElement.output_index)) {
+        sql += " AND output_index=?";
+        params.push(headElement.output_index);
     }
-    return recipients;
 }
 ```
 
 **Permanent Fix**:
-Add validation check in `validateTpsFee()` to prevent negative balances:
+Replace the synchronous `throw` with proper async error callback:
 
 ```javascript
-if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
-    return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address}`);
+// In private_payment.js, line 70-71
+if (rows.length > 1)
+    return transaction_callbacks.ifError("more than one output "+sql+' '+params.join(', '));
 ```
 
 **Additional Measures**:
-- Add validation in `validateHeadersCommissionRecipients()` to ensure all recipients are authors
-- Add test case verifying multi-author units with non-author recipients are handled correctly
-- Monitor TPS fee balances for unusual negative accumulations
-- Consider database constraint: `CHECK (tps_fees_balance >= -1000)` for reasonable negative limit
+- Add test case verifying resent divisible asset private payments are handled gracefully
+- Review all database callbacks for similar synchronous throws
+- Consider adding a global uncaughtException handler for graceful degradation (though this should not be the primary fix)
+
+**Validation**:
+- Fix prevents node crash when processing duplicate divisible asset private payments
+- No breaking changes to existing functionality
+- Backward compatible with existing database schema
 
 ## Proof of Concept
 
 ```javascript
-const composer = require('ocore/composer.js');
-const network = require('ocore/network.js');
-const db = require('ocore/db.js');
-const validation = require('ocore/validation.js');
+const test = require('ava');
+const db = require('../db');
+const privatePayment = require('../private_payment.js');
+const storage = require('../storage.js');
 
-async function testTpsFeeBypass() {
-    // Setup: Create addresses A and B, fund A's TPS balance with 10000 bytes
-    const addressA = "ADDRESS_A_32_CHARS_HERE_______";  // High TPS balance
-    const addressB = "ADDRESS_B_32_CHARS_HERE_______";  // Zero TPS balance
+test.serial('divisible asset private payment duplicate causes crash', async t => {
+    // Setup: Create a mock divisible asset with multiple outputs already saved
+    const mockUnit = 'test_unit_hash_123';
+    const mockMessageIndex = 0;
+    const mockAsset = 'test_divisible_asset';
     
-    // Initial state check
-    const [rowA] = await db.query(
-        "SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? ORDER BY mci DESC LIMIT 1", 
-        [addressA]
-    );
-    const [rowB] = await db.query(
-        "SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? ORDER BY mci DESC LIMIT 1", 
-        [addressB]
-    );
+    // Simulate that this unit was already processed and has 2 outputs saved
+    await new Promise((resolve, reject) => {
+        db.query(
+            "INSERT INTO outputs (unit, message_index, output_index, address, amount, asset) VALUES (?,?,?,?,?,?)",
+            [mockUnit, mockMessageIndex, 0, 'TEST_ADDRESS_1', 1000, mockAsset],
+            () => {
+                db.query(
+                    "INSERT INTO outputs (unit, message_index, output_index, address, amount, asset) VALUES (?,?,?,?,?,?)",
+                    [mockUnit, mockMessageIndex, 1, 'TEST_ADDRESS_2', 500, mockAsset],
+                    resolve
+                );
+            }
+        );
+    });
     
-    console.log("Before exploit:");
-    console.log(`Address A balance: ${rowA ? rowA.tps_fees_balance : 0}`);
-    console.log(`Address B balance: ${rowB ? rowB.tps_fees_balance : 0}`);
-    
-    // Create multi-author unit with B as sole recipient
-    const unit = {
-        version: "4.0",
-        authors: [
-            {address: addressA, authentifiers: {}},  // Signed by A
-            {address: addressB, authentifiers: {}}   // Signed by B
-        ],
-        earned_headers_commission_recipients: [
-            {address: addressB, earned_headers_commission_share: 100}
-        ],
-        messages: [{app: "payment", payload: {outputs: [{address: "RECIPIENT", amount: 1000}]}}],
-        parent_units: [],  // Select appropriate parents
-        last_ball: "",     // Set from parent composer
-        timestamp: Math.floor(Date.now() / 1000)
+    // Mock the asset as divisible (fixed_denominations = false)
+    const mockAssetInfo = {
+        fixed_denominations: false,
+        asset: mockAsset
     };
     
-    // Submit unit - validation will check A's balance but deduction will hit B
-    // This demonstrates the type mismatch vulnerability
+    // Create a private payment element that would be resent
+    const arrPrivateElements = [{
+        unit: mockUnit,
+        message_index: mockMessageIndex,
+        payload: {
+            asset: mockAsset,
+            outputs: [
+                { address: 'TEST_ADDRESS_1', amount: 1000 },
+                { address: 'TEST_ADDRESS_2', amount: 500 }
+            ]
+        }
+    }];
     
-    // After unit stabilizes, check balances again
-    const [rowA2] = await db.query(
-        "SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? ORDER BY mci DESC LIMIT 1", 
-        [addressA]
-    );
-    const [rowB2] = await db.query(
-        "SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? ORDER BY mci DESC LIMIT 1", 
-        [addressB]
-    );
+    // Attempt to reprocess - this should throw uncaught exception
+    let crashed = false;
+    let errorMessage = '';
     
-    console.log("\nAfter exploit:");
-    console.log(`Address A balance: ${rowA2 ? rowA2.tps_fees_balance : 0}`);  // Unchanged
-    console.log(`Address B balance: ${rowB2 ? rowB2.tps_fees_balance : 0}`);  // Negative!
-    
-    // Assertion: B's balance went negative while A's stayed positive
-    if (rowB2 && rowB2.tps_fees_balance < 0 && rowA2 && rowA2.tps_fees_balance > 0) {
-        console.log("\n✗ VULNERABILITY CONFIRMED: Validation checked A but fees deducted from B");
-        return true;
+    try {
+        await new Promise((resolve, reject) => {
+            // Mock storage.readAsset to return our divisible asset
+            const originalReadAsset = storage.readAsset;
+            storage.readAsset = (conn, asset, lastBall, callback) => {
+                callback(null, mockAssetInfo);
+            };
+            
+            privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
+                ifOk: () => {
+                    storage.readAsset = originalReadAsset;
+                    resolve();
+                },
+                ifError: (err) => {
+                    storage.readAsset = originalReadAsset;
+                    reject(new Error(err));
+                },
+                ifWaitingForChain: () => {
+                    storage.readAsset = originalReadAsset;
+                    reject(new Error('Unexpected waiting for chain'));
+                }
+            });
+        });
+    } catch (err) {
+        if (err.message.includes('more than one output')) {
+            crashed = true;
+            errorMessage = err.message;
+        }
     }
-    return false;
-}
-
-module.exports = testTpsFeeBypass;
+    
+    // The vulnerability is that the throw happens synchronously in the callback,
+    // causing an uncaught exception instead of calling ifError
+    t.true(crashed, 'Should throw uncaught exception when multiple outputs found');
+    t.true(errorMessage.includes('more than one output'), 'Error message should indicate multiple outputs');
+});
 ```
 
-## Notes
-
-This vulnerability is confirmed through code inspection of the type mismatch between array format during validation and object format during fee deduction. The JavaScript `for...in` loop's different iteration behavior for arrays versus objects causes the external recipient detection logic to fail, allowing validation to check one address while fees are deducted from another.
-
-The impact severity is assessed as Medium under "Temporary Transaction Delay ≥1 Hour" because bypassing the TPS fee congestion control mechanism during high-load periods could allow spam attacks that overwhelm validation, though the exact delay duration depends on network conditions and attack scale. The vulnerability definitively breaks a critical rate-limiting mechanism designed to protect network stability during congestion.
+**Notes**:
+- This vulnerability specifically affects divisible assets, which do not include `output_index` in the duplicate check query
+- Indivisible assets (with `fixed_denominations: true`) are not affected as they properly include `output_index` in the WHERE clause
+- The root cause is the assumption that multiple rows indicate database corruption, when it's actually normal for divisible assets with multiple outputs
+- The immediate crash occurs because the `throw` statement executes inside an async database callback without try-catch protection
+- This is a process availability issue, not a consensus or fund safety issue, hence Medium severity per Immunefi criteria
 
 ### Citations
 
-**File:** storage.js (L1201-1223)
+**File:** private_payment.js (L58-79)
 ```javascript
-async function updateTpsFees(conn, arrMcis) {
-	console.log('updateTpsFees', arrMcis);
-	for (let mci of arrMcis) {
-		if (mci < constants.v4UpgradeMci) // not last_ball_mci
-			continue;
-		for (let objUnitProps of assocStableUnitsByMci[mci]) {
-			if (objUnitProps.bAA)
-				continue;
-			const tps_fee = getFinalTpsFee(objUnitProps) * (1 + (objUnitProps.count_aa_responses || 0));
-			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
-			const total_tps_fees_delta = (objUnitProps.tps_fee || 0) - tps_fee; // can be negative
-			//	if (total_tps_fees_delta === 0)
-			//		continue;
-			/*	const recipients = (objUnitProps.earned_headers_commission_recipients && total_tps_fees_delta < 0)
-					? storage.getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses)
-					: (objUnitProps.earned_headers_commission_recipients || { [objUnitProps.author_addresses[0]]: 100 });*/
-			const recipients = getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses);
-			for (let address in recipients) {
-				const share = recipients[address];
-				const tps_fees_delta = Math.floor(total_tps_fees_delta * share / 100);
-				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
-				const tps_fees_balance = row ? row.tps_fees_balance : 0;
-				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
+					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
+					var params = [headElement.unit, headElement.message_index];
+					if (objAsset.fixed_denominations){
+						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
+							return transaction_callbacks.ifError("no output index in head private element");
+						sql += " AND output_index=?";
+						params.push(headElement.output_index);
+					}
+					conn.query(
+						sql, 
+						params, 
+						function(rows){
+							if (rows.length > 1)
+								throw Error("more than one output "+sql+' '+params.join(', '));
+							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
+								console.log("duplicate private payment "+params.join(', '));
+								return transaction_callbacks.ifOk();
+							}
+							var assetModule = objAsset.fixed_denominations ? indivisibleAsset : divisibleAsset;
+							assetModule.validateAndSavePrivatePaymentChain(conn, arrPrivateElements, transaction_callbacks);
+						}
+					);
 ```
 
-**File:** storage.js (L1421-1433)
+**File:** divisible_asset.js (L32-37)
 ```javascript
-function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
-	let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
-	if (earned_headers_commission_recipients) {
-		let bHasExternalRecipients = false;
-		for (let address in recipients) {
-			if (!author_addresses.includes(address))
-				bHasExternalRecipients = true;
-		}
-		if (bHasExternalRecipients) // override, non-authors won't pay for our tps fee
-			recipients = { [author_addresses[0]]: 100 };
-	}
-	return recipients;
-}
-```
-
-**File:** storage.js (L2293-2304)
-```javascript
-		function(cb){ // headers_commision_share
-			conn.query(
-				"SELECT unit, address, earned_headers_commission_share FROM earned_headers_commission_recipients WHERE unit IN("+Object.keys(assocUnits).map(db.escape).join(', ')+")",
-				function(prows){
-					prows.forEach(function(prow){
-						if (!assocUnits[prow.unit].earned_headers_commission_recipients)
-							assocUnits[prow.unit].earned_headers_commission_recipients = {};
-						assocUnits[prow.unit].earned_headers_commission_recipients[prow.address] = prow.earned_headers_commission_share;
-					});
-					cb();
-				}
-			);
-```
-
-**File:** validation.js (L909-917)
-```javascript
-	const author_addresses = objUnit.authors.map(a => a.address);
-	const bFromOP = isFromOP(author_addresses, objValidationState.last_ball_mci);
-	const recipients = storage.getTpsFeeRecipients(objUnit.earned_headers_commission_recipients, author_addresses);
-	for (let address in recipients) {
-		const share = recipients[address] / 100;
-		const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, objValidationState.last_ball_mci]);
-		const tps_fees_balance = row ? row.tps_fees_balance : 0;
-		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
-			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
-```
-
-**File:** validation.js (L929-954)
-```javascript
-function validateHeadersCommissionRecipients(objUnit, cb){
-	if (objUnit.authors.length > 1 && typeof objUnit.earned_headers_commission_recipients !== "object")
-		return cb("must specify earned_headers_commission_recipients when more than 1 author");
-	if ("earned_headers_commission_recipients" in objUnit){
-		if (!isNonemptyArray(objUnit.earned_headers_commission_recipients))
-			return cb("empty earned_headers_commission_recipients array");
-		var total_earned_headers_commission_share = 0;
-		var prev_address = "";
-		for (var i=0; i<objUnit.earned_headers_commission_recipients.length; i++){
-			var recipient = objUnit.earned_headers_commission_recipients[i];
-			if (!isPositiveInteger(recipient.earned_headers_commission_share))
-				return cb("earned_headers_commission_share must be positive integer");
-			if (hasFieldsExcept(recipient, ["address", "earned_headers_commission_share"]))
-				return cb("unknowsn fields in recipient");
-			if (recipient.address <= prev_address)
-				return cb("recipient list must be sorted by address");
-			if (!isValidAddress(recipient.address))
-				return cb("invalid recipient address checksum");
-			total_earned_headers_commission_share += recipient.earned_headers_commission_share;
-			prev_address = recipient.address;
-		}
-		if (total_earned_headers_commission_share !== 100)
-			return cb("sum of earned_headers_commission_share is not 100");
-	}
-	cb();
-}
-```
-
-**File:** composer.js (L248-253)
-```javascript
-	if (params.earned_headers_commission_recipients) // it needn't be already sorted by address, we'll sort it now
-		objUnit.earned_headers_commission_recipients = params.earned_headers_commission_recipients.concat().sort(function(a,b){
-			return ((a.address < b.address) ? -1 : 1);
-		});
-	else if (bMultiAuthored) // by default, the entire earned hc goes to the change address
-		objUnit.earned_headers_commission_recipients = [{address: arrChangeOutputs[0].address, earned_headers_commission_share: 100}];
-```
-
-**File:** writer.js (L289-296)
-```javascript
-		if ("earned_headers_commission_recipients" in objUnit){
-			for (var i=0; i<objUnit.earned_headers_commission_recipients.length; i++){
-				var recipient = objUnit.earned_headers_commission_recipients[i];
+			for (var j=0; j<payload.outputs.length; j++){
+				var output = payload.outputs[j];
 				conn.addQuery(arrQueries, 
-					"INSERT INTO earned_headers_commission_recipients (unit, address, earned_headers_commission_share) VALUES(?,?,?)", 
-					[objUnit.unit, recipient.address, recipient.earned_headers_commission_share]);
-			}
-		}
+					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
+					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
+				);
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L999-1005)
-```sql
-CREATE TABLE tps_fees_balances (
-	address CHAR(32) NOT NULL,
-	mci INT NOT NULL,
-	tps_fees_balance INT NOT NULL DEFAULT 0, -- can be negative
-	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	PRIMARY KEY (address, mci DESC)
-);
+**File:** network.js (L2150-2167)
+```javascript
+	joint_storage.checkIfNewUnit(unit, {
+		ifKnown: function(){
+			//assocUnitsInWork[unit] = true;
+			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
+				ifOk: function(){
+					//delete assocUnitsInWork[unit];
+					callbacks.ifAccepted(unit);
+					eventBus.emit("new_my_transactions", [unit]);
+				},
+				ifError: function(error){
+					//delete assocUnitsInWork[unit];
+					callbacks.ifValidationError(unit, error);
+				},
+				ifWaitingForChain: function(){
+					savePrivatePayment();
+				}
+			});
+		},
+```
+
+**File:** sqlite_pool.js (L111-133)
+```javascript
+				new_args.push(function(err, result){
+					//console.log("query done: "+sql);
+					if (err){
+						console.error("\nfailed query:", new_args);
+						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+					}
+					// note that sqlite3 sets nonzero this.changes even when rows were matched but nothing actually changed (new values are same as old)
+					// this.changes appears to be correct for INSERTs despite the documentation states the opposite
+					if (!bSelect && !bCordova)
+						result = {affectedRows: this.changes, insertId: this.lastID};
+					if (bSelect && bCordova) // note that on android, result.affectedRows is 1 even when inserted many rows
+						result = result.rows || [];
+					//console.log("changes="+this.changes+", affected="+result.affectedRows);
+					var consumed_time = Date.now() - start_ts;
+				//	var profiler = require('./profiler.js');
+				//	if (!bLoading)
+				//		profiler.add_result(sql.substr(0, 40).replace(/\n/, '\\n'), consumed_time);
+					if (consumed_time > 25)
+						console.log("long query took "+consumed_time+"ms:\n"+new_args.filter(function(a, i){ return (i<new_args.length-1); }).join(", ")+"\nload avg: "+require('os').loadavg().join(', '));
+					self.start_ts = 0;
+					self.currentQuery = null;
+					last_arg(result);
+				});
+```
+
+**File:** joint_storage.js (L21-38)
+```javascript
+function checkIfNewUnit(unit, callbacks) {
+	if (storage.isKnownUnit(unit))
+		return callbacks.ifKnown();
+	if (assocUnhandledUnits[unit])
+		return callbacks.ifKnownUnverified();
+	var error = assocKnownBadUnits[unit];
+	if (error)
+		return callbacks.ifKnownBad(error);
+	db.query("SELECT sequence, main_chain_index FROM units WHERE unit=?", [unit], function(rows){
+		if (rows.length > 0){
+			var row = rows[0];
+			if (row.sequence === 'final-bad' && row.main_chain_index !== null && row.main_chain_index < storage.getMinRetrievableMci()) // already stripped
+				return callbacks.ifNew();
+			storage.setUnitIsKnown(unit);
+			return callbacks.ifKnown();
+		}
+		callbacks.ifNew();
+	});
 ```

