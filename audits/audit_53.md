@@ -1,239 +1,300 @@
-## Title
-Denial of Service via Stack Overflow in Lodash cloneDeep on Untrusted Private Payment Payloads
+# Stack Overflow DoS via Cyclic Shared Address References in Balance Reading
 
 ## Summary
-An attacker can crash nodes by sending private indivisible asset payments with deeply nested objects in the payload. The vulnerability exists in `indivisible_asset.js:validatePrivatePayment()` where `_.cloneDeep()` is called on external input before structural validation, causing stack overflow when processing objects nested thousands of levels deep.
+
+The `readSharedAddressesDependingOnAddresses()` function in `balances.js` and `readAllControlAddresses()` function in `wallet_defined_by_addresses.js` lack cycle detection when recursively traversing shared address dependency chains. When shared addresses form cycles (A has member B, B has member A), these functions enter infinite recursion causing JavaScript stack overflow and node crash, preventing balance queries and wallet operations for affected addresses.
 
 ## Impact
+
 **Severity**: Medium  
 **Category**: Temporary Transaction Delay / Network Disruption
 
-The attacker can crash any node processing their malicious private payment. With automated retries, this could keep targeted nodes offline for extended periods. Coordinated attacks against multiple nodes could cause temporary network degradation. Witness nodes could be targeted to delay consensus, and light client hubs could be disrupted, affecting connected users.
+**Concrete Impact:**
+- Individual nodes crash with `RangeError: Maximum call stack size exceeded` when processing balance queries or wallet operations involving cyclic shared addresses
+- Affected nodes become unresponsive and require manual restart
+- Does NOT affect network consensus, DAG integrity, or actual balance data
+- Vulnerability persists after restart until cyclic addresses are removed or code is patched
+
+**Affected Parties:**
+- Node operators whose nodes crash when querying affected wallets
+- Users with wallets containing cyclic shared addresses (cannot read balances or perform wallet operations)
+- Does NOT affect other users or network-wide consensus
 
 ## Finding Description
 
-**Location**: `byteball/ocore/indivisible_asset.js:154`, function `validatePrivatePayment()`
+**Location**: [1](#0-0) 
 
-**Intended Logic**: Private payment payloads should be validated before processing to reject malformed or malicious structures that could cause resource exhaustion.
+**Intended Logic**: Recursively discover all shared addresses depending on given member addresses, traversing the dependency chain while detecting and avoiding cycles to prevent infinite loops.
 
-**Actual Logic**: The payload is cloned using `_.cloneDeep()` before comprehensive structural validation occurs. Initial validation only checks top-level types, not object depth. [1](#0-0) 
-
-The initial validation checks that `payload.outputs` is an array and that the indexed element is an object, but does not validate internal structure or depth. The `isNonemptyObject` check only verifies: [2](#0-1) 
-
-At line 154, `_.cloneDeep(payload)` is invoked on this partially-validated structure: [3](#0-2) 
-
-The comprehensive validation that would reject deeply nested objects occurs at line 158 via `validation.validatePayment()`, which checks: [4](#0-3) 
-
-However, this validation executes AFTER the vulnerable cloning operation.
+**Actual Logic**: The function uses `_.difference(arrSharedAddresses, arrMemberAddresses)` at line 117 which only compares the newly discovered shared addresses against the immediate input parameter of the current recursive call, not against the entire recursion history. When cycles exist (A→B→A), each recursive call sees different input arrays, causing the deduplication to fail and triggering infinite recursion until the JavaScript call stack overflows.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Node is running and processing private payments through hub/wallet messaging system
+1. **Preconditions**: Attacker needs ability to create shared addresses (standard protocol feature available to any user)
 
-2. **Step 1**: Attacker crafts malicious private payment with deeply nested object in payload
-   - Creates payload where `outputs[0].amount` is a 10,000-level nested object instead of number
-   - Sends via hub/wallet messaging (not direct P2P, which is disabled)
-   - Code path: WebSocket → `network.js:onWebsocketMessage()` → `wallet.js:handlePrivatePaymentChains()` → `network.js:handleOnlinePrivatePayment()` [5](#0-4) [6](#0-5) 
+2. **Step 1**: Create shared address A with definition that includes address B as a member
+   - Definition validation passes with `bAllowUnresolvedInnerDefinitions = true` [2](#0-1) 
+   - Database insert: `shared_address_signing_paths` table records `(shared_address=A, address=B)`
+   - No validation prevents B from being another shared address
 
-3. **Step 2**: Message reaches `parsePrivatePaymentChain()` → `validatePrivatePayment()`
-   - Initial validation (lines 54-78) checks top-level structure only
-   - Deeply nested `amount` field passes because `isNonemptyObject` only checks if outputs[0] exists and is an object
-   
-4. **Step 3**: At line 154, `_.cloneDeep(payload)` attempts recursive clone
-   - Lodash cloneDeep uses recursion to traverse object tree
-   - Attempts to clone all 10,000 nested levels
-   - Node.js hits maximum call stack size
-   
-5. **Step 4**: Node crashes with "RangeError: Maximum call stack size exceeded"
-   - Validation at line 158 that would reject malformed `amount` never executes
-   - Node becomes unavailable until restart
-   - Attacker can repeatedly send malicious payloads
+3. **Step 2**: Create shared address B with definition that includes address A as a member  
+   - Database insert: `shared_address_signing_paths` table records `(shared_address=B, address=A)`
+   - Cycle now exists: A→B→A
+   - Database schema has no constraints preventing this [3](#0-2) 
 
-**Security Property Broken**: Network Unit Propagation - Valid nodes should process incoming private payments without crashing. This vulnerability allows selective node crashes through malicious private payments.
+4. **Step 3**: Any user calls `readSharedBalance()` on wallet containing A or B
+   - Entry: [4](#0-3) 
+   - Calls: [5](#0-4) 
+   - Calls: [1](#0-0) 
 
-**Root Cause Analysis**: 
-- Validation ordering flaw: comprehensive validation occurs after expensive cloning operation
-- `isNonemptyObject()` utility only checks surface-level properties, not depth
-- No depth limit enforcement before recursive operations
-- Lodash cloneDeep's recursion-based implementation vulnerable to stack overflow
+5. **Step 4**: Infinite recursion occurs:
+   - Recursion Call 1 with `[A]`: Query finds `shared_address=B`, computes `_.difference([B], [A]) = [B]`, recurses with `[B]`
+   - Recursion Call 2 with `[B]`: Query finds `shared_address=A`, computes `_.difference([A], [B]) = [A]`, recurses with `[A]`  
+   - Recursion Call 3 with `[A]`: Same as Call 1 - infinite loop
+   - Continues until JavaScript call stack limit (~10,000-15,000 frames) reached
+   - Throws `RangeError: Maximum call stack size exceeded`
+   - Node process crashes or becomes unresponsive
 
-## Impact Explanation
+**Security Property Broken**: Node availability - stack overflow prevents node from processing balance queries, causing denial of service against individual nodes.
 
-**Affected Assets**: Node availability, network reliability
+**Root Cause Analysis**: The algorithm uses `_.difference()` for deduplication but only maintains state within each individual recursive call frame, not across the entire recursion tree. Proper cycle detection requires tracking ALL addresses visited throughout the entire traversal history (e.g., via accumulator set passed through recursive calls or closure-captured visited set).
 
-**Damage Severity**:
-- **Quantitative**: Any node processing the malicious private payment will crash. Attacker can target specific nodes or broadcast widely
-- **Qualitative**: Temporary disruption of targeted nodes. If coordinated against witness nodes or hubs, could cause network-wide delays
-
-**User Impact**:
-- **Who**: Node operators processing private payments, light clients connected to compromised hubs
-- **Conditions**: Node receives and processes crafted private payment through hub/wallet messaging
-- **Recovery**: Automatic restart possible, but attacker can repeatedly crash with new payloads
-
-**Systemic Risk**: Coordinated attacks could temporarily degrade network performance by targeting multiple nodes simultaneously, delaying transaction confirmations.
+**Additional Vulnerability**: The same pattern exists in `readAllControlAddresses()` [6](#0-5)  which recursively traverses control addresses with NO cycle detection at all - not even using `_.difference()`. It uses `_.union()` to deduplicate results but this doesn't prevent the recursion itself.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any actor with ability to send messages through hub/wallet system
-- **Resources Required**: Minimal - ability to construct deeply nested JSON and send via Obyte messaging
-- **Technical Skill**: Low - create nested JSON structure and send through standard messaging channels
+- **Identity**: Any Obyte user with ability to create shared addresses (standard protocol feature, no special permissions required)
+- **Resources Required**: Minimal - ability to create two shared address definition units (costs few dollars in fees)
+- **Technical Skill**: Low - only requires understanding of shared address creation, no exploitation expertise needed
 
 **Preconditions**:
-- **Network State**: Normal operation with nodes processing private payments
-- **Attacker State**: No special permissions or positions required
-- **Timing**: Can execute at any time
+- **Network State**: Normal operation
+- **Attacker State**: Standard shared address creation capability (available to all users)
+- **Timing**: No timing requirements, cycles persist indefinitely once created
 
 **Execution Complexity**:
-- **Transaction Count**: Single malicious private payment per target
-- **Coordination**: None required for individual node targeting
-- **Detection Risk**: Low - appears as normal private payment until crash occurs
+- **Transaction Count**: 2 units (one for each shared address definition)
+- **Coordination**: None required
+- **Detection Risk**: Cyclic references visible in database but not routinely monitored or prevented
 
 **Frequency**:
-- **Repeatability**: Unlimited - attacker can craft multiple malicious payloads
-- **Scale**: Can target individual nodes or broadcast to multiple nodes
+- **Repeatability**: Unlimited - attacker can create multiple cyclic address sets
+- **Triggering**: Automatic whenever balance queries executed on affected wallets
 
-**Overall Assessment**: High likelihood - trivial to execute, requires no resources, repeatable without cost.
+**Overall Assessment**: High likelihood - trivial to execute, minimal cost, immediately exploitable once cyclic addresses created.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Validate payload structure depth before cloning. Add check before line 154:
+Add cycle detection by tracking visited addresses across the entire recursion:
 
 ```javascript
-// Add depth validation before cloneDeep
-function checkObjectDepth(obj, maxDepth, currentDepth = 0) {
-    if (currentDepth > maxDepth) return false;
-    if (typeof obj !== 'object' || obj === null) return true;
-    return Object.values(obj).every(val => 
-        checkObjectDepth(val, maxDepth, currentDepth + 1)
-    );
+// In balances.js
+function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses, arrVisited){
+    arrVisited = arrVisited || [];
+    var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
+    db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
+        var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+        if (arrSharedAddresses.length === 0)
+            return handleSharedAddresses([]);
+        var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses.concat(arrVisited));
+        if (arrNewMemberAddresses.length === 0)
+            return handleSharedAddresses([]);
+        readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
+            handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
+        }, arrVisited.concat(arrMemberAddresses));
+    });
 }
-
-// Before line 154
-if (!checkObjectDepth(payload, 100)) // reasonable depth limit
-    return callbacks.ifError("payload structure too deeply nested");
 ```
 
 **Permanent Fix**:
-Restructure validation to occur before cloning, or use non-recursive cloning approach:
-
-```javascript
-// Move comprehensive validation before cloning
-// Or use structured cloning with depth limits
-// Or avoid cloning entirely by careful property access
-```
+Apply same pattern to `readAllControlAddresses()` in `wallet_defined_by_addresses.js` - add `arrVisited` parameter and check against it before recursing.
 
 **Additional Measures**:
-- Add integration test verifying deeply nested payloads are rejected
-- Add monitoring for stack overflow crashes in private payment processing
-- Document depth limits in protocol specification
-- Consider rate limiting private payment processing per peer
+- Add validation during shared address creation to detect and reject cycles in address definitions
+- Add database constraint or trigger to prevent inserting cyclic references
+- Add monitoring to detect existing cyclic address relationships
+- Add test cases verifying cycle detection works correctly
 
 **Validation**:
-- Fix prevents stack overflow with deeply nested objects
-- No performance degradation for normal payloads
-- Backward compatible with existing valid private payments
-- Proper error message returned to sender
+- Fix prevents infinite recursion with cyclic addresses
+- No new vulnerabilities introduced
+- Backward compatible with existing non-cyclic shared addresses
+- Performance impact minimal (additional array operations)
+
+## Proof of Concept
+
+```javascript
+// test/balances_cycle.test.js
+const balances = require('../balances.js');
+const db = require('../db.js');
+
+describe('Cyclic Shared Address DoS', function() {
+    this.timeout(10000); // Should fail fast, but give time for setup
+    
+    before(function(done) {
+        // Setup: Create cyclic shared addresses A and B
+        db.query("DELETE FROM shared_address_signing_paths", function() {
+            // Insert A->B reference
+            db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES ('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'r', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'device1')", function() {
+                // Insert B->A reference (creates cycle)
+                db.query("INSERT INTO shared_address_signing_paths (shared_address, signing_path, address, device_address) VALUES ('BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'r', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'device1')", function() {
+                    done();
+                });
+            });
+        });
+    });
+    
+    it('should not crash with stack overflow on cyclic shared addresses', function(done) {
+        let stackOverflowDetected = false;
+        
+        try {
+            // Attempt to read shared addresses depending on A
+            // This will trigger infinite recursion in vulnerable code
+            balances.readSharedAddressesDependingOnAddresses(['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], function(results) {
+                // If we reach here, cycle detection worked
+                done();
+            });
+        } catch (e) {
+            if (e instanceof RangeError && e.message.includes('Maximum call stack size exceeded')) {
+                stackOverflowDetected = true;
+                done(new Error('Stack overflow occurred - vulnerability confirmed'));
+            } else {
+                done(e);
+            }
+        }
+        
+        // Set timeout to detect if function hangs
+        setTimeout(function() {
+            if (!stackOverflowDetected) {
+                done(new Error('Function did not complete or throw stack overflow within timeout'));
+            }
+        }, 5000);
+    });
+});
+```
 
 ## Notes
 
-**Attack Vector Correction**: The claim states exploitation is "via the P2P network," but direct P2P private payment sending is disabled at [7](#0-6) . The actual attack vector is through the hub/wallet messaging system, which still allows exploitation via [8](#0-7) .
+This vulnerability affects balance reading operations and is triggered automatically whenever balance queries are performed on wallets containing cyclic shared addresses. The impact is limited to individual node availability (DoS) and does not compromise consensus, DAG integrity, or actual balance data. The severity aligns with Immunefi's Medium category for "Temporary Transaction Delay / Network Disruption" as nodes crash but can be restarted (though the vulnerability persists until addressed).
 
-The core vulnerability remains valid despite this inaccuracy - the malicious payload reaches the vulnerable code through an active messaging path, and the stack overflow occurs exactly as described.
+The same recursive pattern without cycle detection appears in two separate functions (`balances.js:readSharedAddressesDependingOnAddresses` and `wallet_defined_by_addresses.js:readAllControlAddresses`), indicating this is a systemic issue in how shared address dependencies are traversed throughout the codebase.
 
 ### Citations
 
-**File:** indivisible_asset.js (L54-78)
+**File:** balances.js (L97-109)
 ```javascript
-	var payload = objPrivateElement.payload;
-	if (!ValidationUtils.isStringOfLength(payload.asset, constants.HASH_LENGTH))
-		return callbacks.ifError("invalid asset in private payment");
-	if (!ValidationUtils.isPositiveInteger(payload.denomination))
-		return callbacks.ifError("invalid denomination in private payment");
-	if (!ValidationUtils.isNonemptyObject(objPrivateElement.output))
-		return callbacks.ifError("no output");
-	if (!ValidationUtils.isNonnegativeInteger(objPrivateElement.output_index))
-		return callbacks.ifError("invalid output index");
-	if (!ValidationUtils.isNonemptyArray(payload.outputs))
-		return callbacks.ifError("invalid outputs");
-	var our_hidden_output = payload.outputs[objPrivateElement.output_index];
-	if (!ValidationUtils.isNonemptyObject(payload.outputs[objPrivateElement.output_index]))
-		return callbacks.ifError("no output at output_index");
-	if (!ValidationUtils.isValidAddress(objPrivateElement.output.address))
-		return callbacks.ifError("bad address in output");
-	if (!ValidationUtils.isNonemptyString(objPrivateElement.output.blinding))
-		return callbacks.ifError("bad blinding in output");
-	if (objectHash.getBase64Hash(objPrivateElement.output) !== our_hidden_output.output_hash)
-		return callbacks.ifError("output hash doesn't match, output="+JSON.stringify(objPrivateElement.output)+", hash="+our_hidden_output.output_hash);
-	if (!ValidationUtils.isArrayOfLength(payload.inputs, 1))
-		return callbacks.ifError("inputs array must be 1 element long");
-	var input = payload.inputs[0];
-	if (!ValidationUtils.isNonemptyObject(input))
-		return callbacks.ifError("no inputs[0]");
-```
-
-**File:** indivisible_asset.js (L152-159)
-```javascript
-			arrFuncs.push(function(cb){
-				// we need to unhide the single output we are interested in, other outputs stay partially hidden like {amount: 300, output_hash: "base64"}
-				var partially_revealed_payload = _.cloneDeep(payload);
-				var our_output = partially_revealed_payload.outputs[objPrivateElement.output_index];
-				our_output.address = objPrivateElement.output.address;
-				our_output.blinding = objPrivateElement.output.blinding;
-				validation.validatePayment(conn, partially_revealed_payload, objPrivateElement.message_index, objPartialUnit, objValidationState, cb);
-			});
-```
-
-**File:** validation_utils.js (L76-78)
-```javascript
-function isNonemptyObject(obj){
-	return (obj && typeof obj === "object" && !Array.isArray(obj) && Object.keys(obj).length > 0);
+function readSharedAddressesOnWallet(wallet, handleSharedAddresses){
+	db.query("SELECT DISTINCT shared_address_signing_paths.shared_address FROM my_addresses \n\
+			JOIN shared_address_signing_paths USING(address) \n\
+			LEFT JOIN prosaic_contracts ON prosaic_contracts.shared_address = shared_address_signing_paths.shared_address \n\
+			WHERE wallet=? AND prosaic_contracts.hash IS NULL", [wallet], function(rows){
+		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+		if (arrSharedAddresses.length === 0)
+			return handleSharedAddresses([]);
+		readSharedAddressesDependingOnAddresses(arrSharedAddresses, function(arrNewSharedAddresses){
+			handleSharedAddresses(arrSharedAddresses.concat(arrNewSharedAddresses));
+		});
+	});
 }
 ```
 
-**File:** validation.js (L1926-1929)
+**File:** balances.js (L111-124)
 ```javascript
-		if (hasFieldsExcept(output, ["address", "amount", "blinding", "output_hash"]))
-			return callback("unknown fields in payment output");
-		if (!isPositiveInteger(output.amount))
-			return callback("amount must be positive integer, found "+output.amount);
+function readSharedAddressesDependingOnAddresses(arrMemberAddresses, handleSharedAddresses){
+	var strAddressList = arrMemberAddresses.map(db.escape).join(', ');
+	db.query("SELECT DISTINCT shared_address FROM shared_address_signing_paths WHERE address IN("+strAddressList+")", function(rows){
+		var arrSharedAddresses = rows.map(function(row){ return row.shared_address; });
+		if (arrSharedAddresses.length === 0)
+			return handleSharedAddresses([]);
+		var arrNewMemberAddresses = _.difference(arrSharedAddresses, arrMemberAddresses);
+		if (arrNewMemberAddresses.length === 0)
+			return handleSharedAddresses([]);
+		readSharedAddressesDependingOnAddresses(arrNewMemberAddresses, function(arrNewSharedAddresses){
+			handleSharedAddresses(arrNewMemberAddresses.concat(arrNewSharedAddresses));
+		});
+	});
+}
 ```
 
-**File:** network.js (L2114-2126)
+**File:** balances.js (L126-160)
 ```javascript
-function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
-	if (!ValidationUtils.isNonemptyArray(arrPrivateElements))
-		return callbacks.ifError("private_payment content must be non-empty array");
-	
-	var unit = arrPrivateElements[0].unit;
-	var message_index = arrPrivateElements[0].message_index;
-	var output_index = arrPrivateElements[0].payload.denomination ? arrPrivateElements[0].output_index : -1;
-	if (!ValidationUtils.isValidBase64(unit, constants.HASH_LENGTH))
-		return callbacks.ifError("invalid unit " + unit);
-	if (!ValidationUtils.isNonnegativeInteger(message_index))
-		return callbacks.ifError("invalid message_index " + message_index);
-	if (!(ValidationUtils.isNonnegativeInteger(output_index) || output_index === -1))
-		return callbacks.ifError("invalid output_index " + output_index);
+function readSharedBalance(wallet, handleBalance){
+	var assocBalances = {};
+	readSharedAddressesOnWallet(wallet, function(arrSharedAddresses){
+		if (arrSharedAddresses.length === 0)
+			return handleBalance(assocBalances);
+		var strAddressList = arrSharedAddresses.map(db.escape).join(', ');
+		db.query(
+			"SELECT asset, address, is_stable, SUM(amount) AS balance \n\
+			FROM outputs CROSS JOIN units USING(unit) \n\
+			WHERE is_spent=0 AND sequence='good' AND address IN("+strAddressList+") \n\
+			GROUP BY asset, address, is_stable \n\
+			UNION ALL \n\
+			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM witnessing_outputs \n\
+			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address \n\
+			UNION ALL \n\
+			SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM headers_commission_outputs \n\
+			WHERE is_spent=0 AND address IN("+strAddressList+") GROUP BY address",
+			function(rows){
+				for (var i=0; i<rows.length; i++){
+					var row = rows[i];
+					var asset = row.asset || "base";
+					if (!assocBalances[asset])
+						assocBalances[asset] = {};
+					if (!assocBalances[asset][row.address])
+						assocBalances[asset][row.address] = {stable: 0, pending: 0};
+					assocBalances[asset][row.address][row.is_stable ? 'stable' : 'pending'] += row.balance;
+				}
+				for (var asset in assocBalances)
+					for (var address in assocBalances[asset])
+						assocBalances[asset][address].total = assocBalances[asset][address].stable + assocBalances[asset][address].pending;
+				handleBalance(assocBalances);
+			}
+		);
+	});
+}
 ```
 
-**File:** network.js (L2613-2614)
+**File:** definition.js (L263-263)
 ```javascript
-		case 'private_payment':
-			return sendError(`direct sending of private payments disabled, use chat instead`);
+						var bAllowUnresolvedInnerDefinitions = true;
 ```
 
-**File:** wallet.js (L383-385)
-```javascript
-			case 'private_payments':
-				handlePrivatePaymentChains(ws, body, from_address, callbacks);
-				break;
+**File:** initial-db/byteball-sqlite.sql (L628-639)
+```sql
+CREATE TABLE shared_address_signing_paths (
+	shared_address CHAR(32) NOT NULL,
+	signing_path VARCHAR(255) NULL, -- full path to signing key which is a member of the member address
+	address CHAR(32) NOT NULL, -- member address
+	member_signing_path VARCHAR(255) NULL, -- path to signing key from root of the member address
+	device_address CHAR(33) NOT NULL, -- where this signing key lives or is reachable through
+	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (shared_address, signing_path),
+	FOREIGN KEY (shared_address) REFERENCES shared_addresses(shared_address)
+	-- own address is not present in correspondents
+--    FOREIGN KEY byDeviceAddress(device_address) REFERENCES correspondent_devices(device_address)
+);
 ```
 
-**File:** wallet.js (L770-773)
+**File:** wallet_defined_by_addresses.js (L485-501)
 ```javascript
-function handlePrivatePaymentChains(ws, body, from_address, callbacks){
-	var arrChains = body.chains;
-	if (!ValidationUtils.isNonemptyArray(arrChains))
-		return callbacks.ifError("no chains found");
+function readAllControlAddresses(conn, arrAddresses, handleLists){
+	conn = conn || db;
+	conn.query(
+		"SELECT DISTINCT address, shared_address_signing_paths.device_address, (correspondent_devices.device_address IS NOT NULL) AS have_correspondent \n\
+		FROM shared_address_signing_paths LEFT JOIN correspondent_devices USING(device_address) WHERE shared_address IN(?)", 
+		[arrAddresses], 
+		function(rows){
+			if (rows.length === 0)
+				return handleLists([], []);
+			var arrControlAddresses = rows.map(function(row){ return row.address; });
+			var arrControlDeviceAddresses = rows.filter(function(row){ return row.have_correspondent; }).map(function(row){ return row.device_address; });
+			readAllControlAddresses(conn, arrControlAddresses, function(arrControlAddresses2, arrControlDeviceAddresses2){
+				handleLists(_.union(arrControlAddresses, arrControlAddresses2), _.union(arrControlDeviceAddresses, arrControlDeviceAddresses2));
+			});
+		}
+	);
+}
 ```

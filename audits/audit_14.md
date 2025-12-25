@@ -1,369 +1,276 @@
-# Vulnerability Confirmed: Unhandled Exception in readHashTree() Causes Node Crash
-
-## Title
-Asynchronous Throw in catchup.js readHashTree() Function Causes Unhandled Exception and Node Crash
+# Audit Report: TPS Fee Validation Bypass via Type Mismatch
 
 ## Summary
-The `readHashTree()` function in `catchup.js` uses `throw Error()` statements inside asynchronous database callback functions instead of the proper `cb(error)` pattern. When units without balls (unstable units) are encountered during hash tree retrieval, the throws occur after the async iterator has returned, creating unhandled exceptions that terminate the Node.js process. [1](#0-0) 
+
+A critical type mismatch vulnerability in `storage.getTpsFeeRecipients()` allows attackers to bypass TPS fee validation by exploiting JavaScript's `for...in` loop behavior difference between arrays and objects. During validation, the function receives `earned_headers_commission_recipients` in array format and incorrectly validates against the first author's balance, but during fee deduction after storage, it receives the data in object format and deducts from the actual specified recipient's balance, enabling negative balance accumulation. [1](#0-0) 
 
 ## Impact
-**Severity**: Critical  
-**Category**: Network Shutdown
 
-Any malicious peer can crash victim nodes by sending a `get_hash_tree` request spanning an MCI range containing unstable units. The attack requires zero resources, is repeatable indefinitely, and can target all nodes simultaneously to achieve complete network shutdown. [2](#0-1) 
+**Severity**: High  
+**Category**: Fee Bypass / Balance Conservation Violation
+
+**Affected Assets**: TPS fee balances regulate transaction processing during network congestion. The vulnerability allows unlimited fee evasion.
+
+**Damage Severity**:
+- Attackers submit units without sufficient TPS fee balance by validating against a co-author with adequate balance while deducting fees from addresses with zero balance
+- Unlimited negative TPS fee balance accumulation breaks the congestion control mechanism
+- Multiple attackers exploiting this could overwhelm the network during high-load periods
+
+**User Impact**:
+- Honest users pay proper TPS fees while attackers bypass them entirely
+- Exploitable whenever network TPS exceeds threshold (post-v4 upgrade)
+- Recovery requires protocol upgrade to fix validation logic and potentially reset negative balances
+
+**Systemic Risk**:
+- TPS fee system becomes ineffective if exploited at scale
+- Breaks fundamental fee mechanism designed for congestion control
 
 ## Finding Description
 
-**Location**: `byteball/ocore/catchup.js:256-334`, function `readHashTree()`
+**Location**: `byteball/ocore/storage.js:1421-1433`, function `getTpsFeeRecipients()`
 
-**Intended Logic**: The function should retrieve ball hashes for all units between two stable main chain balls for synchronization. Any errors should be returned via `callbacks.ifError()`.
+**Intended Logic**: The function should consistently identify which author addresses will pay TPS fees based on `earned_headers_commission_recipients`, validate that all specified recipients are authors, and return the same mapping for both validation and fee deduction phases.
 
-**Actual Logic**: The function throws exceptions (lines 298, 307, 315) instead of calling the callback with an error. Lines 307 and 315 execute inside nested `db.query()` callbacks, which run asynchronously after the `async.eachSeries` iterator returns. The async library (v2.6.1) [3](#0-2)  cannot catch these asynchronous throws, resulting in unhandled exceptions that crash the Node.js process.
-
-**Code Evidence**: [4](#0-3) 
+**Actual Logic**: JavaScript's `for...in` loop behaves differently for arrays (iterates over numeric indices "0", "1") versus objects (iterates over address keys). During validation, array format causes recipient addresses to be treated as "external" and overridden to the first author. After storage, object format correctly processes actual recipients. [1](#0-0) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Network contains stable balls with unstable units at intermediate MCIs (normal during operation). Units receive `main_chain_index` before becoming stable. [5](#0-4) 
+1. **Preconditions**:
+   - Network has reached v4 upgrade [2](#0-1) 
+   - Attacker controls addresses A (high TPS fee balance) and B (zero balance)
+   - Addresses sorted lexicographically (enforced) [3](#0-2) 
 
-2. **Step 1**: Attacker establishes peer connection and subscribes to network (only requirement for `get_hash_tree` access). [6](#0-5) 
+2. **Step 1 - Craft Multi-Author Unit**:
+   - Create unit with `authors = [A, B]` and `earned_headers_commission_recipients = [{address: "B", earned_headers_commission_share: 100}]` (array format validated) [4](#0-3) 
 
-3. **Step 2**: Attacker identifies two stable balls on main chain (e.g., MCI 1000 and MCI 1010) with unstable units in between. Sends `get_hash_tree` message with `from_ball` and `to_ball` parameters.
+3. **Step 2 - Validation Bypass**:
+   - `validateTpsFee()` calls `getTpsFeeRecipients(array_format, [A, B])` [5](#0-4) 
+   - `for (let address in recipients)` iterates over "0" (array index)
+   - Check `author_addresses.includes("0")` returns false → sets `bHasExternalRecipients = true`
+   - Returns `{A: 100}`, validates A's balance → passes
 
-4. **Step 3**: Victim node validates only the endpoint balls are stable and on main chain. [7](#0-6)  No validation of intermediate units.
+4. **Step 3 - Storage Conversion**:
+   - Writer converts array to object format and stores in `assocUnstableUnits` [6](#0-5) 
 
-5. **Step 4**: Database query uses `LEFT JOIN balls`, returning units with `ball = null` for unstable units. [8](#0-7) 
+5. **Step 4 - Fee Deduction Discrepancy**:
+   - `updateTpsFees()` calls `getTpsFeeRecipients({B: 100}, [A, B])` (object format) [7](#0-6) 
+   - `for (let address in recipients)` correctly iterates over "B"
+   - Returns `{B: 100}`, deducts fee from B's balance [8](#0-7) 
+   - B's balance becomes negative (explicitly allowed) [9](#0-8) 
 
-6. **Step 5**: During iteration, line 298 (synchronous), 307, or 315 (asynchronous) throws. Lines 307 and 315 execute inside `db.query()` callbacks after the iterator returns, creating unhandled exceptions. [9](#0-8) 
+**Security Properties Broken**:
+- **Balance Conservation**: TPS fee balances become negative without corresponding credit
+- **Fee Sufficiency Validation**: Units bypass fee payment requirements through validation-deduction mismatch
 
-7. **Step 6**: Node.js process terminates with unhandled exception. Node goes offline, requires manual restart.
-
-**Security Property Broken**: The catchup mechanism must gracefully handle all data states without crashing. Throwing exceptions violates proper error propagation.
-
-**Root Cause Analysis**: The codebase standard for `async.eachSeries` is `return cb(error)`, as shown in the same file's `processHashTree()` function. [10](#0-9)  However, `readHashTree()` uses `throw Error()`, which cannot be caught when executed asynchronously inside database callbacks.
-
-## Impact Explanation
-
-**Affected Assets**: Node availability, network consensus capability
-
-**Damage Severity**:
-- **Quantitative**: 100% of nodes can be crashed with single network message per node. Entire network can be shut down if all nodes attacked simultaneously.
-- **Qualitative**: Complete loss of network availability until manual restart of each node.
-
-**User Impact**:
-- **Who**: All node operators, all users depending on transaction confirmation
-- **Conditions**: Exploitable during normal network operation when stable and unstable units coexist (constant condition)
-- **Recovery**: Requires manual node restart for each affected node. Attack repeatable immediately, enabling persistent DoS.
-
-**Systemic Risk**: Witness nodes being taken offline disrupts consensus. Coordinated attack on all nodes achieves complete network shutdown exceeding 24 hours until operators can restart nodes.
+**Root Cause**: The function receives `earned_headers_commission_recipients` in two different formats (array during validation, object after storage) but uses `for...in` loop which behaves differently for each type. The validation function enforces array format [10](#0-9)  but delegates author checking to `getTpsFeeRecipients()`, which fails for arrays.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any peer with network connection
-- **Resources Required**: Network connection only, zero computational or financial resources
-- **Technical Skill**: Low - requires identifying stable balls and sending single network message
+- Any user with two Obyte addresses
+- Technical skill: Medium (requires understanding multi-author units)
 
 **Preconditions**:
-- **Network State**: Normal operation (units assigned MCIs before stability)
-- **Attacker State**: Peer connection and subscription (trivial requirements)
-- **Timing**: No timing requirements - condition exists continuously
+- Post-v4 upgrade network
+- Control of two addresses with proper ordering
+- No special timing required
 
 **Execution Complexity**:
-- **Transaction Count**: Zero - pure network message
-- **Coordination**: None - single peer can attack any node
-- **Detection Risk**: Invisible until crash occurs
+- Single multi-author unit per exploit
+- Self-contained (attacker controls both authors)
+- Detection risk: Low (legitimate use case)
 
-**Frequency**:
-- **Repeatability**: Unlimited - can repeat immediately after restart
-- **Scale**: Can target all network nodes simultaneously
+**Frequency**: Unlimited repeatability
 
-**Overall Assessment**: High likelihood - trivial to execute, requires no resources, 100% reliable, infinitely repeatable.
+**Overall Assessment**: High likelihood - easy to execute, difficult to detect, provides direct benefit by evading TPS fees.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Replace all `throw Error()` statements with proper callback error handling: [11](#0-10) [12](#0-11) [13](#0-12) 
+Normalize input format in `getTpsFeeRecipients()` before processing:
 
-**Permanent Fix**:
 ```javascript
-// Line 298: Change from throw to callback
-if (!objBall.ball)
-    return cb("no ball for unit "+objBall.unit);
-
-// Line 307: Change from throw to callback  
-if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
-    return cb("some parents have no balls");
-
-// Line 315: Change from throw to callback
-if (srows.some(function(srow){ return !srow.ball; }))
-    return cb("some skiplist units have no balls");
+function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
+    // Convert array format to object format consistently
+    let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
+    if (Array.isArray(earned_headers_commission_recipients)) {
+        recipients = {};
+        earned_headers_commission_recipients.forEach(r => {
+            recipients[r.address] = r.earned_headers_commission_share;
+        });
+    }
+    // Rest of validation logic...
+}
 ```
 
 **Additional Measures**:
-- Add validation that all units in MCI range are stable before query execution
-- Add test case verifying error handling for unstable units during catchup
-- Review all `async.eachSeries` usage for similar patterns
-
-**Validation**:
-- ✅ Fix prevents unhandled exceptions
-- ✅ Errors properly propagated to caller via `callbacks.ifError()`
-- ✅ No new vulnerabilities introduced
-- ✅ Backward compatible with existing protocol
+- Add validation in `validateHeadersCommissionRecipients()` to verify all recipients are authors
+- Add test cases for multi-author units with custom recipients
+- Monitor for addresses with large negative TPS fee balances
 
 ## Proof of Concept
 
 ```javascript
-const test = require('ava');
-const async = require('async');
+// Test: TPS Fee Validation Bypass via Type Mismatch
+const { expect } = require('chai');
+const composer = require('../composer.js');
+const validation = require('../validation.js');
+const storage = require('../storage.js');
 
-// Simulates the bug: async throws cannot be caught by async.eachSeries
-test('unhandled async throw in eachSeries', t => {
-    return new Promise((resolve, reject) => {
-        // Set up uncaught exception handler
-        process.once('uncaughtException', (err) => {
-            t.is(err.message, 'async throw');
-            resolve(); // Test passes - we caught the unhandled exception
-        });
-
-        const items = [1, 2, 3];
-        async.eachSeries(items, 
-            function(item, cb) {
-                // Simulate db.query async callback
-                setImmediate(() => {
-                    if (item === 2) {
-                        throw Error('async throw'); // This is NOT caught by async.eachSeries
-                    }
-                    cb();
-                });
-            },
-            function(err) {
-                // This never executes because throw happens after iterator returns
-                reject(new Error('Should not reach here'));
-            }
+describe('TPS Fee Type Mismatch Vulnerability', function() {
+    it('should expose validation-deduction discrepancy', async function() {
+        // Setup: Two addresses, A with 10000 bytes TPS balance, B with 0
+        const addressA = 'A_ADDRESS_WITH_HIGH_BALANCE_LEXICOGRAPHICALLY_FIRST';
+        const addressB = 'B_ADDRESS_WITH_ZERO_BALANCE_LEXICOGRAPHICALLY_SECOND';
+        
+        // Step 1: Craft multi-author unit
+        const unit = {
+            authors: [
+                { address: addressA, authentifiers: {...} },
+                { address: addressB, authentifiers: {...} }
+            ],
+            earned_headers_commission_recipients: [
+                { address: addressB, earned_headers_commission_share: 100 }
+            ],
+            messages: [...],
+            parent_units: [...],
+            timestamp: Date.now()
+        };
+        
+        // Step 2: During validation, getTpsFeeRecipients receives array format
+        const validationRecipients = storage.getTpsFeeRecipients(
+            unit.earned_headers_commission_recipients,  // Array format
+            [addressA, addressB]
         );
+        // Bug: Returns {addressA: 100} due to for...in on array indices
+        expect(validationRecipients).to.deep.equal({ [addressA]: 100 });
+        
+        // Validation checks addressA's balance (10000) and passes
+        await validation.validateTpsFee(unit);  // Should pass
+        
+        // Step 3: After storage, writer converts to object format
+        const objUnitProps = {
+            earned_headers_commission_recipients: {
+                [addressB]: 100  // Object format
+            },
+            author_addresses: [addressA, addressB]
+        };
+        
+        // Step 4: During fee deduction, getTpsFeeRecipients receives object format
+        const deductionRecipients = storage.getTpsFeeRecipients(
+            objUnitProps.earned_headers_commission_recipients,  // Object format
+            objUnitProps.author_addresses
+        );
+        // Returns {addressB: 100} correctly for objects
+        expect(deductionRecipients).to.deep.equal({ [addressB]: 100 });
+        
+        // Fee is deducted from addressB (0 - 500 = -500)
+        // addressA validated but addressB charged
+        const balanceBefore = await getTpsFeeBalance(addressB);
+        expect(balanceBefore).to.equal(0);
+        
+        await storage.updateTpsFees(conn, [mci]);
+        
+        const balanceAfter = await getTpsFeeBalance(addressB);
+        expect(balanceAfter).to.be.lessThan(0);  // Negative balance!
     });
-});
-
-// Shows the correct pattern used elsewhere in codebase  
-test('correct error handling with callback', t => {
-    const items = [1, 2, 3];
-    async.eachSeries(items,
-        function(item, cb) {
-            setImmediate(() => {
-                if (item === 2) {
-                    return cb('proper error'); // Correct pattern
-                }
-                cb();
-            });
-        },
-        function(err) {
-            t.is(err, 'proper error');
-        }
-    );
 });
 ```
 
 ## Notes
 
-The vulnerability is confirmed through multiple evidence points:
-
-1. **Error Handling Pattern Inconsistency**: The same file's `processHashTree()` function uses the correct `return cb(error)` pattern [14](#0-13) , while `readHashTree()` uses `throw Error()`.
-
-2. **Exploitability Confirmed**: Units can have `main_chain_index` assigned before becoming stable [15](#0-14) , and balls are only created when units become stable [16](#0-15) . This creates the necessary condition of units with MCIs but no balls.
-
-3. **Network Access Confirmed**: Any subscribed peer can send `get_hash_tree` requests [17](#0-16)  with no authentication beyond subscription.
-
-4. **Async Library Behavior**: Version 2.6.1 of the async library does not catch asynchronous throws, as they occur after the iterator callback has returned to the event loop.
-
-This represents a critical network availability vulnerability with immediate exploitability requiring zero resources.
+This vulnerability arises from a subtle JavaScript behavior difference in `for...in` loops between arrays and objects, combined with the data format transformation between validation and storage phases. The validation function `validateHeadersCommissionRecipients()` enforces array format and checks structural validity but delegates author membership verification to `getTpsFeeRecipients()`, which fails silently for arrays by treating array indices as addresses. The database schema explicitly allows negative TPS fee balances, enabling unlimited exploitation.
 
 ### Citations
 
-**File:** catchup.js (L268-286)
+**File:** storage.js (L1204-1204)
 ```javascript
-	db.query(
-		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
-		[from_ball, to_ball], 
-		function(rows){
-			if (rows.length !== 2)
-				return callbacks.ifError("some balls not found");
-			for (var i=0; i<rows.length; i++){
-				var props = rows[i];
-				if (props.is_stable !== 1)
-					return callbacks.ifError("some balls not stable");
-				if (props.is_on_main_chain !== 1)
-					return callbacks.ifError("some balls not on mc");
-				if (props.ball === from_ball)
-					from_mci = props.main_chain_index;
-				else if (props.ball === to_ball)
-					to_mci = props.main_chain_index;
-			}
-			if (from_mci >= to_mci)
-				return callbacks.ifError("from is after to");
+		if (mci < constants.v4UpgradeMci) // not last_ball_mci
 ```
 
-**File:** catchup.js (L289-293)
+**File:** storage.js (L1217-1217)
 ```javascript
-			db.query(
-				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
-				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
-				[from_mci, to_mci], 
-				function(ball_rows){
+			const recipients = getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses);
 ```
 
-**File:** catchup.js (L294-330)
+**File:** storage.js (L1218-1223)
 ```javascript
-					async.eachSeries(
-						ball_rows,
-						function(objBall, cb){
-							if (!objBall.ball)
-								throw Error("no ball for unit "+objBall.unit);
-							if (objBall.content_hash)
-								objBall.is_nonserial = true;
-							delete objBall.content_hash;
-							db.query(
-								"SELECT ball FROM parenthoods LEFT JOIN balls ON parent_unit=balls.unit WHERE child_unit=? ORDER BY ball", 
-								[objBall.unit],
-								function(parent_rows){
-									if (parent_rows.some(function(parent_row){ return !parent_row.ball; }))
-										throw Error("some parents have no balls");
-									if (parent_rows.length > 0)
-										objBall.parent_balls = parent_rows.map(function(parent_row){ return parent_row.ball; });
-									db.query(
-										"SELECT ball FROM skiplist_units LEFT JOIN balls ON skiplist_unit=balls.unit WHERE skiplist_units.unit=? ORDER BY ball", 
-										[objBall.unit],
-										function(srows){
-											if (srows.some(function(srow){ return !srow.ball; }))
-												throw Error("some skiplist units have no balls");
-											if (srows.length > 0)
-												objBall.skiplist_balls = srows.map(function(srow){ return srow.ball; });
-											arrBalls.push(objBall);
-											cb();
-										}
-									);
-								}
-							);
-						},
-						function(){
-							console.log("readHashTree for "+JSON.stringify(hashTreeRequest)+" took "+(Date.now()-start_ts)+'ms');
-							callbacks.ifOk(arrBalls);
-						}
-					);
-				}
+			for (let address in recipients) {
+				const share = recipients[address];
+				const tps_fees_delta = Math.floor(total_tps_fees_delta * share / 100);
+				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
+				const tps_fees_balance = row ? row.tps_fees_balance : 0;
+				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
 ```
 
-**File:** catchup.js (L350-412)
+**File:** storage.js (L1421-1433)
 ```javascript
-					async.eachSeries(
-						arrBalls,
-						function(objBall, cb){
-							if (typeof objBall.ball !== "string")
-								return cb("no ball");
-							if (typeof objBall.unit !== "string")
-								return cb("no unit");
-							if (!storage.isGenesisUnit(objBall.unit)){
-								if (!Array.isArray(objBall.parent_balls))
-									return cb("no parents");
-							}
-							else if (objBall.parent_balls)
-								return cb("genesis with parents?");
-							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
-								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
-
-							function addBall(){
-								storage.assocHashTreeUnitsByBall[objBall.ball] = objBall.unit;
-								// insert even if it already exists in balls, because we need to define max_mci by looking outside this hash tree
-								conn.query("INSERT "+conn.getIgnore()+" INTO hash_tree_balls (ball, unit) VALUES(?,?)", [objBall.ball, objBall.unit], function(){
-									cb();
-									//console.log("inserted unit "+objBall.unit, objBall.ball);
-								});
-							}
-							
-							function checkSkiplistBallsExist(){
-								if (!objBall.skiplist_balls)
-									return addBall();
-								conn.query(
-									"SELECT ball FROM hash_tree_balls WHERE ball IN(?) UNION SELECT ball FROM balls WHERE ball IN(?)",
-									[objBall.skiplist_balls, objBall.skiplist_balls],
-									function(rows){
-										if (rows.length !== objBall.skiplist_balls.length)
-											return cb("some skiplist balls not found");
-										addBall();
-									}
-								);
-							}
-
-							if (!objBall.parent_balls)
-								return checkSkiplistBallsExist();
-							conn.query("SELECT ball FROM hash_tree_balls WHERE ball IN(?)", [objBall.parent_balls], function(rows){
-								//console.log(rows.length+" rows", objBall.parent_balls);
-								if (rows.length === objBall.parent_balls.length)
-									return checkSkiplistBallsExist();
-								var arrFoundBalls = rows.map(function(row) { return row.ball; });
-								var arrMissingBalls = _.difference(objBall.parent_balls, arrFoundBalls);
-								conn.query(
-									"SELECT ball, main_chain_index, is_on_main_chain FROM balls JOIN units USING(unit) WHERE ball IN(?)", 
-									[arrMissingBalls], 
-									function(rows2){
-										if (rows2.length !== arrMissingBalls.length)
-											return cb("some parents not found, unit "+objBall.unit);
-										for (var i=0; i<rows2.length; i++){
-											var props = rows2[i];
-											if (props.is_on_main_chain === 1 && (props.main_chain_index > max_mci || max_mci === null))
-												max_mci = props.main_chain_index;
-										}
-										checkSkiplistBallsExist();
-									}
-								);
-							});
-						},
+function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
+	let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
+	if (earned_headers_commission_recipients) {
+		let bHasExternalRecipients = false;
+		for (let address in recipients) {
+			if (!author_addresses.includes(address))
+				bHasExternalRecipients = true;
+		}
+		if (bHasExternalRecipients) // override, non-authors won't pay for our tps fee
+			recipients = { [author_addresses[0]]: 100 };
+	}
+	return recipients;
+}
 ```
 
-**File:** network.js (L3070-3088)
+**File:** validation.js (L911-911)
 ```javascript
-		case 'get_hash_tree':
-			if (!ws.bSubscribed)
-				return sendErrorResponse(ws, tag, "not subscribed, will not serve get_hash_tree");
-			var hashTreeRequest = params;
-			mutex.lock(['get_hash_tree_request'], function(unlock){
-				if (!ws || ws.readyState !== ws.OPEN) // may be already gone when we receive the lock
-					return process.nextTick(unlock);
-				catchup.readHashTree(hashTreeRequest, {
-					ifError: function(error){
-						sendErrorResponse(ws, tag, error);
-						unlock();
-					},
-					ifOk: function(arrBalls){
-						// we have to wrap arrBalls into an object because the peer will check .error property first
-						sendResponse(ws, tag, {balls: arrBalls});
-						unlock();
-					}
-				});
+	const recipients = storage.getTpsFeeRecipients(objUnit.earned_headers_commission_recipients, author_addresses);
+```
+
+**File:** validation.js (L929-953)
+```javascript
+function validateHeadersCommissionRecipients(objUnit, cb){
+	if (objUnit.authors.length > 1 && typeof objUnit.earned_headers_commission_recipients !== "object")
+		return cb("must specify earned_headers_commission_recipients when more than 1 author");
+	if ("earned_headers_commission_recipients" in objUnit){
+		if (!isNonemptyArray(objUnit.earned_headers_commission_recipients))
+			return cb("empty earned_headers_commission_recipients array");
+		var total_earned_headers_commission_share = 0;
+		var prev_address = "";
+		for (var i=0; i<objUnit.earned_headers_commission_recipients.length; i++){
+			var recipient = objUnit.earned_headers_commission_recipients[i];
+			if (!isPositiveInteger(recipient.earned_headers_commission_share))
+				return cb("earned_headers_commission_share must be positive integer");
+			if (hasFieldsExcept(recipient, ["address", "earned_headers_commission_share"]))
+				return cb("unknowsn fields in recipient");
+			if (recipient.address <= prev_address)
+				return cb("recipient list must be sorted by address");
+			if (!isValidAddress(recipient.address))
+				return cb("invalid recipient address checksum");
+			total_earned_headers_commission_share += recipient.earned_headers_commission_share;
+			prev_address = recipient.address;
+		}
+		if (total_earned_headers_commission_share !== 100)
+			return cb("sum of earned_headers_commission_share is not 100");
+	}
+	cb();
+```
+
+**File:** validation.js (L965-966)
+```javascript
+		if (objAuthor.address <= prev_address)
+			return callback("author addresses not sorted");
+```
+
+**File:** writer.js (L571-576)
+```javascript
+		if ("earned_headers_commission_recipients" in objUnit) {
+			objNewUnitProps.earned_headers_commission_recipients = {};
+			objUnit.earned_headers_commission_recipients.forEach(function(row){
+				objNewUnitProps.earned_headers_commission_recipients[row.address] = row.earned_headers_commission_share;
 			});
+		}
 ```
 
-**File:** package.json (L30-30)
-```json
-    "async": "^2.6.1",
-```
-
-**File:** main_chain.js (L200-209)
-```javascript
-								function updateMc(){
-									arrUnits.forEach(function(unit){
-										storage.assocUnstableUnits[unit].main_chain_index = main_chain_index;
-									});
-									var strUnitList = arrUnits.map(db.escape).join(', ');
-									conn.query("UPDATE units SET main_chain_index=? WHERE unit IN("+strUnitList+")", [main_chain_index], function(){
-										conn.query("UPDATE unit_authors SET _mci=? WHERE unit IN("+strUnitList+")", [main_chain_index], function(){
-											cb();
-										});
-									});
-```
-
-**File:** main_chain.js (L1231-1232)
-```javascript
-		"UPDATE units SET is_stable=1 WHERE is_stable=0 AND main_chain_index=?", 
-		[mci], 
+**File:** initial-db/byteball-sqlite.sql (L1002-1002)
+```sql
+	tps_fees_balance INT NOT NULL DEFAULT 0, -- can be negative
 ```

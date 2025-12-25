@@ -1,122 +1,243 @@
 # NoVulnerability found for this question.
 
-## Analysis Summary
+## Analysis Validation
 
-After extensive code investigation of the Obyte codebase, this security claim fails validation on multiple critical points:
+After thorough code review, I confirm the original assessment is **correct** - this is NOT a valid security vulnerability under Immunefi's Obyte bug bounty scope.
 
-### 1. **Mischaracterization of Stability Advancement Process**
+### Technical Verification
 
-The claim assumes millions of units are marked `is_stable=1` in the database before `calcHeadersCommissions()` is called. However, examination of the actual code flow reveals: [1](#0-0) 
+**Confirmed Technical Claims:**
 
-The `updateStableMcFlag()` function marks MCIs stable **one at a time** through recursive calls. Each call to `markMcIndexStable()` processes a single MCI: [2](#0-1) 
+1. **Archiving race condition exists**: The archiving process performs non-atomic SELECT then UPDATE operations without acquiring a write mutex. [1](#0-0) [2](#0-1) 
 
-The database UPDATE statement explicitly targets only one MCI: `UPDATE units SET is_stable=1 WHERE is_stable=0 AND main_chain_index=?`
+2. **Writer acquires write mutex**: Unit persistence properly locks during write operations. [3](#0-2) 
 
-### 2. **Query Constraint Prevents Mass Fetching**
+3. **Light clients set is_unique=NULL**: This is intentional behavior for light client compatibility. [4](#0-3) 
 
-The SQLite query includes the constraint `WHERE punits.is_stable=1`: [3](#0-2) 
+4. **UNIQUE constraint includes is_unique**: Database schema enforces uniqueness. [5](#0-4) 
 
-During incremental sync, when MCI N is marked stable, only units with MCI=N have `is_stable=1`. The query fetches only those newly-stable parenthoods, not millions of historical rows.
+### Critical Defense: Validation Layer Protection
 
-### 3. **No Exploit Path Exists**
+**The key finding that prevents exploitation:**
 
-The report fails to demonstrate:
-- How a node would have millions of units marked `is_stable=1` while `max_spendable_mci=0`
-- Any code path that marks multiple MCIs stable simultaneously before calling `calcHeadersCommissions()`
-- A realistic scenario where the described memory exhaustion would occur
+Double-spend validation queries the `inputs` table directly, NOT the `is_spent` flag in the `outputs` table: [6](#0-5) [7](#0-6) 
 
-### 4. **Initialization Logic Works Correctly** [4](#0-3) 
+The validation logic at [8](#0-7)  processes these queries and rejects conflicting spends based on entries in the `inputs` table, regardless of the `is_spent` flag value.
 
-For a new node, `initMaxSpendableMci()` returns 0 because the `headers_commission_outputs` table is empty. However, at this point, NO units are marked stable yet, so the query returns zero rows.
+Additionally, when validating transfer inputs, the code queries output details but does NOT check the `is_spent` field: [9](#0-8) 
 
-### 5. **Storage Cache Limitations**
+### Impact Assessment
 
-The in-memory cache only stores recent stable units: [5](#0-4) 
+**No Immunefi Severity Criteria Met:**
 
-With `COUNT_MC_BALLS_FOR_PAID_WITNESSING = 100`, only ~110 MCIs are kept in memory, not millions.
+- ❌ **Critical**: No network shutdown, chain split, fund theft, or permanent freeze
+- ❌ **High**: No permanent fund freeze  
+- ❌ **Medium**: No transaction delays ≥1 hour (failed transactions can be immediately retried with different outputs)
 
-## Conclusion
+**Actual Impact:**
+- Database consistency issue causing temporary incorrect balance displays
+- Individual transaction failures (non-critical, recoverable)
+- No actual security breach possible
 
-The vulnerability description is based on a theoretical scenario (millions of stable units with `since_mc_index=0`) that **cannot occur** during normal node operation. The incremental, one-MCI-at-a-time stability advancement mechanism prevents the claimed unbounded memory exhaustion. This is a false positive resulting from misunderstanding the consensus flow.
+### Conclusion
+
+The `is_spent` flag is a **performance optimization cache** used by balance calculation queries [10](#0-9) , NOT a security-critical field for double-spend prevention.
+
+The multi-layered validation architecture provides defense-in-depth:
+1. Direct validation against `inputs` table entries
+2. Database UNIQUE constraint on `(src_unit, src_message_index, src_output_index, is_unique)`
+3. Graph-based conflict resolution
+
+These protections prevent exploitation even when the `is_spent` cache is temporarily incorrect due to the archiving race condition.
+
+**Notes**: While this could be improved from a code quality perspective (e.g., adding mutex locks to archiving operations), it does not constitute a valid security vulnerability meeting Immunefi's defined impact criteria for the Obyte bug bounty program.
 
 ### Citations
 
-**File:** main_chain.js (L501-509)
+**File:** archiving.js (L78-104)
 ```javascript
-					function advanceLastStableMcUnitAndTryNext(){
-						profiler.stop('mc-stableFlag');
-						markMcIndexStable(conn, batch, first_unstable_mc_index, (count_aa_triggers) => {
-							arrStabilizedMcis.push(first_unstable_mc_index);
-							if (count_aa_triggers)
-								bStabilizedAATriggers = true;
-							updateStableMcFlag();
-						});
-					}
-```
-
-**File:** main_chain.js (L1212-1237)
-```javascript
-function markMcIndexStable(conn, batch, mci, onDone){
-	profiler.start();
-	let count_aa_triggers;
-	var arrStabilizedUnits = [];
-	if (mci > 0)
-		storage.assocStableUnitsByMci[mci] = [];
-	for (var unit in storage.assocUnstableUnits){
-		var o = storage.assocUnstableUnits[unit];
-		if (o.main_chain_index === mci && o.is_stable === 0){
-			o.is_stable = 1;
-			storage.assocStableUnits[unit] = o;
-			storage.assocStableUnitsByMci[mci].push(o);
-			arrStabilizedUnits.push(unit);
-		}
-	}
-	arrStabilizedUnits.forEach(function(unit){
-		delete storage.assocUnstableUnits[unit];
-	});
+function generateQueriesToUnspendTransferOutputsSpentInArchivedUnit(conn, unit, arrQueries, cb){
 	conn.query(
-		"UPDATE units SET is_stable=1 WHERE is_stable=0 AND main_chain_index=?", 
-		[mci], 
-		function(){
-			// next op
-			handleNonserialUnits();
+		"SELECT src_unit, src_message_index, src_output_index \n\
+		FROM inputs \n\
+		WHERE inputs.unit=? \n\
+			AND inputs.type='transfer' \n\
+			AND NOT EXISTS ( \n\
+				SELECT 1 FROM inputs AS alt_inputs \n\
+				WHERE inputs.src_unit=alt_inputs.src_unit \n\
+					AND inputs.src_message_index=alt_inputs.src_message_index \n\
+					AND inputs.src_output_index=alt_inputs.src_output_index \n\
+					AND alt_inputs.type='transfer' \n\
+					AND inputs.unit!=alt_inputs.unit \n\
+			)",
+		[unit],
+		function(rows){
+			rows.forEach(function(row){
+				conn.addQuery(
+					arrQueries, 
+					"UPDATE outputs SET is_spent=0 WHERE unit=? AND message_index=? AND output_index=?", 
+					[row.src_unit, row.src_message_index, row.src_output_index]
+				);
+			});
+			cb();
 		}
 	);
+}
 ```
 
-**File:** headers_commission.js (L70-84)
+**File:** storage.js (L1749-1806)
 ```javascript
-				conn.cquery(
-					// chunits is any child unit and contender for headers commission, punits is hc-payer unit
-					"SELECT chunits.unit AS child_unit, punits.headers_commission, next_mc_units.unit AS next_mc_unit, punits.unit AS payer_unit \n\
-					FROM units AS chunits \n\
-					JOIN parenthoods ON chunits.unit=parenthoods.child_unit \n\
-					JOIN units AS punits ON parenthoods.parent_unit=punits.unit \n\
-					JOIN units AS next_mc_units ON next_mc_units.is_on_main_chain=1 AND next_mc_units.main_chain_index=punits.main_chain_index+1 \n\
-					WHERE chunits.is_stable=1 \n\
-						AND +chunits.sequence='good' \n\
-						AND punits.main_chain_index>? \n\
-						AND +punits.sequence='good' \n\
-						AND punits.is_stable=1 \n\
-						AND chunits.main_chain_index-punits.main_chain_index<=1 \n\
-						AND next_mc_units.is_stable=1", 
-					[since_mc_index],
-```
-
-**File:** headers_commission.js (L257-263)
-```javascript
-function initMaxSpendableMci(conn, onDone){
-	conn.query("SELECT MAX(main_chain_index) AS max_spendable_mci FROM headers_commission_outputs", function(rows){
-		max_spendable_mci = rows[0].max_spendable_mci || 0; // should be -1, we lose headers commissions paid by genesis unit
-		if (onDone)
-			onDone();
+function archiveJointAndDescendants(from_unit){
+	var kvstore = require('./kvstore.js');
+	db.executeInTransaction(function doWork(conn, cb){
+		
+		function addChildren(arrParentUnits){
+			conn.query("SELECT DISTINCT child_unit FROM parenthoods WHERE parent_unit IN(" + arrParentUnits.map(db.escape).join(', ') + ")", function(rows){
+				if (rows.length === 0)
+					return archive();
+				var arrChildUnits = rows.map(function(row){ return row.child_unit; });
+				arrUnits = arrUnits.concat(arrChildUnits);
+				addChildren(arrChildUnits);
+			});
+		}
+		
+		function archive(){
+			arrUnits = _.uniq(arrUnits); // does not affect the order
+			arrUnits.reverse();
+			console.log('will archive', arrUnits);
+			var arrQueries = [];
+			async.eachSeries(
+				arrUnits,
+				function(unit, cb2){
+					readJoint(conn, unit, {
+						ifNotFound: function(){
+							throw Error("unit to be archived not found: "+unit);
+						},
+						ifFound: function(objJoint){
+							archiving.generateQueriesToArchiveJoint(conn, objJoint, 'uncovered', arrQueries, cb2);
+						}
+					});
+				},
+				function(){
+					conn.addQuery(arrQueries, "DELETE FROM known_bad_joints");
+					conn.addQuery(arrQueries, "UPDATE units SET is_free=1 WHERE is_free=0 AND is_stable=0 \n\
+						AND (SELECT 1 FROM parenthoods WHERE parent_unit=unit LIMIT 1) IS NULL");
+					console.log('will execute '+arrQueries.length+' queries to archive');
+					async.series(arrQueries, function(){
+						arrUnits.forEach(function (unit) {
+							var parent_units = assocUnstableUnits[unit].parent_units;
+							forgetUnit(unit);
+							fixIsFreeAfterForgettingUnit(parent_units);
+						});
+						async.eachSeries(arrUnits, function (unit, cb2) {
+							kvstore.del('j\n' + unit, cb2);
+						}, cb);
+					});
+				}
+			);
+		}
+		
+		console.log('will archive from unit '+from_unit);
+		var arrUnits = [from_unit];
+		addChildren([from_unit]);
+	},
+	function onDone(){
+		console.log('done archiving from unit '+from_unit);
 	});
 }
 ```
 
-**File:** storage.js (L2240-2242)
+**File:** writer.js (L33-33)
 ```javascript
-		last_stable_mci = _last_stable_mci;
-		let top_mci = Math.min(min_retrievable_mci, last_stable_mci - constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING - 10);
-		const last_tps_fees_mci = await getLastTpsFeesMci(conn);
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+```
+
+**File:** writer.js (L358-360)
+```javascript
+								var is_unique = 
+									(objValidationState.arrDoubleSpendInputs.some(function(ds){ return (ds.message_index === i && ds.input_index === j); }) || conf.bLight) 
+									? null : 1;
+```
+
+**File:** initial-db/byteball-sqlite.sql (L305-305)
+```sql
+	UNIQUE  (src_unit, src_message_index, src_output_index, is_unique), -- UNIQUE guarantees there'll be no double spend for type=transfer
+```
+
+**File:** validation.js (L1455-1502)
+```javascript
+function checkForDoublespends(conn, type, sql, arrSqlArgs, objUnit, objValidationState, onAcceptedDoublespends, cb){
+	conn.query(
+		sql, 
+		arrSqlArgs,
+		function(rows){
+			if (rows.length === 0)
+				return cb();
+			var arrAuthorAddresses = objUnit.authors.map(function(author) { return author.address; } );
+			async.eachSeries(
+				rows,
+				function(objConflictingRecord, cb2){
+					if (arrAuthorAddresses.indexOf(objConflictingRecord.address) === -1)
+						throw Error("conflicting "+type+" spent from another address?");
+					if (conf.bLight) // we can't use graph in light wallet, the private payment can be resent and revalidated when stable
+						return cb2(objUnit.unit+": conflicting "+type);
+					graph.determineIfIncludedOrEqual(conn, objConflictingRecord.unit, objUnit.parent_units, function(bIncluded){
+						if (bIncluded){
+							var error = objUnit.unit+": conflicting "+type+" in inner unit "+objConflictingRecord.unit;
+
+							// too young (serial or nonserial)
+							if (objConflictingRecord.main_chain_index > objValidationState.last_ball_mci || objConflictingRecord.main_chain_index === null)
+								return cb2(error);
+
+							// in good sequence (final state)
+							if (objConflictingRecord.sequence === 'good')
+								return cb2(error);
+
+							// to be voided: can reuse the output
+							if (objConflictingRecord.sequence === 'final-bad')
+								return cb2();
+
+							throw Error("unreachable code, conflicting "+type+" in unit "+objConflictingRecord.unit);
+						}
+						else{ // arrAddressesWithForkedPath is not set when validating private payments
+							if (objValidationState.arrAddressesWithForkedPath && objValidationState.arrAddressesWithForkedPath.indexOf(objConflictingRecord.address) === -1)
+								throw Error("double spending "+type+" without double spending address?");
+							cb2();
+						}
+					});
+				},
+				function(err){
+					if (err)
+						return cb(err);
+					onAcceptedDoublespends(cb);
+				}
+			);
+		}
+	);
+```
+
+**File:** validation.js (L2037-2037)
+```javascript
+				var doubleSpendQuery = "SELECT "+doubleSpendFields+" FROM inputs " + doubleSpendIndexMySQL + " JOIN units USING(unit) WHERE "+doubleSpendWhere;
+```
+
+**File:** validation.js (L2175-2176)
+```javascript
+					doubleSpendWhere = "type=? AND src_unit=? AND src_message_index=? AND src_output_index=?";
+					doubleSpendVars = [type, input.unit, input.message_index, input.output_index];
+```
+
+**File:** validation.js (L2211-2216)
+```javascript
+					conn.query(
+						"SELECT amount, is_stable, sequence, address, main_chain_index, denomination, asset \n\
+						FROM units \n\
+						LEFT JOIN outputs ON units.unit=outputs.unit AND message_index=? AND output_index=? \n\
+						WHERE units.unit=?",
+						[input.message_index, input.output_index, input.unit],
+```
+
+**File:** balances.js (L16-16)
+```javascript
+		FROM outputs "+join_my_addresses+" CROSS JOIN units USING(unit) \n\
 ```

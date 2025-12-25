@@ -1,244 +1,264 @@
+# Audit Report
+
 ## Title
-Logic Inversion in 'has equal'/'has one equal' Asset Privacy Check Allows Non-Deterministic Validation Leading to Permanent Chain Split
+TEXT Column Size Constraint Violation in AA Definition Storage Causes Node Crashes and Permanent Fund Freeze
 
 ## Summary
-A critical logic error in `definition.js` inverts the condition determining which assets require privacy checks in 'has equal' and 'has one equal' operators. The inverted condition excludes all real asset hashes from privacy validation, allowing private assets to be referenced in address definitions. Since private asset payments have partial visibility across nodes, this creates non-deterministic evaluation conditions that cause permanent chain splits requiring a hard fork.
+The `aa_addresses` table stores AA definitions in a MySQL TEXT column (65,535 byte limit), but validation only checks individual strings (4,096 bytes) and total unit size (5MB), not the JSON-stringified definition size. When an attacker submits an AA definition exceeding 65,535 bytes after JSON stringification, MySQL STRICT mode nodes crash immediately, while non-STRICT nodes silently truncate the data, making the AA permanently inaccessible and freezing all funds sent to it.
 
 ## Impact
-**Severity**: Critical  
-**Category**: Permanent Chain Split Requiring Hard Fork
 
-The vulnerability affects all network participants. When an address definition containing a 'has equal' or 'has one equal' operator references a private asset:
-- Nodes with visibility into the private payment chain evaluate the definition as satisfied
-- Nodes without visibility evaluate the same definition as unsatisfied
-- This causes divergent validation decisions during unit authentication
-- Different nodes permanently accept/reject the same units, fragmenting the network into incompatible chains
+**Severity**: Critical
 
-All subsequent units, witness voting, main chain selection, and stability determination become inconsistent across the partitioned network. Recovery requires a protocol hard fork to fix the logic and potentially invalidate affected definitions.
+**Category**: Network Shutdown (STRICT mode) / Permanent Fund Freeze (non-STRICT mode)
+
+**Concrete Impact**:
+- **STRICT mode nodes** (MySQL 5.7+ default, MyRocks): Node crashes when processing the unit, causing network-wide disruption potentially exceeding 24 hours if multiple nodes crash simultaneously [1](#0-0) 
+- **Non-STRICT mode nodes**: AA definition silently truncated to 65,535 bytes, creating invalid JSON that causes parsing failures on retrieval, permanently freezing all funds sent to the AA address [2](#0-1) 
+- **Mixed deployments**: State divergence between STRICT and non-STRICT nodes causing consensus failures
+
+**Affected Parties**: All network nodes processing the malicious unit; all users sending payments to the compromised AA address
+
+**Quantifiable Loss**: Unlimited - all bytes and custom assets sent to affected AA addresses become permanently unrecoverable without a hard fork
 
 ## Finding Description
 
-**Location**: [1](#0-0) 
+**Location**: `byteball/ocore/storage.js:899-908`, function `insertAADefinitions()`
 
-**Intended Logic**: For 'has equal' and 'has one equal' operators, the code should collect all asset hashes from search_criteria filters (excluding 'base' and 'this asset' in asset conditions), then check if any collected assets are private. Private assets must be rejected to ensure deterministic evaluation, as noted in the codebase comment: [2](#0-1) 
+**Intended Logic**: AA definitions should be validated to ensure they fit within database storage constraints before insertion. Any definition passing validation should be storable and retrievable without data loss.
 
-**Actual Logic**: The condition at line 514 is logically inverted. [3](#0-2) 
-
-The condition `!(filter.asset || filter.asset === 'base' || bAssetCondition && filter.asset === "this asset")` evaluates to `true` only when `filter.asset` is falsy (undefined/null), causing:
-- Real asset hashes to NOT be added to `arrAssets` (condition evaluates to `false`)
-- Only undefined/null values to be added to `arrAssets` (condition evaluates to `true`)
-- The privacy check to execute on an empty or meaningless array [4](#0-3) 
-- Private assets to pass through without detection
-
-**Comparison with Correct Implementation**: The 'has', 'has one', and 'seen' operators use correct logic: [5](#0-4) 
-
-This correctly skips the check when the asset is falsy, 'base', or 'this asset', and otherwise validates the asset is public.
+**Actual Logic**: The validation layer checks individual string lengths against `MAX_AA_STRING_LENGTH` (4,096 bytes) [3](#0-2)  and overall unit size against `MAX_UNIT_LENGTH` (5MB) [4](#0-3) , but does NOT validate the JSON-stringified size of the complete AA definition against the database TEXT column limit of 65,535 bytes.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Network has nodes with varying visibility into private asset (e.g., BLACKBYTES) payment chains
+1. **Preconditions**: Attacker has sufficient bytes to pay unit fees (~10,000 bytes)
 
-2. **Step 1 - Create Address Definition**: Attacker creates an address definition using 'has equal' with search_criteria referencing a private asset
-   - Code path: `composer.js` → `definition.js:validateDefinition()` → `evaluate()` for 'has equal' case
+2. **Step 1**: Attacker constructs an AA definition with 20 messages, each containing formulas of 3,500 bytes (under the 4,096 byte `MAX_AA_STRING_LENGTH` limit [5](#0-4) )
+   - Unit passes `validation.js` checks: 20 messages ≤ 128 maximum [6](#0-5) , total unit size under 5MB limit [7](#0-6) 
+   - AA validation passes: each individual string ≤ 4,096 bytes
 
-3. **Step 2 - Validation Bypass**: During validation at line 514:
-   - For `filter.asset = "PRIVATE_ASSET_HASH"`: condition evaluates to `!("PRIVATE_ASSET_HASH" || false || false)` = `!(true)` = `false`
-   - Asset is NOT added to `arrAssets`
-   - Privacy check at line 521 queries empty array
-   - Definition is accepted and propagates network-wide
+3. **Step 2**: During storage, `insertAADefinitions()` executes JSON stringification without size validation [8](#0-7) 
+   - The 20 formulas totaling ~70,000 bytes plus JSON overhead exceeds 65,535 byte TEXT column limit [9](#0-8) 
 
-4. **Step 3 - Non-Deterministic Evaluation**: When authenticating a unit using this definition:
-   - Code path: `validation.js:validateAuthor()` → `validateAuthentifiers()` → `definition.js:evaluate()` → `evaluateFilter()`
-   - `evaluateFilter` at line 1164 processes only messages with payloads: [6](#0-5) 
-   - Node A (received private payload): finds matching payment, definition evaluates to `true`, accepts unit
-   - Node B (no private payload): skips message, definition evaluates to `false`, rejects unit
-   - **Permanent divergence in validation decisions**
+4. **Step 3**: Database behavior diverges by SQL mode
+   - **STRICT mode**: INSERT fails with "Data too long for column" error, triggering unhandled exception that crashes the node
+   - **Non-STRICT mode**: INSERT succeeds but silently truncates definition to 65,535 bytes, corrupting the JSON
 
-**Security Property Broken**: 
-- **Definition Evaluation Integrity**: Address definitions must evaluate deterministically across all nodes
-- **Consensus Determinism**: All nodes must reach identical validation decisions for the same unit
+5. **Step 4**: Later retrieval attempts fail
+   - Truncated JSON causes `JSON.parse()` to throw SyntaxError, making AA completely inaccessible
+   - All funds sent to this AA address become permanently frozen with no recovery mechanism
 
-**Root Cause Analysis**: The bug stems from incorrect De Morgan's law application. The developer likely intended "asset is specified AND not 'base' AND not 'this asset'" but instead wrote the negation of the disjunction, resulting in a condition that only matches falsy values.
+**Security Properties Broken**:
+- **Database Referential Integrity**: Complete AA definition cannot be stored despite passing validation
+- **Balance Conservation**: Funds sent to inaccessible AA are effectively destroyed
+- **Node Availability**: STRICT mode nodes crash, causing network disruption
+
+**Root Cause**: Missing validation check for `JSON.stringify(definition).length <= 65535` before database insertion at the storage layer.
 
 ## Impact Explanation
 
-**Affected Assets**: All network participants, bytes (native currency), custom assets, AA state, any address definitions using 'has equal'/'has one equal'
+**Affected Assets**: Bytes (native currency), all custom divisible and indivisible assets
 
 **Damage Severity**:
-- **Quantitative**: Single malicious definition can cause network-wide permanent chain split. All units following the divergence point are affected. Once split occurs, different nodes maintain incompatible chains indefinitely.
-- **Qualitative**: Complete breakdown of consensus mechanism. Witness disagreement on main chain selection. All autonomous agents become unreliable. Network partition requires coordinated hard fork to resolve.
+- **Quantitative**: 100% of funds sent to affected AA addresses become permanently unrecoverable. Attacker can create unlimited such AA addresses at minimal cost.
+- **Qualitative**: Complete loss of AA functionality with no workaround short of a network hard fork to change database schema and re-register the AA.
 
 **User Impact**:
-- **Who**: All network participants. Users with funds in affected addresses lose access. AAs using such definitions become unreachable.
-- **Conditions**: Exploitable when any user creates an address definition (including AA conditions, multi-sig addresses, asset spending conditions) using 'has equal' or 'has one equal' with private asset references. Can be triggered accidentally by legitimate developers.
-- **Recovery**: Requires protocol hard fork to correct the logic, invalidate affected definitions, and potentially roll back chain to pre-split state. No automatic recovery mechanism exists.
+- **Who**: Any user sending payments to the compromised AA address post-registration
+- **Conditions**: AA appears valid in the DAG but is actually broken; users cannot detect the issue before sending funds
+- **Recovery**: None without a network-wide hard fork
 
 **Systemic Risk**:
-- Chain split is permanent without intervention
-- Different witness subsets on each fork lead to incompatible main chain structures
-- All trust assumptions in protocol determinism are violated
-- Network effectively splits into multiple incompatible Obyte networks
+- Network fragmentation between STRICT and non-STRICT mode nodes with divergent states
+- Cascading node failures if malicious unit propagates widely before detection
+- Detection difficulty as the issue only manifests during storage/retrieval, not during initial validation
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user creating address definitions (AA developers, multi-sig creators, asset definers, ordinary users)
-- **Resources Required**: Minimal - only knowledge of private asset hashes (BLACKBYTES hash is publicly known)
-- **Technical Skill**: Medium - requires understanding of Obyte address definition syntax
+- **Identity**: Any user with ability to submit units (no special privileges required)
+- **Resources**: Minimal (unit fees ~10,000 bytes)
+- **Technical Skill**: Medium (requires understanding AA structure and ability to calculate JSON stringified size)
 
 **Preconditions**:
-- **Network State**: Normal operation. Private assets exist (BLACKBYTES is always present).
-- **Attacker State**: No special state required. Any user can submit units with address definitions.
-- **Timing**: No timing constraints. Exploitable at any time.
+- **Network State**: Normal operation (no special conditions required)
+- **Attacker State**: Sufficient bytes for unit fees
+- **Timing**: No timing requirements
 
 **Execution Complexity**:
-- **Transaction Count**: Single unit containing malicious definition
-- **Coordination**: None required
-- **Detection Risk**: Very low - definition appears syntactically valid during validation
+- **Transaction Count**: Single unit containing oversized AA definition
+- **Coordination**: None (single attacker action)
+- **Detection Risk**: Low (appears valid during validation phase)
 
 **Frequency**:
-- **Repeatability**: Unlimited. Can be triggered multiple times.
-- **Scale**: One malicious definition can cause network-wide permanent split affecting all subsequent units.
+- **Repeatability**: Unlimited (attacker can create multiple such AAs)
+- **Scale**: Each AA can trap unlimited funds from multiple users
 
-**Overall Assessment**: **High likelihood** - The vulnerability can be triggered accidentally by legitimate developers who don't realize the privacy check is broken. No special privileges or coordination required. The exploit is trivial to execute.
+**Overall Assessment**: High likelihood - low barrier to entry, simple execution, difficult to detect before exploitation
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Emergency patch to correct the inverted logic in `definition.js` line 514:
+Add validation check for JSON-stringified definition size before database insertion:
 
 ```javascript
-// Change from:
-if (!(filter.asset || filter.asset === 'base' || bAssetCondition && filter.asset === "this asset"))
-    arrAssets.push(filter.asset);
+// File: byteball/ocore/storage.js
+// Function: insertAADefinitions()
+// After line 899
 
-// To:
-if (filter.asset && filter.asset !== 'base' && !(bAssetCondition && filter.asset === "this asset"))
-    arrAssets.push(filter.asset);
+var json = JSON.stringify(payload.definition);
+if (json.length > 65535)
+    return cb("AA definition too large: " + json.length + " bytes (maximum 65535)");
 ```
 
 **Permanent Fix**:
-1. Apply the corrected logic to properly collect asset hashes for privacy checking
-2. Ensure consistency with the pattern used for 'has', 'has one', and 'seen' operators
-3. Add comprehensive test coverage for 'has equal' and 'has one equal' operators with private assets
+Change database schema to use MEDIUMTEXT (16MB limit) or LONGTEXT (4GB limit) to accommodate definitions up to the `MAX_UNIT_LENGTH` constraint:
+
+```sql
+-- In sqlite_migrations.js
+ALTER TABLE aa_addresses MODIFY COLUMN definition MEDIUMTEXT NOT NULL;
+```
 
 **Additional Measures**:
-- Add test case: `test/definition_private_asset.test.js` verifying that definitions referencing private assets are rejected during validation
-- Audit all other operators in `definition.js` for similar logic inversion patterns
-- Add explicit code comments explaining the privacy check requirement and why private assets must be excluded
-- Consider static analysis rules to detect negated disjunctions that should be conjunctions
-
-**Validation**:
-- [ ] Fix correctly collects real asset hashes (excluding 'base' and 'this asset')
-- [ ] Privacy check detects and rejects private assets in 'has equal'/'has one equal' operators
-- [ ] No regression in other operators
-- [ ] Backward compatible with existing valid definitions (those not referencing private assets)
-- [ ] Test coverage demonstrates private asset rejection
+- Add validation in `aa_validation.js` to check total stringified size early in validation pipeline
+- Add test case verifying oversized AA definitions are rejected
+- Implement monitoring to detect and alert on near-limit AA definitions
+- Document the 65,535 byte limit in AA developer documentation until schema migration completes
 
 ## Proof of Concept
 
-**Note**: A complete runnable PoC would require setting up a full Obyte test environment with multiple nodes and private asset infrastructure. However, the vulnerability is directly evident from code inspection:
-
 ```javascript
-// Demonstration of logic error:
-const filter = { asset: "KI2C...", what: "input" }; // Private asset hash
-const bAssetCondition = false;
+// Test: Large AA Definition Exceeds TEXT Column Limit
+// File: test/aa_text_column_overflow.test.js
 
-// Current (buggy) condition at line 514:
-const buggyCondition = !(filter.asset || filter.asset === 'base' || bAssetCondition && filter.asset === "this asset");
-// Evaluates: !("KI2C..." || false || false) = !(true) = false
-// Result: Private asset NOT added to arrAssets ❌
+const test = require('ava');
+const db = require('../db');
+const storage = require('../storage');
 
-// Correct condition (as used in lines 478-484):
-const correctCondition = filter.asset && filter.asset !== 'base' && !(bAssetCondition && filter.asset === "this asset");
-// Evaluates: "KI2C..." && true && true = true
-// Result: Private asset added to arrAssets for privacy check ✅
+test.serial('AA definition exceeding 65535 bytes causes storage failure', async t => {
+    // Create AA definition with 20 messages, each with 3500-byte formula
+    const largeFormula = 'a'.repeat(3500);
+    const messages = [];
+    for (let i = 0; i < 20; i++) {
+        messages.push({
+            app: 'payment',
+            payload: {
+                asset: 'base',
+                outputs: [
+                    { address: '{trigger.address}', amount: '{trigger.output[[asset=base]] - 1000}' }
+                ],
+                init: largeFormula  // 3500 bytes each
+            }
+        });
+    }
+    
+    const aaDefinition = ['autonomous agent', {
+        messages: messages,
+        bounce_fees: { base: 10000 }
+    }];
+    
+    // Calculate JSON stringified size
+    const jsonString = JSON.stringify(aaDefinition);
+    t.true(jsonString.length > 65535, 'JSON string should exceed TEXT limit');
+    
+    // Attempt to insert - this should fail in STRICT mode or truncate in non-STRICT
+    const payload = {
+        address: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        definition: aaDefinition
+    };
+    
+    await new Promise((resolve, reject) => {
+        db.takeConnectionFromPool(conn => {
+            storage.insertAADefinitions(conn, [payload], 'test_unit', 1, false, err => {
+                if (err) {
+                    // STRICT mode: error thrown
+                    t.true(err.message.includes('Data too long') || err.message.includes('too large'));
+                    resolve();
+                } else {
+                    // Non-STRICT mode: check if data was truncated
+                    conn.query('SELECT definition FROM aa_addresses WHERE address=?', 
+                        [payload.address], 
+                        (rows) => {
+                            if (rows.length > 0) {
+                                const stored = rows[0].definition;
+                                t.true(stored.length <= 65535, 'Stored definition truncated');
+                                t.not(stored, jsonString, 'Data was corrupted');
+                                // Verify JSON.parse fails on truncated data
+                                t.throws(() => JSON.parse(stored), 'Corrupted JSON should fail parsing');
+                            }
+                            resolve();
+                        }
+                    );
+                }
+            });
+        });
+    });
+});
 ```
 
-The vulnerability is confirmed by:
-1. Direct code inspection showing inverted logic
-2. Comparison with correct implementation in same file
-3. Explicit codebase comment acknowledging private asset partial visibility
-4. evaluateFilter implementation that processes only available payloads
-
-## Notes
-
-This is a **genuine CRITICAL severity vulnerability** that violates fundamental protocol invariants:
-- **Deterministic validation**: All nodes must reach identical decisions for the same unit
-- **Definition evaluation integrity**: Address definitions must evaluate consistently across all nodes
-
-The vulnerability is particularly severe because:
-1. It can cause **permanent network partition** requiring emergency hard fork
-2. It can be triggered **accidentally** by legitimate developers
-3. There are **no other validation layers** to prevent this (line 514 is the sole protection)
-4. The bug is in a **core validation function** used for all address authentification
-
-The claim is **VALID** and warrants immediate patching.
+**Notes**:
+- The vulnerability exists due to a mismatch between validation layer constraints (5MB unit size, 4,096 byte individual strings) and database layer constraints (65,535 byte TEXT column)
+- MySQL TEXT column limit of 65,535 bytes is a well-documented MySQL data type constraint
+- The attack is practical: an AA with 20 messages (well under the 128 message limit) each containing 3,500-byte formulas (under the 4,096 byte string limit) produces ~75,000-80,000 bytes after JSON stringification
+- SQLite uses TEXT type with no size limit, so the vulnerability primarily affects MySQL and MyRocks deployments [10](#0-9)
 
 ### Citations
 
-**File:** definition.js (L77-79)
+**File:** mysql_pool.js (L47-47)
 ```javascript
-	// it is difficult to ease this condition for bAssetCondition:
-	// we might allow _this_ asset (the asset this condition is attached to) to be private but we might have only part of this asset's payments disclosed,
-	// some parties may see more disclosed than others.
+				throw err;
 ```
 
-**File:** definition.js (L478-484)
+**File:** aa_addresses.js (L129-129)
 ```javascript
-				if (!args.asset || args.asset === 'base' || bAssetCondition && args.asset === "this asset")
-					return cb();
-				determineIfAnyOfAssetsIsPrivate([args.asset], function(bPrivate){
-					if (bPrivate)
-						return cb("asset must be public");
-					cb();
-				});
+			var arrDefinition = JSON.parse(row.definition);
 ```
 
-**File:** definition.js (L487-524)
+**File:** aa_validation.js (L801-801)
 ```javascript
-			case 'has equal':
-			case 'has one equal':
-				if (objValidationState.bNoReferences)
-					return cb("no references allowed in address definition");
-				if (hasFieldsExcept(args, ["equal_fields", "search_criteria"]))
-					return cb("unknown fields in "+op);
-				
-				if (!isNonemptyArray(args.equal_fields))
-					return cb("no equal_fields");
-				var assocUsedFields = {};
-				for (var i=0; i<args.equal_fields.length; i++){
-					var field = args.equal_fields[i];
-					if (assocUsedFields[field])
-						return cb("duplicate "+field);
-					assocUsedFields[field] = true;
-					if (["asset", "address", "amount", "type"].indexOf(field) === -1)
-						return cb("unknown field: "+field);
-				}
-				
-				if (!isArrayOfLength(args.search_criteria, 2))
-					return cb("search_criteria must be 2-elements array");
-				var arrAssets = [];
-				for (var i=0; i<2; i++){
-					var filter = args.search_criteria[i];
-					var err = getFilterError(filter);
-					if (err)
-						return cb(err);
-					if (!(filter.asset || filter.asset === 'base' || bAssetCondition && filter.asset === "this asset"))
-						arrAssets.push(filter.asset);
-				}
-				if (args.equal_fields.indexOf("type") >= 0 && (args.search_criteria[0].what === "output" || args.search_criteria[1].what === "output"))
-					return cb("outputs cannot have type");
-				if (arrAssets.length === 0)
-					return cb();
-				determineIfAnyOfAssetsIsPrivate(arrAssets, function(bPrivate){
-					bPrivate ? cb("all assets must be public") : cb();
-				});
-				break;
+			return (x.length <= constants.MAX_AA_STRING_LENGTH);
 ```
 
-**File:** definition.js (L1164-1165)
+**File:** validation.js (L140-140)
 ```javascript
-			if (message.app !== "payment" || !message.payload) // we consider only public payments
-				continue;
+		if (objUnit.headers_commission + objUnit.payload_commission > constants.MAX_UNIT_LENGTH && !bGenesis)
+```
+
+**File:** constants.js (L45-45)
+```javascript
+exports.MAX_MESSAGES_PER_UNIT = 128;
+```
+
+**File:** constants.js (L58-58)
+```javascript
+exports.MAX_UNIT_LENGTH = process.env.MAX_UNIT_LENGTH || 5e6;
+```
+
+**File:** constants.js (L63-63)
+```javascript
+exports.MAX_AA_STRING_LENGTH = 4096;
+```
+
+**File:** storage.js (L899-908)
+```javascript
+			var json = JSON.stringify(payload.definition);
+			var base_aa = payload.definition[1].base_aa;
+			var bAlreadyPostedByUnconfirmedAA = false;
+			var readGetterProps = function (aa_address, func_name, cb) {
+				if (conf.bLight)
+					return cb({ complexity: 0, count_ops: 0, count_args: null });
+				readAAGetterProps(conn, aa_address, func_name, cb);
+			};
+			aa_validation.determineGetterProps(payload.definition, readGetterProps, function (getters) {
+				conn.query("INSERT " + db.getIgnore() + " INTO aa_addresses (address, definition, unit, mci, base_aa, getters) VALUES (?,?, ?,?, ?,?)", [address, json, unit, mci, base_aa, getters ? JSON.stringify(getters) : null], function (res) {
+```
+
+**File:** initial-db/byteball-mysql.sql (L799-799)
+```sql
+	definition TEXT NOT NULL,
+```
+
+**File:** initial-db/byteball-sqlite.sql (L818-818)
+```sql
+	definition TEXT NOT NULL,
 ```

@@ -1,373 +1,270 @@
-# Race Condition in Indivisible Asset Serial Number Assignment Allows Duplicate Issuances
+# Audit Report: Private Fund Freezing via Unstable Unit Archiving
 
 ## Summary
 
-A race condition in `indivisible_asset.js` function `issueNextCoin()` allows concurrent issuance from separate nodes to assign duplicate serial numbers to indivisible assets. The vulnerability arises from a non-atomic read-modify-write pattern where serial numbers are read from the database, incremented in application memory, then written back. When combined with validation logic that accepts conflicting units on different DAG branches (setting `is_unique=NULL`), this enables duplicate serial numbers to be stored. Subsequently, when both units stabilize and attempt to set `is_unique=1`, the database UNIQUE constraint is violated, causing nodes to crash without error handling. [1](#0-0) 
+The `buildPrivateElementsChain()` function in `indivisible_asset.js` throws an uncaught exception when attempting to reconstruct private payment chains after database inputs have been deleted through archiving. The protocol accepts and saves private payment chains containing unstable units, which can be double-spent and subsequently archived, permanently deleting the database records required to spend those funds.
 
 ## Impact
 
 **Severity**: High  
-**Category**: Network Disruption / Permanent Fund Freeze / Invariant Violation
+**Category**: Permanent Fund Freeze
 
-### Affected Assets
-Indivisible assets (NFT-like tokens) with `issued_by_definer_only=true` where the definer can control multiple nodes to trigger concurrent issuances.
+**Affected Assets**: All private indivisible assets (blackbytes, private tokens with fixed denominations)
 
-### Damage Severity
-- **Quantitative**: All nodes that receive both conflicting units will crash during stabilization. Each duplicate permanently violates the serial number uniqueness invariant for that asset denomination.
-- **Qualitative**: Breaks fundamental NFT uniqueness guarantee, creates persistent crash loops for affected nodes, and causes permanent ledger inconsistency requiring manual intervention or hard fork.
+**Damage Severity**:
+- **Quantitative**: Complete loss of all private funds received via payment chains containing unstable units that are subsequently double-spent. No recovery mechanism exists.
+- **Qualitative**: Permanent, irreversible fund loss requiring database restoration from backup or protocol modification to recover.
 
-### User Impact
-- **Who**: All network nodes that process both conflicting units, asset holders, definer
-- **Conditions**: Triggered when definer issues coins concurrently from multiple nodes for the same asset denomination
-- **Recovery**: Affected nodes crash repeatedly on restart when attempting to stabilize the duplicate units. No clean recovery path exists without manual database intervention or protocol fork.
-
-### Systemic Risk
-- Nodes crash during normal stabilization operations, not just during initial receipt
-- Creates divergent node states (crashed vs operational)
-- Could be weaponized to selectively crash specific nodes by controlling which nodes receive both duplicates
-- Affects consensus if sufficient nodes crash, potentially delaying transaction confirmations
+**User Impact**:
+- **Who**: Any user receiving private payments containing unstable units
+- **Conditions**: Victim accepts payment before source units stabilize; attacker double-spends within stabilization window
+- **Recovery**: Impossible through normal wallet operations; requires manual database restoration or protocol changes
 
 ## Finding Description
 
-**Location**: `byteball/ocore/indivisible_asset.js`, function `issueNextCoin()` (lines 500-572)
+**Location**: `byteball/ocore/indivisible_asset.js`, functions `buildPrivateElementsChain()` (lines 603-705) and `validateAndSavePrivatePaymentChain()` (lines 223-281)
 
-### Intended Logic
-Each indivisible asset issuance should receive a unique serial number by atomically reading and incrementing `max_issued_serial_number` in the `asset_denominations` table. Serial numbers must never be reused to maintain the uniqueness guarantee of indivisible assets.
+**Intended Logic**: Private payment chains should only be saved when all referenced units are stable and their inputs will remain accessible in the database for future spending operations.
 
-### Actual Logic
-The serial number assignment uses a non-atomic three-step process:
-1. Read `max_issued_serial_number` from database (lines 506-510)
-2. Calculate new `serial_number` in JavaScript memory (line 518)
-3. Update counter in database (line 522)
+**Actual Logic**: The protocol accepts unstable units in private payment chains without enforcing stability. When these units are double-spent, they receive bad sequence status and are archived, permanently deleting their database records. Later attempts to spend the funds fail with uncaught exceptions.
 
-When two nodes controlled by the same definer execute this sequence concurrently, both read the same initial value and assign duplicate serial numbers.
+**Exploitation Path**:
 
-**Code Evidence**: [2](#0-1) 
+1. **Preconditions**: Attacker owns private indivisible assets; victim accepts private payments
 
-### Exploitation Path
+2. **Step 1 - Send Unstable Private Payment**:
+   - Attacker creates private payment unit with indivisible asset
+   - Payment chain includes units that are not yet stable
+   - Chain transmitted to victim via `network.js:handleOnlinePrivatePayment()` [1](#0-0) 
 
-**Preconditions**:
-- Indivisible asset with `issued_by_definer_only=true` exists
-- Definer controls wallet/address on two separate nodes (Node A and Node B)
-- Current `max_issued_serial_number` for denomination D is 5
+3. **Step 2 - Victim Saves Unstable Chain**:
+   - Chain validated via `privatePayment.validateAndSavePrivatePaymentChain()` [2](#0-1) 
+   - Calls `indivisibleAsset.validateAndSavePrivatePaymentChain()` [3](#0-2) 
+   - Unstable units saved with `is_unique = null` but NO stability check prevents saving [4](#0-3) 
 
-**Step 1: Concurrent Composition**
-- Node A composes issuance transaction for denomination D
-  - Acquires node-local mutex lock on definer address (prefix 'c-')
-  - Starts database transaction
-  - Code path: `composeIndivisibleAssetPaymentJoint()` → `composer.composeJoint()` → `pickIndivisibleCoinsForAmount()` → `issueNextCoin()` [3](#0-2) [4](#0-3) 
+4. **Step 3 - Double-Spend Before Stabilization**:
+   - Attacker broadcasts conflicting unit spending same outputs
+   - Original unit marked as `temp-bad` or `final-bad` sequence
 
-- Node B simultaneously composes issuance transaction for denomination D
-  - Acquires separate node-local mutex lock (different node instance)
-  - Starts separate database transaction (different database instance)
+5. **Step 4 - Automatic Archiving**:
+   - `purgeUncoveredNonserialJoints()` selects units with bad sequence [5](#0-4) 
+   - Archives units via `archiving.generateQueriesToArchiveJoint()` [6](#0-5) 
+   - Archiving permanently deletes inputs and outputs from database [7](#0-6) [8](#0-7) 
 
-**Step 2: Race Condition in Serial Number Assignment**
-- Node A: Queries `SELECT ... max_issued_serial_number FROM asset_denominations` → returns 5
-- Node B: Queries same table on its local database → returns 5
-- Node A: Calculates `serial_number = 6` in JavaScript (line 518)
-- Node B: Calculates `serial_number = 6` in JavaScript (DUPLICATE!) [5](#0-4) 
+6. **Step 5 - Victim Attempts to Spend**:
+   - Transaction composition calls `buildPrivateElementsChain()` to reconstruct payment history [9](#0-8) 
 
-**Step 3: Counter Update and Broadcast**
-- Node A: Executes `UPDATE asset_denominations SET max_issued_serial_number=max_issued_serial_number+1` → sets to 6
-- Node B: Executes same UPDATE on its database → sets to 7
-- Both nodes create inputs with `serial_number=6` and broadcast units [6](#0-5) 
+7. **Step 6 - Chain Reconstruction Fails**:
+   - Database query for inputs returns 0 rows (deleted during archiving)
+   - Function throws uncaught error in async callback [10](#0-9) 
+   - Transaction composition fails; funds permanently frozen
 
-**Step 4: Validation Accepts Duplicates**
-- Third-party Node C receives both units
-- Node C validates first unit:
-  - Acquires 'handleJoint' mutex lock
-  - Queries database for existing inputs with same (asset, denomination, serial_number)
-  - No conflicts found initially
-  - Stores with `is_unique=NULL` (because unstable)
-  - Releases mutex [7](#0-6) [8](#0-7) 
+**Security Property Broken**: Input Accessibility - The protocol assumes all inputs in previously-validated private payment chains remain accessible in the database, but archiving violates this by permanently deleting inputs of double-spent units.
 
-- Node C validates second unit:
-  - Acquires 'handleJoint' mutex lock
-  - Queries database, finds first unit with same serial_number
-  - Calls `checkForDoublespends()` which determines units are on different branches
-  - Accepts the doublespend by setting both units to `is_unique=NULL`
-  - Stores second unit [9](#0-8) 
-
-**Step 5: Database Constraint Allows NULL Values**
-- The UNIQUE constraint on inputs table includes `is_unique` field
-- SQL standard treats NULL values as non-equal in UNIQUE constraints
-- Both units stored successfully with duplicate (asset, denomination, serial_number, address) but different `is_unique=NULL` [10](#0-9) 
-
-**Step 6: Node Crash During Stabilization**
-- Both units eventually stabilize (determined by witness votes)
-- Stabilization process calls `updateInputUniqueness()` for both units
-- First unit: `UPDATE inputs SET is_unique=1 WHERE unit=?` succeeds
-- Second unit: Same UPDATE violates UNIQUE constraint (now two rows with is_unique=1 and same serial)
-- SQLite throws error, no error handling in callback, node crashes [11](#0-10) [12](#0-11) 
-
-### Security Property Broken
-- **Invariant: Indivisible Serial Uniqueness** - Each indivisible asset serial number must be issued exactly once
-- **Invariant: Transaction Atomicity** - Serial number read-modify-write sequence must be atomic
-
-### Root Cause Analysis
-1. **Local Counter State**: The `asset_denominations.max_issued_serial_number` is stored locally per node, not synchronized from the network. Different nodes have independent counters.
-
-2. **Non-Atomic Operations**: The read (line 506-510), calculate (line 518), and write (line 522) operations are separated by application logic, creating a race window.
-
-3. **Cross-Node Mutex Limitation**: The mutex lock at `composer.js:289` only serializes operations on the same node. Different nodes have separate mutex instances.
-
-4. **Validation Design**: The `checkForDoublespends()` function intentionally accepts conflicts on different DAG branches by setting `is_unique=NULL`, which the database UNIQUE constraint permits.
-
-5. **Missing Error Handling**: The stabilization UPDATE at line 300 has no error parameter in its callback. Database errors are thrown by the connection wrapper, causing unhandled exceptions.
+**Root Cause Analysis**:
+1. **Missing Stability Check**: `validateAndSavePrivatePaymentChain()` accepts unstable units without requiring stability before saving
+2. **Destructive Archiving**: Bad-sequence units have inputs/outputs permanently deleted with no mechanism to preserve data needed for spending descendant outputs
+3. **Unsafe Error Handling**: `buildPrivateElementsChain()` uses `throw` in async callback instead of proper error callback mechanism
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Asset definer who controls the definer address
-- **Resources Required**: Two ocore nodes running simultaneously, ability to compose transactions concurrently
-- **Technical Skill**: Moderate - requires understanding of node operation and ability to trigger concurrent compositions
+- **Identity**: Malicious user with basic Obyte protocol understanding
+- **Resources Required**: Ownership of private indivisible assets to initiate payment; ability to time double-spend
+- **Technical Skill**: Moderate - requires understanding DAG structure and stabilization timing
 
 **Preconditions**:
-- **Network State**: Normal operation, asset already defined
-- **Attacker State**: Controls definer address private keys, operates multiple nodes
-- **Timing**: Must compose transactions within overlapping time window (seconds to minutes)
+- **Network State**: Normal operation; no special conditions required
+- **Attacker State**: Must own private indivisible assets
+- **Timing**: Must execute double-spend within stabilization window (~5-15 minutes)
 
 **Execution Complexity**:
-- **Transaction Count**: 2 concurrent issuance transactions
-- **Coordination**: Requires running two nodes and triggering compositions simultaneously
-- **Detection Risk**: Low - appears as normal issuance activity until stabilization fails
+- **Transaction Count**: 2 transactions (initial payment + double-spend)
+- **Coordination**: Single attacker, no coordination required
+- **Detection Risk**: Low - appears as normal payment followed by standard double-spend
 
 **Frequency**:
-- **Repeatability**: Can be repeated for each denomination in the asset
-- **Scale**: Each occurrence causes node crashes for all nodes that receive both units
+- **Repeatability**: Can target multiple victims
+- **Scale**: Limited by number of victims accepting private payments
 
-**Overall Assessment**: Medium likelihood - requires attacker to control definer address and operate multiple nodes, but execution is straightforward once infrastructure is in place. Impact severity (node crashes + permanent ledger inconsistency) justifies High severity classification.
+**Overall Assessment**: Medium-High likelihood - technically feasible, moderate skill requirement, reasonable success probability within timing window.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Modify the `issueNextCoin()` function to use database-level atomic increment:
-
-```javascript
-// Use SELECT FOR UPDATE to lock the row during transaction
-conn.query(
-    "SELECT denomination, count_coins, max_issued_serial_number FROM asset_denominations WHERE asset=? AND denomination=? FOR UPDATE",
-    [asset, denomination],
-    function(rows){
-        // Row is now locked, safe to read and increment
-        var serial_number = rows[0].max_issued_serial_number + 1;
-        conn.query(
-            "UPDATE asset_denominations SET max_issued_serial_number=? WHERE denomination=? AND asset=?",
-            [serial_number, denomination, asset],
-            function(){ /* continue */ }
-        );
-    }
-);
-```
+Add stability check before saving private payment chains:
 
 **Permanent Fix**:
-1. Add error handling to stabilization UPDATE:
-```javascript
-conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [unit], function(err, result){
-    if (err) {
-        console.error("Failed to set is_unique for unit " + unit + ": " + err);
-        // Handle gracefully instead of crashing
-        return onUpdated(err);
-    }
-    onUpdated();
-});
-```
-
-2. Alternative: Modify validation to reject duplicate serial numbers entirely, even on different branches:
-```javascript
-// In validation.js checkForDoublespends
-if (type === 'issue' && rows.length > 0) {
-    // For indivisible assets, never accept duplicate serial numbers
-    return cb(objUnit.unit + ": duplicate serial number " + input.serial_number);
-}
-```
+Modify `validateAndSavePrivatePaymentChain()` to enforce stability:
+- Check `bAllStable` flag at line 226 before proceeding to save
+- Return error if any chain element is unstable
+- Alternative: Preserve archived unit inputs/outputs when they have unspent descendant outputs
 
 **Additional Measures**:
-- Add integration test verifying concurrent issuance from multiple nodes is handled correctly
-- Add monitoring/alerting when duplicate serial numbers are detected before stabilization
-- Document that `max_issued_serial_number` is a local optimization counter, not authoritative
-- Consider synchronizing serial number state across nodes for `issued_by_definer_only` assets
-
-**Validation**:
-- ✅ Fix prevents duplicate serial number assignment across nodes
-- ✅ Error handling prevents node crashes
-- ✅ Backward compatible - existing units unaffected
-- ✅ Performance impact minimal (row-level locking during composition only)
+- Add test case verifying unstable private payments are rejected
+- Add monitoring for private payments with unstable elements
+- Consider deferred acceptance of private payments until all units stabilize
 
 ## Notes
 
-This vulnerability demonstrates a subtle interaction between:
-1. Local state management (`asset_denominations` table per node)
-2. Distributed consensus (validation accepts conflicts on different branches)
-3. Deferred constraint enforcement (is_unique=NULL during unstable phase)
-4. Missing error handling (unhandled exceptions on constraint violations)
+This vulnerability specifically affects private indivisible asset payments. The root cause is the combination of:
+1. Accepting unstable units in private payment chains without stability enforcement
+2. Archiving process that permanently deletes database records
+3. Reconstruction logic that assumes all historical inputs remain accessible
 
-The issue is exacerbated by the intentional design decision to accept double-spends on different DAG branches (setting `is_unique=NULL`), which was likely intended for legitimate race conditions but inadvertently enables this attack vector.
-
-The definer must actively control multiple nodes to exploit this, limiting the threat to malicious or compromised definers rather than external attackers. However, the impact (node crashes affecting network operations) justifies treating this as a High severity issue requiring immediate remediation.
+The fix requires either enforcing stability before accepting private payments, or preserving archived data needed for spending descendant outputs.
 
 ### Citations
 
-**File:** indivisible_asset.js (L298-302)
+**File:** network.js (L2114-2127)
 ```javascript
-	function updateInputUniqueness(unit, onUpdated){
-		// may update several inputs
-		conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [unit], function(){
-			onUpdated();
-		});
+function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
+	if (!ValidationUtils.isNonemptyArray(arrPrivateElements))
+		return callbacks.ifError("private_payment content must be non-empty array");
+	
+	var unit = arrPrivateElements[0].unit;
+	var message_index = arrPrivateElements[0].message_index;
+	var output_index = arrPrivateElements[0].payload.denomination ? arrPrivateElements[0].output_index : -1;
+	if (!ValidationUtils.isValidBase64(unit, constants.HASH_LENGTH))
+		return callbacks.ifError("invalid unit " + unit);
+	if (!ValidationUtils.isNonnegativeInteger(message_index))
+		return callbacks.ifError("invalid message_index " + message_index);
+	if (!(ValidationUtils.isNonnegativeInteger(output_index) || output_index === -1))
+		return callbacks.ifError("invalid output_index " + output_index);
+
 ```
 
-**File:** indivisible_asset.js (L500-572)
+**File:** private_payment.js (L23-77)
 ```javascript
-		function issueNextCoin(remaining_amount){
-			console.log("issuing a new coin");
-			if (remaining_amount <= 0)
-				throw Error("remaining amount is "+remaining_amount);
-			var issuer_address = objAsset.issued_by_definer_only ? objAsset.definer_address : arrAddresses[0];
-			var can_issue_condition = objAsset.cap ? "max_issued_serial_number=0" : "1";
-			conn.query(
-				"SELECT denomination, count_coins, max_issued_serial_number FROM asset_denominations \n\
-				WHERE asset=? AND "+can_issue_condition+" AND denomination<=? \n\
-				ORDER BY denomination DESC LIMIT 1", 
-				[asset, remaining_amount+tolerance_plus], 
-				function(rows){
-					if (rows.length === 0)
-						return onDone(NOT_ENOUGH_FUNDS_ERROR_MESSAGE);
-					var row = rows[0];
-					if (!!row.count_coins !== !!objAsset.cap)
-						throw Error("invalid asset cap and count_coins");
-					var denomination = row.denomination;
-					var serial_number = row.max_issued_serial_number+1;
-					var count_coins_to_issue = row.count_coins || Math.floor((remaining_amount+tolerance_plus)/denomination);
-					var issue_amount = count_coins_to_issue * denomination;
-					conn.query(
-						"UPDATE asset_denominations SET max_issued_serial_number=max_issued_serial_number+1 WHERE denomination=? AND asset=?", 
-						[denomination, asset], 
-						function(){
-							var input = {
-								type: 'issue',
-								serial_number: serial_number,
-								amount: issue_amount
-							};
-							if (bMultiAuthored)
-								input.address = issuer_address;
-							var amount_to_use;
-							var change_amount;
-							if (issue_amount > remaining_amount + tolerance_plus){
-								amount_to_use = Math.floor((remaining_amount + tolerance_plus)/denomination) * denomination;
-								change_amount = issue_amount - amount_to_use;
-							}
-							else
-								amount_to_use = issue_amount;
-							var payload = {
-								asset: asset,
-								denomination: denomination,
-								inputs: [input],
-								outputs: createOutputs(amount_to_use, change_amount)
-							};
-							var objPayloadWithProof = {payload: payload, input_address: issuer_address};
-							if (objAsset.is_private){
-								var spend_proof = objectHash.getBase64Hash({
-									asset: asset,
-									address: issuer_address,
-									serial_number: serial_number, // need to avoid duplicate spend proofs when issuing uncapped coins
-									denomination: denomination,
-									amount: input.amount
-								});
-								var objSpendProof = {
-									spend_proof: spend_proof
-								};
-								if (bMultiAuthored)
-									objSpendProof.address = issuer_address;
-								objPayloadWithProof.spend_proof = objSpendProof;
-							}
-							arrPayloadsWithProofs.push(objPayloadWithProof);
-							accumulated_amount += amount_to_use;
-							console.log("payloads with proofs: "+JSON.stringify(arrPayloadsWithProofs));
-							if (accumulated_amount >= amount - tolerance_minus && accumulated_amount <= amount + tolerance_plus)
-								return onDone(null, arrPayloadsWithProofs);
-							pickNextCoin(amount - accumulated_amount);
+function validateAndSavePrivatePaymentChain(arrPrivateElements, callbacks){
+	if (!ValidationUtils.isNonemptyArray(arrPrivateElements))
+		return callbacks.ifError("no priv elements array");
+	var headElement = arrPrivateElements[0];
+	if (!headElement.payload)
+		return callbacks.ifError("no payload in head element");
+	var asset = headElement.payload.asset;
+	if (!asset)
+		return callbacks.ifError("no asset in head element");
+	if (!ValidationUtils.isNonnegativeInteger(headElement.message_index))
+		return callbacks.ifError("no message index in head private element");
+	
+	var validateAndSave = function(){
+		storage.readAsset(db, asset, null, function(err, objAsset){
+			if (err)
+				return callbacks.ifError(err);
+			if (!!objAsset.fixed_denominations !== !!headElement.payload.denomination)
+				return callbacks.ifError("presence of denomination field doesn't match the asset type");
+			db.takeConnectionFromPool(function(conn){
+				conn.query("BEGIN", function(){
+					var transaction_callbacks = {
+						ifError: function(err){
+							conn.query("ROLLBACK", function(){
+								conn.release();
+								callbacks.ifError(err);
+							});
+						},
+						ifOk: function(){
+							conn.query("COMMIT", function(){
+								conn.release();
+								callbacks.ifOk();
+							});
 						}
-					);
-				}
-			);
-		}
-```
-
-**File:** composer.js (L289-292)
-```javascript
-			mutex.lock(arrFromAddresses.map(function(from_address){ return 'c-'+from_address; }), function(unlock){
-				unlock_callback = unlock;
-				cb();
-			});
-```
-
-**File:** composer.js (L311-315)
-```javascript
-		function(cb){ // start transaction
-			db.takeConnectionFromPool(function(new_conn){
-				conn = new_conn;
-				conn.query("BEGIN", function(){cb();});
-			});
-```
-
-**File:** network.js (L1025-1027)
-```javascript
-	var validate = function(){
-		mutex.lock(['handleJoint'], function(unlock){
-			validation.validate(objJoint, {
-```
-
-**File:** validation.js (L2027-2049)
-```javascript
-			function checkInputDoubleSpend(cb2){
-			//	if (objAsset)
-			//		profiler2.start();
-				doubleSpendWhere += " AND unit != " + conn.escape(objUnit.unit);
-				if (objAsset){
-					doubleSpendWhere += " AND asset=?";
-					doubleSpendVars.push(payload.asset);
-				}
-				else
-					doubleSpendWhere += " AND asset IS NULL";
-				var doubleSpendQuery = "SELECT "+doubleSpendFields+" FROM inputs " + doubleSpendIndexMySQL + " JOIN units USING(unit) WHERE "+doubleSpendWhere;
-				checkForDoublespends(
-					conn, "divisible input", 
-					doubleSpendQuery, doubleSpendVars, 
-					objUnit, objValidationState, 
-					function acceptDoublespends(cb3){
-						console.log("--- accepting doublespend on unit "+objUnit.unit);
-						var sql = "UPDATE inputs SET is_unique=NULL WHERE "+doubleSpendWhere+
-							" AND (SELECT is_stable FROM units WHERE units.unit=inputs.unit)=0";
-						if (!(objAsset && objAsset.is_private)){
-							objValidationState.arrAdditionalQueries.push({sql: sql, params: doubleSpendVars});
-							objValidationState.arrDoubleSpendInputs.push({message_index: message_index, input_index: input_index});
-							return cb3();
-```
-
-**File:** validation.js (L2134-2141)
-```javascript
-					if (objAsset){
-						doubleSpendWhere += " AND serial_number=?";
-						doubleSpendVars.push(input.serial_number);
+					};
+					// check if duplicate
+					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
+					var params = [headElement.unit, headElement.message_index];
+					if (objAsset.fixed_denominations){
+						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
+							return transaction_callbacks.ifError("no output index in head private element");
+						sql += " AND output_index=?";
+						params.push(headElement.output_index);
 					}
-					if (objAsset && !objAsset.issued_by_definer_only){
-						doubleSpendWhere += " AND address=?";
-						doubleSpendVars.push(address);
-					}
+					conn.query(
+						sql, 
+						params, 
+						function(rows){
+							if (rows.length > 1)
+								throw Error("more than one output "+sql+' '+params.join(', '));
+							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
+								console.log("duplicate private payment "+params.join(', '));
+								return transaction_callbacks.ifOk();
+							}
+							var assetModule = objAsset.fixed_denominations ? indivisibleAsset : divisibleAsset;
+							assetModule.validateAndSavePrivatePaymentChain(conn, arrPrivateElements, transaction_callbacks);
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L307-307)
-```sql
-	UNIQUE  (asset, denomination, serial_number, address, is_unique), -- UNIQUE guarantees there'll be no double issue
-```
-
-**File:** sqlite_pool.js (L111-116)
+**File:** indivisible_asset.js (L223-242)
 ```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
+function validateAndSavePrivatePaymentChain(conn, arrPrivateElements, callbacks){
+	parsePrivatePaymentChain(conn, arrPrivateElements, {
+		ifError: callbacks.ifError,
+		ifOk: function(bAllStable){
+			console.log("saving private chain "+JSON.stringify(arrPrivateElements));
+			profiler.start();
+			var arrQueries = [];
+			for (var i=0; i<arrPrivateElements.length; i++){
+				var objPrivateElement = arrPrivateElements[i];
+				var payload = objPrivateElement.payload;
+				var input_address = objPrivateElement.input_address;
+				var input = payload.inputs[0];
+				var is_unique = objPrivateElement.bStable ? 1 : null; // unstable still have chances to become nonserial therefore nonunique
+				if (!input.type) // transfer
+					conn.addQuery(arrQueries, 
+						"INSERT "+db.getIgnore()+" INTO inputs \n\
+						(unit, message_index, input_index, src_unit, src_message_index, src_output_index, asset, denomination, address, type, is_unique) \n\
+						VALUES (?,?,?,?,?,?,?,?,?,'transfer',?)", 
+						[objPrivateElement.unit, objPrivateElement.message_index, 0, input.unit, input.message_index, input.output_index, 
+						payload.asset, payload.denomination, input_address, is_unique]);
+```
+
+**File:** indivisible_asset.js (L625-632)
+```javascript
+		conn.query(
+			"SELECT src_unit, src_message_index, src_output_index, serial_number, denomination, amount, address, asset, \n\
+				(SELECT COUNT(*) FROM unit_authors WHERE unit=?) AS count_authors \n\
+			FROM inputs WHERE unit=? AND message_index=?", 
+			[_unit, _unit, _message_index],
+			function(in_rows){
+				if (in_rows.length === 0)
+					throw Error("building chain: blackbyte input not found");
+```
+
+**File:** indivisible_asset.js (L865-867)
+```javascript
+											buildPrivateElementsChain(
+												conn, unit, message_index, output_index, payload, 
+												function(arrPrivateElements){
+```
+
+**File:** joint_storage.js (L226-237)
+```javascript
+	db.query( // purge the bad ball if we've already received at least 7 witnesses after receiving the bad ball
+		"SELECT unit FROM units "+byIndex+" \n\
+		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+			AND NOT EXISTS (SELECT * FROM dependencies WHERE depends_on_unit=units.unit) \n\
+			AND NOT EXISTS (SELECT * FROM balls WHERE balls.unit=units.unit) \n\
+			AND (units.creation_date < "+db.addTime('-10 SECOND')+" OR EXISTS ( \n\
+				SELECT DISTINCT address FROM units AS wunits CROSS JOIN unit_authors USING(unit) CROSS JOIN my_witnesses USING(address) \n\
+				WHERE wunits."+order_column+" > units."+order_column+" \n\
+				LIMIT 0,1 \n\
+			)) \n\
+			/* AND NOT EXISTS (SELECT * FROM unhandled_joints) */ \n\
+		ORDER BY units."+order_column+" DESC", 
+```
+
+**File:** joint_storage.js (L256-256)
+```javascript
+									archiving.generateQueriesToArchiveJoint(conn, objJoint, 'uncovered', arrQueries, function(){
+```
+
+**File:** archiving.js (L26-27)
+```javascript
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+```
+
+**File:** archiving.js (L53-54)
+```javascript
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
 ```

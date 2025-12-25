@@ -1,212 +1,141 @@
-# Audit Report: Array Length DoS in Data Feed Query Handler
+# NoVulnerability found for this question.
 
-## Summary
+## Validation Analysis
 
-The `readDataFeedValueByParams()` function in `data_feeds.js` performs expensive cryptographic validation (SHA256 hashing via `chash.isChashValid()`) on every element of the `oracles` array before checking the array length limit. [1](#0-0)  An attacker can exploit this ordering flaw via the `light/get_data_feed` network handler [2](#0-1)  to send oversized arrays, blocking the Node.js event loop and preventing transaction processing for extended periods.
+After systematic validation through the Obyte security framework, I confirm that the claim analysis is **CORRECT** in rejecting this as a valid security vulnerability.
 
-## Impact
+### Critical Disqualification: Infrastructure-Level Failure Requirement
 
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
+The claimed vulnerability requires **database connection instability** (connection loss, timeouts, server crashes), which is explicitly disqualified under the threat model:
 
-With default network settings allowing 100 concurrent inbound connections, an attacker sending 100 simultaneous requests with 100,000+ addresses each can block the event loop for 1+ hours, preventing the node from processing legitimate transactions. The same validation ordering flaw exists in the `light/get_profile_units` handler. [3](#0-2) 
+**"❌ Depends on network-level attacks: DDoS, BGP hijacking, DNS poisoning, or packet manipulation"**
 
-**Affected Parties**: All users relying on attacked nodes, light clients, Autonomous Agents querying data feeds
+Database infrastructure failures fall under this category - they are operational/infrastructure issues, not application-level vulnerabilities in the Obyte protocol code. [1](#0-0) [2](#0-1) 
 
-**Quantifiable Impact**: Each 100K address array causes ~5-10 seconds of blocking; 100 concurrent connections → 8-16 minutes; repeated attacks can extend indefinitely.
+### Actual Behavior Verification
 
-## Finding Description
+I verified the code behavior across multiple files where ROLLBACK is used: [3](#0-2) [4](#0-3) [5](#0-4) [6](#0-5) [7](#0-6) 
 
-**Location**: `byteball/ocore/data_feeds.js:322-331`, function `readDataFeedValueByParams()`
+When ROLLBACK fails due to database connection loss:
+1. The pool implementations throw errors (as designed)
+2. This becomes an **uncaught exception** in Node.js (no production error handlers exist)
+3. The process **crashes immediately**
+4. The OS and database server clean up all connections automatically
+5. Mutex state is in-memory and lost on restart [8](#0-7) 
 
-**Intended Logic**: Reject oversized arrays cheaply before expensive per-element validation to prevent resource exhaustion.
+### Why This Is NOT a Vulnerability
 
-**Actual Logic**: The function validates every address cryptographically before checking array length: [1](#0-0) 
+1. **Process crash, not resource leak**: The claim's title is inaccurate - the actual behavior is process termination, which inherently cleans up all resources.
 
-**Exploitation Path**:
+2. **No attacker control**: An attacker cannot cause database connection failures through protocol-level actions (unit submission, AA triggers, etc.) without infrastructure-level access, which is out of scope.
 
-1. **Preconditions**: Attacker establishes WebSocket connection to target full node (no authentication required for light client protocol)
+3. **Infrastructure concern**: This is properly handled at the deployment level through process managers (PM2, systemd), database redundancy, monitoring, and high availability configurations.
 
-2. **Step 1**: Attacker sends `light/get_data_feed` message with large oracle array. The network handler performs minimal validation without checking array size. [2](#0-1) 
+4. **Not exploitable**: The framework disqualifies vulnerabilities that "depend on network-level attacks" and "Node.js runtime bugs unrelated to Obyte-specific code."
 
-3. **Step 2**: `readDataFeedValueByParams()` is invoked. Line 328's `.every()` iterates through entire array, calling `ValidationUtils.isValidAddress()` on each element. [4](#0-3) 
+### Notes
 
-4. **Step 3**: Each validation triggers `chash.isChashValid()` which performs: base32 decoding (line 157), buffer-to-binary conversion (line 163), checksum separation (line 164), **SHA256 hash computation** (line 170), and buffer comparison. [5](#0-4) 
+The code pattern identified (ROLLBACK in callbacks without explicit error handling) is present across multiple files as documented. However, this is **expected behavior** for critical infrastructure failures. The thrown exceptions cause immediate process termination, preventing any persistent state corruption or connection leaks.
 
-5. **Step 4**: With 100K addresses per connection × 100 concurrent connections, the synchronous validation blocks the event loop for extended periods. Only after all validations complete does line 330 reject the oversized array.
-
-6. **Impact**: During blocking, the node cannot process incoming units, respond to network messages, participate in consensus, or validate transactions.
-
-**Security Property Broken**: Network unit propagation - nodes must accept and propagate valid units continuously to maintain network liveness.
-
-**Root Cause**: Validation ordering prioritizes semantic correctness over resource protection. No WebSocket `maxPayload` limit is configured. [6](#0-5) 
-
-## Likelihood Explanation
-
-**Attacker Profile**: Any entity with network access; no authentication required; minimal technical skill needed to craft WebSocket message.
-
-**Preconditions**: None - attack works in any network state without timing requirements.
-
-**Execution Complexity**: Trivial - single WebSocket message per connection. Can open up to 100 concurrent connections (default `MAX_INBOUND_CONNECTIONS`).
-
-**Economic Cost**: Zero - pure network message attack requiring no unit fees or collateral.
-
-**Overall**: High likelihood - extremely easy to execute, no cost, significant impact on targeted nodes.
-
-## Recommendation
-
-**Immediate Fix**: Check array length BEFORE validation loop:
-
-```javascript
-// In data_feeds.js, readDataFeedValueByParams()
-if (!ValidationUtils.isNonemptyArray(oracles))
-    return cb("oracles must be non-empty array");
-if (oracles.length > 10)  // MOVE THIS CHECK BEFORE VALIDATION
-    return cb("too many oracles");
-if (!oracles.every(ValidationUtils.isValidAddress))
-    return cb("some oracle addresses are not valid");
-```
-
-Apply same fix to `network.js:3577-3582` for `light/get_profile_units` handler.
-
-**Additional Measures**:
-- Configure WebSocket `maxPayload` limit (e.g., 1MB) when creating server
-- Add rate limiting on light client requests per connection
-- Log and block peers sending oversized arrays repeatedly
-
-## Proof of Concept
-
-```javascript
-// test/dos_data_feed.test.js
-const test = require('ava');
-const WebSocket = require('ws');
-const network = require('../network.js');
-
-test.before(async t => {
-    // Initialize network as full node
-    await network.start();
-});
-
-test('DoS via oversized oracle array in light/get_data_feed', async t => {
-    const ws = new WebSocket('ws://localhost:6611');
-    
-    await new Promise(resolve => ws.on('open', resolve));
-    
-    // Generate large array of valid-format addresses
-    const largeOracleArray = Array(100000).fill(
-        'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' // Valid base32 format
-    );
-    
-    const startTime = Date.now();
-    
-    // Send malicious request
-    ws.send(JSON.stringify({
-        tag: 'test-dos',
-        command: 'light/get_data_feed',
-        params: {
-            oracles: largeOracleArray,
-            feed_name: 'price',
-            max_mci: 1000000
-        }
-    }));
-    
-    // Wait for response
-    const response = await new Promise(resolve => {
-        ws.on('message', data => resolve(JSON.parse(data)));
-    });
-    
-    const elapsedTime = Date.now() - startTime;
-    
-    // Verify node was blocked for significant time
-    t.true(elapsedTime > 5000, `Node blocked for ${elapsedTime}ms`);
-    
-    // Verify error response (after expensive validation)
-    t.true(response[0] === 'error');
-    t.true(response[1].tag === 'test-dos');
-    t.true(response[1].error === 'too many oracles');
-    
-    ws.close();
-});
-
-test.after.always(() => {
-    // Cleanup
-});
-```
-
-**Expected Result**: Test proves that 100K element array causes multi-second blocking before rejection. With 100 concurrent connections, this extends to 1+ hour, meeting Medium severity threshold.
-
-## Notes
-
-This vulnerability affects two handlers (`light/get_data_feed` and `light/get_profile_units`) and represents a common anti-pattern where expensive validation precedes cheap boundary checks. The fix is straightforward (reorder checks), but the impact is significant when exploited at scale with concurrent connections. The lack of WebSocket message size limits and per-connection rate limiting exacerbates the issue.
+Production deployments handle process crashes through operational infrastructure, not in-application error handlers. This is a standard pattern for critical failures that indicate the system cannot continue safely.
 
 ### Citations
 
-**File:** data_feeds.js (L326-331)
+**File:** mysql_pool.js (L34-47)
 ```javascript
-	if (!ValidationUtils.isNonemptyArray(oracles))
-		return cb("oracles must be non-empty array");
-	if (!oracles.every(ValidationUtils.isValidAddress))
-		return cb("some oracle addresses are not valid");
-	if (oracles.length > 10)
-		return cb("too many oracles");
+		new_args.push(function(err, results, fields){
+			if (err){
+				console.error("\nfailed query: "+q.sql);
+				/*
+				//console.error("code: "+(typeof err.code));
+				if (false && err.code === 'ER_LOCK_DEADLOCK'){
+					console.log("deadlock, will retry later");
+					setTimeout(function(){
+						console.log("retrying deadlock query "+q.sql+" after timeout ...");
+						connection_or_pool.original_query.apply(connection_or_pool, new_args);
+					}, 100);
+					return;
+				}*/
+				throw err;
 ```
 
-**File:** network.js (L3577-3582)
+**File:** sqlite_pool.js (L111-116)
 ```javascript
-			if (!ValidationUtils.isNonemptyArray(addresses))
-				return sendErrorResponse(ws, tag, "addresses must be non-empty array");
-			if (!addresses.every(ValidationUtils.isValidAddress))
-				return sendErrorResponse(ws, tag, "some addresses are not valid");
-			if (addresses.length > 100)
-				return sendErrorResponse(ws, tag, "too many addresses");
+				new_args.push(function(err, result){
+					//console.log("query done: "+sql);
+					if (err){
+						console.error("\nfailed query:", new_args);
+						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+					}
 ```
 
-**File:** network.js (L3593-3603)
+**File:** aa_composer.js (L193-200)
 ```javascript
-		case 'light/get_data_feed':
-			if (!ValidationUtils.isNonemptyObject(params))
-				return sendErrorResponse(ws, tag, "no params in light/get_data_feed");
-			if ("max_mci" in params && !ValidationUtils.isPositiveInteger(params.max_mci))
-				return sendErrorResponse(ws, tag, "max_mci must be positive integer");
-			dataFeeds.readDataFeedValueByParams(params, params.max_mci || 1e15, 'all_unstable', function (err, value) {
-				if (err)
-					return sendErrorResponse(ws, tag, err);
-				sendResponse(ws, tag, value);
+							conn.query("ROLLBACK", function () {
+								conn.release();
+								// copy updatedStateVars to all responses
+								if (arrResponses.length > 1 && arrResponses[0].updatedStateVars)
+									for (var i = 1; i < arrResponses.length; i++)
+										arrResponses[i].updatedStateVars = arrResponses[0].updatedStateVars;
+								onDone(arrResponses);
+							});
+```
+
+**File:** catchup.js (L415-421)
+```javascript
+							function finish(err){
+								conn.query(err ? "ROLLBACK" : "COMMIT", function(){
+									conn.release();
+									unlock();
+									err ? callbacks.ifError(err) : callbacks.ifOk();
+								});
+							}
+```
+
+**File:** writer.js (L693-705)
+```javascript
+							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
+								var consumed_time = Date.now()-start_time;
+								profiler.add_result('write', consumed_time);
+								console.log((err ? (err+", therefore rolled back unit ") : "committed unit ")+objUnit.unit+", write took "+consumed_time+"ms");
+								profiler.stop('write-sql-commit');
+								profiler.increment();
+								if (err) {
+									var headers_commission = require("./headers_commission.js");
+									headers_commission.resetMaxSpendableMci();
+									delete storage.assocUnstableMessages[objUnit.unit];
+									await storage.resetMemory(conn);
+								}
+								if (!bInLargerTx)
+```
+
+**File:** composer.js (L524-527)
+```javascript
+		conn.query(err ? "ROLLBACK" : "COMMIT", function(){
+			conn.release();
+			if (err)
+				return handleError(err);
+```
+
+**File:** db.js (L25-37)
+```javascript
+function executeInTransaction(doWork, onDone){
+	module.exports.takeConnectionFromPool(function(conn){
+		conn.query("BEGIN", function(){
+			doWork(conn, function(err){
+				conn.query(err ? "ROLLBACK" : "COMMIT", function(){
+					conn.release();
+					if (onDone)
+						onDone(err);
+				});
 			});
-			break;
-```
-
-**File:** network.js (L3961-3961)
-```javascript
-	wss = new WebSocketServer(conf.portReuse ? { noServer: true } : { port: conf.port });
-```
-
-**File:** validation_utils.js (L60-61)
-```javascript
-function isValidAddress(address){
-	return (typeof address === "string" && address === address.toUpperCase() && isValidChash(address, 32));
-```
-
-**File:** chash.js (L152-171)
-```javascript
-function isChashValid(encoded){
-	var encoded_len = encoded.length;
-	if (encoded_len !== 32 && encoded_len !== 48) // 160/5 = 32, 288/6 = 48
-		throw Error("wrong encoded length: "+encoded_len);
-	try{
-		var chash = (encoded_len === 32) ? base32.decode(encoded) : Buffer.from(encoded, 'base64');
-	}
-	catch(e){
-		console.log(e);
-		return false;
-	}
-	var binChash = buffer2bin(chash);
-	var separated = separateIntoCleanDataAndChecksum(binChash);
-	var clean_data = bin2buffer(separated.clean_data);
-	//console.log("clean data", clean_data);
-	var checksum = bin2buffer(separated.checksum);
-	//console.log(checksum);
-	//console.log(getChecksum(clean_data));
-	return checksum.equals(getChecksum(clean_data));
+		});
+	});
 }
+```
+
+**File:** mutex.js (L6-7)
+```javascript
+var arrQueuedJobs = [];
+var arrLockedKeyArrays = [];
 ```

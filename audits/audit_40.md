@@ -1,250 +1,284 @@
-# Audit Report: Missing Error Check in Divisible Asset Save Callback
+# Vulnerability Report
+
+## Title
+Unhandled Promise Rejection in Post-Commit Callback Causes Permanent Write Mutex Deadlock
 
 ## Summary
-The `getSavingCallbacks()` function in `divisible_asset.js` contains a critical flaw where the `onDone` callback unconditionally signals success to the caller even when `writer.saveJoint` fails and rolls back the database transaction. This causes wallet state divergence from the blockchain state, potentially leading to double-payments when users retry what they believe are failed transactions.
+The `saveJoint()` function in `writer.js` passes an async callback to `commit_fn`, but the callback's returned promise is never awaited or caught. When AA trigger handling or TPS fee updates throw errors, the promise rejection goes unhandled, preventing the write mutex from being released and causing permanent network freeze.
 
 ## Impact
-**Severity**: High  
-**Category**: Unintended Behavior with Direct Fund Risk
+**Severity**: Critical  
+**Category**: Network Shutdown
 
-This vulnerability affects all users sending divisible asset payments (both bytes and custom assets). When database save operations fail, the transaction is properly rolled back but the application receives a success signal, causing the wallet to update its state (mark outputs as spent, update balances) while the blockchain has no record of the transaction. Users may then retry the payment, resulting in double-payment and direct fund loss.
+All nodes attempting to write new units will block indefinitely at the mutex acquisition point. The entire network becomes non-operational, requiring manual node restarts across all validators. All user funds become effectively frozen as no transactions can be processed. The vulnerability can be triggered accidentally by database errors or intentionally through problematic AA deployments.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/divisible_asset.js:381-386`, function `getSavingCallbacks().ifOk()`
+**Location**: `byteball/ocore/writer.js`, function `saveJoint()`
 
-**Intended Logic**: When `writer.saveJoint` completes, the callback should check if an error occurred. If `err` is not null (indicating save failure and rollback), the code must call `callbacks.ifError(err)` to notify the caller of the failure. Only on successful save should `callbacks.ifOk()` be invoked.
+**Intended Logic**: After committing the database transaction, the code should handle AA triggers, update TPS fees, emit events, call the completion callback, and release the write mutex to allow subsequent units to be processed.
 
-**Actual Logic**: The `onDone` callback unconditionally calls `callbacks.ifOk()` regardless of whether `err` is null or not.
-
-**Code Evidence**: [1](#0-0) 
-
-The problematic callback at lines 381-386 never checks the `err` parameter before calling `callbacks.ifOk()` at line 386.
-
-For comparison, the correct pattern exists in `composer.js`: [2](#0-1) 
-
-Lines 777-778 properly check `if (err) return callbacks.ifError(err);` before proceeding to `callbacks.ifOk()`.
+**Actual Logic**: The write mutex is acquired at the start of `saveJoint()`. [1](#0-0)  The `commit_fn` is defined to execute a database query and then call the provided callback, but it does not await or handle the promise returned by async callbacks. [2](#0-1)  When `commit_fn` is invoked with an async callback [3](#0-2) , and that callback throws during AA trigger handling [4](#0-3)  or TPS fee updates [5](#0-4) , the promise rejection is unhandled and the `unlock()` call is never reached. [6](#0-5) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: User initiates a divisible asset payment (particularly private payments where validation can fail).
+1. **Preconditions**: Network is operational. A unit submission triggers MCI stabilization, setting `bStabilizedAATriggers = true` via `main_chain.updateMainChain()`. [7](#0-6) 
 
-2. **Step 1**: User calls `composeAndSaveDivisibleAssetPaymentJoint` which invokes `getSavingCallbacks().ifOk()` [3](#0-2) 
+2. **Step 1**: The write mutex is acquired. [1](#0-0) 
 
-3. **Step 2**: During `writer.saveJoint` execution, an error occurs. For private payments, the `preCommitCallback` [4](#0-3)  calls `validateAndSaveDivisiblePrivatePayment` which can fail with database errors, constraint violations, or validation failures [5](#0-4) 
+3. **Step 2**: Database transaction commits successfully, but the mutex is still held.
 
-4. **Step 3**: The error propagates to `writer.saveJoint` which rolls back the transaction [6](#0-5)  and calls `onDone(err)` with the error [7](#0-6) 
+4. **Step 3**: The async callback executes post-commit operations. If `handleAATriggers()` encounters an error such as unit props not found in cache [8](#0-7)  or batch write failure [9](#0-8) , it throws an error.
 
-5. **Step 4**: In `divisible_asset.js`, the `onDone` callback releases locks and unconditionally calls `callbacks.ifOk()` at line 386, signaling SUCCESS despite the database rollback.
+5. **Step 4**: Alternatively, `updateTpsFees()` can reject due to database query failures. [10](#0-9) [11](#0-10) [12](#0-11) 
 
-6. **Step 5**: The wallet broadcasts the joint and reports success [8](#0-7) . The wallet state shows the payment succeeded (outputs marked as spent, balance reduced), but the local database has no record. If the user retries thinking something went wrong, they may send the payment twice.
+6. **Step 5**: When the async callback throws, the promise rejects but `commit_fn` doesn't handle it. The callback execution stops, `unlock()` is never called, and the mutex remains permanently locked.
 
-**Security Property Broken**: 
-- **Transaction Atomicity**: The save operation failed and was rolled back, but application state was updated as if it succeeded
-- **Balance Conservation**: Wallet shows reduced balance but blockchain has not recorded the transfer
+7. **Result**: All subsequent `saveJoint()` calls block at line 33 waiting for the mutex. No new units can be written to the database. The entire network freezes.
 
-**Root Cause Analysis**: The error handling pattern was implemented without proper error checking in the callback. The developer likely copied code without including the necessary `if (err)` check that exists in the correct implementation in `composer.js`.
+**Security Property Broken**: The fundamental invariant that acquired mutexes must be released is violated. This causes a deadlock that halts all write operations.
+
+**Root Cause Analysis**: The code mixes synchronous control flow (mutex locking/unlocking) with asynchronous operations (async/await) without proper error handling. The `commit_fn` simply calls the callback without awaiting or catching the returned promise, allowing unhandled rejections to prevent cleanup code from executing.
 
 ## Impact Explanation
 
-**Affected Assets**: All divisible assets (bytes and custom divisible assets), particularly private payments where `preCommitCallback` can fail.
+**Affected Assets**: All network participants, entire network operation, all bytes and custom assets
 
 **Damage Severity**:
-- **Quantitative**: Every failed divisible asset payment results in state inconsistency. Users who retry can double-pay arbitrary amounts. Affects all wallet implementations using this code.
-- **Qualitative**: Loss of trust in wallet balance reporting and transaction status. Silent failures with false success reporting undermine system reliability.
+- **Quantitative**: 100% of network transaction capacity is lost. All user funds become frozen (cannot be moved). Freeze duration is indefinite until manual intervention.
+- **Qualitative**: Catastrophic network failure requiring emergency node restarts across all validators. All economic activity ceases.
 
 **User Impact**:
-- **Who**: All users sending divisible asset payments. Particularly affects private asset transfers and payments during database stress.
-- **Conditions**: Triggered whenever `writer.saveJoint` encounters errors (database failures, validation failures in preCommit, resource exhaustion, constraint violations).
-- **Recovery**: Requires manual reconciliation. Users must check blockchain directly to verify actual payment status. Double-payments require customer support intervention.
+- **Who**: All users, validators, AA operators, exchange operators, and any service depending on the Obyte network
+- **Conditions**: Triggered whenever a unit stabilizes MCIs while any error occurs during AA trigger handling or TPS fee updates
+- **Recovery**: Requires manual node restart on all affected nodes. May require database cleanup of pending AA triggers.
 
-**Systemic Risk**: 
-- Wallet state inconsistencies accumulate across the user base
-- Users lose confidence when payments show success but don't appear on chain
-- All applications using this library inherit the vulnerability
+**Systemic Risk**: Cascading network failure - once one node freezes, peers continue broadcasting units that cannot be processed, causing more nodes to freeze. The entire network becomes non-operational within minutes. The vulnerability can be triggered accidentally by infrastructure issues (database connection failures, disk errors) or intentionally by deploying AAs that cause edge cases during trigger processing.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user during normal operations (unintentional trigger) or malicious actor who understands the validation rules
-- **Resources Required**: Ability to send divisible asset payments
-- **Technical Skill**: Low for unintentional trigger (happens naturally during database issues); Medium for intentional exploitation
+- **Identity**: Can be triggered accidentally by legitimate activity (database errors, infrastructure issues) or intentionally by malicious actors
+- **Resources Required**: Ability to submit transactions (minimal cost). No special privileges needed.
+- **Technical Skill**: Low to Medium - can occur naturally from infrastructure failures, or be intentionally triggered with understanding of AA trigger timing
 
 **Preconditions**:
-- **Network State**: Any state; more likely during high load or database stress
-- **Attacker State**: Has divisible assets to send
-- **Timing**: Can occur anytime; no special timing required
+- **Network State**: At least one AA trigger must be pending when a unit stabilizes MCIs (common during normal operation)
+- **Attacker State**: None required for accidental triggers
+- **Timing**: Any time AA triggers are being processed
 
 **Execution Complexity**:
-- **Transaction Count**: Single transaction
+- **Transaction Count**: Single unit submission can trigger the bug
 - **Coordination**: None required
-- **Detection Risk**: Low - appears as normal failed transaction in logs, but user receives success signal
+- **Detection Risk**: Low - appears as normal unit submission followed by network hang
 
 **Frequency**:
-- **Repeatability**: Triggers every time a save error occurs
-- **Scale**: Affects every divisible asset payment encountering save errors
+- **Repeatability**: Can occur repeatedly during normal operation whenever database/infrastructure errors occur
+- **Scale**: Single occurrence freezes entire network
 
-**Overall Assessment**: High likelihood - This will trigger naturally during database errors, network issues, or constraint violations. The bug activates automatically when any error condition occurs during the save operation.
+**Overall Assessment**: High likelihood. The error handling gap is always present and can be triggered by database connection failures, disk errors, memory issues, or edge cases in AA execution. Production databases inevitably experience transient errors.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add error check before calling success callback in `divisible_asset.js`:
+Wrap the post-commit async operations in a try-catch block to ensure the mutex is always released: [13](#0-12) 
 
+The fix should modify the callback to:
 ```javascript
-function onDone(err){
-    console.log("saved unit "+unit+", err="+err, objPrivateElement);
-    validation_unlock();
-    combined_unlock();
-    if (err)
-        return callbacks.ifError(err);
-    var arrChains = objPrivateElement ? [[objPrivateElement]] : null;
-    callbacks.ifOk(objJoint, arrChains, arrChains);
-}
+commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
+    try {
+        // existing code for AA triggers and TPS fees
+    } catch (error) {
+        console.error('Error in post-commit callback:', error);
+    } finally {
+        if (onDone)
+            onDone(err);
+        unlock();
+    }
+});
 ```
 
-**Additional Measures**:
-- Apply same fix to `indivisible_asset.js` which has a similar issue with only partial mitigation
-- Add integration tests that verify error handling when `preCommitCallback` fails
-- Add monitoring to detect when save operations fail but success is reported
+**Permanent Fix**:
+1. Ensure all async callbacks are properly wrapped with error handling
+2. Consider using a mutex wrapper that automatically releases on promise rejection
+3. Add monitoring to detect mutex deadlocks
 
 ## Proof of Concept
 
 ```javascript
-// Test case demonstrating the bug
-// File: test/test_divisible_error_handling.js
+const test = require('ava');
+const writer = require('../../writer.js');
+const db = require('../../db.js');
+const storage = require('../../storage.js');
+const mutex = require('../../mutex.js');
 
-const divisible_asset = require('../divisible_asset.js');
-const db = require('../db.js');
-
-describe('Divisible Asset Error Handling', function() {
-    it('should call ifError when saveJoint fails', function(done) {
-        let errorCallbackCalled = false;
-        let okCallbackCalled = false;
-        
-        const params = {
-            asset: 'test_asset',
-            paying_addresses: ['TEST_ADDRESS'],
-            fee_paying_addresses: ['TEST_FEE_ADDRESS'],
-            change_address: 'TEST_CHANGE',
-            to_address: 'TEST_RECIPIENT',
-            amount: 1000,
-            signer: mockSigner,
-            callbacks: {
-                ifError: function(err) {
-                    errorCallbackCalled = true;
-                    console.log('Error callback called correctly:', err);
-                },
-                ifNotEnoughFunds: function(err) {
-                    done(new Error('Should not call ifNotEnoughFunds'));
-                },
-                ifOk: function(objJoint) {
-                    okCallbackCalled = true;
-                    console.log('OK callback called (BUG!)');
-                }
-            }
-        };
-        
-        // Mock database error during save
-        const originalQuery = db.query;
-        db.query = function(sql, params, callback) {
-            if (sql.includes('INSERT INTO outputs')) {
-                // Simulate constraint violation or other DB error
-                return callback('Database constraint violation');
-            }
-            return originalQuery.apply(this, arguments);
-        };
-        
-        divisible_asset.composeAndSaveDivisibleAssetPaymentJoint(params);
-        
-        setTimeout(function() {
-            db.query = originalQuery; // Restore
-            
-            // BUG: okCallbackCalled should be false but will be true
-            if (okCallbackCalled && !errorCallbackCalled) {
-                console.log('BUG CONFIRMED: ifOk called despite error!');
-                done();
-            } else if (errorCallbackCalled && !okCallbackCalled) {
-                done(new Error('Bug is fixed - error handled correctly'));
-            } else {
-                done(new Error('Unexpected callback state'));
-            }
-        }, 2000);
+test.serial('saveJoint mutex deadlock on AA trigger error', async t => {
+    // Setup: Create a test database and initial state
+    await db.query("DELETE FROM units");
+    
+    // Inject error condition: corrupt the unit cache to trigger error in handleAATriggers
+    const originalAssocStableUnits = storage.assocStableUnits;
+    storage.assocStableUnits = {}; // Empty cache will cause error at aa_composer.js:101
+    
+    // Create a joint that will stabilize AA triggers
+    const objJoint = createTestJointWithAATrigger();
+    const objValidationState = {
+        bUnderWriteLock: false,
+        arrAdditionalQueries: [],
+        // ... other required fields
+    };
+    
+    // Attempt to save the joint - this should trigger the mutex deadlock
+    let firstSaveCompleted = false;
+    const savePromise = writer.saveJoint(objJoint, objValidationState, null, () => {
+        firstSaveCompleted = true;
     });
+    
+    // Wait a bit for the error to occur
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Verify the first save never completed
+    t.false(firstSaveCompleted, 'First save should not complete due to error');
+    
+    // Attempt a second saveJoint - this should block forever
+    const secondJoint = createTestJoint();
+    let secondSaveStarted = false;
+    const secondSavePromise = writer.saveJoint(secondJoint, objValidationState, null, () => {
+        secondSaveStarted = true;
+    }).then(() => {
+        secondSaveStarted = true;
+    });
+    
+    // Wait to see if second save blocks
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify the second save is blocked (never started)
+    t.false(secondSaveStarted, 'Second save should be blocked waiting for mutex');
+    
+    // Cleanup
+    storage.assocStableUnits = originalAssocStableUnits;
 });
+
+function createTestJointWithAATrigger() {
+    // Create a realistic joint structure that will trigger AA processing
+    return {
+        unit: {
+            unit: 'test_unit_hash_' + Date.now(),
+            version: '3.0',
+            alt: '1',
+            authors: [{ address: 'TEST_ADDRESS', authentifiers: {} }],
+            messages: [{ app: 'payment', payload: { outputs: [] } }],
+            // ... other required fields
+        }
+    };
+}
+
+function createTestJoint() {
+    // Create a simple test joint
+    return {
+        unit: {
+            unit: 'test_unit_hash_2_' + Date.now(),
+            // ... minimal required fields
+        }
+    };
+}
 ```
 
 ## Notes
 
-This is a clear implementation bug where error handling was omitted. The comparison with `composer.js` confirms this is not intentional design. While the severity is HIGH rather than CRITICAL (as it requires specific error conditions and user retry for fund loss), it's a serious reliability issue that undermines user trust and can result in direct financial loss through double-payments. The fix is straightforward: add the missing error check before calling the success callback.
+The vulnerability exists because JavaScript async functions return promises, but the `commit_fn` callback executor doesn't await or catch these promises. When an async function throws, it rejects its promise, but if no handler is attached, the rejection goes unhandled and execution stops at the throw point, never reaching the cleanup code.
+
+The protection check at lines 712-713 that throws an error if already under write lock actually makes this worse, as it introduces another throw point within the async callback that can trigger the same deadlock condition.
 
 ### Citations
 
-**File:** divisible_asset.js (L306-307)
+**File:** writer.js (L33-33)
 ```javascript
-		ifOk: async function(objJoint, private_payload, composer_unlock){
-			var objUnit = objJoint.unit;
+	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
 ```
 
-**File:** divisible_asset.js (L343-360)
+**File:** writer.js (L45-49)
 ```javascript
-					if (bPrivate){
-						preCommitCallback = function(conn, cb){
-							var payload_hash = objectHash.getBase64Hash(private_payload, objUnit.version !== constants.versionWithoutTimestamp);
-							var message_index = composer.getMessageIndexByPayloadHash(objUnit, payload_hash);
-							objPrivateElement = {
-								unit: unit,
-								message_index: message_index,
-								payload: private_payload
-							};
-							validateAndSaveDivisiblePrivatePayment(conn, objPrivateElement, {
-								ifError: function(err){
-									cb(err);
-								},
-								ifOk: function(){
+			commit_fn = function (sql, cb) {
+				conn.query(sql, function () {
+					cb();
+				});
+			};
+```
+
+**File:** writer.js (L640-643)
+```javascript
+								main_chain.updateMainChain(conn, batch, null, objUnit.unit, objValidationState.bAA, (_arrStabilizedMcis, _bStabilizedAATriggers) => {
+									arrStabilizedMcis = _arrStabilizedMcis;
+									bStabilizedAATriggers = _bStabilizedAATriggers;
 									cb();
-								}
-							});
-						};
 ```
 
-**File:** divisible_asset.js (L381-386)
-```javascript
-								function onDone(err){
-									console.log("saved unit "+unit+", err="+err, objPrivateElement);
-									validation_unlock();
-									combined_unlock();
-									var arrChains = objPrivateElement ? [[objPrivateElement]] : null; // only one chain that consists of one element
-									callbacks.ifOk(objJoint, arrChains, arrChains);
-```
-
-**File:** composer.js (L774-781)
-```javascript
-								function onDone(err){
-									validation_unlock();
-									combined_unlock();
-									if (err)
-										return callbacks.ifError(err);
-									console.log("composer saved unit "+unit);
-									callbacks.ifOk(objJoint, assocPrivatePayloads);
-								}
-```
-
-**File:** writer.js (L693-693)
+**File:** writer.js (L693-730)
 ```javascript
 							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
-```
+								var consumed_time = Date.now()-start_time;
+								profiler.add_result('write', consumed_time);
+								console.log((err ? (err+", therefore rolled back unit ") : "committed unit ")+objUnit.unit+", write took "+consumed_time+"ms");
+								profiler.stop('write-sql-commit');
+								profiler.increment();
+								if (err) {
+									var headers_commission = require("./headers_commission.js");
+									headers_commission.resetMaxSpendableMci();
+									delete storage.assocUnstableMessages[objUnit.unit];
+									await storage.resetMemory(conn);
+								}
+								if (!bInLargerTx)
+									conn.release();
+								if (!err){
+									eventBus.emit('saved_unit-'+objUnit.unit, objJoint);
+									eventBus.emit('saved_unit', objJoint);
+								}
+								if (bStabilizedAATriggers) {
+									if (bInLargerTx || objValidationState.bUnderWriteLock)
+										throw Error(`saveJoint stabilized AA triggers while in larger tx or under write lock`);
+									const aa_composer = require("./aa_composer.js");
+									await aa_composer.handleAATriggers();
 
-**File:** writer.js (L724-725)
-```javascript
+									// get a new connection to write tps fees
+									const conn = await db.takeConnectionFromPool();
+									await conn.query("BEGIN");
+									await storage.updateTpsFees(conn, arrStabilizedMcis);
+									await conn.query("COMMIT");
+									conn.release();
+								}
 								if (onDone)
 									onDone(err);
+								count_writes++;
+								if (conf.storage === 'sqlite')
+									updateSqliteStats(objUnit.unit);
+								unlock();
+							});
 ```
 
-**File:** wallet.js (L2494-2497)
+**File:** aa_composer.js (L100-101)
 ```javascript
-		ifOk: function(objJoint, arrChainsOfRecipientPrivateElements, arrChainsOfCosignerPrivateElements){
-			network.broadcastJoint(objJoint);
-			cb(null, objJoint.unit.unit, asset);
-		}
+							if (!objUnitProps)
+								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+```
+
+**File:** aa_composer.js (L108-109)
+```javascript
+								if (err)
+									throw Error("AA composer: batch write failed: "+err);
+```
+
+**File:** storage.js (L1210-1210)
+```javascript
+			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
+```
+
+**File:** storage.js (L1221-1221)
+```javascript
+				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
+```
+
+**File:** storage.js (L1223-1223)
+```javascript
+				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
 ```

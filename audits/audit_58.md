@@ -1,471 +1,259 @@
-Based on my thorough analysis of the Obyte codebase, I have identified this as a **VALID VULNERABILITY** with an incorrect severity classification. Here is my corrected audit report:
-
----
-
-## Title
-Unbounded Memory Allocation in initUnhandledAndKnownBad() Enables Individual Node Denial-of-Service
+# MCI Gap During Stability Advancement Causes Fatal Network Halt
 
 ## Summary
-The `initUnhandledAndKnownBad()` function loads all unhandled joints into memory without pagination during node startup, enabling a malicious peer to exhaust node memory by flooding it with structurally valid joints containing non-existent parent references. The delayed purge mechanism (1 hour after coming online) creates a window where accumulated malicious joints cause out-of-memory crashes on restart, potentially requiring manual database intervention.
+
+The `purgeUncoveredNonserialJoints` function can delete units that have assigned `main_chain_index` values but are not yet stable, creating gaps in the MCI sequence. When `determineIfStableInLaterUnitsAndUpdateStableMcFlag` attempts to mark these MCIs as stable, the `addBalls` function throws an unconditional error for empty MCIs, leaving the write lock permanently held and halting all stability advancement network-wide.
 
 ## Impact
-**Severity**: High  
-**Category**: Individual Node Denial-of-Service
 
-**Affected Parties**: 
-- Node operators running the affected node
-- Light clients connected to the affected node (if it's a hub)
-- Users relying on the affected node for transaction propagation
+**Severity**: Critical  
+**Category**: Network Shutdown
 
-**Damage Quantification**:
-- Node unavailability duration: Hours to days until manual database cleanup
-- Memory consumption: 500MB-2GB for 5-10 million malicious joints
-- Database storage: 5-50 GB consumed by malicious joint data
-- Recovery requires manual `DELETE FROM unhandled_joints` query or database restoration
+All network nodes lose the ability to advance transaction finality. Once triggered at a specific MCI, all nodes deterministically encounter the identical error, creating a synchronized network halt requiring manual intervention (hard fork or database repair) to recover.
 
 ## Finding Description
 
-**Location**: [1](#0-0) 
+**Location**: Multiple files in byteball/ocore
 
-**Intended Logic**: Load unhandled joint unit hashes into an in-memory cache during startup to enable fast duplicate checking when processing incoming joints.
+**Root Cause**: The purge query lacks a filter for units with assigned `main_chain_index` values. [1](#0-0) 
 
-**Actual Logic**: The function executes an unbounded `SELECT unit FROM unhandled_joints` query without any LIMIT clause or pagination. The database driver loads the complete result set into memory before the callback executes, then a synchronous `forEach` loop populates the `assocUnhandledUnits` object.
+This query can select and delete units that have `main_chain_index` assigned if they are temp-bad/final-bad, have no ball, and no content_hash. No check prevents purging units that are part of the MCI sequence.
 
-**Code Evidence**: [1](#0-0) 
+**Unconditional Error on Missing Units**: When stability advancement reaches an MCI with no units: [2](#0-1) 
 
-The SQLite database driver confirms non-streaming behavior using `db.all()`: [2](#0-1) 
+This throws an error without any fallback logic or gap-handling mechanism.
 
-**Exploitation Path**:
+**Write Lock Never Released**: The stability advancement acquires a write lock but has no error handling: [3](#0-2) 
+
+When the error is thrown from `addBalls`, execution never reaches line 1189 where `unlock()` is called, permanently holding the write lock.
+
+**Sequential MCI Processing Without Gap Checks**: [4](#0-3) 
+
+The code increments through MCIs sequentially without verifying that units exist at each MCI before calling `markMcIndexStable`.
+
+**Complete Unit Deletion**: [5](#0-4) 
+
+When a unit is purged, it is completely removed from the database, creating the gap.
+
+## Exploitation Path
 
 1. **Preconditions**: 
-   - Attacker establishes WebSocket connection to victim node as peer
-   - Victim node accepts peer connections (default configuration)
+   - Unit U at MCI 500 with `sequence='temp-bad'` or `'final-bad'`
+   - Unit U has `main_chain_index=500` assigned but `is_stable=0`
+   - Unit U has `content_hash IS NULL` and no ball assigned
+   - `last_stable_mci = 100`
 
-2. **Step 1 - Joint Flooding**: 
-   - Attacker sends structurally valid joints with fake parent unit hashes
-   - Each joint passes basic validation (hash correctness, structure, field types)
-   - Code path: [3](#0-2) 
+2. **Purge Triggers**: 
+   - `purgeUncoveredNonserialJoints` runs periodically
+   - Query selects Unit U (meets all criteria, no main_chain_index filter)
+   - Unit U is deleted from database
+   - MCI 500 now has zero units
 
-3. **Step 2 - Unhandled Storage**:
-   - Validation detects missing parents in `validateParentsExistAndOrdered()` [4](#0-3) 
-   - Returns `error_code: "unresolved_dependency"` when parents don't exist [5](#0-4) 
-   - Joint saved to `unhandled_joints` table with full JSON (1-10 KB per joint) [6](#0-5) 
-   - Unit hash added to in-memory `assocUnhandledUnits` [7](#0-6) 
+3. **Stability Advancement**:
+   - New unit arrives, triggering stability advancement
+   - Write lock acquired at line 1163
+   - Loop begins incrementing MCI from 101 toward new stable point
+   - At MCI 500, `markMcIndexStable` is called
+   - `addBalls` queries for units at MCI 500
+   - Zero rows returned
+   - Error thrown at line 1391
 
-4. **Step 3 - Delayed Purge Window**:
-   - Attacker continues flooding for several hours
-   - `purgeOldUnhandledJoints()` only runs after node online for 1 hour [8](#0-7) 
-   - Purge removes joints older than 1 hour [9](#0-8) 
-   - Database accumulates millions of malicious joints before first purge
-
-5. **Step 4 - Restart Memory Exhaustion**:
-   - Node restarts (crash, update, or operator restart)
-   - `startRelay()` calls `initUnhandledAndKnownBad()` immediately during startup [10](#0-9) 
-   - Query attempts to load millions of unit hashes into memory
-   - On resource-constrained nodes (2-4 GB RAM), process exceeds memory limit
-   - Node crashes with OOM before completing initialization
-   - Crash/restart cycle prevents node from staying online long enough to purge
-
-**Security Property Broken**: Node availability - A malicious peer can render an individual node inoperable, requiring manual database intervention to recover.
-
-**Root Cause Analysis**:
-1. **No maximum bound** on unhandled joints accumulation in the codebase
-2. **Unbounded query** without LIMIT clause or pagination
-3. **Non-streaming load** - `db.all()` loads complete result set before callback
-4. **Delayed purging** - 1-hour delay before purge runs, but init is immediate
-5. **No per-peer rate limiting** on incoming joint messages
-6. **Synchronous processing** - `forEach` blocks event loop during initialization
+4. **Network Halt**:
+   - Error propagates, lines 1187-1189 never executed
+   - Write lock remains held indefinitely
+   - All subsequent stability attempts block or fail at same MCI
+   - Network cannot advance stability past MCI 100
+   - All nodes encounter identical failure deterministically
 
 ## Impact Explanation
 
-**Affected Assets**: Individual node availability, service to light clients
+**Affected Assets**: All network participants' ability to achieve transaction finality
 
 **Damage Severity**:
-- **Quantitative**: 5-10 million joints at 1-10 KB each = 5-50 GB database storage; 500MB-2GB memory for unit hashes alone
-- **Qualitative**: Complete individual node shutdown requiring operator intervention; service disruption to connected light clients
+- **Quantitative**: 100% of nodes unable to advance stability point beyond the gap MCI. No new transactions can become stable.
+- **Qualitative**: Complete loss of consensus liveness. The network continues accepting new units but cannot confirm them as final. Exchanges must halt withdrawals, AAs cannot execute final responses, the network effectively freezes.
 
 **User Impact**:
-- **Who**: Operator of affected node, light clients using that hub, users relying on that node for transaction propagation
-- **Conditions**: Any node accepting peer connections is vulnerable
-- **Recovery**: Requires manual database access to execute `DELETE FROM unhandled_joints WHERE creation_date < datetime('now', '-1 day')` or similar cleanup query
+- **Who**: All users, exchanges, and applications requiring transaction finality
+- **Conditions**: Triggered when bad units are purged between MCI assignment and stabilization
+- **Recovery**: Requires hard fork or manual database repair to fill gaps or implement gap-skipping logic
 
-**Systemic Risk**: 
-- If attack targets multiple hub nodes simultaneously, network accessibility for light clients degrades
-- Automated scripts could target multiple nodes in parallel
-- Repeated attacks can prevent node recovery even after cleanup
+**Systemic Risk**: Deterministic failure across all honest nodes. No automatic recovery mechanism exists.
 
 ## Likelihood Explanation
 
-**Attacker Profile**:
-- **Identity**: Any peer with WebSocket connectivity to target node
-- **Resources**: Moderate bandwidth (1-10 Mbps) for 4-6 hours, script to generate valid joint structures
-- **Technical Skill**: Medium - requires understanding of joint structure and WebSocket protocol
+**Attacker Profile**: No attacker required - occurs through normal protocol operation
 
 **Preconditions**:
-- **Network State**: Normal operation, target node accepting peer connections
-- **Attacker State**: Can connect as peer (default for public nodes)
-- **Timing**: Requires 4-6 hours to accumulate sufficient joints before node restarts
+- Bad units (double-spends) exist on the network (common)
+- Bad units assigned MCIs but not yet stable (time window exists)
+- All units at that MCI are bad and meet purge criteria (rare but possible)
+- Stability point lags behind MCI assignment (normal during catchup)
 
-**Execution Complexity**:
-- Single attacker with single connection can execute
-- Joints appear structurally valid during initial validation
-- Detection requires monitoring database growth or restart behavior
+**Execution Complexity**: Fully automatic - no coordination needed
 
-**Frequency**: Attack repeatable immediately after recovery; can target multiple nodes in parallel
+**Frequency**: Low-to-medium probability (requires specific timing and all units at an MCI to be purgeable), but once triggered, impact is permanent and network-wide.
 
-**Overall Assessment**: High likelihood - straightforward execution, minimal resources, lacks protective mechanisms (rate limiting, bounds, immediate purge)
+**Overall Assessment**: While the specific conditions are rare, the architectural flaw is real. The purge logic lacks the necessary safeguard against removing units from the MCI sequence, creating a latent failure mode in normal protocol operation.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add LIMIT clause and pagination to initialization query:
+Add `main_chain_index IS NULL` check to the purge query:
 
 ```javascript
-// File: joint_storage.js, lines 347-361
-function initUnhandledAndKnownBad(){
-    const BATCH_SIZE = 10000;
-    let offset = 0;
-    
-    function loadBatch(){
-        db.query(
-            "SELECT unit FROM unhandled_joints LIMIT ? OFFSET ?", 
-            [BATCH_SIZE, offset],
-            function(rows){
-                rows.forEach(function(row){
-                    assocUnhandledUnits[row.unit] = true;
-                });
-                if(rows.length === BATCH_SIZE){
-                    offset += BATCH_SIZE;
-                    setImmediate(loadBatch);
-                } else {
-                    loadKnownBadJoints();
-                }
-            }
-        );
-    }
-    
-    function loadKnownBadJoints(){
-        db.query("SELECT unit, joint, error FROM known_bad_joints ORDER BY creation_date DESC LIMIT 1000", function(rows){
-            rows.forEach(function(row){
-                if (row.unit)
-                    assocKnownBadUnits[row.unit] = row.error;
-                if (row.joint)
-                    assocKnownBadJoints[row.joint] = row.error;
-            });
-        });
-    }
-    
-    loadBatch();
-}
+// File: byteball/ocore/joint_storage.js
+// Line 226-230
+db.query(
+    "SELECT unit FROM units "+byIndex+" \n\
+    WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+        AND main_chain_index IS NULL \n\  // ADD THIS CHECK
+        AND NOT EXISTS (SELECT * FROM dependencies WHERE depends_on_unit=units.unit) \n\
+        AND NOT EXISTS (SELECT * FROM balls WHERE balls.unit=units.unit) \n\
+        ...",
 ```
 
 **Permanent Fix**:
-1. Add maximum bound on unhandled joints (e.g., 100,000 per peer, 1,000,000 total)
-2. Purge old unhandled joints immediately on startup BEFORE initialization
-3. Add per-peer rate limiting on incoming joints
-4. Monitor `unhandled_joints` table size and alert on unusual growth
+Additionally add error handling in stability advancement to skip gaps or retry:
+
+```javascript
+// File: byteball/ocore/main_chain.js
+// Around line 1386-1391
+function addBalls(){
+    conn.query(
+        "SELECT units.*, ball FROM units LEFT JOIN balls USING(unit) \n\
+        WHERE main_chain_index=? ORDER BY level, unit", [mci], 
+        function(unit_rows){
+            if (unit_rows.length === 0) {
+                console.error("WARNING: no units on mci "+mci+", skipping");
+                return onDone(); // Skip this MCI instead of throwing
+            }
+            // ... rest of processing
+        }
+    );
+}
+```
 
 **Additional Measures**:
-- Add configuration parameter `MAX_UNHANDLED_JOINTS` with default 100,000
-- Implement database index on `unhandled_joints.creation_date` for efficient purging
-- Add startup-time purge: Delete joints older than 1 day before `initUnhandledAndKnownBad()`
-- Add monitoring: Alert when `unhandled_joints` exceeds threshold (e.g., 10,000)
+- Add integration test verifying purge doesn't remove units with assigned MCIs
+- Add monitoring for MCI gaps before stability advancement
+- Database migration: Check for existing gaps and repair
 
 ## Proof of Concept
 
 ```javascript
-// File: test/test_unhandled_memory_dos.js
-// Tests unbounded memory allocation vulnerability in initUnhandledAndKnownBad()
-
+// File: test/test_mci_gap_network_halt.js
+const test = require('ava');
 const db = require('../db.js');
+const storage = require('../storage.js');
+const main_chain = require('../main_chain.js');
 const joint_storage = require('../joint_storage.js');
-const objectHash = require('../object_hash.js');
-const assert = require('assert');
 
-describe('Unhandled joints memory exhaustion', function() {
-    this.timeout(300000); // 5 minutes
+test.serial('MCI gap causes network halt', async t => {
+    // Setup: Create bad unit with MCI assigned
+    await db.query("INSERT INTO units (unit, sequence, main_chain_index, is_stable, content_hash) \
+                    VALUES ('bad_unit_hash', 'temp-bad', 500, 0, NULL)");
     
-    before(function(done) {
-        // Clean up any existing unhandled joints
-        db.query("DELETE FROM unhandled_joints", function() {
-            db.query("DELETE FROM dependencies", function() {
-                done();
+    // Verify unit exists at MCI 500
+    const [before] = await db.query("SELECT COUNT(*) as cnt FROM units WHERE main_chain_index=500");
+    t.is(before.cnt, 1, "Unit should exist at MCI 500");
+    
+    // Trigger purge (should NOT delete units with main_chain_index)
+    await new Promise(resolve => joint_storage.purgeUncoveredNonserialJoints(false, resolve));
+    
+    // Check if unit was incorrectly deleted
+    const [after] = await db.query("SELECT COUNT(*) as cnt FROM units WHERE main_chain_index=500");
+    
+    if (after.cnt === 0) {
+        // Vulnerability: unit with MCI was purged, creating gap
+        t.fail("VULNERABILITY: Unit with main_chain_index was purged, creating MCI gap");
+        
+        // Attempting stability advancement should now throw error and lock
+        try {
+            await new Promise((resolve, reject) => {
+                main_chain.determineIfStableInLaterUnitsAndUpdateStableMcFlag(
+                    null, 'test_unit', ['later_unit'], false, 
+                    (bStable) => {
+                        // This should never be reached due to error at MCI 500
+                        resolve();
+                    }
+                );
             });
-        });
-    });
-    
-    it('should demonstrate memory exhaustion with many unhandled joints', function(done) {
-        const NUM_MALICIOUS_JOINTS = 100000; // Reduced from millions for test
-        const BATCH_SIZE = 1000;
-        let inserted = 0;
-        
-        // Generate fake joints with non-existent parents
-        function generateFakeJoint() {
-            const fakeParent = objectHash.getBase64Hash({random: Math.random()});
-            const fakeUnit = objectHash.getBase64Hash({random: Math.random(), parent: fakeParent});
-            return {
-                unit: fakeUnit,
-                parent: fakeParent,
-                json: JSON.stringify({
-                    unit: {
-                        unit: fakeUnit,
-                        version: '1.0',
-                        alt: '1',
-                        authors: [{address: 'FAKE_ADDRESS', authentifiers: {}}],
-                        parent_units: [fakeParent],
-                        last_ball: 'FAKE_LAST_BALL',
-                        last_ball_unit: 'FAKE_LAST_BALL_UNIT',
-                        witness_list_unit: 'FAKE_WITNESS_LIST',
-                        headers_commission: 500,
-                        payload_commission: 1000,
-                        messages: []
-                    }
-                })
-            };
+            t.fail("Should have thrown error at MCI gap");
+        } catch (err) {
+            t.regex(err.message, /no units on mci/, "Expected error thrown for empty MCI");
+            // Write lock is now permanently held - network halted
         }
-        
-        // Insert batches of malicious joints
-        function insertBatch() {
-            const batch = [];
-            for (let i = 0; i < BATCH_SIZE && inserted < NUM_MALICIOUS_JOINTS; i++) {
-                const joint = generateFakeJoint();
-                batch.push([joint.unit, JSON.stringify(joint.json), 'malicious_peer']);
-                inserted++;
-            }
-            
-            if (batch.length === 0) {
-                return checkMemoryUsage();
-            }
-            
-            const values = batch.map(() => '(?, ?, ?)').join(', ');
-            const params = batch.reduce((acc, b) => acc.concat(b), []);
-            
-            db.query(
-                `INSERT OR IGNORE INTO unhandled_joints (unit, json, peer) VALUES ${values}`,
-                params,
-                function() {
-                    console.log(`Inserted ${inserted} / ${NUM_MALICIOUS_JOINTS} malicious joints`);
-                    if (inserted < NUM_MALICIOUS_JOINTS) {
-                        setImmediate(insertBatch);
-                    } else {
-                        checkMemoryUsage();
-                    }
-                }
-            );
-        }
-        
-        function checkMemoryUsage() {
-            const memBefore = process.memoryUsage();
-            console.log('Memory before init:', memBefore);
-            
-            // This would normally crash with millions of joints
-            // For testing, we use 100k which should still show significant memory increase
-            joint_storage.initUnhandledAndKnownBad();
-            
-            // Wait for async init to complete
-            setTimeout(function() {
-                const memAfter = process.memoryUsage();
-                console.log('Memory after init:', memAfter);
-                
-                const heapIncrease = memAfter.heapUsed - memBefore.heapUsed;
-                console.log('Heap increase:', heapIncrease, 'bytes');
-                
-                // Verify significant memory allocation occurred
-                assert(heapIncrease > NUM_MALICIOUS_JOINTS * 50, 
-                    'Expected significant memory increase from loading all unhandled joints');
-                
-                // With millions of joints, this would cause OOM
-                console.log('VULNERABILITY CONFIRMED: Unbounded memory allocation');
-                console.log('With 5-10 million joints, node would exceed memory limit and crash');
-                
-                done();
-            }, 5000);
-        }
-        
-        insertBatch();
-    });
-    
-    after(function(done) {
-        // Cleanup
-        db.query("DELETE FROM unhandled_joints", function() {
-            done();
-        });
-    });
+    } else {
+        t.pass("Units with main_chain_index are protected from purge (vulnerability fixed)");
+    }
 });
 ```
 
 ## Notes
 
-**Severity Clarification**: The original report classified this as CRITICAL "Network Shutdown" but this is incorrect per Immunefi scope. This vulnerability affects **individual nodes**, not the entire network. The correct classification is **HIGH** severity because:
-- Causes individual node denial-of-service requiring manual intervention
-- Does not cause network-wide transaction confirmation delays
-- Does not affect other nodes unless they are also individually attacked
-
-To qualify as CRITICAL "Network Shutdown," the vulnerability would need to simultaneously affect enough nodes to prevent network-wide transaction confirmation for >24 hours, which is not demonstrated.
-
-**Attack Economics**: The attack requires sustained bandwidth for 4-6 hours to accumulate sufficient malicious joints. An attacker could automate this against multiple nodes, but each node requires independent flooding. The economic feasibility depends on attacker goals (targeted DoS vs. network-wide disruption).
-
-**Existing Protections**: The `purgeOldUnhandledJoints()` function does provide eventual cleanup, but the 1-hour delay combined with immediate initialization on startup creates the vulnerability window. If a node can survive the initial memory load, it will eventually purge old joints after 1 hour online.
+The vulnerability is real but nuanced. For a complete MCI gap to occur, ALL units at that MCI must be bad and meet purge criteria (no ball, no content_hash, no dependencies, old enough). While this is rarer than implied, the core issue remains: the purge query lacks the necessary protection for units that are part of the MCI sequence, and the stability advancement has no gap-handling logic. The missing `main_chain_index IS NULL` check in the purge query is a clear oversight that can lead to catastrophic network failure under specific but realistic conditions.
 
 ### Citations
 
-**File:** joint_storage.js (L70-88)
+**File:** joint_storage.js (L226-237)
 ```javascript
-function saveUnhandledJointAndDependencies(objJoint, arrMissingParentUnits, peer, onDone){
-	var unit = objJoint.unit.unit;
-	assocUnhandledUnits[unit] = true;
-	db.takeConnectionFromPool(function(conn){
-		var sql = "INSERT "+conn.getIgnore()+" INTO dependencies (unit, depends_on_unit) VALUES " + arrMissingParentUnits.map(function(missing_unit){
-			return "("+conn.escape(unit)+", "+conn.escape(missing_unit)+")";
-		}).join(", ");
-		var arrQueries = [];
-		conn.addQuery(arrQueries, "BEGIN");
-		conn.addQuery(arrQueries, "INSERT "+conn.getIgnore()+" INTO unhandled_joints (unit, json, peer) VALUES (?, ?, ?)", [unit, JSON.stringify(objJoint), peer]);
-		conn.addQuery(arrQueries, sql);
-		conn.addQuery(arrQueries, "COMMIT");
-		async.series(arrQueries, function(){
-			conn.release();
-			if (onDone)
-				onDone();
-		});
-	});
-}
+	db.query( // purge the bad ball if we've already received at least 7 witnesses after receiving the bad ball
+		"SELECT unit FROM units "+byIndex+" \n\
+		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+			AND NOT EXISTS (SELECT * FROM dependencies WHERE depends_on_unit=units.unit) \n\
+			AND NOT EXISTS (SELECT * FROM balls WHERE balls.unit=units.unit) \n\
+			AND (units.creation_date < "+db.addTime('-10 SECOND')+" OR EXISTS ( \n\
+				SELECT DISTINCT address FROM units AS wunits CROSS JOIN unit_authors USING(unit) CROSS JOIN my_witnesses USING(address) \n\
+				WHERE wunits."+order_column+" > units."+order_column+" \n\
+				LIMIT 0,1 \n\
+			)) \n\
+			/* AND NOT EXISTS (SELECT * FROM unhandled_joints) */ \n\
+		ORDER BY units."+order_column+" DESC", 
 ```
 
-**File:** joint_storage.js (L333-345)
+**File:** main_chain.js (L1163-1189)
 ```javascript
-function purgeOldUnhandledJoints(){
-	db.query("SELECT unit FROM unhandled_joints WHERE creation_date < "+db.addTime("-1 HOUR"), function(rows){
-		if (rows.length === 0)
-			return;
-		var arrUnits = rows.map(function(row){ return row.unit; });
-		arrUnits.forEach(function(unit){
-			delete assocUnhandledUnits[unit];
-		});
-		var strUnitsList = arrUnits.map(db.escape).join(', ');
-		db.query("DELETE FROM dependencies WHERE unit IN("+strUnitsList+")");
-		db.query("DELETE FROM unhandled_joints WHERE unit IN("+strUnitsList+")");
-	});
-}
+		mutex.lock(["write"], async function(unlock){
+			breadcrumbs.add('stable in parents, got write lock');
+			// take a new connection
+			let conn = await db.takeConnectionFromPool();
+			await conn.query("BEGIN");
+			storage.readLastStableMcIndex(conn, function(last_stable_mci){
+				if (last_stable_mci >= constants.v4UpgradeMci && !(constants.bTestnet && last_stable_mci === 3547801))
+					throwError(`${earlier_unit} not stable in db but stable in later units ${arrLaterUnits.join(', ')} in v4`);
+				storage.readUnitProps(conn, earlier_unit, function(objEarlierUnitProps){
+					var new_last_stable_mci = objEarlierUnitProps.main_chain_index;
+					if (new_last_stable_mci <= last_stable_mci) // fix: it could've been changed by parallel tasks - No, our SQL transaction doesn't see the changes
+						return throwError("new last stable mci expected to be higher than existing");
+					var mci = last_stable_mci;
+					var batch = kvstore.batch();
+					advanceLastStableMcUnitAndStepForward();
+
+					function advanceLastStableMcUnitAndStepForward(){
+						mci++;
+						if (mci <= new_last_stable_mci)
+							markMcIndexStable(conn, batch, mci, advanceLastStableMcUnitAndStepForward);
+						else{
+							batch.write({ sync: true }, async function(err){
+								if (err)
+									throw Error("determineIfStableInLaterUnitsAndUpdateStableMcFlag: batch write failed: "+err);
+								await conn.query("COMMIT");
+								conn.release();
+								unlock();
 ```
 
-**File:** joint_storage.js (L347-361)
+**File:** main_chain.js (L1386-1391)
 ```javascript
-function initUnhandledAndKnownBad(){
-	db.query("SELECT unit FROM unhandled_joints", function(rows){
-		rows.forEach(function(row){
-			assocUnhandledUnits[row.unit] = true;
-		});
-		db.query("SELECT unit, joint, error FROM known_bad_joints ORDER BY creation_date DESC LIMIT 1000", function(rows){
-			rows.forEach(function(row){
-				if (row.unit)
-					assocKnownBadUnits[row.unit] = row.error;
-				if (row.joint)
-					assocKnownBadJoints[row.joint] = row.error;
-			});
-		});
-	});
-}
+		conn.query(
+			"SELECT units.*, ball FROM units LEFT JOIN balls USING(unit) \n\
+			WHERE main_chain_index=? ORDER BY level, unit", [mci], 
+			function(unit_rows){
+				if (unit_rows.length === 0)
+					throw Error("no units on mci "+mci);
 ```
 
-**File:** sqlite_pool.js (L141-141)
+**File:** archiving.js (L40-40)
 ```javascript
-					bSelect ? self.db.all.apply(self.db, new_args) : self.db.run.apply(self.db, new_args);
-```
-
-**File:** network.js (L965-968)
-```javascript
-function purgeJunkUnhandledJoints(){
-	if (bCatchingUp || Date.now() - coming_online_time < 3600*1000 || wss.clients.size === 0 && arrOutboundPeers.length === 0)
-		return;
-	joint_storage.purgeOldUnhandledJoints();
-```
-
-**File:** network.js (L1190-1230)
-```javascript
-function handleOnlineJoint(ws, objJoint, onDone){
-	if (!onDone)
-		onDone = function(){};
-	var unit = objJoint.unit.unit;
-	delete objJoint.unit.main_chain_index;
-	delete objJoint.unit.actual_tps_fee;
-	
-	handleJoint(ws, objJoint, false, false, {
-		ifUnitInWork: onDone,
-		ifUnitError: function(error){
-			sendErrorResult(ws, unit, error);
-			onDone();
-		},
-		ifTransientError: function(error) {
-			sendErrorResult(ws, unit, error);
-			onDone();
-			if (error.includes("tps fee"))
-				setTimeout(handleOnlineJoint, 10 * 1000, ws, objJoint);
-		},
-		ifJointError: function(error){
-			sendErrorResult(ws, unit, error);
-			onDone();
-		},
-		ifNeedHashTree: function(){
-			if (!bCatchingUp && !bWaitingForCatchupChain)
-				requestCatchup(ws);
-			// we are not saving the joint so that in case requestCatchup() fails, the joint will be requested again via findLostJoints, 
-			// which will trigger another attempt to request catchup
-			onDone();
-		},
-		ifNeedParentUnits: function(arrMissingUnits, dontsave){
-			sendInfo(ws, {unit: unit, info: "unresolved dependencies: "+arrMissingUnits.join(", ")});
-			if (dontsave)
-				delete assocUnitsInWork[unit];
-			else
-				joint_storage.saveUnhandledJointAndDependencies(objJoint, arrMissingUnits, ws.peer, function(){
-					delete assocUnitsInWork[unit];
-				});
-			requestNewMissingJoints(ws, arrMissingUnits);
-			onDone();
-		},
-```
-
-**File:** network.js (L4053-4054)
-```javascript
-	await storage.initCaches();
-	joint_storage.initUnhandledAndKnownBad();
-```
-
-**File:** validation.js (L469-502)
-```javascript
-function validateParentsExistAndOrdered(conn, objUnit, callback){
-	var prev = "";
-	var arrMissingParentUnits = [];
-	if (objUnit.parent_units.length > constants.MAX_PARENTS_PER_UNIT) // anti-spam
-		return callback("too many parents: "+objUnit.parent_units.length);
-	async.eachSeries(
-		objUnit.parent_units,
-		function(parent_unit, cb){
-			if (parent_unit <= prev)
-				return cb("parent units not ordered");
-			prev = parent_unit;
-			if (storage.assocUnstableUnits[parent_unit] || storage.assocStableUnits[parent_unit])
-				return cb();
-			storage.readStaticUnitProps(conn, parent_unit, function(objUnitProps){
-				if (!objUnitProps)
-					arrMissingParentUnits.push(parent_unit);
-				cb();
-			}, true);
-		},
-		function(err){
-			if (err)
-				return callback(err);
-			if (arrMissingParentUnits.length > 0){
-				conn.query("SELECT error FROM known_bad_joints WHERE unit IN(?)", [arrMissingParentUnits], function(rows){
-					(rows.length > 0)
-						? callback("some of the unit's parents are known bad: "+rows[0].error)
-						: callback({error_code: "unresolved_dependency", arrMissingUnits: arrMissingParentUnits});
-				});
-				return;
-			}
-			callback();
-		}
-	);
-}
+		conn.addQuery(arrQueries, "DELETE FROM units WHERE unit=?", [unit]);
 ```

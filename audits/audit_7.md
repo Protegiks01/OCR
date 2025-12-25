@@ -1,216 +1,149 @@
-## Title
-Foreign Key Constraint Violation Causes Node Crash During Poll Unit Archiving
+# Audit Report: Unvalidated Device Address in Shared Address Messages Enables Node Crash
 
 ## Summary
-When archiving a poll unit with `sequence='final-bad'`, the deletion of `poll_choices` triggers a foreign key constraint violation if votes from other units still reference those choices. The error is thrown as an uncaught exception in `sqlite_pool.js`, crashing the node process and causing temporary network disruption.
+
+The `handleNewSharedAddress()` function in `wallet_defined_by_addresses.js` fails to validate `device_address` fields in received shared address signer information, allowing malicious peers to inject empty strings or invalid device addresses. When signing requests are later processed for these addresses, the code attempts to route messages to the invalid device address, triggering an uncaught synchronous exception in `sendMessageToDevice()` that crashes the node.
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay / Network Disruption
 
-The vulnerability allows any user to crash nodes by creating polls that transition to `final-bad` status after receiving votes. No funds are lost, but affected nodes experience downtime until manual restart. The database transaction rollback prevents corruption.
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Node Crash DoS
+
+Any untrusted peer can crash victim nodes using shared addresses through a two-message sequence. Affected nodes require manual restart, and corrupted data persists in the database allowing repeated crashes. This disrupts shared address operations and transaction processing capability for targeted nodes.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/archiving.js` (function `generateQueriesToRemoveJoint()`, line 29) and `byteball/ocore/sqlite_pool.js` (error handling, line 115)
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:339-360`, function `handleNewSharedAddress()`
 
-**Intended Logic**: The archiving mechanism should clean up bad units while respecting foreign key constraints. Votes referencing a poll should either be deleted first or the deletion should fail gracefully without crashing the node.
+**Intended Logic**: When receiving a "new_shared_address" message from a peer, the system should validate all signer information including device addresses before storing them in the database.
 
-**Actual Logic**: The archiving process deletes `poll_choices` before checking if votes still reference them. When the foreign key constraint is violated, the error is thrown synchronously from an async callback, creating an unhandled exception that crashes the Node.js process.
+**Actual Logic**: The validation loop only checks the `address` field but completely ignores `device_address` validation: [1](#0-0) 
 
-**Code Evidence**:
+A proper validation function exists in the codebase: [2](#0-1) 
 
-Archiving deletion sequence that deletes poll_choices before votes that reference them: [1](#0-0) 
-
-Foreign key constraint from votes to poll_choices in database schema: [2](#0-1) 
-
-Error handling that throws uncaught exception on constraint violation: [3](#0-2) 
+But it is never used to validate device_address fields in handleNewSharedAddress.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker has funds to create poll and vote units; network operates normally
+1. **Preconditions**: 
+   - Victim node accepts peer connections and uses shared addresses
+   - Attacker knows victim's device address and payment address (publicly observable)
 
-2. **Step 1**: Attacker creates poll unit A that will later become `final-bad` (by spending from an output that later becomes bad, or via double-spend)
-   - Code path: `composer.js` → `validation.js` → `storage.js`
+2. **Step 1 - Inject Malicious Data**: 
+   - Attacker sends "new_shared_address" message to victim node
+   - Message contains signer entry with victim's payment address but empty string `""` for device_address
+   - Includes decoy entry with victim's device address to bypass protective rewrite logic: [3](#0-2) 
 
-3. **Step 2**: While poll unit A has `sequence='good'`, attacker or users cast votes (units B, C, D) referencing poll A
-   - Vote validation passes because it checks poll sequence at submission time [4](#0-3) 
+3. **Step 2 - Database Storage**: 
+   - Validation passes because only address field is checked
+   - Empty string device_address is stored in database (passes NOT NULL constraint): [4](#0-3) 
 
-4. **Step 3**: Poll unit A transitions to `sequence='final-bad'` through conflict resolution or parent unit becoming bad
+   Database schema has NOT NULL constraint but accepts empty strings: [5](#0-4) 
 
-5. **Step 4**: Vote units B, C, D remain `sequence='good'` because bad status only propagates through spending relationships, not message references [5](#0-4) 
+4. **Step 3 - Trigger Crash**:
+   - When a "sign" message arrives for this shared address, `findAddress()` queries the database and retrieves the empty device_address: [6](#0-5) 
 
-6. **Step 5**: Automatic archiving process runs every 60 seconds and selects unit A for removal [6](#0-5) 
+   - The code forwards the signing request via `ifRemote` callback: [7](#0-6) 
 
-7. **Step 6**: Archiving executes within transaction but deletes `poll_choices WHERE unit=A` while votes still reference them [7](#0-6) 
+   - `sendMessageToDevice()` throws synchronously when device_address is empty: [8](#0-7) 
 
-8. **Step 7**: Database raises foreign key constraint error, callback throws it synchronously, no error handling catches it
+   - No try-catch exists in the message handler, causing process crash: [9](#0-8) [10](#0-9) 
 
-9. **Step 8**: Node crashes with unhandled exception; must be manually restarted
+**Security Property Broken**: Node availability and message routing integrity - the system should never attempt to send messages to invalid device addresses.
 
-**Security Property Broken**: Error handling fails to gracefully handle database constraint violations during multi-step operations, violating node availability expectations.
-
-**Root Cause Analysis**: 
-The archiving deletion at line 29 only deletes votes contained IN the archived unit (`WHERE unit=?`), not votes that REFERENCE the archived poll (`WHERE poll_unit=?`). Combined with synchronous error throwing in async callbacks without proper error handling, this causes process crashes.
+**Root Cause Analysis**:
+- Missing input validation on device_address field despite available validation function
+- Bypassable protective rewrite logic through attacker-controlled decoy entries
+- Synchronous exception in async callback context with no error handling
 
 ## Impact Explanation
 
-**Affected Assets**: Node availability, network processing capacity
+**Affected Assets**: Node availability, shared address operations, transaction processing capability
 
 **Damage Severity**:
-- **Quantitative**: Each exploited poll crashes one or more nodes. Attack is repeatable with multiple polls.
-- **Qualitative**: Temporary service disruption; transaction rollback prevents database corruption
+- **Quantitative**: Single malicious message pair crashes any node. Corrupted database entry persists indefinitely requiring manual cleanup.
+- **Qualitative**: Complete denial of service for targeted nodes. Disrupts multi-signature coordination.
 
 **User Impact**:
-- **Who**: Users whose transactions route through crashed nodes; network capacity reduction
-- **Conditions**: Exploitable when any poll unit with votes becomes `final-bad` through natural protocol operation
-- **Recovery**: Nodes must be manually restarted; no data loss or corruption
+- **Who**: Any node accepting peer connections and using shared addresses
+- **Conditions**: Node receives malicious "new_shared_address" message; later receives signing request for corrupted path
+- **Recovery**: Requires node restart plus manual database cleanup
 
-**Systemic Risk**: Multiple simultaneous attacks could crash numerous nodes, causing network-wide transaction delays until nodes restart.
+**Systemic Risk**: If multiple nodes in a multi-signature configuration are targeted, coordination becomes impossible.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with minimal funds for transaction fees
-- **Resources Required**: ~1000 bytes for poll creation + votes + double-spend setup
-- **Technical Skill**: Medium - requires understanding DAG consensus and double-spend mechanics
+- **Identity**: Any untrusted peer on network
+- **Resources Required**: Ability to send P2P messages; knowledge of victim's device and payment addresses (publicly observable)
+- **Technical Skill**: Low - requires crafting two simple JSON messages
 
 **Preconditions**:
-- **Network State**: Normal operation
-- **Attacker State**: Unspent output to create transactions
-- **Timing**: Poll must become final-bad after votes are cast (depends on consensus timing)
+- **Network State**: Normal operation with peer connections enabled
+- **Attacker State**: Connected as correspondent
+- **Timing**: No timing constraints
 
 **Execution Complexity**:
-- **Transaction Count**: 3+ transactions (poll, votes, conflicting unit)
-- **Coordination**: Minimal - attacker can vote themselves, doesn't require other users
-- **Detection Risk**: Low - appears as normal poll activity
+- **Transaction Count**: Two messages (new_shared_address, then sign)
+- **Coordination**: None - single attacker controls entire sequence
+- **Detection Risk**: Low - appears as normal shared address creation until crash
 
 **Frequency**:
-- **Repeatability**: High - can repeat with multiple polls
-- **Scale**: Per-poll impact on nodes that process the archiving
+- **Repeatability**: Unlimited - corrupted data persists
+- **Scale**: Can target multiple nodes simultaneously
 
-**Overall Assessment**: Medium likelihood - technically straightforward, low cost, repeatable, but requires timing around consensus.
+**Overall Assessment**: High likelihood - trivially exploitable with no economic barrier.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add proper error handling around archiving queries to catch and log foreign key violations without crashing:
+Add device_address validation in `handleNewSharedAddress()`:
 
 ```javascript
-// In joint_storage.js around line 259
-async.series(arrQueries, function(err){
-    if (err) {
-        console.error("Archiving error (non-fatal):", err);
-        breadcrumbs.add("------- archiving failed for "+row.unit);
-        return cb();
-    }
-    // ... existing success path
-});
-```
-
-**Permanent Fix**:
-Modify archiving deletion order to delete referencing votes before poll_choices:
-
-```javascript
-// In archiving.js, before line 29
-conn.addQuery(arrQueries, "DELETE FROM votes WHERE poll_unit=?", [unit]);
-conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
+for (var signing_path in body.signers){
+    var signerInfo = body.signers[signing_path];
+    if (signerInfo.address && signerInfo.address !== 'secret' && !ValidationUtils.isValidAddress(signerInfo.address))
+        return callbacks.ifError("invalid member address: "+signerInfo.address);
+    // ADD THIS:
+    if (signerInfo.device_address && !ValidationUtils.isValidDeviceAddress(signerInfo.device_address))
+        return callbacks.ifError("invalid device address: "+signerInfo.device_address);
+}
 ```
 
 **Additional Measures**:
-- Add test case verifying archiving handles polls with external votes
-- Consider ON DELETE CASCADE on foreign key (requires migration)
-- Add monitoring for archiving failures
+- Add database CHECK constraint: `CHECK(LENGTH(device_address) = 33 AND device_address LIKE '0%')`
+- Add test case verifying invalid device_addresses are rejected
+- Add try-catch in message handler for robustness
 
 ## Proof of Concept
 
 ```javascript
-const async = require('async');
-const db = require('./db.js');
-const composer = require('./composer.js');
-const network = require('./network.js');
+// Test: test/shared_address_device_validation.test.js
+const device = require('../device.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
 
-// Test: Poll archiving with external votes crashes node
-describe('Poll archiving foreign key violation', function() {
-    it('should not crash when archiving poll with external votes', function(done) {
-        this.timeout(60000);
-        
-        async.series([
-            // Step 1: Create poll unit A
-            function(cb) {
-                composer.composeJoint({
-                    paying_addresses: [address1],
-                    outputs: [{address: address1, amount: 1000}],
-                    messages: [{
-                        app: 'poll',
-                        payload: {
-                            question: 'Test poll',
-                            choices: ['Yes', 'No']
-                        }
-                    }],
-                    callbacks: {
-                        ifOk: function(joint) {
-                            pollUnit = joint.unit.unit;
-                            cb();
-                        },
-                        ifError: cb
-                    }
-                });
-            },
-            
-            // Step 2: Cast vote from different address while poll is good
-            function(cb) {
-                composer.composeJoint({
-                    paying_addresses: [address2],
-                    outputs: [{address: address2, amount: 1000}],
-                    messages: [{
-                        app: 'vote',
-                        payload: {
-                            unit: pollUnit,
-                            choice: 'Yes'
-                        }
-                    }],
-                    callbacks: {
-                        ifOk: function(joint) {
-                            voteUnit = joint.unit.unit;
-                            cb();
-                        },
-                        ifError: cb
-                    }
-                });
-            },
-            
-            // Step 3: Create double-spend to make poll bad
-            function(cb) {
-                // Create conflicting unit spending same output as poll
-                // Poll will become final-bad after stabilization
-                createConflictingUnit(pollUnit, cb);
-            },
-            
-            // Step 4: Wait for stabilization and archiving
-            function(cb) {
-                setTimeout(function() {
-                    // Verify poll is final-bad
-                    db.query("SELECT sequence FROM units WHERE unit=?", [pollUnit], function(rows) {
-                        assert.equal(rows[0].sequence, 'final-bad');
-                        cb();
-                    });
-                }, 30000);
-            },
-            
-            // Step 5: Trigger archiving - should handle gracefully without crash
-            function(cb) {
-                const joint_storage = require('./joint_storage.js');
-                
-                // This should NOT crash the process
-                joint_storage.purgeUncoveredNonserialJoints(false, function() {
-                    // If we reach here, node didn't crash
-                    cb();
-                });
+describe('Shared Address Device Validation', function() {
+    it('should reject empty device_address in new_shared_address message', function(done) {
+        const maliciousMessage = {
+            address: 'VALID_SHARED_ADDRESS_HASH_HERE_32CH',
+            definition: ['sig', {pubkey: 'validpubkey'}],
+            signers: {
+                'r.0': {
+                    address: 'VICTIM_PAYMENT_ADDRESS_32_CHARS',
+                    device_address: '', // EMPTY STRING
+                    member_signing_path: 'r'
+                }
             }
-        ], function(err) {
-            assert.ifError(err, 'Node should not crash during poll archiving');
-            done();
+        };
+        
+        walletDefinedByAddresses.handleNewSharedAddress(maliciousMessage, {
+            ifError: function(err) {
+                assert(err.includes('device'), 'Should reject empty device_address');
+                done();
+            },
+            ifOk: function() {
+                done(new Error('Should not accept empty device_address'));
+            }
         });
     });
 });
@@ -218,48 +151,147 @@ describe('Poll archiving foreign key violation', function() {
 
 ## Notes
 
-The vulnerability is real but has limited impact. The transaction rollback prevents database corruption, so the only consequence is node downtime until restart. The fix is straightforward: either (1) add error handling to prevent crashes, or (2) delete votes referencing the poll before deleting poll_choices. The most robust solution combines both approaches.
+The vulnerability exists because `ValidationUtils.isValidDeviceAddress()` is defined and exported but never used to validate device_address fields in incoming shared address messages. The attack works with empty strings `""` rather than null values, as empty strings pass the database NOT NULL constraint but are still falsy in JavaScript, triggering the crash condition.
 
 ### Citations
 
-**File:** archiving.js (L29-31)
+**File:** wallet_defined_by_addresses.js (L246-252)
 ```javascript
-		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
-		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
+			for (var signing_path in assocSignersByPath){
+				var signerInfo = assocSignersByPath[signing_path];
+				db.addQuery(arrQueries, 
+					"INSERT "+db.getIgnore()+" INTO shared_address_signing_paths \n\
+					(shared_address, address, signing_path, member_signing_path, device_address) VALUES (?,?,?,?,?)", 
+					[address, signerInfo.address, signing_path, signerInfo.member_signing_path, signerInfo.device_address]);
+			}
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L229-229)
+**File:** wallet_defined_by_addresses.js (L305-311)
+```javascript
+			if (!bHasMyDeviceAddress){
+				for (var signing_path in assocSignersByPath){
+					var signerInfo = assocSignersByPath[signing_path];
+					if (signerInfo.address && arrMyMemberAddresses.indexOf(signerInfo.address) >= 0)
+						signerInfo.device_address = device.getMyDeviceAddress();
+				}
+			}
+```
+
+**File:** wallet_defined_by_addresses.js (L346-350)
+```javascript
+	for (var signing_path in body.signers){
+		var signerInfo = body.signers[signing_path];
+		if (signerInfo.address && signerInfo.address !== 'secret' && !ValidationUtils.isValidAddress(signerInfo.address))
+			return callbacks.ifError("invalid member address: "+signerInfo.address);
+	}
+```
+
+**File:** validation_utils.js (L64-66)
+```javascript
+function isValidDeviceAddress(address){
+	return ( isStringOfLength(address, 33) && address[0] === '0' && isValidAddress(address.substr(1)) );
+}
+```
+
+**File:** initial-db/byteball-sqlite.sql (L628-639)
 ```sql
-	CONSTRAINT votesByChoice FOREIGN KEY (poll_unit, choice) REFERENCES poll_choices(unit, choice),
+CREATE TABLE shared_address_signing_paths (
+	shared_address CHAR(32) NOT NULL,
+	signing_path VARCHAR(255) NULL, -- full path to signing key which is a member of the member address
+	address CHAR(32) NOT NULL, -- member address
+	member_signing_path VARCHAR(255) NULL, -- path to signing key from root of the member address
+	device_address CHAR(33) NOT NULL, -- where this signing key lives or is reachable through
+	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (shared_address, signing_path),
+	FOREIGN KEY (shared_address) REFERENCES shared_addresses(shared_address)
+	-- own address is not present in correspondents
+--    FOREIGN KEY byDeviceAddress(device_address) REFERENCES correspondent_devices(device_address)
+);
 ```
 
-**File:** sqlite_pool.js (L113-115)
+**File:** wallet.js (L60-77)
 ```javascript
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+function handleMessageFromHub(ws, json, device_pubkey, bIndirectCorrespondent, callbacks){
+	// serialize all messages from hub
+	mutex.lock(["from_hub"], function(unlock){
+		var oldcb = callbacks;
+		callbacks = {
+			ifOk: function(){oldcb.ifOk(); unlock();},
+			ifError: function(err){oldcb.ifError(err); unlock();}
+		};
+
+		var subject = json.subject;
+		var body = json.body;
+		if (!subject || typeof body == "undefined")
+			return callbacks.ifError("no subject or body");
+		//if (bIndirectCorrespondent && ["cancel_new_wallet", "my_xpubkey", "new_wallet_address"].indexOf(subject) === -1)
+		//    return callbacks.ifError("you're indirect correspondent, cannot trust "+subject+" from you");
+		var from_address = objectHash.getDeviceAddress(device_pubkey);
+		
+		switch (subject){
 ```
 
-**File:** validation.js (L1638-1639)
+**File:** wallet.js (L337-354)
 ```javascript
-					if (objPollUnitProps.sequence !== 'good')
-						return callback("poll unit is not serial");
+					ifRemote: function(device_address){
+						if (device_address === from_address){
+							callbacks.ifError("looping signing request for address "+body.address+", path "+body.signing_path);
+							throw Error("looping signing request for address "+body.address+", path "+body.signing_path);
+						}
+						try {
+							var text_to_sign = objectHash.getUnitHashToSign(body.unsigned_unit).toString("base64");
+						}
+						catch (e) {
+							return callbacks.ifError("unit hash failed: " + e.toString());
+						}
+						// I'm a proxy, wait for response from the actual signer and forward to the requestor
+						eventBus.once("signature-"+device_address+"-"+body.address+"-"+body.signing_path+"-"+text_to_sign, function(sig){
+							sendSignature(from_address, text_to_sign, sig, body.signing_path, body.address);
+						});
+						// forward the offer to the actual signer
+						device.sendMessageToDevice(device_address, subject, body);
+						callbacks.ifOk();
 ```
 
-**File:** main_chain.js (L1305-1305)
+**File:** wallet.js (L1052-1070)
 ```javascript
-		conn.query("SELECT DISTINCT inputs.unit, main_chain_index FROM inputs LEFT JOIN units USING(unit) WHERE src_unit IN(?)", [arrFinalBadUnits], function(rows){
+			db.query(
+			//	"SELECT address, device_address, member_signing_path FROM shared_address_signing_paths WHERE shared_address=? AND signing_path=?", 
+				// look for a prefix of the requested signing_path
+				"SELECT address, device_address, signing_path FROM shared_address_signing_paths \n\
+				WHERE shared_address=? AND signing_path=SUBSTR(?, 1, LENGTH(signing_path))", 
+				[address, signing_path],
+				function(sa_rows){
+					if (sa_rows.length > 1)
+						throw Error("more than 1 member address found for shared address "+address+" and signing path "+signing_path);
+					if (sa_rows.length === 1) {
+						var objSharedAddress = sa_rows[0];
+						var relative_signing_path = 'r' + signing_path.substr(objSharedAddress.signing_path.length);
+						var bLocal = (objSharedAddress.device_address === device.getMyDeviceAddress()); // local keys
+						if (objSharedAddress.address === '') {
+							return callbacks.ifMerkle(bLocal);
+						} else if(objSharedAddress.address === 'secret') {
+							return callbacks.ifSecret();
+						}
+						return findAddress(objSharedAddress.address, relative_signing_path, callbacks, bLocal ? null : objSharedAddress.device_address);
 ```
 
-**File:** network.js (L4068-4068)
+**File:** device.js (L176-184)
 ```javascript
-	setInterval(joint_storage.purgeUncoveredNonserialJointsUnderLock, 60*1000);
+			var handleMessage = function(bIndirectCorrespondent){
+				eventBus.emit("handle_message_from_hub", ws, json, objDeviceMessage.pubkey, bIndirectCorrespondent, {
+					ifError: function(err){
+						respondWithError(err);
+					},
+					ifOk: function(){
+						network.sendJustsaying(ws, 'hub/delete', message_hash);
+					}
+				});
 ```
 
-**File:** joint_storage.js (L255-257)
+**File:** device.js (L702-704)
 ```javascript
-									conn.addQuery(arrQueries, "BEGIN");
-									archiving.generateQueriesToArchiveJoint(conn, objJoint, 'uncovered', arrQueries, function(){
-										conn.addQuery(arrQueries, "COMMIT");
+function sendMessageToDevice(device_address, subject, body, callbacks, conn){
+	if (!device_address)
+		throw Error("empty device address");
 ```

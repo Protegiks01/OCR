@@ -1,218 +1,190 @@
-# Audit Report: Private Fund Freezing via Double-Spend and Archive of Unstable Chain Units
+# VALIDATION REPORT: Foreign Key Constraint Violation During Poll Archiving
+
+After ruthless technical validation, I confirm this is a **VALID Medium Severity vulnerability**.
+
+## Title
+Foreign Key Constraint Violation Causes Node Crash During Poll Unit Archiving
 
 ## Summary
-
-The `buildPrivateElementsChain()` function in `indivisible_asset.js` throws an uncaught exception when inputs are missing from the database. An attacker exploits this by sending private payments containing unstable units, double-spending them before stabilization, causing automatic archiving that deletes database inputs. When victims attempt to spend their funds, chain reconstruction fails permanently, freezing their private assets.
+When archiving a poll unit that has transitioned to `sequence='final-bad'` after votes were cast, the archiving process attempts to delete `poll_choices` records while votes from other units still reference them via foreign key constraint. The database error is thrown as an uncaught exception in an async callback, crashing the node process. [1](#0-0) 
 
 ## Impact
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay / Network Disruption
 
-**Severity**: High  
-**Category**: Permanent Fund Freeze
-
-**Affected Assets**: All private indivisible assets (blackbytes, private tokens with fixed denominations)
-
-**Damage Severity**:
-- **Quantitative**: Complete loss of all private funds received via compromised chain elements. No recovery mechanism exists within normal protocol operations.
-- **Qualitative**: Permanent, irreversible fund loss requiring database restoration from backup or protocol hard fork to recover.
-
-**User Impact**:
-- **Who**: Any user receiving private payments containing unstable units that are subsequently double-spent
-- **Conditions**: Victim accepts payment before stabilization (~5-15 minutes); attacker successfully double-spends within this window
-- **Recovery**: Impossible through normal wallet operations; requires manual database restoration, direct database manipulation, or hard fork
-
-**Systemic Risk**: Repeatable attack targeting multiple victims; erodes trust in private payment feature; no built-in detection or warning mechanism.
+Any user can deliberately crash nodes by creating polls that become `final-bad` after receiving votes. Each affected node experiences downtime requiring manual restart. No funds are lost; database transactions roll back preserving data integrity. Coordinated attacks against multiple nodes could cause network-wide transaction processing delays.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/indivisible_asset.js`, functions `buildPrivateElementsChain()` (lines 603-705) and `validateAndSavePrivatePaymentChain()` (lines 223-281)
+**Location**: `byteball/ocore/archiving.js` lines 29-31, function `generateQueriesToRemoveJoint()` and `byteball/ocore/sqlite_pool.js` line 115
 
-**Intended Logic**: Private payment chains should be validated for completeness and stability before saving. Chain reconstruction should successfully retrieve all historical inputs from previously-validated chains.
+**Intended Logic**: Archiving should safely remove bad units while respecting referential integrity. Foreign key constraints should either prevent deletion or be handled gracefully without crashing the node.
 
-**Actual Logic**: The protocol accepts and saves private payment chains containing unstable units without enforcing stability requirements. [1](#0-0)  When these unstable units are double-spent, they receive bad sequence status, [2](#0-1)  triggering automatic archiving that permanently deletes inputs from the database. [3](#0-2) [4](#0-3)  Subsequently, when victims attempt to spend their funds, chain reconstruction queries return zero rows and the function throws an uncaught exception, [5](#0-4)  preventing transaction composition.
+**Actual Logic**: The archiving deletion sequence removes `poll_choices` (line 29) before checking for referencing `votes`. Line 31 only deletes votes WHERE `unit=?` (votes contained IN the archived unit), not votes in OTHER units that have `poll_unit=?` pointing to the archived poll. [2](#0-1) 
+
+**Code Evidence**:
+
+The database schema enforces referential integrity from votes to poll_choices: [3](#0-2) 
+
+When the FK constraint is violated, the error handler throws synchronously in an async callback: [4](#0-3) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker controls addresses and can create private payment transactions; victim monitors incoming private payments
+1. **Preconditions**: Attacker has funds to create units; network operates normally
 
-2. **Step 1 - Send Unstable Private Payment**: 
-   - Attacker creates private payment unit with indivisible asset (e.g., blackbytes) referencing unstable parents
-   - Private payment chain transmitted to victim via network protocol [6](#0-5) 
+2. **Step 1**: Attacker creates poll unit A with `sequence='good'`
+   - Code path: `composer.js` → `validation.js` → `storage.js` → `writer.js`
 
-3. **Step 2 - Victim Saves Unstable Chain**:
-   - Validation via `validatePrivatePayment()` checks structure but not stability [7](#0-6) 
-   - Chain saved with `is_unique = null` for unstable elements [8](#0-7) 
-   - No stability requirement enforced [9](#0-8) 
+3. **Step 2**: While poll A has `sequence='good'`, votes are cast (units B, C, D) referencing poll A
+   - Vote validation checks poll sequence at submission time and passes: [5](#0-4) 
+   - Votes stored with FK reference to `poll_choices(unit, choice)`
 
-4. **Step 3 - Double-Spend Before Stabilization**:
-   - Attacker broadcasts conflicting transaction spending same outputs
-   - Validation logic marks original unit as `temp-bad` or `final-bad` [2](#0-1) 
+4. **Step 3**: Poll unit A transitions to `sequence='final-bad'` through double-spend or spending from bad output
 
-5. **Step 4 - Automatic Archiving**:
-   - Protocol automatically archives bad-sequence units [4](#0-3) 
-   - Archiving process deletes inputs and outputs from database [10](#0-9) 
+5. **Step 4**: Vote units B, C, D remain `sequence='good'` because bad status only propagates through spending relationships (via `inputs` table), not message references: [6](#0-5) 
 
-6. **Step 5 - Victim Attempts to Spend**:
-   - Transaction composition calls `buildPrivateElementsChain()` to reconstruct payment history [11](#0-10) 
+6. **Step 5**: Automatic archiving runs every 60 seconds and selects unit A for removal: [7](#0-6) 
 
-7. **Step 6 - Chain Reconstruction Fails**:
-   - Database query for inputs returns 0 rows (deleted during archiving)
-   - Function throws uncaught error "building chain: blackbyte input not found" [5](#0-4) 
-   - Exception propagates through async callback, causing transaction composition failure
-   - Funds permanently frozen
+7. **Step 6**: Archiving executes within transaction, attempts `DELETE FROM poll_choices WHERE unit=A` while votes in B, C, D still reference those choices [8](#0-7) 
 
-**Security Property Broken**: Input Validity - The protocol assumes all inputs in previously-validated private payment chains remain accessible in the database, but archiving violates this assumption by permanently deleting inputs of double-spent units.
+8. **Step 7**: SQLite raises foreign key constraint error; callback throws it synchronously; no error handler catches it
 
-**Root Cause Analysis**:
-1. **Missing Stability Check**: `validateAndSavePrivatePaymentChain()` accepts unstable units without stability requirement [12](#0-11) 
-2. **Destructive Archiving**: Bad-sequence units have inputs/outputs permanently deleted [13](#0-12) 
-3. **Unsafe Error Handling**: `buildPrivateElementsChain()` uses `throw` in async callback instead of error callback [5](#0-4) 
+9. **Step 8**: Node crashes with unhandled exception; requires manual restart
+
+**Security Property Broken**: Node availability - error handling fails to gracefully handle database constraint violations during multi-step operations.
+
+**Root Cause Analysis**: 
+- Deletion ordering bug: `poll_choices` deleted before checking for referencing votes
+- Incomplete deletion logic: Line 31 only deletes votes IN the archived unit (`WHERE unit=?`), not votes REFERENCING the archived poll (`WHERE poll_unit=?`)  
+- Unsafe error handling: Synchronous throw in async database callback creates unhandled exception
+- No global uncaught exception handler in ocore
+
+## Impact Explanation
+
+**Affected Assets**: Node availability, network processing capacity
+
+**Damage Severity**:
+- **Quantitative**: Each exploited poll crashes one or more nodes. Attack is repeatable with multiple polls targeting different nodes.
+- **Qualitative**: Temporary service disruption lasting until manual restart. Database transaction rollback prevents corruption.
+
+**User Impact**:
+- **Who**: Users whose transactions route through crashed nodes; overall network capacity reduction
+- **Conditions**: Exploitable whenever any poll unit with votes becomes `final-bad` through normal consensus operation
+- **Recovery**: Nodes must be manually restarted; no data loss or corruption occurs
+
+**Systemic Risk**: Multiple simultaneous attacks could crash numerous nodes, causing network-wide transaction delays until operators restart nodes.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Malicious user with basic protocol understanding
-- **Resources Required**: Ability to send private payments (requires owning indivisible assets); control over transaction timing
-- **Technical Skill**: Moderate - requires understanding DAG structure and stabilization timing windows
+- **Identity**: Any user with minimal funds for transaction fees
+- **Resources Required**: ~1000 bytes for poll creation + votes + double-spend setup
+- **Technical Skill**: Medium - requires understanding DAG consensus and double-spend mechanics to time the attack
 
 **Preconditions**:
-- **Network State**: Normal operation; no special conditions required
-- **Attacker State**: Must own private indivisible assets to initiate payment
-- **Timing**: Must execute double-spend within stabilization window (~5-15 minutes)
+- **Network State**: Normal operation
+- **Attacker State**: Unspent output to create transactions
+- **Timing**: Poll must become final-bad after votes are cast (depends on consensus timing)
 
 **Execution Complexity**:
-- **Transaction Count**: 2 transactions (initial payment + conflicting double-spend)
-- **Coordination**: Single attacker, no coordination required
-- **Detection Risk**: Low - appears as normal payment followed by standard double-spend attempt
+- **Transaction Count**: 3+ transactions (poll, votes, conflicting unit to make poll bad)
+- **Coordination**: Minimal - attacker can vote on their own poll
+- **Detection Risk**: Low - appears as normal poll activity until node crashes
 
 **Frequency**:
-- **Repeatability**: Can target multiple victims simultaneously
-- **Scale**: Limited only by number of victims accepting private payments
+- **Repeatability**: High - can repeat with multiple polls
+- **Scale**: Per-poll impact on nodes processing the archiving
 
-**Overall Assessment**: Medium-High likelihood - technically feasible, moderate skill requirement, reasonable success probability within timing window, low detection risk.
+**Overall Assessment**: Medium likelihood - technically straightforward, low cost, repeatable, but requires timing around consensus.
 
 ## Recommendation
 
-**Immediate Mitigation**:
-Add stability check in `validateAndSavePrivatePaymentChain()`: [9](#0-8) 
+**Immediate Mitigation**: Add deletion logic for votes that REFERENCE the archived poll before deleting poll_choices:
 
-Reject chains containing unstable units:
 ```javascript
-if (!bAllStable)
-    return callbacks.ifError("private payment chain contains unstable units");
+// In archiving.js:generateQueriesToRemoveJoint(), add before line 29:
+conn.addQuery(arrQueries, "DELETE FROM votes WHERE poll_unit=?", [unit]);
 ```
 
-**Permanent Fix**:
-1. Implement callback-based error handling in `buildPrivateElementsChain()`: [5](#0-4) 
+**Permanent Fix**: Implement comprehensive error handling in sqlite_pool.js to prevent uncaught exceptions:
 
-Replace `throw Error()` with error callback propagation.
-
-2. Add archival data fallback mechanism to query archived_joints table when inputs missing from active tables.
+```javascript
+// Wrap the throw in try-catch or use process.on('uncaughtException')
+// OR: Use ON DELETE CASCADE in the FK constraint definition
+```
 
 **Additional Measures**:
-- Add test case verifying unstable private payment chains are rejected
-- Add monitoring for private payment chains containing unstable units
-- Implement warning mechanism for users about pending unstable private payments
-
-**Validation**:
-- Fix prevents acceptance of unstable private payment chains
-- Error handling prevents uncaught exceptions during chain reconstruction
-- Backward compatible with existing stable private payment chains
-- Performance impact minimal (single stability check)
+- Add integration test verifying archiving handles polls with votes from other units
+- Consider using `ON DELETE CASCADE` or `ON DELETE SET NULL` for the FK constraint
+- Add monitoring to detect and alert on node crashes from database errors
 
 ## Proof of Concept
 
 ```javascript
-// Test: test_private_payment_freeze_via_double_spend.js
+// File: test/archiving_poll_crash.test.js
 const composer = require('../composer.js');
-const indivisibleAsset = require('../indivisible_asset.js');
 const validation = require('../validation.js');
-const network = require('../network.js');
+const writer = require('../writer.js');
+const joint_storage = require('../joint_storage.js');
 const db = require('../db.js');
 
-describe('Private Payment Fund Freeze via Double-Spend', function() {
+describe('Poll Archiving Foreign Key Violation', function() {
     this.timeout(60000);
     
-    it('should reject unstable private payment chains', function(done) {
-        // Setup: Create attacker and victim addresses
-        // Step 1: Attacker creates private payment with unstable unit
-        // Step 2: Send to victim, verify victim accepts and saves chain
-        // Step 3: Attacker double-spends same inputs
-        // Step 4: Wait for archiving to complete
-        // Step 5: Victim attempts to spend funds
-        // Expected: Chain reconstruction should fail with uncaught exception
-        // Actual: Funds frozen, exception thrown at indivisible_asset.js:632
-        
-        db.takeConnectionFromPool(function(conn) {
-            // Test implementation proving vulnerability exists
-            // Demonstrates: unstable chain accepted -> double-spend -> 
-            // archiving deletes inputs -> reconstruction fails
-            conn.release();
-            done();
+    it('should not crash when archiving poll with external votes', async function() {
+        // Step 1: Create poll unit A with sequence='good'
+        let pollUnit = await composer.composeJoint({
+            paying_addresses: [testAddress],
+            messages: [{
+                app: 'poll',
+                payload: {
+                    question: 'Test?',
+                    choices: ['Yes', 'No']
+                }
+            }]
         });
+        await writer.saveJoint(pollUnit);
+        
+        // Step 2: Create vote units B, C referencing poll A
+        for (let i = 0; i < 2; i++) {
+            let voteUnit = await composer.composeJoint({
+                paying_addresses: [testAddress2],
+                messages: [{
+                    app: 'vote',
+                    payload: {
+                        unit: pollUnit.unit.unit,
+                        choice: 'Yes'
+                    }
+                }]
+            });
+            await writer.saveJoint(voteUnit);
+        }
+        
+        // Step 3: Make poll A become final-bad (via double-spend simulation)
+        await db.query("UPDATE units SET sequence='final-bad' WHERE unit=?", [pollUnit.unit.unit]);
+        
+        // Step 4: Trigger archiving - should not crash
+        try {
+            await joint_storage.purgeUncoveredNonserialJoints(false, () => {});
+            // If we reach here, bug is fixed
+            assert.ok(true, 'Archiving completed without crash');
+        } catch (err) {
+            // If error is FK constraint violation, bug still exists
+            assert.fail('Node crashed with FK constraint violation: ' + err);
+        }
     });
 });
 ```
 
 ## Notes
 
-This vulnerability represents a critical gap between the protocol's assumption that validated private payment chains remain reconstructable and the reality that archiving destructively removes database records. The lack of stability enforcement at the point of private payment acceptance creates a timing window for exploitation. The use of synchronous `throw` in asynchronous database callbacks prevents proper error handling, compounding the issue by making failures unrecoverable at the application level.
+This vulnerability requires the poll to transition from `good` to `final-bad` AFTER votes have been cast. This is possible through double-spending or spending from outputs that later become bad. The bad status propagation logic explicitly only follows spending relationships through the `inputs` table, not message references like votes. [9](#0-8) 
 
-The attack is particularly insidious because it exploits normal protocol mechanisms (double-spend detection, archiving) to create a permanent denial-of-service condition on victim funds. Unlike temporary network issues or recoverable errors, this vulnerability results in permanent fund loss that cannot be remedied without extraordinary measures (database restoration or hard fork).
+The archiving process runs automatically every 60 seconds on all full nodes, making this consistently exploitable once the conditions are met.
 
 ### Citations
 
-**File:** indivisible_asset.js (L80-83)
-```javascript
-	profiler.start();
-	validation.initPrivatePaymentValidationState(
-		conn, objPrivateElement.unit, objPrivateElement.message_index, payload, callbacks.ifError, 
-		function(bStable, objPartialUnit, objValidationState){
-```
-
-**File:** indivisible_asset.js (L223-242)
-```javascript
-function validateAndSavePrivatePaymentChain(conn, arrPrivateElements, callbacks){
-	parsePrivatePaymentChain(conn, arrPrivateElements, {
-		ifError: callbacks.ifError,
-		ifOk: function(bAllStable){
-			console.log("saving private chain "+JSON.stringify(arrPrivateElements));
-			profiler.start();
-			var arrQueries = [];
-			for (var i=0; i<arrPrivateElements.length; i++){
-				var objPrivateElement = arrPrivateElements[i];
-				var payload = objPrivateElement.payload;
-				var input_address = objPrivateElement.input_address;
-				var input = payload.inputs[0];
-				var is_unique = objPrivateElement.bStable ? 1 : null; // unstable still have chances to become nonserial therefore nonunique
-				if (!input.type) // transfer
-					conn.addQuery(arrQueries, 
-						"INSERT "+db.getIgnore()+" INTO inputs \n\
-						(unit, message_index, input_index, src_unit, src_message_index, src_output_index, asset, denomination, address, type, is_unique) \n\
-						VALUES (?,?,?,?,?,?,?,?,?,'transfer',?)", 
-						[objPrivateElement.unit, objPrivateElement.message_index, 0, input.unit, input.message_index, input.output_index, 
-						payload.asset, payload.denomination, input_address, is_unique]);
-```
-
-**File:** indivisible_asset.js (L631-632)
-```javascript
-				if (in_rows.length === 0)
-					throw Error("building chain: blackbyte input not found");
-```
-
-**File:** indivisible_asset.js (L865-867)
-```javascript
-											buildPrivateElementsChain(
-												conn, unit, message_index, output_index, payload, 
-												function(arrPrivateElements){
-```
-
-**File:** validation.js (L1152-1153)
-```javascript
-			if (objValidationState.sequence !== 'final-bad') // if it were already final-bad because of 1st author, it can't become temp-bad due to 2nd author
-				objValidationState.sequence = bConflictsWithStableUnits ? 'final-bad' : 'temp-bad';
-```
-
-**File:** archiving.js (L15-27)
+**File:** archiving.js (L15-43)
 ```javascript
 function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
 	generateQueriesToUnspendOutputsSpentInArchivedUnit(conn, unit, arrQueries, function(){
@@ -227,38 +199,102 @@ function generateQueriesToRemoveJoint(conn, unit, arrQueries, cb){
 		conn.addQuery(arrQueries, "DELETE FROM address_definition_changes WHERE unit=?", [unit]);
 		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
 		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM spend_proofs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM poll_choices WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM polls WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM votes WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attested_fields WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM attestations WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_metadata WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_denominations WHERE asset=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM asset_attestors WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM assets WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM messages WHERE unit=?", [unit]);
+	//	conn.addQuery(arrQueries, "DELETE FROM balls WHERE unit=?", [unit]); // if it has a ball, it can't be uncovered
+		conn.addQuery(arrQueries, "DELETE FROM units WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM joints WHERE unit=?", [unit]);
+		cb();
+	});
 ```
 
-**File:** joint_storage.js (L221-228)
-```javascript
-function purgeUncoveredNonserialJoints(bByExistenceOfChildren, onDone){
-	var cond = bByExistenceOfChildren ? "(SELECT 1 FROM parenthoods WHERE parent_unit=unit LIMIT 1) IS NULL" : "is_free=1";
-	var order_column = (conf.storage === 'mysql') ? 'creation_date' : 'rowid'; // this column must be indexed!
-	var byIndex = (bByExistenceOfChildren && conf.storage === 'sqlite') ? 'INDEXED BY bySequence' : '';
-	// the purged units can arrive again, no problem
-	db.query( // purge the bad ball if we've already received at least 7 witnesses after receiving the bad ball
-		"SELECT unit FROM units "+byIndex+" \n\
-		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+**File:** initial-db/byteball-sqlite.sql (L222-232)
+```sql
+CREATE TABLE votes (
+	unit CHAR(44) NOT NULL,
+	message_index TINYINT NOT NULL,
+	poll_unit CHAR(44) NOT NULL,
+	choice VARCHAR(64) NOT NULL,
+	PRIMARY KEY (unit, message_index),
+	UNIQUE  (unit, choice),
+	CONSTRAINT votesByChoice FOREIGN KEY (poll_unit, choice) REFERENCES poll_choices(unit, choice),
+	FOREIGN KEY (unit) REFERENCES units(unit)
+);
+CREATE INDEX votesIndexByPollUnitChoice ON votes(poll_unit, choice);
 ```
 
-**File:** network.js (L2150-2167)
+**File:** sqlite_pool.js (L111-116)
 ```javascript
-	joint_storage.checkIfNewUnit(unit, {
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-				ifOk: function(){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifAccepted(unit);
-					eventBus.emit("new_my_transactions", [unit]);
-				},
-				ifError: function(error){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifValidationError(unit, error);
-				},
-				ifWaitingForChain: function(){
-					savePrivatePayment();
-				}
+				new_args.push(function(err, result){
+					//console.log("query done: "+sql);
+					if (err){
+						console.error("\nfailed query:", new_args);
+						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+					}
+```
+
+**File:** validation.js (L1638-1639)
+```javascript
+					if (objPollUnitProps.sequence !== 'good')
+						return callback("poll unit is not serial");
+```
+
+**File:** main_chain.js (L1301-1332)
+```javascript
+	// all future units that spent these unconfirmed units become final-bad too
+	function propagateFinalBad(arrFinalBadUnits, onPropagated){
+		if (arrFinalBadUnits.length === 0)
+			return onPropagated();
+		conn.query("SELECT DISTINCT inputs.unit, main_chain_index FROM inputs LEFT JOIN units USING(unit) WHERE src_unit IN(?)", [arrFinalBadUnits], function(rows){
+			console.log("will propagate final-bad to", rows);
+			if (rows.length === 0)
+				return onPropagated();
+			var arrSpendingUnits = rows.map(function(row){ return row.unit; });
+			conn.query("UPDATE units SET sequence='final-bad' WHERE unit IN(?)", [arrSpendingUnits], function(){
+				var arrNewBadUnitsOnSameMci = [];
+				rows.forEach(function (row) {
+					var unit = row.unit;
+					if (row.main_chain_index === mci) { // on the same MCI that we've just stabilized
+						if (storage.assocStableUnits[unit].sequence !== 'final-bad') {
+							storage.assocStableUnits[unit].sequence = 'final-bad';
+							arrNewBadUnitsOnSameMci.push(unit);
+						}
+					}
+					else // on a future MCI
+						storage.assocUnstableUnits[unit].sequence = 'final-bad';
+				});
+				console.log("new final-bads on the same mci", arrNewBadUnitsOnSameMci);
+				async.eachSeries(
+					arrNewBadUnitsOnSameMci,
+					setContentHash,
+					function () {
+						propagateFinalBad(arrSpendingUnits, onPropagated);
+					}
+				);
 			});
-		},
+		});
+```
+
+**File:** network.js (L4068-4068)
+```javascript
+	setInterval(joint_storage.purgeUncoveredNonserialJointsUnderLock, 60*1000);
+```
+
+**File:** joint_storage.js (L254-259)
+```javascript
+									var arrQueries = [];
+									conn.addQuery(arrQueries, "BEGIN");
+									archiving.generateQueriesToArchiveJoint(conn, objJoint, 'uncovered', arrQueries, function(){
+										conn.addQuery(arrQueries, "COMMIT");
+										// sql goes first, deletion from kv is the last step
+										async.series(arrQueries, function(){
 ```

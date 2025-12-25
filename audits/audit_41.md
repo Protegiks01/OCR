@@ -1,69 +1,256 @@
-# NoVulnerability found for this question.
+# Race Condition in Indivisible Asset Serial Number Assignment Causes Node Crashes
 
-After thorough analysis of the codebase, I must conclude that while the reported code behavior is technically accurate, it **does not meet the Immunefi severity threshold** for a valid vulnerability claim.
+## Summary
 
-## Analysis Summary
+A race condition in `indivisible_asset.js` function `issueNextCoin()` allows concurrent issuance from separate nodes to assign duplicate serial numbers to indivisible assets. The non-atomic read-modify-write pattern, combined with validation logic that accepts conflicting units with `is_unique=NULL`, enables both units to be stored. When both units stabilize, the attempt to set `is_unique=1` violates the database UNIQUE constraint, causing all affected nodes to crash with an unhandled exception.
 
-**Code Behavior Confirmed:**
-- ✅ Line 402 registers event listener without timeout [1](#0-0) 
-- ✅ Lines 404-407 return without cleanup when unit not found [2](#0-1) 
-- ✅ EventEmitter allows unlimited listeners (setMaxListeners is warning-only) [3](#0-2) 
-- ✅ Other code (private_profile.js) shows correct cleanup pattern [4](#0-3) 
+## Impact
 
-**Critical Disqualifying Factors:**
+**Severity**: High  
+**Category**: Network Disruption / Permanent Ledger Inconsistency
 
-1. **Severity Threshold Not Met**: Per Immunefi Obyte scope, **Critical** requires "Network shutdown - Network unable to confirm new transactions for more than 24 hours". This attack affects **individual nodes**, not the network's ability to confirm transactions.
+All nodes that receive both conflicting units will crash during stabilization with no error handling. The duplicate serial numbers permanently violate the uniqueness invariant for indivisible assets. Affected nodes enter a crash loop on restart when attempting to process the duplicate stabilization. Manual database intervention or a protocol hard fork is required to resolve the inconsistency.
 
-2. **Precondition Barrier**: Attack requires either:
-   - Device pairing (social engineering for private users)
-   - OR victim publishes device address (only merchants/bots)
-   - Comment acknowledges addresses "can be public" but doesn't recommend it [5](#0-4) 
+## Finding Description
 
-3. **Impact Scope**: Even if all hub nodes were targeted, this would be **infrastructure availability** issue, not a protocol-level vulnerability. The DAG consensus, transaction validation, and fund security remain intact.
+**Location**: Multiple files - `byteball/ocore/indivisible_asset.js:500-572`, `byteball/ocore/main_chain.js:1260-1264`, `byteball/ocore/validation.js:2042-2063`
 
-4. **Not a Security Invariant Violation**: This is a **resource management issue** in device messaging (off-chain), not a violation of any of the 24 DAG/consensus invariants. It doesn't affect:
-   - Balance conservation
-   - Double-spend prevention  
-   - MC monotonicity
-   - Witness compatibility
-   - Consensus determinism
+### Intended Logic
+
+Each indivisible asset issuance should receive a unique serial number by atomically reading and incrementing `max_issued_serial_number` in the `asset_denominations` table. Serial numbers must never be reused to maintain the uniqueness guarantee.
+
+### Actual Logic
+
+**Non-Atomic Serial Number Assignment:**
+The `issueNextCoin()` function performs a non-atomic three-step process:
+1. Read `max_issued_serial_number` from database [1](#0-0) 
+2. Calculate new `serial_number` in JavaScript memory [2](#0-1) 
+3. Update counter in database [3](#0-2) 
+
+**Node-Local Counter State:**
+The `max_issued_serial_number` counter is only updated during local issuance and is never synchronized from incoming network units, meaning each node maintains an independent counter.
+
+**Cross-Node Mutex Limitation:**
+The mutex lock only serializes operations on the same node [4](#0-3) . Different nodes have separate mutex instances, allowing concurrent execution.
+
+### Exploitation Path
+
+**Preconditions:**
+- Indivisible asset with `issued_by_definer_only=true` exists
+- Definer controls wallet on two separate nodes (Node A and Node B)
+- Current `max_issued_serial_number` = 5
+
+**Step 1-2: Concurrent Issuance with Duplicate Serial Numbers**
+
+Both nodes independently execute the issuance flow, reading the same counter value and assigning `serial_number = 6` [5](#0-4) 
+
+**Step 3: Validation Accepts Conflicting Units**
+
+When a third node receives both units, the validation detects them as conflicting based on matching serial numbers [6](#0-5) . The `checkForDoublespends()` function intentionally accepts conflicts on different DAG branches by setting `is_unique=NULL` for both inputs [7](#0-6) 
+
+**Step 4: Database UNIQUE Constraint Allows NULL Values**
+
+The database schema defines: `UNIQUE (asset, denomination, serial_number, address, is_unique)` [8](#0-7) 
+
+Since SQL treats `NULL != NULL` in UNIQUE constraints, both rows with `is_unique=NULL` can coexist despite having identical (asset, denomination, serial_number, address) values.
+
+**Step 5: Node Crash During Stabilization**
+
+When both units stabilize, the main chain stabilization process executes:
+```
+UPDATE inputs SET is_unique=1 WHERE unit=?
+``` [9](#0-8) 
+
+The first unit's UPDATE succeeds. The second unit's UPDATE violates the UNIQUE constraint because now two rows would have `is_unique=1` with identical (asset, denomination, serial_number, address). **Critically, the callback has no error parameter**, causing the database exception to propagate unhandled, crashing the node.
+
+### Security Property Broken
+
+- **Invariant: Indivisible Serial Uniqueness** - Each serial number must be issued exactly once
+- **Invariant: Transaction Atomicity** - Serial number read-modify-write sequence must be atomic
+
+### Root Cause Analysis
+
+1. **Local Counter State**: `max_issued_serial_number` is per-node, not network-synchronized
+2. **Non-Atomic Operations**: Read-calculate-write operations are separated, creating race window  
+3. **Cross-Node Mutex Limitation**: Mutex only protects single-node operations
+4. **Validation Design**: Intentionally accepts conflicts with `is_unique=NULL` for unstable units
+5. **Missing Error Handling**: Stabilization UPDATE lacks error parameter in callback
+
+## Likelihood Explanation
+
+**Attacker Profile:**
+- Asset definer who controls the definer address
+- Resources: Two nodes running simultaneously with same wallet
+- Technical skill: Moderate - requires triggering concurrent compositions
+
+**Preconditions:**
+- Normal network operation
+- Definer operates multiple nodes (common for redundancy)
+- Concurrent issuance attempts within overlapping time window
+
+**Execution Complexity:**
+- Two concurrent issuance transactions
+- No special network position required
+- Appears as normal activity until stabilization fails
+
+**Overall Assessment**: Medium likelihood - requires infrastructure setup but straightforward execution. Impact severity (node crashes + permanent inconsistency) justifies High severity classification.
+
+## Recommendation
+
+**Immediate Mitigation:**
+
+Modify the stabilization UPDATE to include error handling:
+```javascript
+// File: byteball/ocore/main_chain.js
+// Line: 1261
+conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [row.unit], function(err){
+    if (err) {
+        console.error("Failed to set is_unique=1 for unit "+row.unit+": "+err);
+        // Mark unit as final-bad instead of crashing
+        return conn.query("UPDATE units SET sequence='final-bad' WHERE unit=?", [row.unit], cb);
+    }
+    storage.assocStableUnits[row.unit].sequence = 'good';
+    cb();
+});
+```
+
+**Permanent Fix:**
+
+Implement network-wide serial number coordination or add validation to reject units with duplicate serial numbers before storage:
+
+```javascript
+// File: byteball/ocore/validation.js
+// In checkInputDoubleSpend function, reject duplicate issue inputs immediately:
+if (rows.length > 0 && type === 'issue') {
+    return cb("Duplicate serial number detected for indivisible asset issuance");
+}
+```
+
+**Additional Measures:**
+- Add database migration to detect and mark existing duplicates as final-bad
+- Add monitoring for duplicate serial number detection
+- Add test case for concurrent issuance scenario
 
 ## Notes
 
-This is a legitimate **code quality issue** that should be fixed (add cleanup like private_profile.js does), but it's a **DoS vulnerability against individual nodes**, not a Critical network security flaw. The correct classification would be **Low/Informational** severity for a resource leak, which is below Immunefi's Medium threshold (≥1 hour transaction delay for the network).
+This vulnerability affects indivisible assets where the definer can control multiple nodes. While the precondition requires the definer to operate multiple nodes simultaneously, this is a realistic scenario for high-availability setups. The crash occurs during normal stabilization operations, making recovery difficult without manual database intervention or a coordinated network upgrade.
 
-The framework requires "ruthless skepticism" and that findings must "withstand scrutiny from Obyte core developers and Immunefi judges." A memory leak affecting individual nodes that requires pairing or public address exposure does not meet the Critical severity bar.
+The vulnerability arises from the combination of: (1) per-node counter state, (2) validation design that accepts conflicts on different DAG branches, and (3) missing error handling in the stabilization process. Any one of these could be addressed to prevent the node crash, though fixing the root atomicity issue would be the most comprehensive solution.
 
 ### Citations
 
-**File:** wallet.js (L388-390)
+**File:** indivisible_asset.js (L500-572)
 ```javascript
-				// note that since the payments are public, an evil user might notify us about a payment sent by someone else 
-				// (we'll be fooled to believe it was sent by the evil user).  It is only possible if he learns our address, e.g. if we make it public.
-				// Normally, we generate a one-time address and share it in chat session with the future payer only.
+		function issueNextCoin(remaining_amount){
+			console.log("issuing a new coin");
+			if (remaining_amount <= 0)
+				throw Error("remaining amount is "+remaining_amount);
+			var issuer_address = objAsset.issued_by_definer_only ? objAsset.definer_address : arrAddresses[0];
+			var can_issue_condition = objAsset.cap ? "max_issued_serial_number=0" : "1";
+			conn.query(
+				"SELECT denomination, count_coins, max_issued_serial_number FROM asset_denominations \n\
+				WHERE asset=? AND "+can_issue_condition+" AND denomination<=? \n\
+				ORDER BY denomination DESC LIMIT 1", 
+				[asset, remaining_amount+tolerance_plus], 
+				function(rows){
+					if (rows.length === 0)
+						return onDone(NOT_ENOUGH_FUNDS_ERROR_MESSAGE);
+					var row = rows[0];
+					if (!!row.count_coins !== !!objAsset.cap)
+						throw Error("invalid asset cap and count_coins");
+					var denomination = row.denomination;
+					var serial_number = row.max_issued_serial_number+1;
+					var count_coins_to_issue = row.count_coins || Math.floor((remaining_amount+tolerance_plus)/denomination);
+					var issue_amount = count_coins_to_issue * denomination;
+					conn.query(
+						"UPDATE asset_denominations SET max_issued_serial_number=max_issued_serial_number+1 WHERE denomination=? AND asset=?", 
+						[denomination, asset], 
+						function(){
+							var input = {
+								type: 'issue',
+								serial_number: serial_number,
+								amount: issue_amount
+							};
+							if (bMultiAuthored)
+								input.address = issuer_address;
+							var amount_to_use;
+							var change_amount;
+							if (issue_amount > remaining_amount + tolerance_plus){
+								amount_to_use = Math.floor((remaining_amount + tolerance_plus)/denomination) * denomination;
+								change_amount = issue_amount - amount_to_use;
+							}
+							else
+								amount_to_use = issue_amount;
+							var payload = {
+								asset: asset,
+								denomination: denomination,
+								inputs: [input],
+								outputs: createOutputs(amount_to_use, change_amount)
+							};
+							var objPayloadWithProof = {payload: payload, input_address: issuer_address};
+							if (objAsset.is_private){
+								var spend_proof = objectHash.getBase64Hash({
+									asset: asset,
+									address: issuer_address,
+									serial_number: serial_number, // need to avoid duplicate spend proofs when issuing uncapped coins
+									denomination: denomination,
+									amount: input.amount
+								});
+								var objSpendProof = {
+									spend_proof: spend_proof
+								};
+								if (bMultiAuthored)
+									objSpendProof.address = issuer_address;
+								objPayloadWithProof.spend_proof = objSpendProof;
+							}
+							arrPayloadsWithProofs.push(objPayloadWithProof);
+							accumulated_amount += amount_to_use;
+							console.log("payloads with proofs: "+JSON.stringify(arrPayloadsWithProofs));
+							if (accumulated_amount >= amount - tolerance_minus && accumulated_amount <= amount + tolerance_plus)
+								return onDone(null, arrPayloadsWithProofs);
+							pickNextCoin(amount - accumulated_amount);
+						}
+					);
+				}
+			);
+		}
 ```
 
-**File:** wallet.js (L402-402)
+**File:** composer.js (L289-289)
 ```javascript
-				eventBus.once('saved_unit-'+unit, emitPn);
+			mutex.lock(arrFromAddresses.map(function(from_address){ return 'c-'+from_address; }), function(unlock){
 ```
 
-**File:** wallet.js (L404-407)
+**File:** validation.js (L2042-2050)
 ```javascript
-					ifNotFound: function(){
-						console.log("received payment notification for unit "+unit+" which is not known yet, will wait for it");
-						callbacks.ifOk();
-					},
+					function acceptDoublespends(cb3){
+						console.log("--- accepting doublespend on unit "+objUnit.unit);
+						var sql = "UPDATE inputs SET is_unique=NULL WHERE "+doubleSpendWhere+
+							" AND (SELECT is_stable FROM units WHERE units.unit=inputs.unit)=0";
+						if (!(objAsset && objAsset.is_private)){
+							objValidationState.arrAdditionalQueries.push({sql: sql, params: doubleSpendVars});
+							objValidationState.arrDoubleSpendInputs.push({message_index: message_index, input_index: input_index});
+							return cb3();
+						}
 ```
 
-**File:** event_bus.js (L8-8)
+**File:** validation.js (L2134-2136)
 ```javascript
-eventEmitter.setMaxListeners(40);
+					if (objAsset){
+						doubleSpendWhere += " AND serial_number=?";
+						doubleSpendVars.push(input.serial_number);
 ```
 
-**File:** private_profile.js (L80-82)
+**File:** initial-db/byteball-sqlite.sql (L307-307)
+```sql
+	UNIQUE  (asset, denomination, serial_number, address, is_unique), -- UNIQUE guarantees there'll be no double issue
+```
+
+**File:** main_chain.js (L1260-1264)
 ```javascript
-					if (err) {
-						eventBus.removeListener('saved_unit-'+objPrivateProfile.unit, handleJoint);
-						return onDone(err);
+								if (sequence === 'good')
+									conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [row.unit], function(){
+										storage.assocStableUnits[row.unit].sequence = 'good';
+										cb();
+									});
 ```
