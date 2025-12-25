@@ -1,314 +1,242 @@
-## Audit Report: Uncaught Exception in Divisible Asset Private Payment Duplicate Check
+# Audit Report: Unbounded TPS Fee Parameters Enable Permanent Network Halt via Governance Attack
 
-### Title
-Uncaught Exception in Async Callback Causes Node Crash During Divisible Asset Private Payment Reprocessing
+## Summary
 
-### Summary
-The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, causing it to return all outputs. The code incorrectly interprets multiple rows as database corruption and throws synchronously inside an async callback, resulting in immediate Node.js process termination.
+System variable validation for TPS fee parameters lacks economic bounds enforcement, accepting any positive finite number. The protocol's governance mechanism allows stakeholders controlling 10% of supply to vote extreme values that render the exponential fee formula catastrophically high, permanently halting all transaction processing with no emergency recovery mechanism.
 
-### Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay / Node Availability
+## Impact
 
-Individual nodes can be crashed by any network participant resending legitimate divisible asset private payments. Each crash requires manual restart. While private payment processing on affected nodes is disrupted, the main DAG continues operating normally for public transactions. Persistent attacks targeting multiple nodes could delay private payment processing for ≥1 hour, meeting Medium severity criteria per Immunefi scope.
+**Severity**: Critical  
+**Category**: Network Shutdown
 
-### Finding Description
+Complete network shutdown affecting all 1e15 bytes in circulation. Once extreme fee parameters take effect, all transaction submissions fail validation because calculated `min_tps_fee` exceeds maximum possible user balance. Recovery requires hard fork since governance system cannot function without transaction processing capability.
 
-**Location**: `byteball/ocore/private_payment.js:70-71`, function `validateAndSavePrivatePaymentChain()`
+## Finding Description
 
-**Intended Logic**: The duplicate check should detect already-processed private payments and return early via the `ifOk()` callback to prevent reprocessing.
+**Location**: `byteball/ocore/validation.js:1692-1698`, function `validateMessage()`
 
-**Actual Logic**: For divisible assets, the duplicate check query omits `output_index` from the WHERE clause. When multiple outputs exist (standard for divisible assets with payment + change), the query returns multiple rows. The code throws an exception before the proper duplicate-handling logic at line 72 can execute.
+**Intended Logic**: System variable validation should enforce economic bounds preventing catastrophic network failure, consistent with how `threshold_size` has minimum bounds of 1000 bytes to ensure operational viability.
 
-**Code Evidence**:
+**Actual Logic**: Validation only checks positive finite number constraint without considering economic implications of the exponential fee formula. [1](#0-0) 
 
-The duplicate check query construction for divisible assets omits `output_index`: [1](#0-0) 
-
-The throw occurs in an async callback before duplicate handling: [2](#0-1) 
-
-Divisible assets save multiple outputs with different `output_index` values: [3](#0-2) 
+Compare with `threshold_size` which demonstrates awareness of bounds validation: [2](#0-1) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker creates legitimate divisible asset private payment with 2+ outputs (e.g., payment + change)
+1. **Preconditions**: Attacker controls addresses holding ≥10% of total supply (1e14 bytes). Threshold defined: [3](#0-2) [4](#0-3) 
 
-2. **Step 1 - Initial Processing**: 
-   - Attacker sends private payment to victim node
-   - `network.js:handleOnlinePrivatePayment()` processes it
-   - Unit is new, duplicate check returns 0 rows
-   - All outputs saved to database via `divisibleAsset.validateAndSaveDivisiblePrivatePayment()`
+2. **Step 1**: Attacker submits `system_vote` messages voting `base_tps_fee = 1e50`. Validation accepts since 1e50 satisfies positive finite number check (lines 1695-1696).
 
-3. **Step 2 - Resend Attack**:
-   - Attacker resends identical private payment
-   - Entry point: [4](#0-3) 
-   - `joint_storage.checkIfNewUnit()` detects unit exists: [5](#0-4) 
-   - Returns `ifKnown` callback at `network.js:2151`
-   - Calls `validateAndSavePrivatePaymentChain()` at line 2153
+3. **Step 2**: After sufficient balance accumulation, `system_vote_count` message triggers vote counting: [5](#0-4) 
 
-4. **Step 3 - Crash**:
-   - Duplicate check query: `SELECT address FROM outputs WHERE unit=? AND message_index=?` (no `output_index`)
-   - Returns multiple rows (all outputs from Step 1)
-   - Line 70: `if (rows.length > 1)` evaluates to true
-   - Line 71: `throw Error(...)` executes inside async database callback
-   - Database query callbacks have no try-catch wrapper: [6](#0-5) 
-   - Exception becomes uncaught, Node.js process terminates
+4. **Step 3**: Vote counting calculates balance-weighted median and stores directly without bounds validation: [6](#0-5) 
 
-5. **Step 4 - Impact**:
-   - Victim node crashes and stops processing all transactions
-   - Requires manual restart
-   - Attacker can repeat immediately after restart
+5. **Step 4**: TPS fee calculation retrieves extreme value and applies exponential formula: [7](#0-6) 
 
-**Security Property Broken**: Process availability and proper error handling via callbacks
+   With `base_tps_fee = 1e50`, `tps_interval = 1`, `tps_fee_multiplier = 10`, and minimal `tps ≈ 1`:
+   - Formula: `Math.round(10 * 1e50 * (Math.exp(1) - 1))` ≈ 1.72e51 bytes
+   - This exceeds total supply (1e15) by factor of 1.72e36
 
-**Root Cause Analysis**:
-- Divisible assets inherently create multiple outputs per message (payment + change)
-- Duplicate check incorrectly omits `output_index` for divisible assets, unlike indivisible assets which include it (lines 60-64)
-- Code assumes `rows.length > 1` indicates database corruption rather than normal divisible asset behavior
-- Using synchronous `throw` in async callback bypasses the error callback mechanism and crashes the process
-- Line 70 check executes BEFORE line 72's proper duplicate handling, preventing graceful error recovery
+6. **Step 5**: All subsequent transactions fail validation: [8](#0-7) 
 
-### Impact Explanation
+   With `min_tps_fee ≈ 1.72e51`, no user can satisfy balance requirement since maximum possible balance is 1e15 bytes.
 
-**Affected Assets**: All divisible asset private payments (bytes and custom divisible assets)
+7. **Step 6**: Emergency recovery impossible. Emergency vote counting only supports `op_list`: [9](#0-8) 
+
+   Fee parameters (lines 1787-1811) have no emergency override mechanism. Normal governance cannot rectify the situation since all transaction processing is blocked.
+
+**Security Property Broken**: Network liveness invariant - the protocol must maintain ability for legitimate users to submit valid transactions under all governance-approved parameter configurations.
+
+**Root Cause Analysis**: 
+
+The codebase demonstrates explicit awareness of bounds validation through `threshold_size` minimum enforcement, yet fails to apply equivalent economic bounds to TPS fee parameters despite the exponential formula making extreme values network-destroying. No maximum bounds, overflow protections, or emergency recovery mechanisms exist for these parameters, creating an irreversible denial-of-service vector through legitimate governance channels.
+
+## Impact Explanation
+
+**Affected Assets**: All bytes (native currency), custom assets, autonomous agent operations, entire network functionality
 
 **Damage Severity**:
-- **Quantitative**: Single malicious resend crashes one node in ~1 second. No automatic recovery. Attacker can target multiple nodes sequentially or in parallel.
-- **Qualitative**: Denial of service against individual node's private payment processing. Node operators must manually monitor and restart.
+- **Quantitative**: 100% of network transactions permanently blocked. All 1e15 bytes effectively frozen. Recovery requires coordinated hard fork across all nodes.
+- **Qualitative**: Complete loss of network utility. All economic activity ceases. Smart contracts cannot execute. Users cannot access funds until hard fork deployment.
 
 **User Impact**:
-- **Who**: Users running nodes that have processed divisible asset private payments
-- **Conditions**: Exploitable immediately after any divisible asset private payment with 2+ outputs is processed
-- **Recovery**: Manual node restart required per incident
+- **Who**: All network participants - users, witnesses, exchanges, DApp operators, autonomous agents
+- **Conditions**: Immediately upon malicious vote taking effect at next MCI stabilization
+- **Recovery**: Requires hard fork with manual intervention since governance system cannot function without transaction processing
 
-**Systemic Risk**: Limited to private payment functionality. Main DAG consensus and public transaction processing continue normally. If attackers persistently target multiple nodes, aggregate private payment processing could be delayed for ≥1 hour.
+**Systemic Risk**:
+- Attack executes atomically - entire network halts simultaneously
+- No gradual degradation or early warning signals
+- Cannot be reversed through any protocol mechanism
+- Enables ransom attacks or competitor sabotage
 
-### Likelihood Explanation
+## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network participant with P2P connectivity
-- **Resources Required**: One divisible asset private payment transaction (a few dollars in fees), ability to resend P2P messages
-- **Technical Skill**: Low - requires basic understanding of private payment protocol and message resending
+- **Identity**: Large stakeholder, compromised exchange, coordinated group, or nation-state actor
+- **Resources Required**: Control of 1e14 bytes (10% of supply)
+- **Technical Skill**: Medium - requires understanding governance system and ability to submit system_vote messages
 
 **Preconditions**:
-- **Network State**: Target node must have previously processed any divisible asset private payment with 2+ outputs
-- **Attacker State**: Needs one legitimate private payment (easily created)
-- **Timing**: No special timing required
+- **Network State**: Normal operation with v4 upgrade active: [10](#0-9) 
+- **Attacker State**: Must control or coordinate 10% supply holders to vote extreme values
+- **Timing**: Vote counting triggers when sufficient balance votes accumulate
 
 **Execution Complexity**:
-- **Transaction Count**: One legitimate transaction, then resend the private payload
-- **Coordination**: Single attacker, no coordination needed
-- **Detection Risk**: Low - resends appear as legitimate network retries
+- **Transaction Count**: Single `system_vote` message (or coordinated set totaling 10%+ supply), plus one `system_vote_count` message
+- **Coordination**: Requires either single large holder or multi-party coordination
+- **Detection Risk**: Votes visible on-chain but appear legitimate until effects manifest
 
-**Frequency**:
-- **Repeatability**: Unlimited - attacker can crash same node after each restart
-- **Scale**: Per-node - each node must be targeted individually
+**Overall Assessment**: Medium-High likelihood. While 10% threshold creates barrier, exchanges routinely hold such amounts. Economic incentives exist for short sellers, ransom attackers, or competing projects. Catastrophic impact and lack of emergency reversal mechanism elevate risk.
 
-**Overall Assessment**: High likelihood - trivially exploitable with minimal resources
-
-### Recommendation
+## Recommendation
 
 **Immediate Mitigation**:
-Add `output_index` to the duplicate check WHERE clause for divisible assets to match indivisible asset behavior, or change the throw to use the error callback mechanism:
+Add economic bounds validation for TPS fee parameters consistent with `threshold_size` precedent:
 
 ```javascript
-// Option 1: Include output_index for divisible assets (requires changes to private payment protocol)
-// Option 2: Use callback instead of throw (immediate fix)
-if (rows.length > 1)
-    return transaction_callbacks.ifError("more than one output "+sql+' '+params.join(', '));
+// File: byteball/ocore/validation.js
+// Lines 1692-1698
+
+case "base_tps_fee":
+case "tps_interval":
+case "tps_fee_multiplier":
+    if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
+        return callback(payload.subject + " must be a positive number");
+    // Add maximum bounds to prevent network halt
+    const MAX_BASE_TPS_FEE = 1e9; // Example: 1GB max base fee
+    const MAX_TPS_INTERVAL = 1000; // Example: max interval
+    const MAX_TPS_FEE_MULTIPLIER = 1000; // Example: max multiplier
+    if (payload.subject === "base_tps_fee" && payload.value > MAX_BASE_TPS_FEE)
+        return callback("base_tps_fee exceeds maximum " + MAX_BASE_TPS_FEE);
+    if (payload.subject === "tps_interval" && payload.value > MAX_TPS_INTERVAL)
+        return callback("tps_interval exceeds maximum " + MAX_TPS_INTERVAL);
+    if (payload.subject === "tps_fee_multiplier" && payload.value > MAX_TPS_FEE_MULTIPLIER)
+        return callback("tps_fee_multiplier exceeds maximum " + MAX_TPS_FEE_MULTIPLIER);
+    callback();
+    break;
 ```
 
 **Permanent Fix**:
-Replace synchronous throw with proper async error callback at `private_payment.js:70-71`:
-
-```javascript
-if (rows.length > 1)
-    return transaction_callbacks.ifError("more than one output for duplicate check");
-```
+1. Add emergency recovery mechanism for TPS fee parameters in `main_chain.js:countVotes()` similar to existing `op_list` emergency support
+2. Implement sanity checks in `storage.js:getLocalTpsFee()` that cap calculated fees at reasonable maximums
+3. Add monitoring alerts when TPS fee parameters approach dangerous thresholds
 
 **Additional Measures**:
-- Add test case verifying resent divisible asset private payments don't crash the node
-- Review all other async callbacks in codebase for similar synchronous throw usage
-- Add process-level uncaught exception handler for graceful degradation (logs error but doesn't exit)
+- Add test case verifying extreme parameter values are rejected
+- Add database trigger preventing insertion of out-of-bounds system variable values
+- Document rationale for chosen bounds in protocol specification
 
-**Validation**:
-- ✓ Fix prevents node crash on duplicate divisible asset private payment
-- ✓ Maintains proper duplicate detection via line 72 logic
-- ✓ Backward compatible with existing units
-- ✓ No performance impact
+## Notes
 
-### Proof of Concept
-
-```javascript
-// Test: test/private_payment_crash.test.js
-const assert = require('assert');
-const db = require('../db.js');
-const privatePayment = require('../private_payment.js');
-const divisibleAsset = require('../divisible_asset.js');
-
-describe('Divisible Asset Private Payment Duplicate Check', function() {
-    it('should not crash on resent private payment with multiple outputs', function(done) {
-        // Setup: Create a divisible asset private payment with 2 outputs
-        const arrPrivateElements = [{
-            unit: 'test_unit_hash_123',
-            message_index: 0,
-            payload: {
-                asset: 'divisible_asset_hash',
-                inputs: [/* valid inputs */],
-                outputs: [
-                    {address: 'ADDRESS1', amount: 1000, blinding: 'blind1'},
-                    {address: 'ADDRESS2', amount: 500, blinding: 'blind2'}  // Change output
-                ]
-            }
-        }];
-        
-        // Step 1: First processing - saves both outputs to database
-        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-            ifOk: function() {
-                // Step 2: Verify both outputs exist in database
-                db.query("SELECT * FROM outputs WHERE unit=? AND message_index=?", 
-                    ['test_unit_hash_123', 0], 
-                    function(rows) {
-                        assert.equal(rows.length, 2, 'Should have 2 outputs saved');
-                        
-                        // Step 3: Resend same private payment - this should NOT crash
-                        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-                            ifOk: function() {
-                                done(); // Should complete without crash
-                            },
-                            ifError: function(error) {
-                                // Current bug: This callback never executes because throw crashes process
-                                // After fix: Should reach here or ifOk with no crash
-                                assert.fail('Should not throw: ' + error);
-                            }
-                        });
-                    });
-            },
-            ifError: function(error) {
-                assert.fail('Initial processing failed: ' + error);
-            }
-        });
-        
-        // Without fix: Node process terminates with uncaught exception before done() is called
-        // With fix: Test completes successfully
-    });
-});
-```
-
-### Notes
-
-This vulnerability is confirmed through direct code inspection. The bug violates basic Node.js error handling best practices by using synchronous `throw` inside an async callback. While the impact is limited to individual node availability rather than network-wide consensus or fund loss, it qualifies as Medium severity under Immunefi's "Temporary Transaction Delay ≥1 Hour" category when considering persistent attacks against multiple nodes.
-
-The fix is straightforward: replace the throw statement with a callback return. The proper duplicate handling logic at line 72 already exists and will correctly handle the case after this fix is applied.
+The critical distinction is between trusting governance participants versus ensuring governance cannot vote parameters that fundamentally break network operation. The protocol already demonstrates this principle through `threshold_size` bounds validation. The inconsistency in applying bounds to TPS fee parameters, combined with their exponential formula and lack of emergency recovery, represents a design oversight rather than intentional governance flexibility. The 10% voting threshold is a governance mechanism, not a security boundary - the protocol should prevent any governance outcome that renders the network inoperable.
 
 ### Citations
 
-**File:** private_payment.js (L58-65)
+**File:** validation.js (L916-917)
 ```javascript
-					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
-					var params = [headElement.unit, headElement.message_index];
-					if (objAsset.fixed_denominations){
-						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
-							return transaction_callbacks.ifError("no output index in head private element");
-						sql += " AND output_index=?";
-						params.push(headElement.output_index);
+		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
+			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
+```
+
+**File:** validation.js (L1646-1647)
+```javascript
+			if (objValidationState.last_ball_mci < constants.v4UpgradeMci && !constants.bDevnet)
+				return callback("cannot vote for system params yet");
+```
+
+**File:** validation.js (L1683-1690)
+```javascript
+				case "threshold_size":
+					if (!isPositiveInteger(payload.value))
+						return callback(payload.subject + " must be a positive integer");
+					if (!constants.bTestnet || objValidationState.last_ball_mci > 3543000) {
+						if (payload.value < 1000)
+							return callback(payload.subject + " must be at least 1000");
 					}
+					callback();
 ```
 
-**File:** private_payment.js (L66-79)
+**File:** validation.js (L1692-1698)
 ```javascript
-					conn.query(
-						sql, 
-						params, 
-						function(rows){
-							if (rows.length > 1)
-								throw Error("more than one output "+sql+' '+params.join(', '));
-							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
-								console.log("duplicate private payment "+params.join(', '));
-								return transaction_callbacks.ifOk();
-							}
-							var assetModule = objAsset.fixed_denominations ? indivisibleAsset : divisibleAsset;
-							assetModule.validateAndSavePrivatePaymentChain(conn, arrPrivateElements, transaction_callbacks);
-						}
-					);
+				case "base_tps_fee":
+				case "tps_interval":
+				case "tps_fee_multiplier":
+					if (!(typeof payload.value === 'number' && isFinite(payload.value) && payload.value > 0))
+						return callback(payload.subject + " must be a positive number");
+					callback();
+					break;
 ```
 
-**File:** divisible_asset.js (L32-38)
+**File:** constants.js (L15-15)
 ```javascript
-			for (var j=0; j<payload.outputs.length; j++){
-				var output = payload.outputs[j];
-				conn.addQuery(arrQueries, 
-					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
-					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
-				);
-			}
+exports.TOTAL_WHITEBYTES = process.env.TOTAL_WHITEBYTES || 1e15;
 ```
 
-**File:** network.js (L2150-2166)
+**File:** constants.js (L71-71)
 ```javascript
-	joint_storage.checkIfNewUnit(unit, {
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-				ifOk: function(){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifAccepted(unit);
-					eventBus.emit("new_my_transactions", [unit]);
-				},
-				ifError: function(error){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifValidationError(unit, error);
-				},
-				ifWaitingForChain: function(){
-					savePrivatePayment();
+exports.SYSTEM_VOTE_COUNT_FEE = 1e9;
+```
+
+**File:** constants.js (L72-72)
+```javascript
+exports.SYSTEM_VOTE_MIN_SHARE = 0.1;
+```
+
+**File:** main_chain.js (L1645-1648)
+```javascript
+async function countVotes(conn, mci, subject, is_emergency = 0, emergency_count_command_timestamp = 0) {
+	console.log('countVotes', mci, subject, is_emergency, emergency_count_command_timestamp);
+	if (is_emergency && subject !== "op_list")
+		throw Error("emergency vote count supported for op_list only, got " + subject);
+```
+
+**File:** main_chain.js (L1787-1818)
+```javascript
+		case "base_tps_fee":
+		case "tps_interval":
+		case "tps_fee_multiplier":
+			const rows = await conn.query(`SELECT value, SUM(balance) AS total_balance
+				FROM numerical_votes
+				CROSS JOIN voter_balances USING(address)
+				WHERE timestamp>=? AND subject=?
+				GROUP BY value
+				ORDER BY value`,
+				[since_timestamp, subject]
+			);
+			console.log(`total votes for`, subject, rows);
+			const total_voted_balance = rows.reduce((acc, row) => acc + row.total_balance, 0);
+			let accumulated = 0;
+			for (let { value: v, total_balance } of rows) {
+				accumulated += total_balance;
+				if (accumulated >= total_voted_balance / 2) {
+					value = v;
+					break;
 				}
-			});
+			}
+			if (value === undefined)
+				throw Error(`no median value for ` + subject);
+			storage.systemVars[subject].unshift({ vote_count_mci: mci, value, is_emergency });
+			break;
+		
+		default:
+			throw Error("unknown subject in countVotes: " + subject);
+	}
+	console.log(`new`, subject, value);
+	// a repeated emergency vote on the same mci would overwrite the previous one
+	await conn.query(`${is_emergency || mci === 0 ? 'REPLACE' : 'INSERT'} INTO system_vars (subject, value, vote_count_mci, is_emergency) VALUES (?, ?, ?, ?)`, [subject, value, mci === 0 ? -1 : mci, is_emergency]);
 ```
 
-**File:** joint_storage.js (L21-38)
+**File:** storage.js (L1292-1301)
 ```javascript
-function checkIfNewUnit(unit, callbacks) {
-	if (storage.isKnownUnit(unit))
-		return callbacks.ifKnown();
-	if (assocUnhandledUnits[unit])
-		return callbacks.ifKnownUnverified();
-	var error = assocKnownBadUnits[unit];
-	if (error)
-		return callbacks.ifKnownBad(error);
-	db.query("SELECT sequence, main_chain_index FROM units WHERE unit=?", [unit], function(rows){
-		if (rows.length > 0){
-			var row = rows[0];
-			if (row.sequence === 'final-bad' && row.main_chain_index !== null && row.main_chain_index < storage.getMinRetrievableMci()) // already stripped
-				return callbacks.ifNew();
-			storage.setUnitIsKnown(unit);
-			return callbacks.ifKnown();
-		}
-		callbacks.ifNew();
-	});
-```
-
-**File:** sqlite_pool.js (L111-133)
-```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
-					// note that sqlite3 sets nonzero this.changes even when rows were matched but nothing actually changed (new values are same as old)
-					// this.changes appears to be correct for INSERTs despite the documentation states the opposite
-					if (!bSelect && !bCordova)
-						result = {affectedRows: this.changes, insertId: this.lastID};
-					if (bSelect && bCordova) // note that on android, result.affectedRows is 1 even when inserted many rows
-						result = result.rows || [];
-					//console.log("changes="+this.changes+", affected="+result.affectedRows);
-					var consumed_time = Date.now() - start_ts;
-				//	var profiler = require('./profiler.js');
-				//	if (!bLoading)
-				//		profiler.add_result(sql.substr(0, 40).replace(/\n/, '\\n'), consumed_time);
-					if (consumed_time > 25)
-						console.log("long query took "+consumed_time+"ms:\n"+new_args.filter(function(a, i){ return (i<new_args.length-1); }).join(", ")+"\nload avg: "+require('os').loadavg().join(', '));
-					self.start_ts = 0;
-					self.currentQuery = null;
-					last_arg(result);
-				});
+async function getLocalTpsFee(conn, objUnitProps, count_units = 1) {
+	const objLastBallUnitProps = await readUnitProps(conn, objUnitProps.last_ball_unit);
+	const last_ball_mci = objLastBallUnitProps.main_chain_index;
+	const base_tps_fee = getSystemVar('base_tps_fee', last_ball_mci); // unit's mci is not known yet
+	const tps_interval = getSystemVar('tps_interval', last_ball_mci);
+	const tps_fee_multiplier = getSystemVar('tps_fee_multiplier', last_ball_mci);
+	const tps = await getLocalTps(conn, objUnitProps, count_units);
+	console.log(`local tps at ${objUnitProps.unit} ${tps}`);
+	const tps_fee_per_unit = Math.round(tps_fee_multiplier * base_tps_fee * (Math.exp(tps / tps_interval) - 1));
+	return count_units * tps_fee_per_unit;
 ```

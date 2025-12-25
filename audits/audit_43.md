@@ -1,202 +1,237 @@
-# VALID CRITICAL VULNERABILITY CONFIRMED
-
-## Title
-Cache Eviction Race Condition in AA Trigger Processing Causes Unhandled Promise Rejection and Node Failure
+# Audit Report: Improper Error Handling in Light Client AA Definition Fetch
 
 ## Summary
-A timing-based cache invalidation issue exists where `shrinkCache()` evicts units from `assocStableUnits` cache while AA triggers for those units remain queued for processing. When `handlePrimaryAATrigger()` attempts to access the evicted cache entry, it throws an error inside an async callback that the database wrapper does not await, creating an unhandled promise rejection that crashes Node.js v15+ or causes permanent mutex deadlock in all versions.
+
+The `readAADefinitions()` function in `aa_addresses.js` contains a critical error handling bug where network failures are silently ignored instead of propagated. [1](#0-0)  When light clients fail to fetch AA definitions from vendors, the async iterator callback signals success (`cb()`) instead of failure (`cb(err)`), causing bounce fee validation to proceed with incomplete data. This allows transactions with insufficient bounce fees to be sent to the network. When the AA detects insufficient fees during execution, it calls `finish(null)` without sending a bounce response, [2](#0-1)  resulting in permanent loss of user funds.
 
 ## Impact
+
 **Severity**: Critical  
-**Category**: Network Shutdown (AA processing layer)
+**Category**: Direct Loss of Funds
 
-**Affected Assets**: All Autonomous Agent operations, node availability, database integrity
-
-**Damage Severity**:
-- **Quantitative**: Complete halt of AA trigger processing on affected nodes; database transaction leaks; potential network-wide impact during synchronized catchup scenarios
-- **Qualitative**: Node.js process termination (v15+) or permanent mutex deadlock (all versions); uncommitted database transactions with locked connections
-
-**User Impact**:
-- **Who**: All users with pending AA triggers; node operators; DeFi protocols dependent on AA execution
-- **Conditions**: Occurs when processing triggers from units with MCI < (last_stable_mci - 110), typically during node catchup after downtime exceeding ~12-24 hours
-- **Recovery**: Requires node restart and code patch; pending triggers remain queued, creating risk of repeated failure
+Light client users suffer permanent, unrecoverable loss when sending payments to AAs during network instability or light vendor unavailability. The minimum loss per transaction is 10,000 bytes [3](#0-2)  but can be substantially higher for AAs with custom bounce_fees. All light client users are affected when interacting with uncached AA addresses during network issues.
 
 ## Finding Description
 
-**Location**: [1](#0-0) 
+**Location**: `byteball/ocore/aa_addresses.js:70-87`, function `readAADefinitions()`
 
-**Intended Logic**: After updating the database with AA response counts, maintain cache consistency by incrementing the `count_aa_responses` field in the cached unit properties.
+**Intended Logic**: When light vendors fail to return AA definitions (network errors, null responses, or hash mismatches), the error must be propagated to the async.each callback (`cb(error)`) to halt validation and prevent transaction submission.
 
-**Actual Logic**: The code unconditionally accesses `storage.assocStableUnits[unit]` and throws if undefined. This throw occurs inside an `async function()` callback [2](#0-1) , creating a promise rejection that the database wrapper does not catch [3](#0-2) .
+**Actual Logic**: Three error conditions incorrectly call `cb()` without an error parameter: [4](#0-3) [5](#0-4) [6](#0-5) 
 
-**Cache Eviction Mechanism**: The `shrinkCache()` function runs every 300 seconds [4](#0-3)  and evicts units with `main_chain_index < (last_stable_mci - 110)` [5](#0-4)  from the `assocStableUnits` cache [6](#0-5) .
+The `async.each` library interprets `cb()` (equivalent to `cb(null)`) as successful completion, allowing the final callback to execute with incomplete data. [7](#0-6) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Node experiences downtime or extended processing delays; AA trigger transactions occur during this period
+1. **Preconditions**: Light client user ( [8](#0-7) ) sends payment to AA address not in local cache during network timeout or vendor unavailability.
 
-2. **Step 1 - Catchup**: Node catches up to current network state
-   - MCIs are marked stable sequentially
-   - AA triggers inserted into `aa_triggers` table [7](#0-6) 
-   - Units added to cache when stabilized [8](#0-7) 
-   - `last_stable_mci` advances to current network position
+2. **Step 1**: User initiates transaction via `sendMultiPayment()` which calls `checkAAOutputs()` to validate bounce fees. [9](#0-8) 
 
-3. **Step 2 - Cache Eviction**: `shrinkCache()` executes on 300-second interval
-   - Calculates `top_mci = last_stable_mci - 110`
-   - Evicts units from catchup backlog (> 110 MCIs old) from cache
-   - Database records remain, only in-memory cache entries removed
+3. **Step 2**: `checkAAOutputs()` calls `readAADefinitions()` to fetch AA definitions. [10](#0-9)  Database query finds no cached definition, triggering light vendor request. [11](#0-10) 
 
-4. **Step 3 - Trigger Processing**: `handleAATriggers()` processes pending triggers [9](#0-8) 
-   - Acquires `aa_triggers` mutex lock
-   - Queries pending triggers ordered by MCI
-   - Processes using `async.eachSeries`
+4. **Step 3**: Vendor request fails but `cb()` signals success. The `async.each` completion callback executes, calling `handleRows(rows)` with only successfully loaded definitions (failed AA address missing).
 
-5. **Step 4 - Failure**: Processing reaches trigger whose unit was evicted
-   - Database UPDATE succeeds (unit exists in database)
-   - Cache access returns `undefined` (evicted from memory)
-   - Throw in async callback creates unhandled promise rejection
-   - Database wrapper invokes callback without awaiting
-   - `onDone()` never called [10](#0-9) 
-   - `async.eachSeries` waits indefinitely
-   - Mutex never released [11](#0-10) 
-   - Result: Node crash (v15+) or permanent deadlock (all versions)
+5. **Step 4**: Bounce fee validation loop only processes addresses in `rows`, [12](#0-11)  skipping the failed AA. Validation returns no error, [13](#0-12)  allowing transaction to proceed.
 
-**Security Property Broken**: System Availability - Node cannot process AA triggers; Database Transaction Integrity - BEGIN transaction never committed or rolled back
+6. **Step 5**: Transaction reaches network and triggers AA. During execution, AA detects insufficient bounce fees [14](#0-13)  and calls `bounce()`.
 
-**Root Cause Analysis**: Code assumes units being processed are always in cache, but cache has time-based eviction (110 MCIs) independent of trigger processing queue. No synchronization between `shrinkCache()` (runs via `setInterval`) and `handleAATriggers()` (holds `aa_triggers` mutex). The async callback error pattern is incompatible with callback-style error propagation expected by `async.eachSeries`.
+7. **Step 6**: Bounce mechanism checks if received amount covers fees. If insufficient, it calls `finish(null)` without sending refund, [2](#0-1)  permanently transferring user funds to AA.
+
+**Security Property Broken**: Balance conservation invariant - users sending payments to failing AAs must receive refunds minus bounce fees. The bug allows transactions to proceed without proper validation, resulting in no refund when AA execution fails.
+
+**Root Cause**: Incorrect callback semantics. The `async.each` library requires `cb(err)` with truthy error to signal failure, but code calls `cb()` for all error conditions, causing failures to be interpreted as successes.
+
+## Impact Explanation
+
+**Affected Assets**: Base bytes (native currency), custom divisible/indivisible assets specified in AA bounce_fees
+
+**Damage Severity**:
+- **Quantitative**: Minimum 10,000 bytes per failed transaction, potentially unlimited for AAs with high custom bounce_fees or multiple asset requirements
+- **Qualitative**: Complete, permanent, unrecoverable loss with no bounce response generated and no recovery mechanism
+
+**User Impact**:
+- **Who**: All light client users (mobile wallets, browser extensions) sending payments to AAs
+- **Conditions**: Network instability, light vendor timeouts/downtime, first interaction with newly deployed AAs, cleared local cache
+- **Recovery**: None - funds permanently transferred to AA with no refund path
+
+**Systemic Risk**: Erodes trust in light clients; multiple users affected simultaneously during vendor outages; users incorrectly attribute failures to AAs rather than client bug; creates perverse incentive for AAs to set excessive bounce fees.
 
 ## Likelihood Explanation
 
-**Attacker Profile**: None required - triggered by normal node operational scenarios
-
-**Most Realistic Scenario**:
-1. Node downtime (maintenance, crash, network issues) for 12-24 hours
-2. Network continues with AA transactions
-3. Node restarts and catches up, stabilizing old MCIs and inserting triggers
-4. `last_stable_mci` advances to current position
-5. Cache reflects recent units (within 110 MCIs)
-6. `handleAATriggers()` processes backlog from oldest triggers
-7. Early triggers (> 110 MCIs behind) reference evicted cache entries
-8. Node crashes or deadlocks on first cache miss
+**Attacker Profile**: No attacker required - vulnerability triggers naturally during network issues
 
 **Preconditions**:
-- Normal network operation with AA activity
-- Node downtime or processing backlog
-- Gap between oldest pending trigger and current stable MCI exceeds 110 MCIs
+- Light client operation (common - mobile/browser wallets)
+- AA address not in local cache (first interaction or cache cleared)
+- Light vendor timeout/unavailability (occurs regularly during high load)
 
-**Execution Complexity**: Zero - occurs automatically during standard catchup operations
+**Execution Complexity**: Single payment transaction, no special coordination required, appears as normal payment in logs
 
-**Frequency**: High probability during any node restart/catchup where AA triggers occurred during offline period (common maintenance scenario)
+**Frequency**: Every failed definition fetch during network instability; all light clients affected during vendor outages
 
-**Overall Assessment**: CRITICAL likelihood - affects standard operational procedures rather than requiring attacker action
+**Overall Assessment**: High likelihood - network issues are routine in production environments, bug is deterministic once preconditions met
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Remove unconditional cache dependency - either reload unit properties from database on cache miss or skip cache update if entry doesn't exist.
+Propagate errors correctly in the async iterator callback:
 
-**Permanent Fix**:
 ```javascript
-// File: aa_composer.js, lines 99-104
-let objUnitProps = storage.assocStableUnits[unit];
-if (objUnitProps) { // Only update cache if entry exists
-    if (!objUnitProps.count_aa_responses)
-        objUnitProps.count_aa_responses = 0;
-    objUnitProps.count_aa_responses += arrResponses.length;
+// File: byteball/ocore/aa_addresses.js
+// Lines: 74-87
+
+if (response && response.error) {
+    console.log('failed to get definition of ' + address + ': ' + response.error);
+    return cb(response.error); // Changed from cb()
+}
+if (!response) {
+    cacheOfNewAddresses[address] = Date.now();
+    console.log('address ' + address + ' not known yet');
+    return cb('address not known yet'); // Changed from cb()
+}
+// ... validate hash ...
+if (objectHash.getChash160(arrDefinition) !== address) {
+    console.log("definition doesn't match address: " + address);
+    return cb("definition hash mismatch"); // Changed from cb()
 }
 ```
 
+**Permanent Fix**: Same as above - ensure all error paths call `cb(error)` instead of `cb()`
+
 **Additional Measures**:
-- Synchronize cache eviction with trigger processing (check for pending triggers before eviction)
-- Add monitoring for cache misses during AA processing
-- Consider extending cache retention period for units with pending triggers
+- Add test case verifying light vendor failures properly block transaction composition
+- Add user-facing warning when definition fetch fails
+- Implement retry mechanism with exponential backoff for vendor requests
+- Cache negative results (non-AA addresses) to reduce unnecessary vendor queries
 
 **Validation**:
-- Fix handles cache misses gracefully without throwing
-- Database update still succeeds (primary source of truth)
-- No performance degradation from database queries
-- Backward compatible with existing trigger processing
+- Verify error propagation prevents transactions with unvalidated bounce fees
+- Ensure no false positives (legitimate transactions still succeed)
+- Test under simulated network conditions (timeouts, connection failures)
 
 ## Notes
 
-This vulnerability demonstrates a critical design assumption violation: the code expects units being processed to always be in cache, but the cache has independent time-based eviction. The issue is exacerbated by the async callback pattern that creates unhandled promise rejections. While this doesn't require attacker action, it deterministically affects any node experiencing standard operational downtime, making it a critical availability issue for production deployments.
+This vulnerability specifically affects light clients due to their reliance on remote vendors for AA definitions. [8](#0-7)  Full nodes maintain complete AA definition databases locally and are not vulnerable.
+
+The bounce mechanism's behavior of consuming funds when bounce fees are insufficient [15](#0-14)  is intentional design, but the client-side validation in `checkAAOutputs()` [16](#0-15)  is meant to prevent users from sending insufficient amounts. The error handling bug defeats this protection mechanism.
 
 ### Citations
 
-**File:** aa_composer.js (L57-83)
+**File:** aa_addresses.js (L40-42)
 ```javascript
-	mutex.lock(['aa_triggers'], function (unlock) {
-		db.query(
-			"SELECT aa_triggers.mci, aa_triggers.unit, address, definition \n\
-			FROM aa_triggers \n\
-			CROSS JOIN units USING(unit) \n\
-			CROSS JOIN aa_addresses USING(address) \n\
-			ORDER BY aa_triggers.mci, level, aa_triggers.unit, address",
-			function (rows) {
-				var arrPostedUnits = [];
-				async.eachSeries(
-					rows,
-					function (row, cb) {
-						console.log('handleAATriggers', row.unit, row.mci, row.address);
-						var arrDefinition = JSON.parse(row.definition);
-						handlePrimaryAATrigger(row.mci, row.unit, row.address, arrDefinition, arrPostedUnits, cb);
-					},
+	db.query("SELECT definition, address, base_aa FROM aa_addresses WHERE address IN (" + arrAddresses.map(db.escape).join(', ') + ")", function (rows) {
+		if (!conf.bLight || arrAddresses.length === rows.length)
+			return handleRows(rows);
+```
+
+**File:** aa_addresses.js (L70-87)
+```javascript
+				async.each(
+					arrRemainingAddresses,
+					function (address, cb) {
+						network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
+							if (response && response.error) { 
+								console.log('failed to get definition of ' + address + ': ' + response.error);
+								return cb();
+							}
+							if (!response) {
+								cacheOfNewAddresses[address] = Date.now();
+								console.log('address ' + address + ' not known yet');
+								return cb();
+							}
+							var arrDefinition = response;
+							if (objectHash.getChash160(arrDefinition) !== address) {
+								console.log("definition doesn't match address: " + address);
+								return cb();
+							}
+```
+
+**File:** aa_addresses.js (L102-104)
+```javascript
 					function () {
-						arrPostedUnits.forEach(function (objUnit) {
-							eventBus.emit('new_aa_unit', objUnit);
-						});
-						unlock();
-						onDone();
+						handleRows(rows);
 					}
-				);
-			}
-		);
+```
+
+**File:** aa_addresses.js (L111-146)
+```javascript
+function checkAAOutputs(arrPayments, handleResult) {
+	var assocAmounts = {};
+	arrPayments.forEach(function (payment) {
+		var asset = payment.asset || 'base';
+		payment.outputs.forEach(function (output) {
+			if (!assocAmounts[output.address])
+				assocAmounts[output.address] = {};
+			if (!assocAmounts[output.address][asset])
+				assocAmounts[output.address][asset] = 0;
+			assocAmounts[output.address][asset] += output.amount;
+		});
 	});
+	var arrAddresses = Object.keys(assocAmounts);
+	readAADefinitions(arrAddresses, function (rows) {
+		if (rows.length === 0)
+			return handleResult();
+		var arrMissingBounceFees = [];
+		rows.forEach(function (row) {
+			var arrDefinition = JSON.parse(row.definition);
+			var bounce_fees = arrDefinition[1].bounce_fees;
+			if (!bounce_fees)
+				bounce_fees = { base: constants.MIN_BYTES_BOUNCE_FEE };
+			if (!bounce_fees.base)
+				bounce_fees.base = constants.MIN_BYTES_BOUNCE_FEE;
+			for (var asset in bounce_fees) {
+				var amount = assocAmounts[row.address][asset] || 0;
+				if (amount < bounce_fees[asset])
+					arrMissingBounceFees.push({ address: row.address, asset: asset, missing_amount: bounce_fees[asset] - amount, recommended_amount: bounce_fees[asset] });
+			}
+		});
+		if (arrMissingBounceFees.length === 0)
+			return handleResult();
+		handleResult(new MissingBounceFeesErrorMessage({ error: "The amounts are less than bounce fees", missing_bounce_fees: arrMissingBounceFees }));
+	});
+}
+
 ```
 
-**File:** aa_composer.js (L97-97)
+**File:** aa_composer.js (L880-894)
 ```javascript
-						conn.query("DELETE FROM aa_triggers WHERE mci=? AND unit=? AND address=?", [mci, unit, address], async function(){
+		if ((trigger.outputs.base || 0) < bounce_fees.base)
+			return finish(null);
+		var messages = [];
+		for (var asset in trigger.outputs) {
+			var amount = trigger.outputs[asset];
+			var fee = bounce_fees[asset] || 0;
+			if (fee > amount)
+				return finish(null);
+			if (fee === amount)
+				continue;
+			var bounced_amount = amount - fee;
+			messages.push({app: 'payment', payload: {asset: asset, outputs: [{address: trigger.address, amount: bounced_amount}]}});
+		}
+		if (messages.length === 0)
+			return finish(null);
 ```
 
-**File:** aa_composer.js (L99-101)
+**File:** aa_composer.js (L1680-1682)
 ```javascript
-							let objUnitProps = storage.assocStableUnits[unit];
-							if (!objUnitProps)
-								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+			if ((trigger.outputs.base || 0) < bounce_fees.base) {
+				return bounce('received bytes are not enough to cover bounce fees');
+			}
 ```
 
-**File:** aa_composer.js (L136-136)
+**File:** constants.js (L70-70)
 ```javascript
-									onDone();
+exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
 ```
 
-**File:** sqlite_pool.js (L132-132)
+**File:** wallet.js (L1965-1972)
 ```javascript
-					last_arg(result);
-```
-
-**File:** storage.js (L2162-2162)
-```javascript
-		const top_mci = Math.min(min_retrievable_mci, last_stable_mci - constants.COUNT_MC_BALLS_FOR_PAID_WITNESSING - 10);
-```
-
-**File:** storage.js (L2181-2181)
-```javascript
-						delete assocStableUnits[row.unit];
-```
-
-**File:** storage.js (L2190-2190)
-```javascript
-setInterval(shrinkCache, 300*1000);
-```
-
-**File:** main_chain.js (L1222-1222)
-```javascript
-			storage.assocStableUnits[unit] = o;
-```
-
-**File:** main_chain.js (L1622-1622)
-```javascript
-				conn.query("INSERT INTO aa_triggers (mci, unit, address) VALUES " + arrValues.join(', '), function () {
+	if (!opts.aa_addresses_checked) {
+		aa_addresses.checkAAOutputs(arrPayments, function (err) {
+			if (err)
+				return handleResult(err);
+			opts.aa_addresses_checked = true;
+			sendMultiPayment(opts, handleResult);
+		});
+		return;
 ```

@@ -1,382 +1,239 @@
-# Audit Report: Stack Overflow in Unit Payload Size Calculation
-
-## Title
-Unbounded Recursion in object_length.js Causes Network Shutdown via Malformed AA Definitions
+# Audit Report: Light Client Network Error Bypass in AA Bounce Fee Validation
 
 ## Summary
-The `getLength()` function in `object_length.js` recursively traverses nested data structures without depth limits. When validation calculates payload size for units containing deeply nested Autonomous Agent (AA) definitions, the unbounded recursion exhausts the JavaScript call stack (~10,000-15,000 frames) before AA-specific depth validation (MAX_DEPTH=100) executes. This causes uncaught `RangeError` exceptions that crash all network nodes, enabling any user to halt the entire Obyte network with a single malicious unit.
+
+The `readAADefinitions()` function in `aa_addresses.js` improperly handles network errors when fetching AA definitions from light vendors, causing the function to return success instead of failure. [1](#0-0)  This allows light client transaction validation to proceed without verifying bounce fees, resulting in permanent fund loss when users send amounts below the minimum bounce fee threshold to Autonomous Agents. [2](#0-1) 
 
 ## Impact
 
-**Severity**: Critical  
-**Category**: Network Shutdown
+**Severity**: High  
+**Category**: Permanent Freezing of Funds
 
-**Affected Assets**:
-- All network nodes (full nodes, witnesses, light clients)
-- Network availability and transaction processing
-- Consensus mechanism integrity
+Light client users permanently lose funds when network failures prevent bounce fee validation during AA transactions. With the default minimum bounce fee of 10,000 bytes, [3](#0-2)  amounts sent below this threshold become irrecoverable. This affects all light client implementations (mobile wallets, browser wallets) during routine network connectivity issues.
 
-**Damage Severity**:
-- **Quantitative**: Single ~90KB unit with 15,000 nesting levels crashes all nodes network-wide. Attack cost: minimal transaction fee (~1,000 bytes). Network downtime: indefinite without intervention.
-- **Qualitative**: Complete network halt. No transactions can be confirmed. Witness consensus stops. Requires emergency code patch and unit blacklist to recover.
+**Affected Assets**: Bytes (native currency) and custom assets with AA-defined bounce fees
 
-**User Impact**:
-- **Who**: All network participants
-- **Conditions**: Any node receiving and validating the malicious unit
-- **Recovery**: Nodes crash repeatedly on restart until malicious unit is blacklisted and code is patched
+**Damage Severity**: 100% loss of sent amount when below bounce fee threshold. Permanent and irreversible with no recovery mechanism.
 
-**Systemic Risk**: Attacker can submit multiple malicious units. Once propagated to peers, all nodes crash repeatedly, halting the chain until coordinated hard fork or emergency patch deployment.
+**User Impact**: All light client users interacting with AAs under any network instability (mobile data drops, WiFi timeouts, light vendor downtime).
 
 ## Finding Description
 
-**Location**: `byteball/ocore/object_length.js:9-40`, function `getLength()`
-Called from: `byteball/ocore/validation.js:138` via `getTotalPayloadSize()`
+**Location**: `byteball/ocore/aa_addresses.js:73-81` in function `readAADefinitions()`
 
-**Intended Logic**: 
-Validation should calculate unit payload size, verify it matches the declared `payload_commission`, and reject oversized units. AA definitions with excessive nesting depth should be rejected by depth validation (MAX_DEPTH=100) during message-specific validation, preventing resource exhaustion.
+**Intended Logic**: When a light client cannot fetch an AA definition due to network failure, the validation should fail-safe by returning an error to prevent the user from sending a potentially unsafe transaction.
 
-**Actual Logic**: 
-The payload size calculation at line 138 of validation.js invokes `getTotalPayloadSize()`, which recursively traverses the entire unit structure including deeply nested AA definition payloads via unbounded `getLength()` calls. With approximately 15,000 nesting levels, the JavaScript V8 engine's call stack limit (~10,000-15,000 frames depending on system) is exceeded, triggering `RangeError: Maximum call stack size exceeded`. This exception occurs during basic validation (line 138) which is NOT protected by try-catch, causing it to propagate to the Node.js event loop as an uncaught exception, terminating the process.
+**Actual Logic**: Network errors are logged but not propagated. The callback is invoked without an error parameter, causing `async.each` to complete successfully with an incomplete results array. [1](#0-0) 
 
-**Code Evidence**:
-
-Unbounded recursion in array processing: [1](#0-0) 
-
-Unbounded recursion in object processing: [2](#0-1) 
-
-Unprotected payload size calculation triggering the recursion: [3](#0-2) 
-
-Payload size calculation entry point: [4](#0-3) 
-
-AA definition validation with proper depth limits (never reached): [5](#0-4) 
-
-AA depth validation protection (bypassed by early crash): [6](#0-5) [7](#0-6) 
+When `network.requestFromLightVendor()` encounters a connection failure, it returns `(null, null, {error: "..."})`. [4](#0-3)  Both the `response.error` case and the `!response` case call `cb()` without an error parameter, treating network failures the same as "address not found" results.
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker has Obyte address with minimal balance for transaction fees
+1. **Preconditions**:
+   - Light client operation (`conf.bLight = true`)
+   - Payment to AA address not cached locally
+   - Network connectivity issue (mobile data drop, WiFi timeout, light vendor unavailable)
 
-2. **Step 1**: Attacker constructs deeply nested AA definition structure
-   - Create array nesting ~15,000 levels deep: `[[[[...]]]]`
-   - Embed in AA definition: `['autonomous agent', {messages: [[[[...15000 levels...]]]]}]`
-   - Total payload size: ~90KB (well within MAX_UNIT_LENGTH of 5MB)
-   - Code path: Attacker creates JSON structure programmatically
+2. **Step 1 - Transaction Composition**: User initiates payment to AA. Wallet calls `checkAAOutputs()` for bounce fee validation. [5](#0-4) 
 
-3. **Step 2**: Attacker wraps AA definition in valid unit
-   - Message with `app: 'definition'`
-   - Valid parent units, witness list, timestamps
-   - Proper signatures from attacker's address
-   - Correct unit hash and structure
-   - Code path: Standard unit composition
+3. **Step 2 - Network Failure**: `readAADefinitions()` attempts to fetch AA definition from light vendor. Network error occurs, returning `(null, null, {error: "..."})`. Error handler logs error but calls `cb()` without error, allowing `async.each` to succeed.
 
-4. **Step 3**: Attacker submits unit to network
-   - Broadcast via WebSocket connection to any peer
-   - Unit propagates to all connected nodes
-   - Code path: `network.js:handleJoint()` receives unit
+4. **Step 3 - Validation Bypass**: `checkAAOutputs()` receives empty `rows` array and returns success without error. [6](#0-5)  Transaction proceeds without bounce fee validation.
 
-5. **Step 4**: Node begins validation
-   - Entry: `network.js:1027` calls `validation.validate(objJoint, callbacks)`
-   - Mutex lock acquired for validation
-   - Code path: `validation.js:51` function `validate()` begins
+5. **Step 4 - Full Node Acceptance**: Full nodes accept the transaction because `validateAATrigger()` only counts AA triggers but does not validate bounce fee amounts. [7](#0-6) 
 
-6. **Step 5**: Basic validation calculates payload size
-   - Line 138: `objectLength.getTotalPayloadSize(objUnit)` called
-   - No try-catch protection around this call
-   - Code path: `object_length.js:61` function `getTotalPayloadSize()`
+6. **Step 5 - Fund Loss**: AA executes and `bounce()` function checks if amount meets minimum bounce fee. [8](#0-7)  When amount is insufficient, the function returns without sending refund, permanently locking user's funds in the AA's balance.
 
-7. **Step 6**: Unbounded recursion begins
-   - Line 66: `getLength({ messages: messages_without_temp_data }, bWithKeys)` called
-   - `getLength()` recursively descends into nested AA definition structure
-   - Each nesting level adds stack frame
-   - Code path: `object_length.js:9-40` recursive calls
+**Security Property Broken**: **Balance Conservation & Client-Side Validation Correctness** - The protocol's client-side validation should prevent users from sending unsafe transactions. This fail-open bug bypasses the protective mechanism.
 
-8. **Step 7**: Call stack exhausted
-   - After ~10,000-15,000 recursive calls, V8 stack limit reached
-   - JavaScript engine throws: `RangeError: Maximum call stack size exceeded`
-   - Exception occurs deep in recursion, not at line 138
-
-9. **Step 8**: Uncaught exception propagates
-   - No try-catch at line 138 catches the exception
-   - Exception bubbles up through call stack
-   - Reaches Node.js event loop as uncaught exception
-
-10. **Step 9**: Node.js process terminates
-    - Uncaught exception triggers default handler
-    - Process exits with error code
-    - Node becomes unavailable
-
-11. **Step 10**: Crash propagates network-wide
-    - All peers that received unit crash identically
-    - Nodes restart automatically but crash again when reprocessing unit
-    - Malicious unit persists in unhandled joints queue
-
-12. **Step 11**: Network halts
-    - No nodes can process transactions
-    - Witness consensus stops
-    - Recovery requires manual intervention: code patch + unit blacklist
-
-**Security Property Broken**: 
-**Network Resilience Invariant** - Nodes must be able to validate and reject malformed units without crashing. The protocol assumes validation can handle all inputs within resource limits and gracefully reject invalid units. This vulnerability violates that assumption, allowing a single malicious unit to bring down the entire network.
-
-**Root Cause Analysis**:
-- `getLength()` function lacks depth parameter or recursion counter to limit traversal depth
-- Payload size calculation occurs in basic validation (line 136-139) before message-specific validation
-- No try-catch protection surrounds size calculation calls at validation.js lines 136-139
-- AA depth validation with MAX_DEPTH=100 protection exists but executes much later at line 1577
-- The ordering ensures stack overflow occurs before protective depth checks can reject the unit
-- `_.cloneDeep()` at line 136 (getHeadersSize) could also trigger same issue, compounding the vulnerability
+**Root Cause**: Error handling conflates network failures with "address not found" results. Network errors should propagate as validation failures (fail-safe), but instead return success (fail-open).
 
 ## Likelihood Explanation
 
-**Attacker Profile**:
-- **Identity**: Any user with Obyte address (no special permissions required)
-- **Resources Required**: Minimal transaction fee (~1,000 bytes), basic programming knowledge to generate nested JSON
-- **Technical Skill**: Low - generating deeply nested JSON is trivial in any language
+**Attacker Profile**: None required - passive exploitation through natural network failures
 
 **Preconditions**:
-- **Network State**: Normal operation (no special conditions needed)
-- **Attacker State**: Minimal balance for transaction fees
-- **Timing**: No timing constraints - exploit works at any time
+- Light client operation (all mobile wallets)
+- Payment to uncached AA address
+- Network timeout/connection failure (common on mobile networks)
 
-**Execution Complexity**:
-- **Transaction Count**: Single malicious unit causes network-wide impact
-- **Coordination**: None required - single attacker, single transaction
-- **Detection Risk**: High after crash occurs, but attack completes before detection is possible
+**Execution Complexity**: Zero - occurs automatically during routine network issues
 
-**Frequency**:
-- **Repeatability**: Unlimited - attacker can resubmit on every node restart
-- **Scale**: Network-wide from single transaction
+**Frequency**: High - affects every AA interaction under poor network conditions. The 60-second cache only stores "not found" responses, not network errors, [9](#0-8)  providing no protection against repeated failures.
 
-**Overall Assessment**: **Very High Likelihood** - Trivial to execute, zero-day exploitation until patched, severe network-wide impact, difficult to defend against without code changes.
+**Overall Assessment**: High likelihood due to prevalence of mobile network unreliability and light vendor unavailability.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Wrap size calculation calls in try-catch block to prevent process crashes:
+Propagate network errors in `readAADefinitions()`:
 
 ```javascript
-// File: byteball/ocore/validation.js
-// Lines 136-141
-
-try {
-    if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
-        return callbacks.ifJointError("wrong headers commission, expected "+objectLength.getHeadersSize(objUnit));
-    if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
-        return callbacks.ifJointError("wrong payload commission, unit "+objUnit.unit+", calculated "+objectLength.getTotalPayloadSize(objUnit)+", expected "+objUnit.payload_commission);
-} catch(e) {
-    return callbacks.ifJointError("failed to calculate unit size: " + e.message);
-}
-```
-
-**Permanent Fix**:
-Add depth limiting to `getLength()` function:
-
-```javascript
-// File: byteball/ocore/object_length.js
-// Modify getLength to track and limit recursion depth
-
-function getLength(value, bWithKeys, depth) {
-    if (!depth) depth = 0;
-    if (depth > 1000) // Conservative limit well below stack size
-        throw Error("max nesting depth exceeded");
-    
-    if (value === null)
-        return 0;
-    switch (typeof value){
-        case "string": 
-            return value.length;
-        case "number": 
-            if (!isFinite(value))
-                throw Error("invalid number: " + value);
-            return 8;
-        case "object":
-            var len = 0;
-            if (Array.isArray(value))
-                value.forEach(function(element){
-                    len += getLength(element, bWithKeys, depth + 1);
-                });
-            else    
-                for (var key in value){
-                    if (typeof value[key] === "undefined")
-                        throw Error("undefined at "+key+" of "+JSON.stringify(value));
-                    if (bWithKeys)
-                        len += key.length;
-                    len += getLength(value[key], bWithKeys, depth + 1);
-                }
-            return len;
-        case "boolean": 
-            return 1;
-        default:
-            throw Error("unknown type="+(typeof value)+" of "+value);
+// File: byteball/ocore/aa_addresses.js:73-81
+network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
+    if (response && response.error) { 
+        console.log('failed to get definition of ' + address + ': ' + response.error);
+        return cb(response.error); // CHANGED: propagate error
     }
-}
+    if (!response) {
+        cacheOfNewAddresses[address] = Date.now();
+        console.log('address ' + address + ' not known yet');
+        return cb();
+    }
+    // ... rest of function
+});
 ```
 
 **Additional Measures**:
-- Emergency blacklist malicious unit hashes if exploited before patch
-- Add monitoring to detect units with excessive nesting depth
-- Consider pre-validation depth check before size calculation
-- Add integration test: `test/nested_recursion_dos.test.js` verifying deep nesting is rejected
-- Review all other uses of `_.cloneDeep()` and recursive functions for similar issues
-
-**Validation**:
-- [✅] Fix prevents stack overflow from deeply nested structures
-- [✅] Gracefully rejects malicious units with clear error message
-- [✅] Backward compatible - existing valid units unaffected
-- [✅] Performance impact negligible - depth check is O(1) per recursive call
+- Add retry logic with exponential backoff for transient network failures
+- Display user warning when AA validation cannot be completed
+- Add test case verifying network errors block transaction composition
 
 ## Proof of Concept
 
 ```javascript
-// test/stack_overflow_dos.test.js
-const validation = require('../validation.js');
-const objectHash = require('../object_hash.js');
+// File: test/light_client_bounce_fee_bypass.test.js
+const test = require('ava');
+const aa_addresses = require('../aa_addresses.js');
+const network = require('../network.js');
+const conf = require('../conf.js');
 
-describe('Stack Overflow DoS Protection', function() {
-    this.timeout(10000);
-    
-    it('should reject deeply nested AA definitions without crashing', function(done) {
-        // Create deeply nested array structure
-        let nested = [];
-        let current = nested;
-        for (let i = 0; i < 15000; i++) {
-            current[0] = [];
-            current = current[0];
-        }
-        
-        // Construct malicious AA definition
-        const maliciousDefinition = ['autonomous agent', {
-            messages: [{ app: 'payment', payload: { outputs: nested } }]
-        }];
-        
-        // Create unit with malicious AA definition
-        const objUnit = {
-            version: '4.0',
-            alt: '1',
-            authors: [{
-                address: 'TEST_ADDRESS',
-                authentifiers: { r: 'test_sig' }
-            }],
-            messages: [{
-                app: 'definition',
-                payload: {
-                    address: 'AA_ADDRESS',
-                    definition: maliciousDefinition
-                }
-            }],
-            parent_units: ['TEST_PARENT'],
-            last_ball: 'TEST_BALL',
-            last_ball_unit: 'TEST_UNIT',
-            witness_list_unit: 'TEST_WITNESS_UNIT',
-            headers_commission: 500,
-            payload_commission: 90000
-        };
-        
-        objUnit.unit = objectHash.getUnitHash(objUnit);
-        
-        const objJoint = { unit: objUnit };
-        
-        // Attempt validation - should reject gracefully, not crash
-        validation.validate(objJoint, {
-            ifJointError: function(error) {
-                // Expected: validation should catch and reject
-                assert(error.includes('max') || error.includes('depth') || error.includes('size'));
-                done();
-            },
-            ifUnitError: function(error) {
-                // Also acceptable error path
-                assert(error.includes('max') || error.includes('depth') || error.includes('size'));
-                done();
-            },
-            ifTransientError: function(error) {
-                done(new Error('Should not be transient error'));
-            },
-            ifOk: function() {
-                done(new Error('Should not accept malicious unit'));
-            }
-        });
+test.before(t => {
+    conf.bLight = true; // Enable light client mode
+});
+
+test('network error bypasses bounce fee validation', async t => {
+    // Mock network failure
+    const original = network.requestFromLightVendor;
+    network.requestFromLightVendor = function(command, params, cb) {
+        // Simulate connection failure
+        cb(null, null, {error: "connection refused"});
+    };
+
+    const payments = [{
+        asset: null,
+        outputs: [{address: 'AA_ADDRESS_HERE', amount: 5000}] // Below 10k bounce fee
+    }];
+
+    // This should fail but will succeed due to bug
+    aa_addresses.checkAAOutputs(payments, function(err) {
+        t.is(err, undefined); // BUG: Should be an error but is undefined
+        network.requestFromLightVendor = original;
     });
 });
 ```
 
 ## Notes
 
-This vulnerability is particularly severe because:
-
-1. **Attack Surface**: Any user can submit units - no special permissions required
-2. **Defense Gap**: The AA depth validation (MAX_DEPTH=100) exists but executes too late in the validation pipeline
-3. **Cascading Failure**: Once one node crashes, the malicious unit propagates to all peers, creating network-wide outage
-4. **Persistent Threat**: Without blacklisting, nodes crash on every restart when reprocessing the unit
-5. **Low Detection**: The attack appears as a normal unit until validation attempts to process it
-
-The fix requires both immediate mitigation (try-catch) and permanent solution (depth limiting). Priority should be given to emergency patch deployment and unit blacklist if this vulnerability is exploited in the wild.
+This vulnerability represents a classic fail-open security bug where error handling in a protective mechanism causes it to be bypassed rather than to fail safely. The fix is straightforward but critical for light client safety. The bug does not affect full nodes since they have local AA definition storage and do not use `requestFromLightVendor()`.
 
 ### Citations
 
-**File:** object_length.js (L22-25)
+**File:** aa_addresses.js (L57-81)
 ```javascript
-			if (Array.isArray(value))
-				value.forEach(function(element){
-					len += getLength(element, bWithKeys);
+				var arrCachedNewAddresses = [];
+				arrRemainingAddresses.forEach(function (address) {
+					var ts = cacheOfNewAddresses[address]
+					if (!ts)
+						return;
+					if (Date.now() - ts > 60 * 1000)
+						delete cacheOfNewAddresses[address];
+					else
+						arrCachedNewAddresses.push(address);
 				});
+				arrRemainingAddresses = _.difference(arrRemainingAddresses, arrCachedNewAddresses);
+				if (arrRemainingAddresses.length === 0)
+					return handleRows(rows);
+				async.each(
+					arrRemainingAddresses,
+					function (address, cb) {
+						network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
+							if (response && response.error) { 
+								console.log('failed to get definition of ' + address + ': ' + response.error);
+								return cb();
+							}
+							if (!response) {
+								cacheOfNewAddresses[address] = Date.now();
+								console.log('address ' + address + ' not known yet');
+								return cb();
 ```
 
-**File:** object_length.js (L27-33)
+**File:** aa_addresses.js (L124-126)
 ```javascript
-				for (var key in value){
-					if (typeof value[key] === "undefined")
-						throw Error("undefined at "+key+" of "+JSON.stringify(value));
-					if (bWithKeys)
-						len += key.length;
-					len += getLength(value[key], bWithKeys);
-				}
+	readAADefinitions(arrAddresses, function (rows) {
+		if (rows.length === 0)
+			return handleResult();
 ```
 
-**File:** object_length.js (L61-67)
+**File:** aa_composer.js (L880-887)
 ```javascript
-function getTotalPayloadSize(objUnit) {
-	if (objUnit.content_hash)
-		throw Error("trying to get payload size of stripped unit");
-	var bWithKeys = (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes);
-	const { temp_data_length, messages_without_temp_data } = extractTempData(objUnit.messages);
-	return Math.ceil(temp_data_length * constants.TEMP_DATA_PRICE) + getLength({ messages: messages_without_temp_data }, bWithKeys);
+		if ((trigger.outputs.base || 0) < bounce_fees.base)
+			return finish(null);
+		var messages = [];
+		for (var asset in trigger.outputs) {
+			var amount = trigger.outputs[asset];
+			var fee = bounce_fees[asset] || 0;
+			if (fee > amount)
+				return finish(null);
+```
+
+**File:** constants.js (L70-70)
+```javascript
+exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
+```
+
+**File:** network.js (L750-754)
+```javascript
+	findOutboundPeerOrConnect(exports.light_vendor_url, function(err, ws){
+		if (err)
+			return responseHandler(null, null, {error: "[connect to light vendor failed]: "+err});
+		sendRequest(ws, command, params, false, responseHandler);
+	});
+```
+
+**File:** wallet.js (L1965-1972)
+```javascript
+	if (!opts.aa_addresses_checked) {
+		aa_addresses.checkAAOutputs(arrPayments, function (err) {
+			if (err)
+				return handleResult(err);
+			opts.aa_addresses_checked = true;
+			sendMultiPayment(opts, handleResult);
+		});
+		return;
+```
+
+**File:** validation.js (L839-869)
+```javascript
+async function validateAATrigger(conn, objUnit, objValidationState, callback) {
+	if (objValidationState.last_ball_mci < constants.v4UpgradeMci || objValidationState.bAA || !objValidationState.last_ball_mci) {
+		if ("max_aa_responses" in objUnit)
+			return callback(`max_aa_responses should not be there`);
+		if (objValidationState.bAA || !objValidationState.last_ball_mci)
+			return callback();
+	}
+	if ("content_hash" in objUnit) { // messages already stripped off
+		objValidationState.count_primary_aa_triggers = 0;
+		return callback();
+	}
+	let arrOutputAddresses = [];
+	for (let m of objUnit.messages) {
+		if (m.app === 'payment' && m.payload) {
+			for (let o of m.payload.outputs)
+				if (!arrOutputAddresses.includes(o.address))
+					arrOutputAddresses.push(o.address);
+		}
+	}
+
+	// Look for AA triggers
+	// There might be actually more triggers due to AAs defined between last_ball_mci and our unit, so our validation of tps fee might require a smaller fee than the fee actually charged when the trigger executes
+	const rows = await conn.query("SELECT 1 FROM aa_addresses WHERE address IN (?) AND mci<=?", [arrOutputAddresses, objValidationState.last_ball_mci]);
+	if (rows.length === 0) {
+		if ("max_aa_responses" in objUnit)
+			return callback(`no outputs to AAs, max_aa_responses should not be there`);
+		return callback();
+	}
+	objValidationState.count_primary_aa_triggers = rows.length;
+	callback();
 }
-```
-
-**File:** validation.js (L138-139)
-```javascript
-		if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
-			return callbacks.ifJointError("wrong payload commission, unit "+objUnit.unit+", calculated "+objectLength.getTotalPayloadSize(objUnit)+", expected "+objUnit.payload_commission);
-```
-
-**File:** validation.js (L1562-1577)
-```javascript
-		case "definition": // for AAs only
-			if (hasFieldsExcept(payload, ["address", "definition"])) // AA definition cannot be changed and its address is also its definition_chash
-				return callback("unknown fields in app definition");
-			try{
-				if (payload.address !== objectHash.getChash160(payload.definition))
-					return callback("definition doesn't match the chash");
-			}
-			catch(e){
-				return callback("bad definition");
-			}
-			if (constants.bTestnet && ['BD7RTYgniYtyCX0t/a/mmAAZEiK/ZhTvInCMCPG5B1k=', 'EHEkkpiLVTkBHkn8NhzZG/o4IphnrmhRGxp4uQdEkco=', 'bx8VlbNQm2WA2ruIhx04zMrlpQq3EChK6o3k5OXJ130=', '08t8w/xuHcsKlMpPWajzzadmMGv+S4AoeV/QL1F3kBM=', '4N5fsU9qJSn2FuS70cChKx8QqgcesPRPs0dNfzOhoXw='].indexOf(objUnit.unit) >= 0)
-				return callback();
-			var readGetterProps = function (aa_address, func_name, cb) {
-				storage.readAAGetterProps(conn, aa_address, func_name, cb);
-			};
-			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
-```
-
-**File:** aa_validation.js (L28-28)
-```javascript
-var MAX_DEPTH = 100;
-```
-
-**File:** aa_validation.js (L571-573)
-```javascript
-	function validate(obj, name, path, locals, depth, cb, bValueOnly) {
-		if (depth > MAX_DEPTH)
-			return cb("max depth reached");
 ```

@@ -1,290 +1,247 @@
-# AUDIT REPORT
-
-## Title
-Uncaught Exception in Divisible Asset Private Payment Duplicate Check Causes Node Crash
+# Audit Report: Private Fund Freezing via Unstable Unit Archiving
 
 ## Summary
-The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, causing it to return all outputs. The code incorrectly interprets multiple rows as corruption and throws an error in an async callback without proper error handling, causing immediate Node.js process termination.
+
+The `validateAndSavePrivatePaymentChain()` function accepts and saves private payment chains containing unstable units without enforcing stability checks. When these unstable units are subsequently double-spent and archived, the database records required to reconstruct the payment chain are permanently deleted, rendering the funds unspendable.
 
 ## Impact
 
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
+**Severity**: High  
+**Category**: Permanent Fund Freeze
 
-Any network participant can crash individual nodes by resending legitimate divisible asset private payments. Each crashed node requires manual restart. While the main network continues processing public transactions, private payment processing is disrupted. Persistent attacks targeting multiple nodes can delay private payment processing for extended periods (>1 hour, potentially >1 day).
+All private indivisible assets (blackbytes, private tokens with fixed denominations) received via payment chains containing unstable units become permanently frozen if those units are double-spent before stabilization. The victim loses complete access to these funds with no recovery mechanism available through normal wallet operations.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/private_payment.js:70-71`, function `validateAndSavePrivatePaymentChain()`
+**Location**: `byteball/ocore/indivisible_asset.js:223-281`, function `validateAndSavePrivatePaymentChain()`
 
-**Intended Logic**: The duplicate check should detect already-processed private payments and return early via the `ifOk()` callback to prevent reprocessing.
+**Intended Logic**: Private payment chains should only be saved when all referenced units are stable, ensuring database records remain accessible for future spending operations.
 
-**Actual Logic**: For divisible assets (when `!objAsset.fixed_denominations`), the duplicate check query omits `output_index` from the WHERE clause. [1](#0-0)  When multiple outputs exist (normal for divisible assets with payment + change), the query returns multiple rows. The code then throws an uncaught exception before the duplicate-handling logic can execute. [2](#0-1) 
+**Actual Logic**: The protocol accepts unstable units in private payment chains without stability enforcement. The function receives a `bAllStable` parameter but never validates it before saving. [1](#0-0) 
 
-**Code Evidence**: The vulnerability exists across multiple files:
+When unstable units are double-spent, they receive bad sequence status and are selected for archiving. [2](#0-1) 
 
-1. **Duplicate check query construction**: [1](#0-0) 
-2. **Throw before duplicate handling**: [2](#0-1) 
-3. **Multiple outputs saved per payment**: [3](#0-2) 
-4. **Entry point when unit already known**: [4](#0-3) 
-5. **No try-catch in database callback**: [5](#0-4) 
+The archiving process permanently deletes inputs and outputs from the database. [3](#0-2) 
+
+Later attempts to spend the funds fail because `buildPrivateElementsChain()` cannot find the deleted database records and throws uncaught exceptions in async callbacks. [4](#0-3) [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Attacker creates legitimate divisible asset private payment with 2+ outputs (e.g., payment + change)
+1. **Preconditions**: Attacker owns private indivisible assets; victim wallet accepts private payments
 
-2. **Step 1 - Initial Processing**: 
-   - Attacker sends private payment to victim node
-   - Node processes via `network.js:handleOnlinePrivatePayment()`
-   - Duplicate check returns 0 rows (first time)
-   - All outputs saved successfully via `divisibleAsset.validateAndSaveDivisiblePrivatePayment()` [3](#0-2) 
+2. **Step 1**: Attacker creates private payment unit containing unstable source units in the payment chain
 
-3. **Step 2 - Resend Attack**:
-   - Attacker resends identical private payment
-   - `joint_storage.checkIfNewUnit()` recognizes unit as known [6](#0-5) 
-   - Calls `validateAndSavePrivatePaymentChain()` [7](#0-6) 
-   - Duplicate check query: `SELECT address FROM outputs WHERE unit=? AND message_index=?` (no `output_index`)
-   - Returns multiple rows (all outputs from Step 1)
+3. **Step 2**: Victim receives and validates the chain via `private_payment.js:validateAndSavePrivatePaymentChain()`, which calls `indivisible_asset.js:validateAndSavePrivatePaymentChain()`. Unstable units are saved with `is_unique = null` without stability verification. [6](#0-5) 
 
-4. **Step 3 - Crash**:
-   - Condition `if (rows.length > 1)` evaluates to true [8](#0-7) 
-   - `throw Error(...)` executes inside database query callback [9](#0-8) 
-   - Exception is uncaught (no try-catch in sqlite_pool.js callback invocation) [10](#0-9) 
-   - No global uncaughtException handler exists in codebase
-   - Node.js process terminates
+4. **Step 3**: Attacker double-spends one of the unstable units before it stabilizes (within ~5-15 minute stabilization window)
 
-5. **Step 4 - Impact**:
-   - Victim node stops processing private payments
-   - Requires manual restart
-   - Attacker can repeat against multiple nodes
+5. **Step 4**: The original unit receives sequence status of `temp-bad` or `final-bad`. The `purgeUncoveredNonserialJoints()` function archives bad-sequence units. [7](#0-6) 
 
-**Security Property Broken**: Process availability and proper async error handling. The error should be returned via the callback mechanism (`transaction_callbacks.ifError()`), not thrown in an async context where it becomes uncaught.
+6. **Step 5**: Victim attempts to spend received funds. The wallet calls `buildPrivateElementsChain()` to reconstruct the payment history. Database queries return 0 rows because archiving deleted the records, causing uncaught exceptions that prevent transaction composition.
+
+**Security Property Broken**: Input Accessibility - The protocol assumes all inputs in previously-validated private payment chains remain accessible in the database, but archiving violates this assumption by permanently deleting inputs of double-spent units.
 
 **Root Cause Analysis**:
-- Divisible assets save multiple outputs with different `output_index` values (0, 1, 2...)
-- Duplicate check omits `output_index` for divisible assets, returning ALL outputs for that unit+message_index combination
-- Code assumes `rows.length > 1` indicates database corruption, but it's normal behavior after first save
-- Using `throw` in async callback bypasses the error callback mechanism and crashes the process
-- The throw at line 70 executes BEFORE the duplicate handling logic at line 72, preventing graceful recovery
+1. Missing stability enforcement: `validateAndSavePrivatePaymentChain()` receives `bAllStable` parameter but never checks it before proceeding to save
+2. Incomplete feature implementation: The protocol has logic to handle unstable units (`updateIndivisibleOutputsThatWereReceivedUnstable()`) but lacks protection against archiving deleting required data
+3. Destructive archiving: No safeguards prevent deleting database records that descendant transactions depend on
 
 ## Impact Explanation
 
-**Affected Assets**: All divisible asset private payments (bytes and custom divisible assets)
+**Affected Assets**: All private indivisible assets (blackbytes, private tokens with fixed denominations)
 
 **Damage Severity**:
-- **Quantitative**: Single attack crashes one node in ~1 second. Attacker can target multiple nodes sequentially or in parallel. Each node requires manual restart with no automatic recovery.
-- **Qualitative**: Denial of service against private payment functionality. Node operators must manually monitor and restart affected nodes.
+- **Quantitative**: Complete, permanent loss of all private funds received via payment chains containing any unstable unit that is subsequently double-spent
+- **Qualitative**: Irreversible fund freeze requiring manual database restoration from backup or protocol modification
 
 **User Impact**:
-- **Who**: Users attempting to send/receive divisible asset private payments through affected nodes
-- **Conditions**: Exploitable after any node has processed a divisible asset private payment with multiple outputs (common case with change outputs)
-- **Recovery**: Manual node restart per incident
-
-**Systemic Risk**: If attackers persistently target multiple nodes, private payment functionality could be unavailable for extended periods. However, public (non-private) transaction processing continues normally on the main DAG.
+- **Who**: Any user receiving private payments containing unstable units
+- **Conditions**: Exploitable when victim accepts payment before all chain units stabilize and attacker double-spends within stabilization window
+- **Recovery**: Impossible through normal operations; requires database restoration or protocol changes
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network participant with P2P connectivity
-- **Resources Required**: One divisible asset private payment transaction, ability to resend messages via P2P protocol
-- **Technical Skill**: Low - requires only basic understanding of private payment message structure
+- **Identity**: Malicious user with basic Obyte protocol knowledge
+- **Resources Required**: Ownership of private indivisible assets to initiate payments
+- **Technical Skill**: Moderate - requires understanding DAG stabilization timing
 
 **Preconditions**:
-- **Network State**: Target node must have previously processed a divisible asset private payment (common occurrence)
-- **Attacker State**: Needs access to one divisible asset private payment with 2+ outputs
-- **Timing**: No timing requirements - attack works at any point after initial processing
+- **Network State**: Normal operation
+- **Timing**: Must double-spend within ~5-15 minute stabilization window
 
 **Execution Complexity**:
-- **Transaction Count**: One legitimate transaction, then resend the private payload
-- **Coordination**: Single attacker, no coordination needed
-- **Detection Risk**: Low - resends appear as legitimate network retries
+- **Transaction Count**: Two (initial payment + double-spend)
+- **Coordination**: Single attacker, no external coordination needed
+- **Detection Risk**: Low - appears as normal private payment followed by standard double-spend
 
-**Frequency**:
-- **Repeatability**: Unlimited - attacker can crash same node after each restart
-- **Scale**: Per-node - each node must be targeted individually
-
-**Overall Assessment**: High likelihood - trivially exploitable with minimal resources and no special access required.
+**Overall Assessment**: Medium-High likelihood - technically feasible with moderate skill, reasonable success probability within timing window
 
 ## Recommendation
 
 **Immediate Mitigation**:
-The code should handle multiple rows gracefully instead of throwing. Change the logic to check for ANY row with an address (indicating duplicate) rather than throwing on multiple rows:
+Add stability check before saving private payment chains: [8](#0-7) 
 
-**Permanent Fix**:
-Modify the duplicate check to either:
-1. Include `output_index` in the query for divisible assets (if available in context)
-2. Change the check from `if (rows.length > 1)` to accept multiple rows as valid for divisible assets
-3. Use proper error callback instead of throw: `return transaction_callbacks.ifError("multiple outputs found")`
-
-**Additional Measures**:
-- Add test case verifying resent divisible asset private payments are handled gracefully
-- Add global uncaughtException handler for graceful degradation
-- Consider adding database constraint preventing duplicate private payment processing
-
-## Proof of Concept
-
+Modify to reject unstable chains:
 ```javascript
-// Test file: test/private_payment_duplicate.test.js
-const composer = require('../composer.js');
-const network = require('../network.js');
-const divisibleAsset = require('../divisible_asset.js');
-
-describe('Private payment duplicate handling', function() {
-    it('should handle resent divisible asset private payments without crashing', function(done) {
-        // Step 1: Create and send divisible asset private payment with 2 outputs
-        const privatePayment = {
-            unit: 'test_unit_hash',
-            message_index: 0,
-            payload: {
-                asset: 'test_asset',
-                inputs: [/* ... */],
-                outputs: [
-                    {address: 'ADDR1', amount: 1000, blinding: 'blind1'},
-                    {address: 'ADDR2', amount: 500, blinding: 'blind2'} // change output
-                ]
-            }
-        };
-        
-        // Step 2: Process initial payment (should succeed)
-        network.handleOnlinePrivatePayment([privatePayment], {
-            ifAccepted: function() {
-                // Step 3: Resend same payment (should NOT crash)
-                network.handleOnlinePrivatePayment([privatePayment], {
-                    ifAccepted: function() {
-                        done(); // Success - handled duplicate gracefully
-                    },
-                    ifValidationError: function(unit, error) {
-                        // Also acceptable - rejected with error instead of crash
-                        done();
-                    }
-                });
-            },
-            ifValidationError: done
-        });
-    });
-});
+ifOk: function(bAllStable){
+    if (!bAllStable)
+        return callbacks.ifError("Private payment chain contains unstable units");
+    // ... continue with saving
+}
 ```
 
-**Expected behavior**: Test should complete without process termination  
-**Actual behavior**: Node.js process crashes with uncaught exception when resending payment
-
----
+**Alternative Approach**:
+Prevent archiving of units that are referenced in saved private payment chains by checking for dependent records before deletion.
 
 ## Notes
 
-This is a **valid Medium severity vulnerability** because:
-
-1. **Scope**: Affects in-scope file (`private_payment.js` in `byteball/ocore`)
-2. **Impact**: DoS attack causing temporary transaction delay (>1 hour possible with persistent attacks) for private payment processing
-3. **Exploitability**: Easily exploitable by any network participant with minimal resources
-4. **Root Cause**: Improper error handling (throw in async callback) combined with incorrect duplicate detection logic for divisible assets
-
-The vulnerability does NOT affect:
-- Public transaction processing
-- Main DAG consensus
-- Fund safety (no theft or loss possible)
-- Network-wide operations (only individual node availability)
-
-However, it does meet the Immunefi Medium severity threshold of "Temporary Transaction Delay ≥1 Hour" by enabling DoS attacks against private payment processing that can persist for extended periods if attackers repeatedly target nodes.
+The protocol contains explicit logic for handling unstable units in private payments (comments at line 235 reference this), suggesting this was a partially-implemented feature rather than an oversight. The `updateIndivisibleOutputsThatWereReceivedUnstable()` function demonstrates awareness of the issue. [9](#0-8)  However, the implementation is incomplete as it lacks protection against the archiving scenario, creating a genuine security vulnerability.
 
 ### Citations
 
-**File:** private_payment.js (L58-65)
+**File:** indivisible_asset.js (L223-235)
 ```javascript
-					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
-					var params = [headElement.unit, headElement.message_index];
-					if (objAsset.fixed_denominations){
-						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
-							return transaction_callbacks.ifError("no output index in head private element");
-						sql += " AND output_index=?";
-						params.push(headElement.output_index);
-					}
+function validateAndSavePrivatePaymentChain(conn, arrPrivateElements, callbacks){
+	parsePrivatePaymentChain(conn, arrPrivateElements, {
+		ifError: callbacks.ifError,
+		ifOk: function(bAllStable){
+			console.log("saving private chain "+JSON.stringify(arrPrivateElements));
+			profiler.start();
+			var arrQueries = [];
+			for (var i=0; i<arrPrivateElements.length; i++){
+				var objPrivateElement = arrPrivateElements[i];
+				var payload = objPrivateElement.payload;
+				var input_address = objPrivateElement.input_address;
+				var input = payload.inputs[0];
+				var is_unique = objPrivateElement.bStable ? 1 : null; // unstable still have chances to become nonserial therefore nonunique
 ```
 
-**File:** private_payment.js (L70-74)
+**File:** indivisible_asset.js (L284-373)
 ```javascript
-							if (rows.length > 1)
-								throw Error("more than one output "+sql+' '+params.join(', '));
-							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
-								console.log("duplicate private payment "+params.join(', '));
-								return transaction_callbacks.ifOk();
-```
-
-**File:** divisible_asset.js (L32-38)
-```javascript
-			for (var j=0; j<payload.outputs.length; j++){
-				var output = payload.outputs[j];
-				conn.addQuery(arrQueries, 
-					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
-					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
-				);
+// must be executed within transaction
+function updateIndivisibleOutputsThatWereReceivedUnstable(conn, onDone){
+	
+	function updateOutputProps(unit, is_serial, onUpdated){
+		// may update several outputs
+		conn.query(
+			"UPDATE outputs SET is_serial=? WHERE unit=?", 
+			[is_serial, unit],
+			function(){
+				is_serial ? updateInputUniqueness(unit, onUpdated) : onUpdated();
 			}
-```
-
-**File:** network.js (L2150-2166)
-```javascript
-	joint_storage.checkIfNewUnit(unit, {
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-				ifOk: function(){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifAccepted(unit);
-					eventBus.emit("new_my_transactions", [unit]);
-				},
-				ifError: function(error){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifValidationError(unit, error);
-				},
-				ifWaitingForChain: function(){
-					savePrivatePayment();
-				}
-			});
-```
-
-**File:** sqlite_pool.js (L110-133)
-```javascript
-				// add callback with error handling
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
+		);
+	}
+	
+	function updateInputUniqueness(unit, onUpdated){
+		// may update several inputs
+		conn.query("UPDATE inputs SET is_unique=1 WHERE unit=?", [unit], function(){
+			onUpdated();
+		});
+	}
+	
+	console.log("updatePrivateIndivisibleOutputsThatWereReceivedUnstable starting");
+	conn.query(
+		"SELECT unit, message_index, sequence FROM outputs "+(conf.storage === 'sqlite' ? "INDEXED BY outputsIsSerial" : "")+" \n\
+		JOIN units USING(unit) \n\
+		WHERE outputs.is_serial IS NULL AND units.is_stable=1 AND is_spent=0", // is_spent=0 selects the final output in the chain
+		function(rows){
+			if (rows.length === 0)
+				return onDone();
+			async.eachSeries(
+				rows,
+				function(row, cb){
+					
+					function updateFinalOutputProps(is_serial){
+						updateOutputProps(row.unit, is_serial, cb);
 					}
-					// note that sqlite3 sets nonzero this.changes even when rows were matched but nothing actually changed (new values are same as old)
-					// this.changes appears to be correct for INSERTs despite the documentation states the opposite
-					if (!bSelect && !bCordova)
-						result = {affectedRows: this.changes, insertId: this.lastID};
-					if (bSelect && bCordova) // note that on android, result.affectedRows is 1 even when inserted many rows
-						result = result.rows || [];
-					//console.log("changes="+this.changes+", affected="+result.affectedRows);
-					var consumed_time = Date.now() - start_ts;
-				//	var profiler = require('./profiler.js');
-				//	if (!bLoading)
-				//		profiler.add_result(sql.substr(0, 40).replace(/\n/, '\\n'), consumed_time);
-					if (consumed_time > 25)
-						console.log("long query took "+consumed_time+"ms:\n"+new_args.filter(function(a, i){ return (i<new_args.length-1); }).join(", ")+"\nload avg: "+require('os').loadavg().join(', '));
-					self.start_ts = 0;
-					self.currentQuery = null;
-					last_arg(result);
-				});
+					
+					function goUp(unit, message_index){
+						// we must have exactly 1 input per message
+						conn.query(
+							"SELECT src_unit, src_message_index, src_output_index \n\
+							FROM inputs \n\
+							WHERE unit=? AND message_index=?", 
+							[unit, message_index],
+							function(src_rows){
+								if (src_rows.length === 0)
+									throw Error("updating unstable: blackbyte input not found");
+								if (src_rows.length > 1)
+									throw Error("updating unstable: more than one input found");
+								var src_row = src_rows[0];
+								if (src_row.src_unit === null) // reached root of the chain (issue)
+									return cb();
+								conn.query(
+									"SELECT sequence, is_stable, is_serial FROM outputs JOIN units USING(unit) \n\
+									WHERE unit=? AND message_index=? AND output_index=?", 
+									[src_row.src_unit, src_row.src_message_index, src_row.src_output_index],
+									function(prev_rows){
+										if (prev_rows.length === 0)
+											throw Error("src unit not found");
+										var prev_output = prev_rows[0];
+										if (prev_output.is_serial === 0)
+											throw Error("prev is already nonserial");
+										if (prev_output.is_stable === 0)
+											throw Error("prev is not stable");
+										if (prev_output.is_serial === 1 && prev_output.sequence !== 'good')
+											throw Error("prev is_serial=1 but seq!=good");
+										if (prev_output.is_serial === 1) // already was stable when initially received
+											return cb();
+										var is_serial = (prev_output.sequence === 'good') ? 1 : 0;
+										updateOutputProps(src_row.src_unit, is_serial, function(){
+											if (!is_serial) // overwrite the tip of the chain
+												return updateFinalOutputProps(0);
+											goUp(src_row.src_unit, src_row.src_message_index);
+										});
+									}
+								);
+							}
+						);
+					}
+					
+					var is_serial = (row.sequence === 'good') ? 1 : 0;
+					updateOutputProps(row.unit, is_serial, function(){
+						goUp(row.unit, row.message_index);
+					});
+				},
+				onDone
+			);
+		}
+	);
+}
 ```
 
-**File:** joint_storage.js (L21-35)
+**File:** indivisible_asset.js (L631-632)
 ```javascript
-function checkIfNewUnit(unit, callbacks) {
-	if (storage.isKnownUnit(unit))
-		return callbacks.ifKnown();
-	if (assocUnhandledUnits[unit])
-		return callbacks.ifKnownUnverified();
-	var error = assocKnownBadUnits[unit];
-	if (error)
-		return callbacks.ifKnownBad(error);
-	db.query("SELECT sequence, main_chain_index FROM units WHERE unit=?", [unit], function(rows){
-		if (rows.length > 0){
-			var row = rows[0];
-			if (row.sequence === 'final-bad' && row.main_chain_index !== null && row.main_chain_index < storage.getMinRetrievableMci()) // already stripped
-				return callbacks.ifNew();
-			storage.setUnitIsKnown(unit);
-			return callbacks.ifKnown();
+				if (in_rows.length === 0)
+					throw Error("building chain: blackbyte input not found");
+```
+
+**File:** indivisible_asset.js (L660-661)
+```javascript
+						if (out_rows.length === 0)
+							throw Error("blackbyte output not found");
+```
+
+**File:** joint_storage.js (L227-228)
+```javascript
+		"SELECT unit FROM units "+byIndex+" \n\
+		WHERE "+cond+" AND sequence IN('final-bad','temp-bad') AND content_hash IS NULL \n\
+```
+
+**File:** joint_storage.js (L256-256)
+```javascript
+									archiving.generateQueriesToArchiveJoint(conn, objJoint, 'uncovered', arrQueries, function(){
+```
+
+**File:** archiving.js (L26-27)
+```javascript
+		conn.addQuery(arrQueries, "DELETE FROM inputs WHERE unit=?", [unit]);
+		conn.addQuery(arrQueries, "DELETE FROM outputs WHERE unit=?", [unit]);
+```
+
+**File:** private_payment.js (L76-77)
+```javascript
+							var assetModule = objAsset.fixed_denominations ? indivisibleAsset : divisibleAsset;
+							assetModule.validateAndSavePrivatePaymentChain(conn, arrPrivateElements, transaction_callbacks);
 ```
