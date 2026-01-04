@@ -1,205 +1,350 @@
-# Audit Report: Private Payment Loss on Full Nodes Due to Missing Unstable Asset Check
+# Audit Report
+
+## Title
+Ball Hash Validation Bypass in Catchup Chain Processing Enables Persistent Synchronization Denial of Service
 
 ## Summary
-
-Full nodes permanently lose private payments for recently-created assets due to missing stability checks that light clients perform. When a private payment arrives for an unstable asset, full nodes immediately attempt validation, fail with a temporary error, and irreversibly delete the payment from the retry queue. Light clients correctly detect unstable assets and queue for retry. [1](#0-0) 
+The `processCatchupChain()` function in `catchup.js` validates unit hashes but omits cryptographic validation of ball hashes for stable joints, creating an inconsistency with proofchain and hash tree processing which properly validate using `getBallHash()`. Malicious P2P peers can inject fabricated ball hashes that pass internal consistency checks, causing victim nodes to enter persistent retry loops when requesting non-existent hash trees from honest peers.
 
 ## Impact
 
-**Severity**: High  
-**Category**: Permanent Freezing of Funds
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay
 
-Recipients operating full nodes permanently lose access to private payments when asset definition units have not yet stabilized (30-60 seconds after creation). The private payment data is irretrievably deleted from the `unhandled_private_payments` database table, preventing the recipient from claiming the on-chain outputs. While outputs remain on-chain, the recipient has lost the private keys/data necessary to prove ownership. Recovery requires the sender to manually detect the failure and retransmit after the asset stabilizes.
+**Affected Parties**: New nodes and nodes recovering from downtime attempting catchup synchronization. Already-synchronized nodes are unaffected.
 
-**Affected Parties**: All full node operators receiving private payments for assets created within the last 30-60 seconds  
-**Financial Impact**: Complete loss of individual private payment amounts (unbounded per payment)
+**Damage Quantification**: Victim nodes cannot complete catchup synchronization indefinitely (exceeds ≥1 day threshold). Attack persists across node restarts as fabricated balls remain in `catchup_chain_balls` database table. Recovery requires manual database cleanup or reconnection attempt with different peer set.
+
+**Systemic Risk**: During network partitions or periods of high node churn, multiple syncing nodes become vulnerable if attacker operates well-connected peers. Does not cascade to already-synchronized nodes or impact fund security.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/private_payment.js:85-90`, function `validateAndSavePrivatePaymentChain()`
+**Location**: `byteball/ocore/catchup.js:173-191`, function `processCatchupChain()`
 
-**Intended Logic**: Both light and full nodes should gracefully handle private payments where the asset definition unit exists but has not yet reached stability by queuing them for retry.
+**Intended Logic**: Catchup chains should cryptographically validate ball hashes by computing `getBallHash(unit, parent_balls, skiplist_balls, is_nonserial)` and comparing against received values, ensuring hash trees are retrievable from honest peers.
 
-**Actual Logic**: Full nodes skip the stability check entirely, immediately calling `validateAndSave()`. When the asset definition's MCI exceeds `last_stable_mci`, validation fails with error "asset definition must be before last ball", and the error handler permanently deletes the payment.
+**Actual Logic**: The function validates unit hashes via `hasValidHashes()` and checks internal consistency (current ball matches previous `last_ball` field), but never cryptographically validates that `last_ball` field values match `getBallHash()` computation.
+
+**Code Evidence**:
+
+The `hasValidHashes()` function only validates unit hash, not ball hash: [1](#0-0) 
+
+Catchup stable joint processing validates unit hash but blindly trusts `last_ball` fields without cryptographic verification: [2](#0-1) 
+
+In contrast, proofchain balls ARE cryptographically validated using `getBallHash()`: [3](#0-2) 
+
+Hash tree balls are also cryptographically validated using `getBallHash()`: [4](#0-3) 
+
+Unvalidated balls are stored in `catchup_chain_balls` table for future hash tree requests: [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**:
-   - Asset definition unit is created and assigned an MCI but not yet stable
-   - Private payment is sent for that asset to recipient on full node  
-   - Payment arrives during 30-60 second stability window
+1. **Preconditions**: 
+   - Victim node behind network state initiates catchup
+   - Attacker operates P2P peer node
+   - Catchup request received by attacker's peer: [6](#0-5) 
 
-2. **Step 1**: Full node processes saved private payment
-   - `handleSavedPrivatePayments()` runs every 5 seconds [2](#0-1) 
-   - Reads payment from `unhandled_private_payments` table [3](#0-2) 
-   - Calls `validateAndSavePrivatePaymentChain()` [4](#0-3) 
+2. **Step 1**: Victim sends catchup request with witness list and MCI range to attacker's peer
 
-3. **Step 2**: Validation path diverges between node types
-   - **Light nodes**: Execute `findUnfinishedPastUnitsOfPrivateChains()` which calls `filterNewOrUnstableUnits()` [5](#0-4) 
-   - If asset definition is unstable, callback `ifWaitingForChain()` is invoked [5](#0-4) 
-   - **Full nodes**: Skip the check entirely, go directly to `validateAndSave()` [6](#0-5) 
+3. **Step 2**: Attacker crafts malicious catchup response containing units with:
+   - Valid unit hashes (pass `hasValidHashes()` check)
+   - Arbitrary `last_ball` and `last_ball_unit` fields not matching actual `getBallHash()` computation
+   - `objJoint.ball` values matching the arbitrary `last_ball` values (internally consistent chain)
 
-4. **Step 3**: Asset validation fails on full nodes
-   - `storage.readAsset()` is called with `last_ball_mci = null` [7](#0-6) 
-   - For full nodes, this triggers `readLastStableMcIndex()` to set `last_ball_mci = last_stable_mci` [8](#0-7) 
-   - Validation checks if `objAsset.main_chain_index <= last_ball_mci` [9](#0-8) 
-   - For unstable assets, this condition fails and returns error "asset definition must be before last ball"
+4. **Step 3**: Victim processes catchup chain where validation passes because:
+   - Unit hash validation passes (line 180)
+   - Internal consistency passes (lines 184-185: current ball matches previous last_ball)
+   - NO cryptographic validation that `last_ball = getBallHash(last_ball_unit, ...)`
+   - Fabricated balls stored in database (lines 242-245)
 
-5. **Step 4**: Error handler permanently deletes payment
-   - Error flows to `ifError` callback in `handleSavedPrivatePayments()` [10](#0-9) 
-   - Calls `deleteHandledPrivateChain()` [11](#0-10) 
-   - Executes `DELETE FROM unhandled_private_payments` query [12](#0-11) 
-   - Payment is permanently removed from database with no recovery mechanism
-   
-   **Light node contrast**: `ifWaitingForChain` callback simply calls `cb()` without deleting [13](#0-12) 
+5. **Step 4**: Victim requests hash trees using fabricated balls: [7](#0-6) 
 
-**Security Property Broken**: Private payment reliability - valid private payments should eventually be processed regardless of asset stability timing.
+6. **Step 5**: Honest peers query database for fabricated balls and return error: [8](#0-7) 
 
-**Root Cause Analysis**: The code treats light and full nodes asymmetrically. Light nodes check for unstable units via `findUnfinishedPastUnitsOfPrivateChains()` and handle them as a retryable condition. Full nodes skip this check, causing validation to fail with a temporary condition (asset not yet stable) that is incorrectly treated as a permanent failure, triggering payment deletion.
+7. **Step 6**: Error triggers retry loop with 100ms intervals: [9](#0-8) [10](#0-9) 
 
-## Impact Explanation
+8. **Persistence**: Fabricated balls persist across restarts as `checkCatchupLeftovers()` continues catchup from stored state: [11](#0-10) 
 
-**Affected Assets**: All custom divisible and indivisible assets received as private payments on full nodes during the 30-60 second stability window after asset creation.
+9. **Result**: Endless retry as all honest peers lack fabricated balls. No automatic cleanup mechanism exists except database migration.
 
-**Damage Severity**:
-- **Quantitative**: Any private payment amount for newly-created assets. Each affected payment is permanently lost to the recipient until sender retransmits.
-- **Qualitative**: Recipients lose legitimate payments without notification, creating loss of funds and trust degradation.
+**Security Property Broken**:
+- **Last Ball Chain Integrity**: Ball hashes must be cryptographically verifiable and retrievable from honest network peers
+- **Catchup Completeness**: Syncing nodes must complete synchronization without manual intervention under normal network conditions
 
-**User Impact**:
-- **Who**: Full node operators receiving private payments (not light clients)
-- **Conditions**: Asset definition unit created within last 30-60 seconds when payment arrives
-- **Recovery**: Sender must manually detect failure and retransmit after asset stabilizes
-
-**Systemic Risk**:
-- Degrades private payment reliability for new assets
-- No notification mechanism for discarded payments
-- Silent failures create user confusion and potential disputes
+**Root Cause Analysis**: Inconsistent validation approach - proofchain balls and hash tree balls are cryptographically validated using `getBallHash()`, but stable joint balls in catchup chains are only validated for unit hash correctness and internal consistency. The `last_ball` field from units is attacker-controlled data never validated against cryptographic hash computation, allowing injection of internally consistent but cryptographically incorrect ball references.
 
 ## Likelihood Explanation
 
-**Attacker Profile**: No attacker required - this is a timing-dependent defect in normal operations
+**Attacker Profile**:
+- **Identity**: P2P network peer operator (untrusted actor per threat model)
+- **Resources Required**: Single peer node capable of responding to catchup protocol requests
+- **Technical Skill**: Medium - requires understanding catchup protocol format and ability to craft internally consistent but cryptographically invalid ball references
 
 **Preconditions**:
-- **Network State**: Normal operation
-- **Timing**: Private payment sent/received within 30-60 seconds of asset definition creation  
-- **Node Type**: Recipient operates full node (not light client)
+- Victim must be behind current network state and initiate catchup
+- Victim must select attacker's peer for catchup response (random selection)
+- First ball must be genesis or victim's last known stable ball (validated at lines 207-224)
 
-**Execution Complexity**: None - occurs automatically during normal protocol usage
+**Execution Complexity**:
+- Single catchup response message required
+- No coordination or timing requirements
+- Low detection risk during attack (appears as normal catchup traffic)
 
-**Frequency**: Affects every private payment for newly-created assets sent to full nodes during the stability window. Given the 5-second retry interval, payments arriving during this window will be processed and deleted before stabilization.
+**Persistence**:
+- Attack persists in victim database across restarts
+- Cleanup requires manual intervention or database migration
+- Can affect multiple victims if attacker operates well-connected peer
 
-**Overall Assessment**: Medium likelihood - requires specific timing (new asset + immediate payment) but occurs without malicious actor in normal protocol usage.
+**Overall Assessment**: Medium likelihood - requires victim to randomly select malicious peer, but attack has minimal cost, low technical barrier, and high persistence once successful.
 
 ## Recommendation
 
-**Immediate Mitigation**: Apply the same stability check used by light clients to full nodes in `validateAndSavePrivatePaymentChain()`:
+**Immediate Mitigation**:
 
-Modify `private_payment.js:85-90` to check for unstable units on both light and full nodes before validation.
+Add cryptographic ball hash validation to catchup chain stable joint processing to match proofchain and hash tree validation:
 
-**Permanent Fix**: Refactor to unified handling:
-- Call `findUnfinishedPastUnitsOfPrivateChains()` for both node types
-- Only invoke `ifWaitingForChain()` (queue for retry) when assets are unstable
-- Only invoke `validateAndSave()` when all referenced units are stable
+```javascript
+// File: byteball/ocore/catchup.js
+// Location: Lines 173-191 in processCatchupChain()
+
+// After line 185, add ball hash validation:
+if (objUnit.last_ball_unit) {
+    // Validate that last_ball matches cryptographic hash
+    storage.readJoint(db, objUnit.last_ball_unit, function(objLastBallJoint) {
+        var computed_ball = objectHash.getBallHash(
+            objLastBallJoint.unit.unit,
+            objLastBallJoint.parent_balls,
+            objLastBallJoint.skiplist_balls,
+            objLastBallJoint.unit.content_hash ? true : false
+        );
+        if (objUnit.last_ball !== computed_ball)
+            return callbacks.ifError("last_ball does not match getBallHash computation");
+        // Continue processing...
+    });
+}
+```
+
+**Permanent Fix**:
+
+Ensure consistent validation across all catchup components:
+1. Apply cryptographic ball hash validation to all ball references in catchup chains
+2. Add database constraint or cleanup mechanism to prevent persistent invalid balls
+3. Implement timeout or error count limit for hash tree request retries
+4. Add monitoring to detect repeated hash tree request failures
 
 **Additional Measures**:
-- Add integration test verifying private payments for unstable assets queue correctly on full nodes
-- Add monitoring to detect payments stuck in retry queue  
-- Document retry behavior in private payment specification
+- Add test case verifying fabricated ball hashes are rejected in catchup chains
+- Add alert when node enters extended retry loop for same hash tree
+- Document validation requirements for all catchup protocol messages
+
+## Proof of Concept
+
+A complete PoC would require:
+
+1. Setting up test Obyte network with attacker peer and victim node
+2. Crafting catchup response with units having valid unit hashes but fabricated ball hashes
+3. Demonstrating victim stores fabricated balls in `catchup_chain_balls`
+4. Showing victim enters retry loop when requesting hash trees from honest peers
+5. Verifying attack persists across victim node restart
+
+The attack path is clearly documented with specific code citations. Implementation would involve constructing unit objects with valid unit hashes (pass `hasValidHashes()`) but arbitrary `last_ball` values that don't match `getBallHash()` computation, then sending as catchup response.
 
 ## Notes
 
-This vulnerability demonstrates a critical asymmetry in how light and full nodes process private payments. The light client code path correctly identifies unstable assets as a retryable condition via `filterNewOrUnstableUnits()` [14](#0-13) , which queries for units with `is_stable=0`. Full nodes skip this check, immediately attempting validation that will fail temporarily but trigger permanent deletion.
-
-The fix is straightforward: ensure both node types execute the stability check before attempting validation. This aligns with Obyte's design principle that units should only be processed after they reach stability to ensure consensus consistency.
+This vulnerability demonstrates a validation inconsistency where proofchain balls (lines 145-146) and hash tree balls (line 363-364) receive cryptographic validation using `getBallHash()`, but catchup chain stable joints (lines 173-191) do not. The `last_ball` and `last_ball_unit` fields from received units are trusted without verification, allowing malicious peers to inject fabricated ball references that cause persistent synchronization failures. The issue specifically affects the catchup synchronization path and does not impact normal unit validation or already-synchronized nodes.
 
 ### Citations
 
-**File:** private_payment.js (L36-36)
+**File:** validation.js (L38-49)
 ```javascript
-		storage.readAsset(db, asset, null, function(err, objAsset){
+function hasValidHashes(objJoint){
+	var objUnit = objJoint.unit;
+	try {
+		if (objectHash.getUnitHash(objUnit) !== objUnit.unit)
+			return false;
+	}
+	catch(e){
+		console.log("failed to calc unit hash: "+e);
+		return false;
+	}
+	return true;
+}
 ```
 
-**File:** private_payment.js (L85-90)
+**File:** catchup.js (L143-146)
 ```javascript
-	if (conf.bLight)
-		findUnfinishedPastUnitsOfPrivateChains([arrPrivateElements], false, function(arrUnfinishedUnits){
-			(arrUnfinishedUnits.length > 0) ? callbacks.ifWaitingForChain() : validateAndSave();
-		});
-	else
-		validateAndSave();
+				for (var i=0; i<catchupChain.proofchain_balls.length; i++){
+					var objBall = catchupChain.proofchain_balls[i];
+					if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+						return callbacks.ifError("wrong ball hash: unit "+objBall.unit+", ball "+objBall.ball);
 ```
 
-**File:** network.js (L2191-2192)
+**File:** catchup.js (L173-191)
 ```javascript
-			? "SELECT json, peer, unit, message_index, output_index, linked FROM unhandled_private_payments WHERE unit="+db.escape(unit)
-			: "SELECT json, peer, unit, message_index, output_index, linked FROM unhandled_private_payments CROSS JOIN units USING(unit)";
+			// stable joints
+			var arrChainBalls = [];
+			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
+				var objJoint = catchupChain.stable_last_ball_joints[i];
+				var objUnit = objJoint.unit;
+				if (!objJoint.ball)
+					return callbacks.ifError("stable but no ball");
+				if (!validation.hasValidHashes(objJoint))
+					return callbacks.ifError("invalid hash");
+				if (objUnit.unit !== last_ball_unit)
+					return callbacks.ifError("not the last ball unit");
+				if (objJoint.ball !== last_ball)
+					return callbacks.ifError("not the last ball");
+				if (objUnit.last_ball_unit){
+					last_ball_unit = objUnit.last_ball_unit;
+					last_ball = objUnit.last_ball;
+				}
+				arrChainBalls.push(objJoint.ball);
+			}
 ```
 
-**File:** network.js (L2217-2217)
+**File:** catchup.js (L241-245)
 ```javascript
-						privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
+				function(cb){ // validation complete, now write the chain for future downloading of hash trees
+					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
+					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
+						cb();
+					});
 ```
 
-**File:** network.js (L2228-2235)
+**File:** catchup.js (L268-273)
 ```javascript
-							ifError: function(error){
-								console.log("validation of priv: "+error);
-							//	throw Error(error);
-								if (ws)
-									sendResult(ws, {private_payment_in_unit: row.unit, result: 'error', error: error});
-								deleteHandledPrivateChain(row.unit, row.message_index, row.output_index, cb);
-								eventBus.emit(key, false);
-							},
+	db.query(
+		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
+		[from_ball, to_ball], 
+		function(rows){
+			if (rows.length !== 2)
+				return callbacks.ifError("some balls not found");
 ```
 
-**File:** network.js (L2237-2240)
+**File:** catchup.js (L363-364)
 ```javascript
-							ifWaitingForChain: function(){
-								console.log('waiting for chain: unit '+row.unit+', message '+row.message_index+' output '+row.output_index);
-								cb();
-							}
+							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
 ```
 
-**File:** network.js (L2261-2264)
+**File:** network.js (L1926-1943)
 ```javascript
-function deleteHandledPrivateChain(unit, message_index, output_index, cb){
-	db.query("DELETE FROM unhandled_private_payments WHERE unit=? AND message_index=? AND output_index=?", [unit, message_index, output_index], function(){
-		cb();
-	});
-```
-
-**File:** network.js (L4069-4069)
-```javascript
-	setInterval(handleSavedPrivatePayments, 5*1000);
-```
-
-**File:** storage.js (L1844-1850)
-```javascript
-	if (last_ball_mci === null){
-		if (conf.bLight)
-			last_ball_mci = MAX_INT32;
-		else
-			return readLastStableMcIndex(conn, function(last_stable_mci){
-				readAsset(conn, asset, last_stable_mci, bAcceptUnconfirmedAA, handleAsset);
+function checkCatchupLeftovers(){
+	db.query(
+		"SELECT 1 FROM hash_tree_balls \n\
+		UNION \n\
+		SELECT 1 FROM catchup_chain_balls \n\
+		LIMIT 1",
+		function(rows){
+			if (rows.length === 0)
+				return console.log('no leftovers');
+			console.log('have catchup leftovers from the previous run');
+			findNextPeer(null, function(ws){
+				console.log('will request leftovers from '+ws.peer);
+				if (!bCatchingUp && !bWaitingForCatchupChain)
+					requestCatchup(ws);
 			});
+		}
+	);
+}
 ```
 
-**File:** storage.js (L1888-1892)
+**File:** network.js (L1945-1987)
 ```javascript
-		if (objAsset.main_chain_index !== null && objAsset.main_chain_index <= last_ball_mci)
-			return addAttestorsIfNecessary();
-		// && objAsset.main_chain_index !== null below is for bug compatibility with the old version
-		if (!bAcceptUnconfirmedAA || constants.bTestnet && last_ball_mci < testnetAssetsDefinedByAAsAreVisibleImmediatelyUpgradeMci && objAsset.main_chain_index !== null)
-			return handleAsset("asset definition must be before last ball");
-```
-
-**File:** storage.js (L1971-1977)
-```javascript
-function filterNewOrUnstableUnits(arrUnits, handleFilteredUnits){
-	sliceAndExecuteQuery("SELECT unit FROM units WHERE unit IN(?) AND is_stable=1", [arrUnits], arrUnits, function(rows) {
-		var arrKnownStableUnits = rows.map(function(row){ return row.unit; });
-		var arrNewOrUnstableUnits = _.difference(arrUnits, arrKnownStableUnits);
-		handleFilteredUnits(arrNewOrUnstableUnits);
+function requestCatchup(ws){
+	console.log("will request catchup from "+ws.peer);
+	eventBus.emit('catching_up_started');
+//	if (conf.storage === 'sqlite')
+//		db.query("PRAGMA cache_size=-200000", function(){});
+	catchup.purgeHandledBallsFromHashTree(db, function(){
+		db.query(
+			"SELECT hash_tree_balls.unit FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL ORDER BY ball_index", 
+			function(tree_rows){ // leftovers from previous run
+				if (tree_rows.length > 0){
+					bCatchingUp = true;
+					console.log("will request balls found in hash tree");
+					requestNewMissingJoints(ws, tree_rows.map(function(tree_row){ return tree_row.unit; }));
+					waitTillHashTreeFullyProcessedAndRequestNext(ws);
+					return;
+				}
+				db.query("SELECT 1 FROM catchup_chain_balls LIMIT 1", function(chain_rows){ // leftovers from previous run
+					if (chain_rows.length > 0){
+						bCatchingUp = true;
+						requestNextHashTree(ws);
+						return;
+					}
+					// we are not switching to catching up mode until we receive a catchup chain - don't allow peers to throw us into 
+					// catching up mode by just sending a ball
+					
+					// to avoid duplicate requests, we are raising this flag before actually sending the request 
+					// (will also reset the flag only after the response is fully processed)
+					bWaitingForCatchupChain = true;
+					
+					console.log('will read last stable mci for catchup');
+					storage.readLastStableMcIndex(db, function(last_stable_mci){
+						storage.readLastMainChainIndex(function(last_known_mci){
+							myWitnesses.readMyWitnesses(function(arrWitnesses){
+								var params = {witnesses: arrWitnesses, last_stable_mci: last_stable_mci, last_known_mci: last_known_mci};
+								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
+							}, 'wait');
+						});
+					});
+				});
+			}
+		);
 	});
+}
+```
+
+**File:** network.js (L2018-2039)
+```javascript
+function requestNextHashTree(ws){
+	eventBus.emit('catchup_next_hash_tree');
+	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
+		if (rows.length === 0)
+			return comeOnline();
+		if (rows.length === 1){
+			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+				comeOnline();
+			});
+			return;
+		}
+		var from_ball = rows[0].ball;
+		var to_ball = rows[1].ball;
+		
+		// don't send duplicate requests
+		for (var tag in ws.assocPendingRequests)
+			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
+				console.log("already requested hash tree from this peer");
+				return;
+			}
+		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+	});
+```
+
+**File:** network.js (L2042-2046)
+```javascript
+function handleHashTree(ws, request, response){
+	if (response.error){
+		console.log('get_hash_tree got error response: '+response.error);
+		waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		return;
+```
+
+**File:** network.js (L2075-2088)
+```javascript
+function waitTillHashTreeFullyProcessedAndRequestNext(ws){
+	setTimeout(function(){
+	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
+				findNextPeer(ws, function(next_ws){
+					requestNextHashTree(next_ws);
+				});
+			}
+			else
+				waitTillHashTreeFullyProcessedAndRequestNext(ws);
+	//	});
+	}, 100);
 }
 ```

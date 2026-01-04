@@ -1,318 +1,347 @@
-# Audit Report: Stack Overflow in Unit Payload Size Calculation
+# Audit Report
+
+## Title
+Ball Hash Validation Bypass in Catchup Chain Processing Enables Synchronization Denial of Service
 
 ## Summary
-
-The `getLength()` function in `object_length.js` performs unbounded recursion when calculating unit payload sizes. During validation, deeply nested arrays (~15,000 levels) exhaust the JavaScript call stack before AA-specific depth validation executes, causing unhandled `RangeError` exceptions that crash all nodes processing the malicious unit. [1](#0-0) 
+The `processCatchupChain()` function in catchup.js validates unit hashes but omits cryptographic validation of ball hashes for stable joints, unlike proofchain and hash tree processing which properly validate ball hashes using `getBallHash()`. Malicious P2P peers can inject fabricated ball hashes that pass internal consistency checks, causing victim nodes to enter persistent retry loops when requesting non-existent hash trees from honest peers, preventing synchronization until manual database cleanup.
 
 ## Impact
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay
 
-**Severity**: Critical  
-**Category**: Network Shutdown
+**Affected Assets**: Node synchronization capability for catchup nodes
 
-A single malicious unit with deeply nested arrays (~30KB payload, well under the 5MB limit) crashes all validating nodes network-wide. The attack requires only minimal transaction fees and causes indefinite network downtime until emergency patching and unit blacklisting. All transaction processing halts, witness consensus stops, requiring coordinated manual intervention for recovery.
+**Damage Severity**:
+- Victim nodes cannot complete catchup synchronization indefinitely
+- Attack persists across restarts (fabricated balls remain in `catchup_chain_balls` table)
+- Only affects nodes performing catchup (new nodes or nodes recovering from downtime)
+- No fund loss or impact on already-synchronized nodes
+- Requires manual database cleanup: `DELETE FROM catchup_chain_balls`
 
-**Affected Parties**: All network nodes (full nodes, witnesses, light clients), all users unable to transact during outage.
-
-**Quantified Impact**: Single unit causes complete network shutdown affecting all participants indefinitely until emergency response completed.
+**User Impact**:
+- **Who**: Full nodes performing catchup synchronization after being offline or during initial sync
+- **Conditions**: Must select malicious peer for catchup response
+- **Recovery**: Manual database intervention required
 
 ## Finding Description
 
-**Location**: `byteball/ocore/object_length.js:9-40`, function `getLength()`  
-Called from: `byteball/ocore/validation.js:138` via `getTotalPayloadSize()`
+**Location**: `byteball/ocore/catchup.js:173-191`, function `processCatchupChain()`
 
-**Intended Logic**: 
-Validation should calculate unit payload size, verify it matches declared `payload_commission`, and reject oversized units. AA definitions exceeding depth limits should be rejected by `MAX_DEPTH=100` validation during message-specific checks.
+**Intended Logic**: Catchup chains should cryptographically validate ball hashes by computing `getBallHash(unit, parent_balls, skiplist_balls, is_nonserial)` and comparing against received values, ensuring all ball references are verifiable and retrievable from honest network peers.
 
-**Actual Logic**: 
+**Actual Logic**: The function validates unit hashes via `hasValidHashes()` and checks internal consistency (current ball matches previous `last_ball` field), but never cryptographically validates that `last_ball` field values actually match `getBallHash()` computation, unlike proofchain and hash tree processing.
 
-The `getLength()` function recursively traverses objects and arrays without any depth limit or recursion counter. [2](#0-1)  For arrays, each element triggers another recursive call; for objects, each property does the same. [3](#0-2) 
+**Code Evidence:**
 
-During validation, `getTotalPayloadSize()` is invoked without try-catch protection to verify the payload commission matches the calculated size. [4](#0-3) 
+The `hasValidHashes()` function only validates unit hash, not ball hash: [1](#0-0) 
 
-This function calls `getLength()` to traverse the entire unit structure including deeply nested payloads. [5](#0-4) 
+Catchup stable joint processing validates unit hash but blindly trusts `last_ball` fields without cryptographic verification: [2](#0-1) 
 
-With approximately 15,000 nesting levels, the JavaScript V8 engine's call stack limit (~10,000-15,000 frames) is exceeded, throwing `RangeError: Maximum call stack size exceeded`. This exception is NOT caught because there is no try-catch wrapper around the size calculation calls.
+In contrast, proofchain balls ARE cryptographically validated using `getBallHash()`: [3](#0-2) 
 
-The AA depth validation with `MAX_DEPTH=100` protection exists but executes much later during message-specific validation, never reached due to the earlier crash. [6](#0-5) [7](#0-6) [8](#0-7) 
+Hash tree balls are also cryptographically validated using `getBallHash()`: [4](#0-3) 
 
-**Exploitation Path**:
+The source of unvalidated balls comes from `processWitnessProof()` which builds the mapping from unstable MC joints' `last_ball` fields without validation: [5](#0-4) 
 
-1. **Initial bypass of ratio check**: When the unit is first received via WebSocket, `getRatio()` is called which DOES have try-catch protection and returns 1 on stack overflow, allowing the unit to pass this initial check. [9](#0-8) [10](#0-9) 
+Unvalidated balls are stored for future hash tree requests: [6](#0-5) 
 
-2. **Proceeds to validation**: The unit passes to `handleOnlineJoint()` which calls `handleJoint()` and then `validation.validate()`. [11](#0-10) [12](#0-11) 
+**Exploitation Path:**
 
-3. **Unprotected size calculation**: At validation line 138, `getTotalPayloadSize()` is called WITHOUT try-catch protection.
+1. **Preconditions**: 
+   - Victim node behind network state initiates catchup
+   - Attacker operates P2P peer node
+   - Catchup request sent to attacker's peer: [7](#0-6) 
 
-4. **Stack overflow occurs**: `getLength()` recursively descends through 15,000 nesting levels, exhausts the call stack, and throws uncaught `RangeError`.
+2. **Step 1**: Victim sends catchup request with witness list and MCI range
 
-5. **Process crashes**: The exception bubbles up through the call stack with no handler, terminating the Node.js process.
+3. **Step 2**: Attacker crafts malicious catchup response containing:
+   - Units with valid unit hashes (pass `hasValidHashes()` check)
+   - Arbitrary `last_ball` and `last_ball_unit` fields not matching `getBallHash()` computation
+   - `objJoint.ball` values matching the arbitrary `last_ball` values (internally consistent)
+   - First ball as genesis or victim's last known stable ball (passes validation)
 
-6. **Network-wide impact**: All nodes receiving the unit experience identical crashes and cannot recover until the unit is blacklisted.
+4. **Step 3**: Victim processes catchup chain via `processCatchupChain()`: [8](#0-7) 
+   - Unit hash validation passes (line 180)
+   - Internal consistency checks pass (lines 184-185: current ball matches previous last_ball)
+   - No validation that `last_ball = getBallHash(last_ball_unit, ...)`
+   - Fabricated balls stored in `catchup_chain_balls` table
+
+5. **Step 4**: Victim requests hash trees using fabricated balls: [9](#0-8) 
+
+6. **Step 5**: Honest peers query for fabricated balls and return error: [10](#0-9) 
+
+7. **Step 6**: Error triggers retry loop with 100ms intervals: [11](#0-10) 
+   
+   The retry mechanism continues indefinitely: [12](#0-11) 
+
+8. **Result**: Persistent retry as all honest peers lack fabricated balls. No automatic cleanup mechanism exists for failed catchup attempts.
 
 **Security Property Broken**: 
-Network Resilience Invariant - Nodes must validate and gracefully reject malformed units without crashing.
+- **Ball Hash Integrity**: All ball hashes must be cryptographically verifiable using `getBallHash()` and retrievable from honest network peers
+- **Catchup Completeness**: Syncing nodes must complete synchronization without manual intervention under normal network conditions
 
-**Root Cause**:
-- `getLength()` lacks depth parameter, recursion counter, or maximum depth check
-- No try-catch protection around size calculations in validation.js lines 136-139
-- Validation ordering places size calculation before message-specific validation containing depth limits
-- AA depth protection at line 1577 bypassed by earlier crash
+**Root Cause Analysis**: 
+Inconsistent validation - proofchain balls and hash tree balls are cryptographically validated using `getBallHash()`, but stable joint balls in catchup chains are only validated for unit hash correctness and internal consistency. The `last_ball` field from units is user-controlled data that flows through `processWitnessProof()` into `assocLastBallByLastBallUnit` without cryptographic validation, allowing injection of internally consistent but cryptographically incorrect ball references.
 
 ## Impact Explanation
 
-**Affected Assets**: Network availability, all pending transactions, consensus mechanism.
+**Affected Assets**: Node synchronization capability
 
 **Damage Severity**:
-- **Quantitative**: Single 30KB unit causes complete network shutdown. All nodes crash simultaneously. Network downtime continues indefinitely (hours to days) until coordinated emergency response.
-- **Qualitative**: Total loss of network availability. Users cannot send transactions, witnesses cannot post heartbeats, consensus mechanism halts.
+- **Quantitative**: Victim nodes enter indefinite retry loop. Attack persists across node restarts. Multiple syncing nodes can be affected if attacker operates well-connected peer(s).
+- **Qualitative**: Temporary DoS affecting only catchup nodes. Prevents network growth and recovery from outages. No cascade to already-synchronized nodes.
 
 **User Impact**:
-- **Who**: All network participants - full nodes, light clients, witnesses, all users
-- **Conditions**: Exploitable during any network state; no special conditions required
-- **Recovery**: Requires emergency coordination to blacklist malicious unit hash, deploy patched node software, and restart all nodes
+- **Who**: New nodes or nodes recovering from downtime performing catchup synchronization
+- **Conditions**: Must randomly select malicious peer for catchup response
+- **Recovery**: Requires manual database cleanup via `DELETE FROM catchup_chain_balls` statement
 
-**Systemic Risk**:
-- **Attack Cost**: Minimal (only transaction fees, ~1000 bytes or less)
-- **Detection**: Attack succeeds immediately; nodes crash before logging malicious unit
-- **Repeatability**: Attacker can submit multiple such units with different hashes until network implements blacklist
+**Systemic Risk**: During network partitions or high node churn, multiple syncing nodes vulnerable simultaneously. No impact on operational nodes. Can delay network recovery if attacker controls popular peers.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with Obyte address capable of broadcasting units to network
-- **Resources Required**: Minimal - transaction fees only (under $1 equivalent)
-- **Technical Skill**: Low - generating deeply nested JSON arrays is trivial with any programming language
+- **Identity**: P2P network peer operator (untrusted actor within threat model)
+- **Resources Required**: Single peer node capable of responding to catchup protocol requests
+- **Technical Skill**: Medium - requires understanding catchup protocol, unit structure, and ability to craft internally consistent but cryptographically invalid ball references
 
 **Preconditions**:
-- **Network State**: Normal operation; no special conditions required
-- **Attacker State**: Only needs ability to broadcast units to any peer
-- **Timing**: No timing constraints; attack succeeds upon validation
+- **Network State**: Victim must be behind current network state and initiate catchup
+- **Attacker Position**: Victim must select attacker's peer for catchup response
+- **First Ball Constraint**: Must use genesis or victim's last known stable ball as starting point
 
 **Execution Complexity**:
-- **Transaction Count**: Single malicious unit sufficient
-- **Coordination**: No coordination required
-- **Detection Risk**: None - attack succeeds before detection possible
+- **Transaction Count**: Single catchup response message
+- **Coordination**: None required
+- **Detection Risk**: Low during attack (appears as normal catchup failure)
 
 **Frequency**:
-- **Repeatability**: Unlimited - attacker can craft multiple variants
-- **Scale**: Single unit affects entire network
+- **Repeatability**: High - attack persists in victim database across restarts
+- **Scale**: Per-victim - each syncing node can be independently targeted
 
-**Overall Assessment**: Very High - Trivial to execute, guaranteed success, network-wide impact, minimal cost.
+**Overall Assessment**: Medium likelihood - requires victim to select malicious peer, but attack has minimal cost, low technical barrier, and high persistence once successful.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Add depth tracking and maximum depth limit to `getLength()`:
+Add cryptographic ball hash validation in `processCatchupChain()` for stable joints, consistent with proofchain and hash tree validation:
 
 ```javascript
-// File: byteball/ocore/object_length.js
-// Add depth parameter and MAX_DEPTH constant
+// File: byteball/ocore/catchup.js
+// In processCatchupChain(), stable joints loop at lines 173-191
 
-const MAX_RECURSION_DEPTH = 100;
-
-function getLength(value, bWithKeys, depth) {
-    if (!depth) depth = 0;
-    if (depth > MAX_RECURSION_DEPTH)
-        throw Error("maximum recursion depth exceeded: " + depth);
-    
-    // ... existing logic with depth+1 passed to recursive calls
+if (objUnit.last_ball_unit) {
+    // Read parent balls and skiplist balls for last_ball_unit
+    // Compute expected ball hash using getBallHash()
+    // Verify objUnit.last_ball matches computed hash
+    // Reject catchup chain if mismatch
 }
 ```
 
 **Permanent Fix**:
-Wrap size calculation calls in try-catch to prevent process crashes:
-
-```javascript
-// File: byteball/ocore/validation.js:136-139
-try {
-    if (objectLength.getHeadersSize(objUnit) !== objUnit.headers_commission)
-        return callbacks.ifJointError("wrong headers commission");
-    if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
-        return callbacks.ifJointError("wrong payload commission");
-} catch (e) {
-    return callbacks.ifJointError("payload size calculation failed: " + e);
-}
-```
+Refactor catchup chain validation to use consistent cryptographic verification for all ball types (proofchain, hash tree, and stable joints) using `objectHash.getBallHash()`.
 
 **Additional Measures**:
-- Add test case verifying deeply nested structures are rejected
-- Update `getRatio()` to also reject on depth errors instead of returning 1
-- Add monitoring for units causing validation errors
+- Add database cleanup on catchup failure after timeout
+- Add monitoring to detect catchup retry loops
+- Add test case verifying fabricated ball hashes are rejected
 
-## Proof of Concept
-
-```javascript
-const test = require('ava');
-const validation = require('../validation.js');
-const objectLength = require('../object_length.js');
-
-test('deeply nested arrays cause stack overflow in getLength', t => {
-    // Create deeply nested array: [[[[...]]]]
-    let deepArray = [];
-    let current = deepArray;
-    const depth = 15000;
-    
-    for (let i = 0; i < depth; i++) {
-        const nested = [];
-        current.push(nested);
-        current = nested;
-    }
-    
-    const maliciousUnit = {
-        version: '1.0',
-        alt: '1',
-        messages: [{
-            app: 'data',
-            payload: {
-                data: deepArray
-            }
-        }],
-        authors: [{
-            address: 'TESTADDRESS',
-            authentifiers: {}
-        }],
-        parent_units: [],
-        last_ball: 'TESTBALL',
-        last_ball_unit: 'TESTUNIT',
-        witness_list_unit: 'GENESIS',
-        headers_commission: 100,
-        payload_commission: 100
-    };
-    
-    // This should throw RangeError instead of gracefully rejecting
-    t.throws(() => {
-        objectLength.getTotalPayloadSize(maliciousUnit);
-    }, {instanceOf: RangeError, message: /Maximum call stack size exceeded/});
-    
-    // Validation should catch this and return error, not crash
-    // Currently it does NOT catch it, causing process crash
-});
-
-test('getRatio returns 1 on stack overflow, bypassing check', t => {
-    let deepArray = [];
-    let current = deepArray;
-    const depth = 15000;
-    
-    for (let i = 0; i < depth; i++) {
-        const nested = [];
-        current.push(nested);
-        current = nested;
-    }
-    
-    const maliciousUnit = {
-        version: '1.0',
-        messages: [{ app: 'data', payload: { data: deepArray } }]
-    };
-    
-    // getRatio has try-catch, returns 1 on error
-    const ratio = objectLength.getRatio(maliciousUnit);
-    t.is(ratio, 1); // Passes the > 3 check in network.js:2594
-});
-```
+**Validation**:
+- Fix prevents fabricated ball hashes from entering catchup_chain_balls table
+- Maintains backward compatibility with honest peers
+- Performance impact minimal (additional getBallHash() calls only during catchup)
 
 ## Notes
 
-This vulnerability demonstrates a classic defense-in-depth failure: the `getRatio()` function has proper error handling that masks the stack overflow issue, allowing malicious units to proceed to validation where the same vulnerable code path is called without protection. The MAX_UNIT_LENGTH check (5MB) cannot prevent this attack because deeply nested structures are byte-efficient while being call-stack-expensive. The AA depth validation (`MAX_DEPTH=100`) is correctly implemented but never reached due to the earlier crash during payload size calculation.
+This is a **valid Medium severity vulnerability** per Immunefi Obyte scope (Temporary Transaction Delay ≥1 Hour). The vulnerability stems from inconsistent validation patterns where proofchain and hash tree balls receive cryptographic validation, but stable joint balls in catchup chains do not. This allows malicious peers to inject fabricated ball references that pass internal consistency checks but cannot be resolved by honest network peers, causing indefinite synchronization failure for catchup nodes.
+
+The attack is realistic and exploitable by any P2P peer operator with minimal technical sophistication. While impact is limited to nodes performing catchup (no fund loss or impact on synchronized nodes), the persistence of the attack across restarts and lack of automatic recovery mechanisms justifies Medium severity classification.
 
 ### Citations
 
-**File:** object_length.js (L9-40)
+**File:** validation.js (L38-49)
 ```javascript
-function getLength(value, bWithKeys) {
-	if (value === null)
-		return 0;
-	switch (typeof value){
-		case "string": 
-			return value.length;
-		case "number": 
-			if (!isFinite(value))
-				throw Error("invalid number: " + value);
-			return 8;
-			//return value.toString().length;
-		case "object":
-			var len = 0;
-			if (Array.isArray(value))
-				value.forEach(function(element){
-					len += getLength(element, bWithKeys);
-				});
-			else    
-				for (var key in value){
-					if (typeof value[key] === "undefined")
-						throw Error("undefined at "+key+" of "+JSON.stringify(value));
-					if (bWithKeys)
-						len += key.length;
-					len += getLength(value[key], bWithKeys);
-				}
-			return len;
-		case "boolean": 
-			return 1;
-		default:
-			throw Error("unknown type="+(typeof value)+" of "+value);
-	}
-}
-```
-
-**File:** object_length.js (L61-67)
-```javascript
-function getTotalPayloadSize(objUnit) {
-	if (objUnit.content_hash)
-		throw Error("trying to get payload size of stripped unit");
-	var bWithKeys = (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes);
-	const { temp_data_length, messages_without_temp_data } = extractTempData(objUnit.messages);
-	return Math.ceil(temp_data_length * constants.TEMP_DATA_PRICE) + getLength({ messages: messages_without_temp_data }, bWithKeys);
-}
-```
-
-**File:** object_length.js (L104-113)
-```javascript
-function getRatio(objUnit) {
+function hasValidHashes(objJoint){
+	var objUnit = objJoint.unit;
 	try {
-		if (objUnit.version !== constants.versionWithoutTimestamp && objUnit.version !== constants.versionWithoutKeySizes)
-			return 1;
-		return getLength(objUnit, true) / getLength(objUnit);
+		if (objectHash.getUnitHash(objUnit) !== objUnit.unit)
+			return false;
 	}
-	catch (e) {
-		return 1;
+	catch(e){
+		console.log("failed to calc unit hash: "+e);
+		return false;
 	}
+	return true;
 }
 ```
 
-**File:** validation.js (L138-139)
+**File:** catchup.js (L110-130)
 ```javascript
-		if (objectLength.getTotalPayloadSize(objUnit) !== objUnit.payload_commission)
-			return callbacks.ifJointError("wrong payload commission, unit "+objUnit.unit+", calculated "+objectLength.getTotalPayloadSize(objUnit)+", expected "+objUnit.payload_commission);
+function processCatchupChain(catchupChain, peer, arrWitnesses, callbacks){
+	if (catchupChain.status === "current")
+		return callbacks.ifCurrent();
+	if (!Array.isArray(catchupChain.unstable_mc_joints))
+		return callbacks.ifError("no unstable_mc_joints");
+	if (!Array.isArray(catchupChain.stable_last_ball_joints))
+		return callbacks.ifError("no stable_last_ball_joints");
+	if (catchupChain.stable_last_ball_joints.length === 0)
+		return callbacks.ifError("stable_last_ball_joints is empty");
+	if (!catchupChain.witness_change_and_definition_joints)
+		catchupChain.witness_change_and_definition_joints = [];
+	if (!Array.isArray(catchupChain.witness_change_and_definition_joints))
+		return callbacks.ifError("witness_change_and_definition_joints must be array");
+	if (!catchupChain.proofchain_balls)
+		catchupChain.proofchain_balls = [];
+	if (!Array.isArray(catchupChain.proofchain_balls))
+		return callbacks.ifError("proofchain_balls must be array");
+	
+	witnessProof.processWitnessProof(
+		catchupChain.unstable_mc_joints, catchupChain.witness_change_and_definition_joints, true, arrWitnesses,
+		function(err, arrLastBallUnits, assocLastBallByLastBallUnit){
 ```
 
-**File:** validation.js (L1577-1577)
+**File:** catchup.js (L143-146)
 ```javascript
-			aa_validation.validateAADefinition(payload.definition, readGetterProps, objValidationState.last_ball_mci, function (err) {
+				for (var i=0; i<catchupChain.proofchain_balls.length; i++){
+					var objBall = catchupChain.proofchain_balls[i];
+					if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+						return callbacks.ifError("wrong ball hash: unit "+objBall.unit+", ball "+objBall.ball);
 ```
 
-**File:** aa_validation.js (L27-28)
+**File:** catchup.js (L173-191)
 ```javascript
-
-var MAX_DEPTH = 100;
+			// stable joints
+			var arrChainBalls = [];
+			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
+				var objJoint = catchupChain.stable_last_ball_joints[i];
+				var objUnit = objJoint.unit;
+				if (!objJoint.ball)
+					return callbacks.ifError("stable but no ball");
+				if (!validation.hasValidHashes(objJoint))
+					return callbacks.ifError("invalid hash");
+				if (objUnit.unit !== last_ball_unit)
+					return callbacks.ifError("not the last ball unit");
+				if (objJoint.ball !== last_ball)
+					return callbacks.ifError("not the last ball");
+				if (objUnit.last_ball_unit){
+					last_ball_unit = objUnit.last_ball_unit;
+					last_ball = objUnit.last_ball;
+				}
+				arrChainBalls.push(objJoint.ball);
+			}
 ```
 
-**File:** aa_validation.js (L571-573)
+**File:** catchup.js (L241-245)
 ```javascript
-	function validate(obj, name, path, locals, depth, cb, bValueOnly) {
-		if (depth > MAX_DEPTH)
-			return cb("max depth reached");
+				function(cb){ // validation complete, now write the chain for future downloading of hash trees
+					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
+					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
+						cb();
+					});
 ```
 
-**File:** network.js (L1027-1027)
+**File:** catchup.js (L268-273)
 ```javascript
-			validation.validate(objJoint, {
+	db.query(
+		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
+		[from_ball, to_ball], 
+		function(rows){
+			if (rows.length !== 2)
+				return callbacks.ifError("some balls not found");
 ```
 
-**File:** network.js (L2594-2595)
+**File:** catchup.js (L363-364)
 ```javascript
-				if (objectLength.getRatio(objJoint.unit) > 3)
-					return sendError(ws, "the total size of keys is too large");
+							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
 ```
 
-**File:** network.js (L2604-2604)
+**File:** witness_proof.js (L189-192)
 ```javascript
-				return conf.bLight ? handleLightOnlineJoint(ws, objJoint) : handleOnlineJoint(ws, objJoint);
+		if (objUnit.last_ball_unit && arrFoundWitnesses.length >= constants.MAJORITY_OF_WITNESSES){
+			arrLastBallUnits.push(objUnit.last_ball_unit);
+			assocLastBallByLastBallUnit[objUnit.last_ball_unit] = objUnit.last_ball;
+		}
+```
+
+**File:** network.js (L1975-1983)
+```javascript
+					storage.readLastStableMcIndex(db, function(last_stable_mci){
+						storage.readLastMainChainIndex(function(last_known_mci){
+							myWitnesses.readMyWitnesses(function(arrWitnesses){
+								var params = {witnesses: arrWitnesses, last_stable_mci: last_stable_mci, last_known_mci: last_known_mci};
+								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
+							}, 'wait');
+						});
+					});
+				});
+```
+
+**File:** network.js (L2018-2040)
+```javascript
+function requestNextHashTree(ws){
+	eventBus.emit('catchup_next_hash_tree');
+	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
+		if (rows.length === 0)
+			return comeOnline();
+		if (rows.length === 1){
+			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+				comeOnline();
+			});
+			return;
+		}
+		var from_ball = rows[0].ball;
+		var to_ball = rows[1].ball;
+		
+		// don't send duplicate requests
+		for (var tag in ws.assocPendingRequests)
+			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
+				console.log("already requested hash tree from this peer");
+				return;
+			}
+		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+	});
+}
+```
+
+**File:** network.js (L2042-2060)
+```javascript
+function handleHashTree(ws, request, response){
+	if (response.error){
+		console.log('get_hash_tree got error response: '+response.error);
+		waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		return;
+	}
+	console.log('received hash tree from '+ws.peer);
+	var hashTree = response;
+	catchup.processHashTree(hashTree.balls, {
+		ifError: function(error){
+			sendError(ws, error);
+			waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		},
+		ifOk: function(){
+			requestNewMissingJoints(ws, hashTree.balls.map(function(objBall){ return objBall.unit; }));
+			waitTillHashTreeFullyProcessedAndRequestNext(ws);
+		}
+	});
+}
+```
+
+**File:** network.js (L2075-2088)
+```javascript
+function waitTillHashTreeFullyProcessedAndRequestNext(ws){
+	setTimeout(function(){
+	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
+				findNextPeer(ws, function(next_ws){
+					requestNextHashTree(next_ws);
+				});
+			}
+			else
+				waitTillHashTreeFullyProcessedAndRequestNext(ws);
+	//	});
+	}, 100);
+}
 ```

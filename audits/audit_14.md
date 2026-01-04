@@ -1,137 +1,315 @@
-# NoVulnerability found for this question.
+# Audit Report: Case-Insensitive Address Validation Causing Database-Dependent Fund Lock
 
-## Validation Assessment
+## Summary
 
-I have thoroughly analyzed the anti-vulnerability claim regarding the type inconsistency in `getTpsFeeRecipients()` and **confirm it is correct** - this is NOT a security vulnerability meeting Immunefi criteria.
+The Obyte protocol accepts payment outputs with lowercase addresses through case-insensitive validation but performs case-sensitive JavaScript comparisons during spending authorization. Combined with database collation differences (SQLite case-sensitive, MySQL case-insensitive), this creates permanent fund lock on SQLite nodes and network-wide balance divergence.
 
-## Technical Analysis Confirmation
+## Impact
 
-The claim correctly identifies a genuine code bug:
+**Severity**: Critical  
+**Category**: Permanent Fund Freeze (SQLite nodes) / Network Consensus Divergence
 
-**The Inconsistency:**
-- During validation: `earned_headers_commission_recipients` is an **array** [1](#0-0) 
-- During deduction: It's converted to an **object** [2](#0-1) 
-- `getTpsFeeRecipients()` uses `for...in` which behaves differently for arrays vs objects [3](#0-2) 
+**Concrete Financial Impact**:
+- **SQLite nodes**: Funds sent to lowercase addresses are permanently locked with no recovery path
+- **MySQL nodes**: Funds theoretically spendable via non-standard lowercase author
+- **Network-wide**: Different node types report different balances for identical addresses, breaking consensus
+- **Affected Parties**: Any user receiving payments to non-uppercase address variants, all SQLite node operators, exchange integrations
+- **Quantified Loss**: Any amount sent to lowercase addresses becomes permanently inaccessible on SQLite nodes
 
-When given an array, `for...in` iterates over indices ("0", "1") instead of addresses, causing the function to always override to the first author.
+## Finding Description
 
-## Why This is NOT a Vulnerability
+**Location**: Multiple files in `byteball/ocore`
 
-### 1. **Impact Fails to Meet Medium Severity Threshold**
+**Intended Logic**: The protocol generates uppercase addresses via base32 encoding [1](#0-0) . Addresses should be validated and stored consistently to ensure all valid outputs are spendable by their rightful owners.
 
-Per Immunefi scope, Medium severity requires:
-- Temporary transaction delay **≥1 hour**, OR
-- Unintended AA behavior
+**Actual Logic**: 
 
-**The claim provides NO concrete evidence** that this inconsistency causes ≥1 hour delays. Speculative "could bypass congestion control" statements without demonstrated network impact do not meet the threshold.
+1. **Output addresses validated case-insensitively**: Payment outputs use `isValidAddressAnyCase()` which only checks checksums regardless of case [2](#0-1) [3](#0-2) . The function definition confirms it accepts any case [4](#0-3) , unlike the stricter `isValidAddress` which enforces uppercase [5](#0-4) .
 
-### 2. **Both Parties Are Voluntary Participants**
+2. **Addresses stored without normalization**: Outputs are inserted directly into the database with the address as-provided, with no `.toUpperCase()` normalization [6](#0-5) .
 
-The scenario requires:
-- Multi-author unit with addresses A and B
-- Both A and B sign the unit [4](#0-3) 
-- Custom `earned_headers_commission_recipients` specified
+3. **Case-sensitive spending authorization fails**: During spending validation, author addresses are extracted [7](#0-6)  and compared using JavaScript's case-sensitive `indexOf()` against the stored output owner address [8](#0-7) [9](#0-8) .
 
-Both addresses are controlled by the unit creators who voluntarily structured their transaction this way. This is self-imposed behavior, not unauthorized access.
+4. **Author validation allows lowercase**: When no definition is provided, author validation only checks checksum validity without enforcing uppercase [10](#0-9) .
 
-### 3. **Negative Balances Are By Design**
+5. **Definition recovery blocked by case mismatch**: When attempting recovery with definition, `getChash160()` returns uppercase via base32 encoding [11](#0-10) , but the comparison target may be lowercase [12](#0-11) . The `definition_chash` comes from `readDefinitionChashByAddress` which returns the address parameter itself when no definition change exists [13](#0-12) .
 
-The database schema explicitly allows negative TPS fee balances: [5](#0-4) 
+6. **Database collation creates divergence**: Definition and balance queries use `WHERE address=?` [14](#0-13) [15](#0-14) . The collation differs:
+   - **SQLite**: No COLLATE specified, defaults to case-sensitive [16](#0-15) [17](#0-16) 
+   - **MySQL**: Uses `utf8mb4_unicode_520_ci` case-insensitive collation [18](#0-17) [19](#0-18) [20](#0-19) . The `definitions` table also uses this collation [21](#0-20)  vs SQLite's case-sensitive default [22](#0-21) .
 
-The comment `-- can be negative` indicates this is intentional design, not a security flaw.
+**Exploitation Path**:
 
-### 4. **No Direct Harm or Fund Loss**
+1. **Preconditions**: Victim owns uppercase address `ABCD2345EFGH6789IJKL0123MNOP4567` generated by standard wallet
 
-- No theft of bytes or assets
-- No unauthorized spending
-- No consensus break
-- No fund freeze
-- Only accounting inconsistency between the creator's own addresses
+2. **Step 1 - Malicious Output Creation**:
+   - Attacker submits unit with payment output to lowercase `abcd2345efgh6789ijkl0123mnop4567`
+   - Validation calls `isValidAddressAnyCase(output.address)` - passes (checksum valid)
+   - Unit accepted into DAG
 
-### 5. **TPS Fee Mechanism Still Functions**
+3. **Step 2 - Storage Without Normalization**:
+   - Address stored as lowercase in `outputs` table
+   - No normalization exists in storage path
 
-Even with the inconsistency:
-- Validation still requires sufficient `tps_fee` field in units [6](#0-5) 
-- Deduction still charges fees [7](#0-6) 
-- Rate limiting continues to increase fees exponentially during congestion
-- No demonstrated bypass of economic disincentives
+4. **Step 3 - Spending Attempt Fails (Standard Wallet)**:
+   - Victim creates unit with uppercase `author.address = "ABCD2345..."`
+   - `arrAuthorAddresses = ["ABCD2345..."]` extracted
+   - Database returns lowercase `owner_address = "abcd2345..."`
+   - `arrAuthorAddresses.indexOf(owner_address) === -1` returns true (case-sensitive JavaScript comparison)
+   - **Fails**: "output owner is not among authors"
 
-## Notes
+5. **Step 4 - Database-Dependent Recovery**:
+   - Victim attempts lowercase author without definition
+   - `readDefinitionByAddress(conn, "abcd2345...", ...)` called
+   - Query: `WHERE address=?` with lowercase address
+   - **On SQLite**: Case-sensitive, no match with uppercase definition - **PERMANENT LOCK**
+   - **On MySQL**: Case-insensitive, matches uppercase definition - **MAY SUCCEED** (non-standard)
 
-This is a **code quality bug** that should be fixed (using `for...in` with arrays is incorrect), but it:
-- Affects only edge case multi-author units with custom commission recipients
-- Impacts only the unit creators themselves who control both addresses  
-- Lacks concrete evidence of meeting Immunefi Medium severity thresholds
-- Does not enable unauthorized state changes or fund movements
+6. **Step 5 - Balance Divergence**:
+   - Balance query uses `WHERE address=?` with uppercase address
+   - **MySQL**: Case-insensitive collation includes lowercase output
+   - **SQLite**: Case-sensitive excludes lowercase output
+   - **Result**: Network consensus broken
 
-The anti-vulnerability claim correctly applies the validation framework by identifying that behavioral inconsistency alone, without demonstrated exploitability causing measurable harm (≥1 hour delay, fund loss, consensus break), does not constitute a security vulnerability for bounty purposes.
+**Security Properties Broken**:
+- Balance Conservation: Funds inaccessible on SQLite nodes
+- Network Consensus: Different balance calculations across database implementations
+- Canonical Address Assumption: Protocol assumes uppercase but doesn't enforce
+
+**Root Cause**:
+- Output validation uses case-insensitive `isValidAddressAnyCase()` instead of uppercase-enforcing `isValidAddress()`
+- No address normalization before storage
+- Case-sensitive JavaScript `indexOf()` for authorization
+- Database collation varies between implementations
+
+## Impact Explanation
+
+**Affected Assets**: All assets (bytes, custom divisible/indivisible assets)
+
+**Damage Severity**:
+- **SQLite Nodes**: Permanent loss of spendability, no recovery without database migration or hard fork
+- **MySQL Nodes**: Theoretically spendable via custom wallet with lowercase author (non-standard behavior)
+- **Network-Wide**: Critical consensus divergence on balance calculations
+
+**User Impact**:
+- **Who**: Any user receiving non-uppercase address payments
+- **Conditions**: Single malicious/accidental unit with lowercase address
+- **Recovery on SQLite**: None without database migration or protocol hard fork
+- **Recovery on MySQL**: Requires custom wallet using lowercase author
+
+**Systemic Risk**:
+- Network split in balance views between database types
+- Exchange integrations report different balances based on database backend
+- Enables griefing attacks (lock user funds by sending to lowercase variant)
+
+## Likelihood Explanation
+
+**Attacker Profile**: Any user with ability to submit units
+
+**Preconditions**: Normal network operation, knowledge of target address
+
+**Execution Complexity**: Single unit submission with lowercase address string
+
+**Frequency**: Unlimited repeatability, can occur accidentally via integration bugs
+
+**Overall Assessment**: High likelihood (trivial execution, no cost barrier, accidental occurrence possible)
+
+## Recommendation
+
+**Immediate Mitigation**:
+Enforce uppercase addresses in output validation by replacing `isValidAddressAnyCase` with `isValidAddress` in payment validation, or normalize addresses to uppercase before storage.
+
+**Permanent Fix**:
+1. Update validation to use `isValidAddress()` for all output addresses
+2. Add address normalization: `output.address = output.address.toUpperCase()` before storage
+3. Add database migration to uppercase existing lowercase addresses
+4. Add test cases verifying lowercase addresses are rejected or normalized
+
+**Notes**
+
+This is a **VALID CRITICAL VULNERABILITY** with overwhelming code evidence. The vulnerability exists because:
+
+1. The codebase has two address validation functions with different behaviors
+2. Payment output validation chose the permissive case-insensitive variant
+3. No normalization compensates for this choice
+4. JavaScript's case-sensitive comparison creates a mismatch
+5. Database collation differences amplify the impact
+
+The vulnerability affects the core protocol's balance conservation and network consensus properties, meeting the criteria for Critical severity under Immunefi's guidelines (Permanent Fund Freeze requiring hard fork, Network Consensus Divergence).
 
 ### Citations
 
-**File:** validation.js (L909-911)
+**File:** chash.js (L139-141)
 ```javascript
-	const author_addresses = objUnit.authors.map(a => a.address);
-	const bFromOP = isFromOP(author_addresses, objValidationState.last_ball_mci);
-	const recipients = storage.getTpsFeeRecipients(objUnit.earned_headers_commission_recipients, author_addresses);
+	var encoded = (chash_length === 160) ? base32.encode(chash).toString() : chash.toString('base64');
+	//console.log(encoded);
+	return encoded;
 ```
 
-**File:** validation.js (L916-917)
+**File:** validation.js (L193-193)
 ```javascript
-		if (tps_fees_balance + objUnit.tps_fee * share < min_tps_fee * share)
-			return callback(`tps_fee ${objUnit.tps_fee} + tps fees balance ${tps_fees_balance} less than required ${min_tps_fee} for address ${address} whose share is ${share}`);
+	var arrAuthorAddresses = objUnit.authors ? objUnit.authors.map(function(author) { return author.address; } ) : [];
 ```
 
-**File:** validation.js (L933-933)
+**File:** validation.js (L1015-1016)
 ```javascript
-		if (!isNonemptyArray(objUnit.earned_headers_commission_recipients))
+		if (!chash.isChashValid(objAuthor.address))
+			return callback("address checksum invalid");
 ```
 
-**File:** writer.js (L571-575)
+**File:** validation.js (L1296-1297)
 ```javascript
-		if ("earned_headers_commission_recipients" in objUnit) {
-			objNewUnitProps.earned_headers_commission_recipients = {};
-			objUnit.earned_headers_commission_recipients.forEach(function(row){
-				objNewUnitProps.earned_headers_commission_recipients[row.address] = row.earned_headers_commission_share;
-			});
+				if (objectHash.getChash160(arrAddressDefinition) !== definition_chash)
+					return callback("wrong definition: "+objectHash.getChash160(arrAddressDefinition) +"!=="+ definition_chash);
 ```
 
-**File:** storage.js (L1209-1223)
+**File:** validation.js (L1945-1946)
 ```javascript
-			const tps_fee = getFinalTpsFee(objUnitProps) * (1 + (objUnitProps.count_aa_responses || 0));
-			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
-			const total_tps_fees_delta = (objUnitProps.tps_fee || 0) - tps_fee; // can be negative
-			//	if (total_tps_fees_delta === 0)
-			//		continue;
-			/*	const recipients = (objUnitProps.earned_headers_commission_recipients && total_tps_fees_delta < 0)
-					? storage.getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses)
-					: (objUnitProps.earned_headers_commission_recipients || { [objUnitProps.author_addresses[0]]: 100 });*/
-			const recipients = getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses);
-			for (let address in recipients) {
-				const share = recipients[address];
-				const tps_fees_delta = Math.floor(total_tps_fees_delta * share / 100);
-				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
-				const tps_fees_balance = row ? row.tps_fees_balance : 0;
-				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
+			if ("address" in output && !ValidationUtils.isValidAddressAnyCase(output.address))
+				return callback("output address "+output.address+" invalid");
 ```
 
-**File:** storage.js (L1421-1433)
+**File:** validation.js (L1955-1956)
 ```javascript
-function getTpsFeeRecipients(earned_headers_commission_recipients, author_addresses) {
-	let recipients = earned_headers_commission_recipients || { [author_addresses[0]]: 100 };
-	if (earned_headers_commission_recipients) {
-		let bHasExternalRecipients = false;
-		for (let address in recipients) {
-			if (!author_addresses.includes(address))
-				bHasExternalRecipients = true;
-		}
-		if (bHasExternalRecipients) // override, non-authors won't pay for our tps fee
-			recipients = { [author_addresses[0]]: 100 };
-	}
-	return recipients;
+			if (!ValidationUtils.isValidAddressAnyCase(output.address))
+				return callback("output address "+output.address+" invalid");
+```
+
+**File:** validation.js (L2194-2195)
+```javascript
+						if (arrAuthorAddresses.indexOf(owner_address) === -1)
+							return cb("output owner is not among authors");
+```
+
+**File:** validation.js (L2261-2262)
+```javascript
+							if (arrAuthorAddresses.indexOf(owner_address) === -1)
+								return cb("output owner is not among authors");
+```
+
+**File:** validation_utils.js (L56-58)
+```javascript
+function isValidAddressAnyCase(address){
+	return isValidChash(address, 32);
 }
 ```
 
-**File:** initial-db/byteball-sqlite.sql (L1002-1002)
+**File:** validation_utils.js (L60-62)
+```javascript
+function isValidAddress(address){
+	return (typeof address === "string" && address === address.toUpperCase() && isValidChash(address, 32));
+}
+```
+
+**File:** writer.js (L394-397)
+```javascript
+								conn.addQuery(arrQueries, 
+									"INSERT INTO outputs \n\
+									(unit, message_index, output_index, address, amount, asset, denomination, is_serial) VALUES(?,?,?,?,?,?,?,1)",
+									[objUnit.unit, i, j, output.address, parseInt(output.amount), payload.asset, denomination]
+```
+
+**File:** storage.js (L756-757)
+```javascript
+		"SELECT definition_chash FROM address_definition_changes CROSS JOIN units USING(unit) \n\
+		WHERE address=? AND is_stable=1 AND sequence='good' AND main_chain_index<=? ORDER BY main_chain_index DESC LIMIT 1", 
+```
+
+**File:** storage.js (L760-760)
+```javascript
+			var definition_chash = (rows.length > 0) ? rows[0].definition_chash : address;
+```
+
+**File:** balances.js (L14-17)
+```javascript
+	db.query(
+		"SELECT asset, is_stable, SUM(amount) AS balance \n\
+		FROM outputs "+join_my_addresses+" CROSS JOIN units USING(unit) \n\
+		WHERE is_spent=0 AND "+where_condition+" AND sequence='good' \n\
+```
+
+**File:** initial-db/byteball-sqlite.sql (L77-81)
 ```sql
-	tps_fees_balance INT NOT NULL DEFAULT 0, -- can be negative
+CREATE TABLE definitions (
+	definition_chash CHAR(32) NOT NULL PRIMARY KEY,
+	definition TEXT NOT NULL,
+	has_references TINYINT NOT NULL
+);
+```
+
+**File:** initial-db/byteball-sqlite.sql (L181-190)
+```sql
+CREATE TABLE address_definition_changes (
+	unit CHAR(44) NOT NULL,
+	message_index TINYINT NOT NULL,
+	address CHAR(32) NOT NULL,
+	definition_chash CHAR(32) NOT NULL, -- might not be defined in definitions yet (almost always, it is not defined)
+	PRIMARY KEY (unit, message_index),
+	UNIQUE  (address, unit),
+	FOREIGN KEY (unit) REFERENCES units(unit),
+	CONSTRAINT addressDefinitionChangesByAddress FOREIGN KEY (address) REFERENCES addresses(address)
+);
+```
+
+**File:** initial-db/byteball-sqlite.sql (L318-334)
+```sql
+CREATE TABLE outputs (
+	output_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	unit CHAR(44) NOT NULL,
+	message_index TINYINT NOT NULL,
+	output_index TINYINT NOT NULL,
+	asset CHAR(44) NULL,
+	denomination INT NOT NULL DEFAULT 1,
+	address CHAR(32) NULL,  -- NULL if hidden by output_hash
+	amount BIGINT NOT NULL,
+	blinding CHAR(16) NULL,
+	output_hash CHAR(44) NULL,
+	is_serial TINYINT NULL, -- NULL if not stable yet
+	is_spent TINYINT NOT NULL DEFAULT 0,
+	UNIQUE (unit, message_index, output_index),
+	FOREIGN KEY (unit) REFERENCES units(unit),
+	CONSTRAINT outputsByAsset FOREIGN KEY (asset) REFERENCES assets(unit)
+);
+```
+
+**File:** initial-db/byteball-mysql.sql (L39-39)
+```sql
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
+```
+
+**File:** initial-db/byteball-mysql.sql (L73-77)
+```sql
+CREATE TABLE definitions (
+	definition_chash CHAR(32) NOT NULL PRIMARY KEY,
+	definition LONGTEXT NOT NULL,
+	has_references TINYINT NOT NULL
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
+```
+
+**File:** initial-db/byteball-mysql.sql (L182-182)
+```sql
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
+```
+
+**File:** initial-db/byteball-mysql.sql (L306-324)
+```sql
+CREATE TABLE outputs (
+	output_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	unit CHAR(44) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL,
+	message_index TINYINT NOT NULL,
+	output_index TINYINT NOT NULL,
+	asset CHAR(44) CHARACTER SET latin1 COLLATE latin1_bin NULL,
+	denomination INT NOT NULL DEFAULT 1,
+	address CHAR(32) NULL, -- NULL if hidden by output_hash
+	amount BIGINT NOT NULL,
+	blinding CHAR(16) NULL,
+	output_hash CHAR(44) NULL,
+	is_serial TINYINT NULL, -- NULL if not stable yet
+	is_spent TINYINT NOT NULL DEFAULT 0,
+	UNIQUE KEY (unit, message_index, output_index),
+	KEY byAddressSpent(address, is_spent),
+	KEY bySerial(is_serial),
+	FOREIGN KEY (unit) REFERENCES units(unit),
+	CONSTRAINT outputsByAsset FOREIGN KEY (asset) REFERENCES assets(unit)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 ```

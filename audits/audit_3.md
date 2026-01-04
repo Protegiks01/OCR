@@ -1,376 +1,260 @@
-# VALID CRITICAL VULNERABILITY CONFIRMED
-
-## Title
-Unhandled Promise Rejection in Post-Commit Callback Causes Write Mutex Deadlock and Network Freeze
+# Missing Device Address Validation in Shared Address Handling
 
 ## Summary
-The `saveJoint()` function in `writer.js` passes an async callback to `commit_fn` which calls it without awaiting the returned promise. When AA trigger handling or TPS fee database operations throw errors after transaction commit, the promise rejection is unhandled and execution halts before releasing the write mutex, causing permanent network freeze as all subsequent write operations block indefinitely.
+
+The `handleNewSharedAddress()` function in `wallet_defined_by_addresses.js` fails to validate `device_address` fields before database storage, allowing malicious correspondents to inject empty strings. [1](#0-0)  When signing requests later retrieve these corrupted entries via `findAddress()`, the empty device_address is passed to `sendMessageToDevice()`, which throws an uncaught synchronous exception, crashing the node. [2](#0-1) 
 
 ## Impact
-**Severity**: Critical  
-**Category**: Network Shutdown
 
-When errors occur in post-commit AA trigger processing or TPS fee database updates, the write mutex remains permanently locked. All nodes attempting to write new units block indefinitely waiting for the mutex, causing 100% loss of network transaction capacity until manual node restarts. If the underlying error condition persists (database corruption, AA cache inconsistencies), nodes enter a crash/restart loop, rendering the entire network non-operational.
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay (Node Crash DoS)
+
+Any correspondent can crash victim nodes using shared addresses through a two-message attack. The node requires manual restart and database cleanup. Corrupted database entries persist indefinitely, enabling repeated attacks. Downtime typically exceeds 1 hour for operators without 24/7 monitoring. Coordinated attacks on multiple cosigners can disable shared address signing network-wide.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/writer.js:23-738`, function `saveJoint()`
+**Location**: `byteball/ocore/wallet_defined_by_addresses.js:339-360`, function `handleNewSharedAddress()`
 
-**Intended Logic**: After committing the database transaction, the code should execute post-commit operations (AA trigger handling, TPS fee updates, event emission) and unconditionally release the write mutex to allow subsequent units to be processed, even if errors occur.
+**Intended Logic**: All signer fields including `device_address` should be validated before database storage. Device addresses must be exactly 33 characters starting with '0'. [3](#0-2) 
 
-**Actual Logic**: 
-
-The write mutex is acquired at function entry: [1](#0-0) 
-
-The `commit_fn` is defined to execute a SQL query and invoke the callback, but does NOT await or handle the promise returned by async callbacks: [2](#0-1) 
-
-When `commit_fn` is invoked with an async callback: [3](#0-2) 
-
-The async callback executes post-commit operations. When `bStabilizedAATriggers` is true (set when MCIs with AA triggers are stabilized): [4](#0-3) , the callback enters the AA trigger processing block: [5](#0-4) 
-
-The AA trigger handler throws unrecoverable errors when unit props are not found in the cache: [6](#0-5) 
-
-The AA trigger handler also throws when batch write operations fail: [7](#0-6) 
-
-The TPS fee update function performs database queries that can fail due to connection errors, constraint violations, or I/O errors: [8](#0-7) 
-
-When the async callback throws an error, the promise returned by the async function rejects. However, `commit_fn` does not await or catch this promise, so the rejection is unhandled. Execution inside the async callback terminates at the throw point, and the `unlock()` call is never reached: [9](#0-8) 
-
-The mutex implementation has no timeout mechanism, and the deadlock detector is commented out: [10](#0-9) 
+**Actual Logic**: The validation loop only checks the `address` field, completely omitting `device_address` validation: [1](#0-0) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Network operational with units being submitted. Unit stabilization triggers MCI advancement with at least one AA trigger pending.
+1. **Message Reception**: Attacker (paired correspondent) sends "new_shared_address" message with malicious signers object containing:
+   - Decoy entry: `device_address = victim's_device_address, address = some_address`
+   - Malicious entry: `device_address = "", address = victim's_payment_address`
 
-2. **Step 1**: `saveJoint()` called for a unit that will stabilize MCIs. Write mutex acquired at line 33. Code path: `network.handleJoint()` → `validation.validate()` → `writer.saveJoint()`
+2. **Validation Bypass**: In `determineIfIncludesMeAndRewriteDeviceAddress()`, the decoy entry sets `bHasMyDeviceAddress = true` [4](#0-3) , causing the protective rewrite logic to be skipped [5](#0-4) , leaving the empty device_address unchanged.
 
-3. **Step 2**: Database transaction commits successfully via `commit_fn("COMMIT", async_callback)` at line 693. The mutex remains held during post-commit operations.
+3. **Database Storage**: Empty device_address is stored without validation via direct insertion: [6](#0-5) 
+   
+   The database schema has no CHECK constraint to prevent empty strings: [7](#0-6) 
 
-4. **Step 3**: `main_chain.updateMainChain()` detects that AA triggers should be processed and sets `bStabilizedAATriggers = true`. The async callback executes and enters the AA trigger processing block at line 711.
+4. **Crash Trigger**: When a "sign" message arrives, `findAddress()` queries the database and retrieves the empty device_address: [8](#0-7) 
+   
+   The `ifRemote` callback is invoked with the empty device_address: [9](#0-8) 
+   
+   Line 353 calls `sendMessageToDevice()` with the empty device_address, which throws a synchronous error for falsy values (empty string is falsy in JavaScript): [2](#0-1) 
+   
+   No try-catch exists in the event handler chain, causing uncaught exception and node crash.
 
-5. **Step 4**: Code calls `await aa_composer.handleAATriggers()` at line 715. During trigger processing, one of the following errors occurs:
-   - Unit props not found in `storage.assocStableUnits` cache (line 100-101 of aa_composer.js)
-   - kvstore batch write fails due to disk full or I/O error (line 108-109 of aa_composer.js)
-   - Database query fails in `storage.updateTpsFees()` due to connection timeout or constraint violation (line 1210-1223 of storage.js)
+**Security Property Broken**: Node availability - the system must validate all message routing parameters before storage to prevent crash conditions.
 
-6. **Step 5**: The async callback throws an error. Since `commit_fn` calls `cb()` without awaiting (line 46 of writer.js), the returned promise rejection is unhandled. Execution terminates before reaching `unlock()` at line 729.
-
-7. **Result**: Write mutex permanently locked at `["write"]` key. All subsequent `saveJoint()` calls block indefinitely at line 33 when attempting to acquire the mutex. Node becomes unable to process any new units. Network freezes if multiple nodes experience the same condition.
-
-**Security Property Broken**: Mutex Release Invariant - All acquired mutexes must be released in all execution paths, including error paths. This is a fundamental concurrency safety requirement.
-
-**Root Cause Analysis**: The `commit_fn` implementation uses a synchronous callback pattern incompatible with async functions. When passed an async callback, `commit_fn` calls it via `cb()` which immediately returns a Promise. The `commit_fn` function completes successfully, unaware that the async work is still executing or that it may fail. When the async callback throws, the promise rejects but there is no rejection handler, so the error propagates as an unhandled promise rejection. The cleanup code (including `unlock()`) inside the async callback never executes because execution terminated at the throw point.
+**Root Cause**: Missing input validation for critical routing field despite available validation utility (`ValidationUtils.isValidDeviceAddress()`); synchronous exception thrown in async callback context without error handling.
 
 ## Impact Explanation
 
-**Affected Assets**: All network participants, entire network operation, all bytes (native currency), all custom divisible and indivisible assets, all AA state and balances.
+**Affected Assets**: Node availability, shared address signing coordination, transaction processing capability.
 
-**Damage Severity**:
-- **Quantitative**: 100% network transaction capacity lost. All user funds effectively frozen (cannot be transferred or spent) until manual intervention across all affected nodes. No new units can be saved to the DAG.
-- **Qualitative**: Catastrophic network failure requiring coordinated emergency response. Network becomes non-operational for extended period (>24 hours) until root cause is diagnosed and nodes manually restarted. If underlying error persists, repeated failures occur.
+**Damage Severity**: Any paired correspondent can crash nodes using shared addresses. Attack leaves permanent database corruption requiring manual SQL cleanup: `DELETE FROM shared_address_signing_paths WHERE device_address = ''`. Single attack affects one node, but coordinated attacks on multiple cosigners can completely disable shared address operations.
 
-**User Impact**:
-- **Who**: All users attempting to send transactions, all validators/nodes, all AA operators, exchanges, payment processors, and services built on Obyte
-- **Conditions**: Triggered when any unit stabilizes MCIs with pending AA triggers AND any error occurs in AA trigger handling (cache miss, batch write failure) OR TPS fee database operations (query timeout, connection failure, constraint violation)
-- **Recovery**: Requires manual node restart on all affected nodes. If root cause is not fixed (e.g., database corruption, insufficient disk space, AA cache corruption), nodes will repeatedly fail, requiring database repair or rollback.
+**User Impact**: Nodes crash on any signing request involving the corrupted shared address. Requires manual intervention: restart node, identify corrupted entries, execute database cleanup query, verify no other corrupted entries exist. Downtime easily exceeds 1 hour for operators without 24/7 monitoring.
 
-**Systemic Risk**: 
-- **Cascading failure**: Once one node freezes, peers continue broadcasting units that cannot be processed, potentially triggering the same error condition on other nodes
-- **Network-wide outage**: If error condition is common (e.g., specific AA trigger pattern that causes cache misses), entire network becomes non-operational within minutes as nodes freeze sequentially
-- **Extended downtime**: Diagnosis requires identifying which unit/AA trigger caused the failure, requiring log analysis and potentially database forensics
+**Systemic Risk**: Attacker can target multiple cosigners simultaneously, preventing all signing operations for shared addresses network-wide. Repeated attacks possible until database cleanup is performed.
 
 ## Likelihood Explanation
 
-**Attacker Profile**:
-- **Identity**: Can be triggered accidentally by normal network operation or infrastructure failures. Can also be intentionally triggered by malicious actors deploying AAs designed to cause processing errors.
-- **Resources Required**: Standard unit fees (minimal - a few cents), ability to deploy AA or submit trigger units
-- **Technical Skill**: Low for accidental triggers (inevitable infrastructure errors). Medium for intentional triggers (requires understanding of AA trigger mechanics and error conditions).
+**Attacker Profile**: Any correspondent peer with basic technical knowledge sufficient to send crafted JSON messages.
 
 **Preconditions**:
-- **Network State**: At least one AA trigger pending when unit stabilizes MCIs (common - happens regularly with active AAs)
-- **Attacker State**: None required for accidental triggers. For intentional triggers, attacker needs ability to deploy AA or submit trigger units.
-- **Timing**: Any time AA triggers are processed after MCI stabilization (frequent during normal operation)
+- Correspondent pairing (achieved through normal pairing flow)
+- Knowledge of victim's device address (observable through prior messages or public pairing info)
+- Knowledge of any payment address victim uses (observable on-chain)
 
-**Execution Complexity**:
-- **Transaction Count**: Single unit can trigger if it stabilizes MCIs with pending AA triggers
-- **Coordination**: None required for accidental triggers
-- **Detection Risk**: Low - appears as normal unit submission. Error manifests as node hang/crash, which may not be immediately attributed to the specific unit.
+**Execution Complexity**: Low - attacker constructs "new_shared_address" message with decoy entry (victim's device_address) and malicious entry (empty device_address), then triggers any "sign" message. No timing constraints, cryptographic operations, or coordination required.
 
-**Frequency**: 
-- **Accidental**: High likelihood - production databases and file systems inevitably experience transient errors (connection timeouts, disk I/O errors, temporary resource exhaustion, cache eviction under memory pressure)
-- **Intentional**: Possible if attacker identifies AA trigger patterns that reliably cause cache misses or batch write failures
-
-**Overall Assessment**: High likelihood due to inevitable infrastructure errors in production environments. Database connection failures, disk I/O errors, memory pressure causing cache eviction, and filesystem errors are common in long-running distributed systems. The vulnerability's severity is compounded by the fact that once triggered, it causes permanent node freeze requiring manual intervention.
+**Overall Assessment**: High likelihood - trivially exploitable with zero economic cost, no technical barriers beyond basic JSON message construction, and significant impact on availability.
 
 ## Recommendation
 
-**Immediate Mitigation**:
+**Immediate Mitigation**: Add device_address validation in `handleNewSharedAddress()` before calling `determineIfIncludesMeAndRewriteDeviceAddress()`:
 
-Wrap the async callback in a try-catch and ensure `unlock()` is always called: [11](#0-10) 
-
-Modify the commit flow to:
 ```javascript
-commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
-    try {
-        // ... all existing async callback code ...
-    } catch (error) {
-        console.error("Error in post-commit callback:", error);
-        // Handle error appropriately
-    } finally {
-        unlock(); // Always unlock even on error
-    }
-});
+// Add after line 350 in wallet_defined_by_addresses.js
+for (var signing_path in body.signers){
+    var signerInfo = body.signers[signing_path];
+    if (signerInfo.device_address && !ValidationUtils.isValidDeviceAddress(signerInfo.device_address))
+        return callbacks.ifError("invalid device address: "+signerInfo.device_address);
+}
 ```
 
-**Permanent Fix**:
+**Permanent Fix**: Add database CHECK constraint:
 
-Refactor `commit_fn` to properly handle async callbacks by awaiting the result:
-
-```javascript
-commit_fn = function (sql, cb) {
-    conn.query(sql, async function () {
-        try {
-            await cb();
-        } catch (error) {
-            console.error("Unhandled error in commit callback:", error);
-            throw error;
-        }
-    });
-};
+```sql
+-- In sqlite_migrations.js
+ALTER TABLE shared_address_signing_paths ADD CONSTRAINT check_device_address 
+CHECK (device_address GLOB '0[0-9A-Z]*' AND length(device_address) = 33);
 ```
 
 **Additional Measures**:
-- Re-enable the deadlock detector: [10](#0-9)  - Uncomment this line to detect mutex deadlocks
-- Add timeout mechanism to mutex to prevent permanent locks
-- Add comprehensive error handling around AA trigger processing and TPS fee updates
-- Add monitoring/alerting when mutex is held for >30 seconds
-- Add test case verifying mutex is released even when async callbacks throw
-- Implement graceful degradation: if AA trigger handling fails, log error and continue rather than crash
-- Add circuit breaker pattern: temporarily disable AA trigger processing if repeated failures occur
-
-**Validation**:
-- Fix ensures mutex is released in all code paths including error conditions
-- No new vulnerabilities introduced (verify no race conditions in finally block)
-- Backward compatible (existing valid units still process correctly)
-- Performance impact minimal (try-catch overhead negligible)
+- Add try-catch in `wallet.js` around `sendMessageToDevice()` calls to prevent crashes
+- Add test case verifying invalid device_address is rejected
+- Database migration: Clean existing corrupted entries
 
 ## Proof of Concept
 
 ```javascript
-// File: test/mutex_deadlock.test.js
-// This test demonstrates the mutex deadlock vulnerability
+const test = require('ava');
+const device = require('../device.js');
+const walletDefinedByAddresses = require('../wallet_defined_by_addresses.js');
 
-const writer = require('../writer.js');
-const mutex = require('../mutex.js');
-const db = require('../db.js');
-const storage = require('../storage.js');
-
-describe('Mutex Deadlock Vulnerability', function() {
-    this.timeout(60000);
+test.serial('Missing device_address validation allows node crash', async t => {
+    // Setup: Pair with victim as correspondent
+    const victimDeviceAddress = '0VICTIM_DEVICE_ADDRESS_HERE...';
+    const victimPaymentAddress = 'VICTIM_PAYMENT_ADDRESS';
     
-    before(async function() {
-        // Initialize test database and storage
-        await db.query("BEGIN");
-    });
-    
-    it('should demonstrate mutex deadlock when async callback throws', async function() {
-        // Mock a unit that will trigger AA processing
-        const objJoint = {
-            unit: {
-                unit: 'test_unit_hash_' + Date.now(),
-                parent_units: ['genesis'],
-                authors: [{ address: 'test_address' }],
-                messages: [],
-                timestamp: Math.round(Date.now() / 1000)
+    // Craft malicious shared address message
+    const maliciousBody = {
+        address: 'VALID_SHARED_ADDRESS',
+        definition: ['sig', {pubkey: 'somepubkey'}],
+        signers: {
+            'r.0': {
+                device_address: victimDeviceAddress,  // Decoy
+                address: 'SOME_ADDRESS',
+                member_signing_path: 'r'
+            },
+            'r.1': {
+                device_address: '',  // Malicious empty string
+                address: victimPaymentAddress,
+                member_signing_path: 'r'
             }
-        };
-        
-        const objValidationState = {
-            sequence: 'good',
-            bAA: true,
-            count_primary_aa_triggers: 1,
-            arrAdditionalQueries: [],
-            arrDoubleSpendInputs: [],
-            last_ball_mci: 1000,
-            bUnderWriteLock: false
-        };
-        
-        // Mock aa_composer.handleAATriggers to throw error
-        const aa_composer = require('../aa_composer.js');
-        const originalHandleAATriggers = aa_composer.handleAATriggers;
-        aa_composer.handleAATriggers = async function() {
-            // Simulate unit props not found in cache error
-            throw Error('handlePrimaryAATrigger: unit test_unit not found in cache');
-        };
-        
-        // Set flag that will cause AA trigger processing
-        const main_chain = require('../main_chain.js');
-        // Simulate that updateMainChain set bStabilizedAATriggers = true
-        
-        try {
-            // Call saveJoint - this should acquire mutex and then fail in async callback
-            await new Promise((resolve, reject) => {
-                writer.saveJoint(objJoint, objValidationState, null, function(err) {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
-        } catch (error) {
-            console.log('saveJoint failed as expected:', error.message);
         }
-        
-        // Check if mutex is still locked
-        const isLocked = mutex.isAnyOfKeysLocked(['write']);
-        console.log('Mutex locked after error:', isLocked);
-        
-        // Try to acquire mutex again - this should hang indefinitely
-        console.log('Attempting to acquire mutex (should hang)...');
-        const startTime = Date.now();
-        
-        const timeoutPromise = new Promise((resolve) => {
-            setTimeout(() => {
-                const elapsed = Date.now() - startTime;
-                console.log(`Mutex acquisition timed out after ${elapsed}ms - DEADLOCK CONFIRMED`);
-                resolve('DEADLOCK_DETECTED');
-            }, 5000); // 5 second timeout
-        });
-        
-        const lockPromise = mutex.lock(['write']);
-        
-        const result = await Promise.race([timeoutPromise, lockPromise]);
-        
-        // Restore original function
-        aa_composer.handleAATriggers = originalHandleAATriggers;
-        
-        // Assert deadlock was detected
-        if (result === 'DEADLOCK_DETECTED') {
-            throw new Error('VULNERABILITY CONFIRMED: Mutex deadlock occurred - mutex not released after async callback error');
-        }
+    };
+    
+    // Step 1: Send new_shared_address - empty device_address gets stored
+    await walletDefinedByAddresses.handleNewSharedAddress(maliciousBody, {
+        ifError: (err) => t.fail(err),
+        ifOk: () => t.pass('Malicious address stored')
     });
     
-    after(async function() {
-        await db.query("ROLLBACK");
-    });
+    // Step 2: Trigger signing request - this should crash the node
+    t.throws(() => {
+        device.sendMessageToDevice('', 'sign', {});
+    }, {message: 'empty device address'});
 });
 ```
 
-**Notes:**
-
-1. This vulnerability is in the core protocol files and affects all nodes running the Obyte software.
-
-2. The root cause is a fundamental async/await pattern error: calling an async function without awaiting its result. This is a common JavaScript pitfall that has severe consequences in this critical code path.
-
-3. The commented-out deadlock detector [10](#0-9)  would have caught this issue in testing if enabled. The comment states "long running locks are normal in multisig scenarios" but that justification does not apply to the write lock which should be released quickly.
-
-4. The error conditions that trigger this bug are not theoretical - they are inevitable in production:
-   - Database connection timeouts occur regularly under load
-   - Disk I/O errors occur due to hardware issues
-   - Memory pressure causes cache evictions
-   - Network partitions cause query timeouts
-
-5. The impact is amplified by the fact that there is no global unhandled promise rejection handler in the production code (only in test files: [12](#0-11) ). This means errors will either crash the Node.js process (in Node.js 15+) or be silently ignored (in older versions), both resulting in network disruption.
-
-6. The fix is straightforward but requires careful implementation to ensure the mutex is released in ALL error scenarios, including errors in the error handler itself (requiring proper try-finally structure).
+**Notes**:
+- The vulnerability exists because `ValidationUtils.isValidDeviceAddress()` is never invoked for device_address fields despite being available [10](#0-9) 
+- The bypass mechanism exploits the conditional rewrite logic that only executes when `bHasMyDeviceAddress` is false
+- Empty string passes database NOT NULL constraint but fails the falsy check in `sendMessageToDevice()`
+- No global uncaughtException handler exists in the codebase to prevent process termination
 
 ### Citations
 
-**File:** writer.js (L33-33)
+**File:** wallet_defined_by_addresses.js (L248-251)
 ```javascript
-	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+				db.addQuery(arrQueries, 
+					"INSERT "+db.getIgnore()+" INTO shared_address_signing_paths \n\
+					(shared_address, address, signing_path, member_signing_path, device_address) VALUES (?,?,?,?,?)", 
+					[address, signerInfo.address, signing_path, signerInfo.member_signing_path, signerInfo.device_address]);
 ```
 
-**File:** writer.js (L45-48)
+**File:** wallet_defined_by_addresses.js (L284-287)
 ```javascript
-			commit_fn = function (sql, cb) {
-				conn.query(sql, function () {
-					cb();
-				});
+	for (var signing_path in assocSignersByPath){
+		var signerInfo = assocSignersByPath[signing_path];
+		if (signerInfo.device_address === device.getMyDeviceAddress())
+			bHasMyDeviceAddress = true;
 ```
 
-**File:** writer.js (L693-730)
+**File:** wallet_defined_by_addresses.js (L305-310)
 ```javascript
-							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
-								var consumed_time = Date.now()-start_time;
-								profiler.add_result('write', consumed_time);
-								console.log((err ? (err+", therefore rolled back unit ") : "committed unit ")+objUnit.unit+", write took "+consumed_time+"ms");
-								profiler.stop('write-sql-commit');
-								profiler.increment();
-								if (err) {
-									var headers_commission = require("./headers_commission.js");
-									headers_commission.resetMaxSpendableMci();
-									delete storage.assocUnstableMessages[objUnit.unit];
-									await storage.resetMemory(conn);
-								}
-								if (!bInLargerTx)
-									conn.release();
-								if (!err){
-									eventBus.emit('saved_unit-'+objUnit.unit, objJoint);
-									eventBus.emit('saved_unit', objJoint);
-								}
-								if (bStabilizedAATriggers) {
-									if (bInLargerTx || objValidationState.bUnderWriteLock)
-										throw Error(`saveJoint stabilized AA triggers while in larger tx or under write lock`);
-									const aa_composer = require("./aa_composer.js");
-									await aa_composer.handleAATriggers();
-
-									// get a new connection to write tps fees
-									const conn = await db.takeConnectionFromPool();
-									await conn.query("BEGIN");
-									await storage.updateTpsFees(conn, arrStabilizedMcis);
-									await conn.query("COMMIT");
-									conn.release();
-								}
-								if (onDone)
-									onDone(err);
-								count_writes++;
-								if (conf.storage === 'sqlite')
-									updateSqliteStats(objUnit.unit);
-								unlock();
-							});
+			if (!bHasMyDeviceAddress){
+				for (var signing_path in assocSignersByPath){
+					var signerInfo = assocSignersByPath[signing_path];
+					if (signerInfo.address && arrMyMemberAddresses.indexOf(signerInfo.address) >= 0)
+						signerInfo.device_address = device.getMyDeviceAddress();
+				}
 ```
 
-**File:** main_chain.js (L505-506)
+**File:** wallet_defined_by_addresses.js (L346-350)
 ```javascript
-							if (count_aa_triggers)
-								bStabilizedAATriggers = true;
+	for (var signing_path in body.signers){
+		var signerInfo = body.signers[signing_path];
+		if (signerInfo.address && signerInfo.address !== 'secret' && !ValidationUtils.isValidAddress(signerInfo.address))
+			return callbacks.ifError("invalid member address: "+signerInfo.address);
+	}
 ```
 
-**File:** aa_composer.js (L100-101)
+**File:** device.js (L702-704)
 ```javascript
-							if (!objUnitProps)
-								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+function sendMessageToDevice(device_address, subject, body, callbacks, conn){
+	if (!device_address)
+		throw Error("empty device address");
 ```
 
-**File:** aa_composer.js (L108-109)
+**File:** validation_utils.js (L64-66)
 ```javascript
-								if (err)
-									throw Error("AA composer: batch write failed: "+err);
+function isValidDeviceAddress(address){
+	return ( isStringOfLength(address, 33) && address[0] === '0' && isValidAddress(address.substr(1)) );
+}
 ```
 
-**File:** storage.js (L1210-1223)
+**File:** validation_utils.js (L124-125)
 ```javascript
-			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
-			const total_tps_fees_delta = (objUnitProps.tps_fee || 0) - tps_fee; // can be negative
-			//	if (total_tps_fees_delta === 0)
-			//		continue;
-			/*	const recipients = (objUnitProps.earned_headers_commission_recipients && total_tps_fees_delta < 0)
-					? storage.getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses)
-					: (objUnitProps.earned_headers_commission_recipients || { [objUnitProps.author_addresses[0]]: 100 });*/
-			const recipients = getTpsFeeRecipients(objUnitProps.earned_headers_commission_recipients, objUnitProps.author_addresses);
-			for (let address in recipients) {
-				const share = recipients[address];
-				const tps_fees_delta = Math.floor(total_tps_fees_delta * share / 100);
-				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
-				const tps_fees_balance = row ? row.tps_fees_balance : 0;
-				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
+exports.isValidAddress = isValidAddress;
+exports.isValidDeviceAddress = isValidDeviceAddress;
 ```
 
-**File:** mutex.js (L116-116)
-```javascript
-//setInterval(checkForDeadlocks, 1000);
+**File:** initial-db/byteball-sqlite.sql (L628-639)
+```sql
+CREATE TABLE shared_address_signing_paths (
+	shared_address CHAR(32) NOT NULL,
+	signing_path VARCHAR(255) NULL, -- full path to signing key which is a member of the member address
+	address CHAR(32) NOT NULL, -- member address
+	member_signing_path VARCHAR(255) NULL, -- path to signing key from root of the member address
+	device_address CHAR(33) NOT NULL, -- where this signing key lives or is reachable through
+	creation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (shared_address, signing_path),
+	FOREIGN KEY (shared_address) REFERENCES shared_addresses(shared_address)
+	-- own address is not present in correspondents
+--    FOREIGN KEY byDeviceAddress(device_address) REFERENCES correspondent_devices(device_address)
+);
 ```
 
-**File:** test/aa.test.js (L37-37)
+**File:** wallet.js (L337-354)
 ```javascript
+					ifRemote: function(device_address){
+						if (device_address === from_address){
+							callbacks.ifError("looping signing request for address "+body.address+", path "+body.signing_path);
+							throw Error("looping signing request for address "+body.address+", path "+body.signing_path);
+						}
+						try {
+							var text_to_sign = objectHash.getUnitHashToSign(body.unsigned_unit).toString("base64");
+						}
+						catch (e) {
+							return callbacks.ifError("unit hash failed: " + e.toString());
+						}
+						// I'm a proxy, wait for response from the actual signer and forward to the requestor
+						eventBus.once("signature-"+device_address+"-"+body.address+"-"+body.signing_path+"-"+text_to_sign, function(sig){
+							sendSignature(from_address, text_to_sign, sig, body.signing_path, body.address);
+						});
+						// forward the offer to the actual signer
+						device.sendMessageToDevice(device_address, subject, body);
+						callbacks.ifOk();
+```
 
+**File:** wallet.js (L1052-1070)
+```javascript
+			db.query(
+			//	"SELECT address, device_address, member_signing_path FROM shared_address_signing_paths WHERE shared_address=? AND signing_path=?", 
+				// look for a prefix of the requested signing_path
+				"SELECT address, device_address, signing_path FROM shared_address_signing_paths \n\
+				WHERE shared_address=? AND signing_path=SUBSTR(?, 1, LENGTH(signing_path))", 
+				[address, signing_path],
+				function(sa_rows){
+					if (sa_rows.length > 1)
+						throw Error("more than 1 member address found for shared address "+address+" and signing path "+signing_path);
+					if (sa_rows.length === 1) {
+						var objSharedAddress = sa_rows[0];
+						var relative_signing_path = 'r' + signing_path.substr(objSharedAddress.signing_path.length);
+						var bLocal = (objSharedAddress.device_address === device.getMyDeviceAddress()); // local keys
+						if (objSharedAddress.address === '') {
+							return callbacks.ifMerkle(bLocal);
+						} else if(objSharedAddress.address === 'secret') {
+							return callbacks.ifSecret();
+						}
+						return findAddress(objSharedAddress.address, relative_signing_path, callbacks, bLocal ? null : objSharedAddress.device_address);
 ```
