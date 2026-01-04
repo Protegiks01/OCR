@@ -1,216 +1,205 @@
-# Audit Report
-
-## Title
-Inconsistent Ball Property Handling in Witness Proof Preparation Causes Light Client Sync Failure
+# Audit Report: Private Payment Loss on Full Nodes Due to Missing Unstable Asset Check
 
 ## Summary
-The `prepareWitnessProof()` function in `witness_proof.js` uses `storage.readJoint()` instead of `storage.readJointWithBall()` when retrieving stable witness definition change units. [1](#0-0)  This causes a critical inconsistency because `readJoint()` omits the `.ball` property for retrievable units (main_chain_index >= min_retrievable_mci), [2](#0-1)  while `processWitnessProof()` strictly requires this property, [3](#0-2)  resulting in complete light client synchronization failure.
+
+Full nodes permanently lose private payments for recently-created assets due to missing stability checks that light clients perform. When a private payment arrives for an unstable asset, full nodes immediately attempt validation, fail with a temporary error, and irreversibly delete the payment from the retry queue. Light clients correctly detect unstable assets and queue for retry. [1](#0-0) 
 
 ## Impact
-**Severity**: Medium  
-**Category**: Temporary Transaction Delay
 
-All light clients network-wide experience complete inability to sync transaction history or submit new transactions during the period when a witness definition change unit is stable but still retrievable. Duration ranges from hours to days until the unit's MCI falls below `min_retrievable_mci`. This affects 100% of light wallet users simultaneously whenever any of the 12 witnesses performs legitimate security operations such as key rotation or multi-signature updates.
+**Severity**: High  
+**Category**: Permanent Freezing of Funds
+
+Recipients operating full nodes permanently lose access to private payments when asset definition units have not yet stabilized (30-60 seconds after creation). The private payment data is irretrievably deleted from the `unhandled_private_payments` database table, preventing the recipient from claiming the on-chain outputs. While outputs remain on-chain, the recipient has lost the private keys/data necessary to prove ownership. Recovery requires the sender to manually detect the failure and retransmit after the asset stabilizes.
+
+**Affected Parties**: All full node operators receiving private payments for assets created within the last 30-60 seconds  
+**Financial Impact**: Complete loss of individual private payment amounts (unbounded per payment)
 
 ## Finding Description
 
-**Location**: `byteball/ocore/witness_proof.js:139`, function `prepareWitnessProof()`
+**Location**: `byteball/ocore/private_payment.js:85-90`, function `validateAndSavePrivatePaymentChain()`
 
-**Intended Logic**: Witness proof preparation should collect all stable witness definition change units with complete metadata including `.ball` properties to enable light client verification of witness list evolution.
+**Intended Logic**: Both light and full nodes should gracefully handle private payments where the asset definition unit exists but has not yet reached stability by queuing them for retry.
 
-**Actual Logic**: A function selection inconsistency creates a critical gap between preparation and validation:
-
-**Code Evidence - Inconsistent Function Usage**:
-
-At line 31, unstable MC units correctly use `readJointWithBall()`: [4](#0-3) 
-
-But at line 139, stable witness definition changes incorrectly use `readJoint()`: [5](#0-4) 
-
-**Code Evidence - SQL Query Missing MCI Filter**:
-
-The SQL query selecting witness definition changes filters for `is_stable=1` but NOT for non-retrievable MCIs: [6](#0-5) 
-
-**Code Evidence - Storage Optimization Logic**:
-
-The retrievability check in `storage.js` determines whether ball queries are skipped: [7](#0-6) 
-
-For retrievable units, `readJointDirectly()` returns early without querying the ball: [2](#0-1) 
-
-**Code Evidence - Guaranteed Ball Inclusion**:
-
-In contrast, `readJointWithBall()` explicitly ensures the ball property is always present: [8](#0-7) 
-
-**Code Evidence - Strict Validation Requirement**:
-
-The validation in `processWitnessProof()` strictly requires the ball property: [3](#0-2) 
+**Actual Logic**: Full nodes skip the stability check entirely, immediately calling `validateAndSave()`. When the asset definition's MCI exceeds `last_stable_mci`, validation fails with error "asset definition must be before last ball", and the error handler permanently deletes the payment.
 
 **Exploitation Path**:
 
-1. **Preconditions**: 
-   - A witness changes their address definition (legitimate security operation)
-   - The definition change unit becomes stable (`is_stable=1`)
-   - The unit remains retrievable (`main_chain_index >= min_retrievable_mci`)
+1. **Preconditions**:
+   - Asset definition unit is created and assigned an MCI but not yet stable
+   - Private payment is sent for that asset to recipient on full node  
+   - Payment arrives during 30-60 second stability window
 
-2. **Step 1**: Light client requests witness proof via network protocol
+2. **Step 1**: Full node processes saved private payment
+   - `handleSavedPrivatePayments()` runs every 5 seconds [2](#0-1) 
+   - Reads payment from `unhandled_private_payments` table [3](#0-2) 
+   - Calls `validateAndSavePrivatePaymentChain()` [4](#0-3) 
 
-3. **Step 2**: Full node executes `prepareWitnessProof()`
-   - SQL query at lines 120-135 selects stable witness definition changes
-   - Query returns recent witness definition change unit (stable but retrievable)
+3. **Step 2**: Validation path diverges between node types
+   - **Light nodes**: Execute `findUnfinishedPastUnitsOfPrivateChains()` which calls `filterNewOrUnstableUnits()` [5](#0-4) 
+   - If asset definition is unstable, callback `ifWaitingForChain()` is invoked [5](#0-4) 
+   - **Full nodes**: Skip the check entirely, go directly to `validateAndSave()` [6](#0-5) 
 
-4. **Step 3**: `storage.readJoint()` called at line 139
-   - Flows to `readJointDirectly()`
-   - Retrievability check: `bRetrievable = true` (MCI >= min_retrievable_mci)
-   - Ball query skipped at lines 198-200
-   - Returns `objJoint` WITHOUT `.ball` property
+4. **Step 3**: Asset validation fails on full nodes
+   - `storage.readAsset()` is called with `last_ball_mci = null` [7](#0-6) 
+   - For full nodes, this triggers `readLastStableMcIndex()` to set `last_ball_mci = last_stable_mci` [8](#0-7) 
+   - Validation checks if `objAsset.main_chain_index <= last_ball_mci` [9](#0-8) 
+   - For unstable assets, this condition fails and returns error "asset definition must be before last ball"
 
-5. **Step 4**: Incomplete joint added to `arrWitnessChangeAndDefinitionJoints` array
+5. **Step 4**: Error handler permanently deletes payment
+   - Error flows to `ifError` callback in `handleSavedPrivatePayments()` [10](#0-9) 
+   - Calls `deleteHandledPrivateChain()` [11](#0-10) 
+   - Executes `DELETE FROM unhandled_private_payments` query [12](#0-11) 
+   - Payment is permanently removed from database with no recovery mechanism
+   
+   **Light node contrast**: `ifWaitingForChain` callback simply calls `cb()` without deleting [13](#0-12) 
 
-6. **Step 5**: Light client validates proof via `processWitnessProof()`
-   - Line 206 validation fails: `if (!objJoint.ball)`
-   - Returns error: "witness_change_and_definition_joints: joint without ball"
-   - Sync completely fails
+**Security Property Broken**: Private payment reliability - valid private payments should eventually be processed regardless of asset stability timing.
 
-**Root Cause Analysis**:
-
-The developer correctly used `readJointWithBall()` at line 31 for unstable MC units (which need balls to be validated), but inconsistently used `readJoint()` at line 139 for stable definition changes. The faulty assumption was that stable units would automatically have balls in their returned objects. However, `readJoint()` optimizes by skipping ball queries for retrievable units, while the validation requirement at line 206 expects ALL witness definition change joints to have balls regardless of stability or retrievability.
+**Root Cause Analysis**: The code treats light and full nodes asymmetrically. Light nodes check for unstable units via `findUnfinishedPastUnitsOfPrivateChains()` and handle them as a retryable condition. Full nodes skip this check, causing validation to fail with a temporary condition (asset not yet stable) that is incorrectly treated as a permanent failure, triggering payment deletion.
 
 ## Impact Explanation
 
-**Affected Assets**: Light client synchronization infrastructure, network accessibility for all mobile/lightweight wallet users
+**Affected Assets**: All custom divisible and indivisible assets received as private payments on full nodes during the 30-60 second stability window after asset creation.
 
 **Damage Severity**:
-- **Quantitative**: 100% of light clients network-wide affected simultaneously for hours to days
-- **Qualitative**: Complete denial of service for light wallet functionality—no transaction viewing, balance checking, or transaction submission
+- **Quantitative**: Any private payment amount for newly-created assets. Each affected payment is permanently lost to the recipient until sender retransmits.
+- **Qualitative**: Recipients lose legitimate payments without notification, creating loss of funds and trust degradation.
 
 **User Impact**:
-- **Who**: All light wallet users (mobile wallets, browser wallets, lightweight nodes)
-- **Conditions**: Automatically triggered when any witness performs definition change while unit remains retrievable
-- **Recovery**: Self-resolving once unit becomes non-retrievable OR requires connecting to patched full node
+- **Who**: Full node operators receiving private payments (not light clients)
+- **Conditions**: Asset definition unit created within last 30-60 seconds when payment arrives
+- **Recovery**: Sender must manually detect failure and retransmit after asset stabilizes
 
 **Systemic Risk**:
-- Temporary availability issue only
-- No permanent damage or fund loss
-- No cascading consensus effects on full nodes
-- Self-correcting once `min_retrievable_mci` advances beyond the unit's MCI
+- Degrades private payment reliability for new assets
+- No notification mechanism for discarded payments
+- Silent failures create user confusion and potential disputes
 
 ## Likelihood Explanation
 
-**Attacker Profile**:
-- **Identity**: No attacker required—triggered by legitimate witness operational security
-- **Resources Required**: None
-- **Technical Skill**: N/A (protocol bug, not attack)
+**Attacker Profile**: No attacker required - this is a timing-dependent defect in normal operations
 
 **Preconditions**:
 - **Network State**: Normal operation
-- **Event**: Witness performs legitimate definition change (key rotation, multi-sig update)
-- **Timing**: Definition change stable but within retrievable window
+- **Timing**: Private payment sent/received within 30-60 seconds of asset definition creation  
+- **Node Type**: Recipient operates full node (not light client)
 
-**Execution Complexity**:
-- **Triggered Automatically**: 100% reproducible when preconditions met
-- **Coordination**: None required
-- **Detection**: Immediately observable via light client error logs
+**Execution Complexity**: None - occurs automatically during normal protocol usage
 
-**Frequency**:
-- **Repeatability**: Every witness definition change during retrievable window
-- **Scale**: Network-wide impact on all light clients
+**Frequency**: Affects every private payment for newly-created assets sent to full nodes during the stability window. Given the 5-second retry interval, payments arriving during this window will be processed and deleted before stabilization.
 
-**Overall Assessment**: High likelihood when witness definition changes occur (rare legitimate events with deterministic 100% impact on all light clients)
+**Overall Assessment**: Medium likelihood - requires specific timing (new asset + immediate payment) but occurs without malicious actor in normal protocol usage.
 
 ## Recommendation
 
-**Immediate Fix**:
+**Immediate Mitigation**: Apply the same stability check used by light clients to full nodes in `validateAndSavePrivatePaymentChain()`:
 
-Change line 139 in `witness_proof.js` to use `readJointWithBall()` instead of `readJoint()`:
+Modify `private_payment.js:85-90` to check for unstable units on both light and full nodes before validation.
 
-```javascript
-// Line 139 - Replace:
-storage.readJoint(db, row.unit, {
-// With:
-storage.readJointWithBall(db, row.unit, function(objJoint){
-    arrWitnessChangeAndDefinitionJoints.push(objJoint);
-    cb2();
-});
-```
+**Permanent Fix**: Refactor to unified handling:
+- Call `findUnfinishedPastUnitsOfPrivateChains()` for both node types
+- Only invoke `ifWaitingForChain()` (queue for retry) when assets are unstable
+- Only invoke `validateAndSave()` when all referenced units are stable
 
-**Validation**:
-- Fix ensures ball property is always present for witness definition change units
-- Consistent with existing usage at line 31 for unstable MC units
-- No performance impact (ball query already happens for non-retrievable units)
-- Backward compatible with existing protocol
+**Additional Measures**:
+- Add integration test verifying private payments for unstable assets queue correctly on full nodes
+- Add monitoring to detect payments stuck in retry queue  
+- Document retry behavior in private payment specification
 
 ## Notes
 
-This is a genuine coding inconsistency that causes real availability issues for light clients. The bug exists because:
+This vulnerability demonstrates a critical asymmetry in how light and full nodes process private payments. The light client code path correctly identifies unstable assets as a retryable condition via `filterNewOrUnstableUnits()` [14](#0-13) , which queries for units with `is_stable=0`. Full nodes skip this check, immediately attempting validation that will fail temporarily but trigger permanent deletion.
 
-1. Line 31 demonstrates the developer understood that `readJointWithBall()` should be used when balls are required [4](#0-3) 
-
-2. Line 139 shows an inconsistent choice to use `readJoint()` instead [1](#0-0) 
-
-3. The validation at line 206 proves that balls are strictly required for all witness change/definition joints [3](#0-2) 
-
-4. The storage optimization logic at lines 198-200 confirms that `readJoint()` intentionally omits balls for retrievable units [2](#0-1) 
-
-The fix is straightforward: use `readJointWithBall()` consistently for all cases where the ball property is required for downstream validation.
+The fix is straightforward: ensure both node types execute the stability check before attempting validation. This aligns with Obyte's design principle that units should only be processed after they reach stability to ensure consensus consistency.
 
 ### Citations
 
-**File:** witness_proof.js (L31-31)
+**File:** private_payment.js (L36-36)
 ```javascript
-					storage.readJointWithBall(db, row.unit, function(objJoint){
+		storage.readAsset(db, asset, null, function(err, objAsset){
 ```
 
-**File:** witness_proof.js (L120-135)
+**File:** private_payment.js (L85-90)
 ```javascript
-				"SELECT unit, `level` \n\
-				FROM unit_authors "+db.forceIndex('byDefinitionChash')+" \n\
-				CROSS JOIN units USING(unit) \n\
-				WHERE definition_chash IN(?) AND definition_chash=address AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				UNION \n\
-				SELECT unit, `level` \n\
-				FROM address_definition_changes \n\
-				CROSS JOIN units USING(unit) \n\
-				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				UNION \n\
-				SELECT units.unit, `level` \n\
-				FROM address_definition_changes \n\
-				CROSS JOIN unit_authors USING(address, definition_chash) \n\
-				CROSS JOIN units ON unit_authors.unit=units.unit \n\
-				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
-				ORDER BY `level`", 
+	if (conf.bLight)
+		findUnfinishedPastUnitsOfPrivateChains([arrPrivateElements], false, function(arrUnfinishedUnits){
+			(arrUnfinishedUnits.length > 0) ? callbacks.ifWaitingForChain() : validateAndSave();
+		});
+	else
+		validateAndSave();
 ```
 
-**File:** witness_proof.js (L139-147)
+**File:** network.js (L2191-2192)
 ```javascript
-						storage.readJoint(db, row.unit, {
-							ifNotFound: function(){
-								throw Error("prepareWitnessProof definition changes: not found "+row.unit);
+			? "SELECT json, peer, unit, message_index, output_index, linked FROM unhandled_private_payments WHERE unit="+db.escape(unit)
+			: "SELECT json, peer, unit, message_index, output_index, linked FROM unhandled_private_payments CROSS JOIN units USING(unit)";
+```
+
+**File:** network.js (L2217-2217)
+```javascript
+						privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
+```
+
+**File:** network.js (L2228-2235)
+```javascript
+							ifError: function(error){
+								console.log("validation of priv: "+error);
+							//	throw Error(error);
+								if (ws)
+									sendResult(ws, {private_payment_in_unit: row.unit, result: 'error', error: error});
+								deleteHandledPrivateChain(row.unit, row.message_index, row.output_index, cb);
+								eventBus.emit(key, false);
 							},
-							ifFound: function(objJoint){
-								arrWitnessChangeAndDefinitionJoints.push(objJoint);
-								cb2();
+```
+
+**File:** network.js (L2237-2240)
+```javascript
+							ifWaitingForChain: function(){
+								console.log('waiting for chain: unit '+row.unit+', message '+row.message_index+' output '+row.output_index);
+								cb();
 							}
-						});
 ```
 
-**File:** witness_proof.js (L206-207)
+**File:** network.js (L2261-2264)
 ```javascript
-		if (!objJoint.ball)
-			return handleResult("witness_change_and_definition_joints: joint without ball");
+function deleteHandledPrivateChain(unit, message_index, output_index, cb){
+	db.query("DELETE FROM unhandled_private_payments WHERE unit=? AND message_index=? AND output_index=?", [unit, message_index, output_index], function(){
+		cb();
+	});
 ```
 
-**File:** witness_proof.js (L609-623)
+**File:** network.js (L4069-4069)
 ```javascript
-
+	setInterval(handleSavedPrivatePayments, 5*1000);
 ```
 
-**File:** storage.js (L160-160)
+**File:** storage.js (L1844-1850)
 ```javascript
-			var bRetrievable = (main_chain_index >= min_retrievable_mci || main_chain_index === null);
+	if (last_ball_mci === null){
+		if (conf.bLight)
+			last_ball_mci = MAX_INT32;
+		else
+			return readLastStableMcIndex(conn, function(last_stable_mci){
+				readAsset(conn, asset, last_stable_mci, bAcceptUnconfirmedAA, handleAsset);
+			});
 ```
 
-**File:** storage.js (L198-200)
+**File:** storage.js (L1888-1892)
 ```javascript
-				function(callback){ // ball
-					if (bRetrievable && !isGenesisUnit(unit))
-						return callback();
+		if (objAsset.main_chain_index !== null && objAsset.main_chain_index <= last_ball_mci)
+			return addAttestorsIfNecessary();
+		// && objAsset.main_chain_index !== null below is for bug compatibility with the old version
+		if (!bAcceptUnconfirmedAA || constants.bTestnet && last_ball_mci < testnetAssetsDefinedByAAsAreVisibleImmediatelyUpgradeMci && objAsset.main_chain_index !== null)
+			return handleAsset("asset definition must be before last ball");
+```
+
+**File:** storage.js (L1971-1977)
+```javascript
+function filterNewOrUnstableUnits(arrUnits, handleFilteredUnits){
+	sliceAndExecuteQuery("SELECT unit FROM units WHERE unit IN(?) AND is_stable=1", [arrUnits], arrUnits, function(rows) {
+		var arrKnownStableUnits = rows.map(function(row){ return row.unit; });
+		var arrNewOrUnstableUnits = _.difference(arrUnits, arrKnownStableUnits);
+		handleFilteredUnits(arrNewOrUnstableUnits);
+	});
+}
 ```

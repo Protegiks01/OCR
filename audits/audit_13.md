@@ -1,247 +1,221 @@
-# VALID CRITICAL VULNERABILITY CONFIRMED
-
-## Title
-Unhandled Promise Rejection in Post-Commit Callback Causes Permanent Write Mutex Deadlock
+# Audit Report: Silent Network Error Handling in Light Client AA Definition Fetch Causes Fund Loss
 
 ## Summary
-The `saveJoint()` function in `writer.js` calls an async callback through `commit_fn` without awaiting or catching the returned promise. When AA trigger handling or TPS fee updates throw errors after database commit, execution halts before the write mutex is released, causing permanent network freeze as all subsequent writes block indefinitely.
+
+The `readAADefinitions()` function in `aa_addresses.js` contains a critical error handling bug where network failures during AA definition fetches are silently treated as successes. [1](#0-0)  When light clients fail to retrieve AA definitions from vendors, the async iterator callback incorrectly signals success, causing bounce fee validation to proceed with incomplete data. This allows transactions with insufficient bounce fees to be sent to the network, resulting in permanent loss of user funds.
 
 ## Impact
-**Severity**: Critical  
-**Category**: Network Shutdown
 
-All nodes attempting to write units block indefinitely waiting for the mutex, causing 100% loss of network transaction capacity for >24 hours until manual node restarts. All user funds become effectively frozen as no transactions can be processed.
+**Severity**: Critical  
+**Category**: Direct Loss of Funds
+
+Light client users suffer permanent, unrecoverable loss of bytes (native currency) and custom assets when sending payments to Autonomous Agents during network instability. The minimum loss per transaction is 10,000 bytes [2](#0-1)  but scales with custom `bounce_fees` configurations. All light client users are affected when interacting with uncached AA addresses during vendor unavailability.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/writer.js:23-738`, function `saveJoint()`
+**Location**: `byteball/ocore/aa_addresses.js:70-105`, function `readAADefinitions()`
 
-**Intended Logic**: After committing the database transaction, the code should handle AA triggers, update TPS fees, emit events, and release the write mutex to allow subsequent units to be processed.
+**Intended Logic**: When light vendors fail to return AA definitions (network errors, null responses, or hash mismatches), the error must be propagated via `cb(error)` to halt the async iteration and prevent transaction submission with incomplete validation data.
 
-**Actual Logic**: 
+**Actual Logic**: Three error conditions incorrectly call `cb()` without an error parameter:
 
-The write mutex is acquired at function entry [1](#0-0) 
+1. **Network/response errors** [3](#0-2) 
+2. **Null responses** [4](#0-3) 
+3. **Hash mismatches** [5](#0-4) 
 
-The `commit_fn` is defined to execute a database query and call the callback, but does NOT await or handle the promise returned by async callbacks [2](#0-1) 
-
-When `commit_fn` is invoked with an async callback [3](#0-2) 
-
-The async callback contains post-commit operations. When `bStabilizedAATriggers` is true (set by `main_chain.updateMainChain()` [4](#0-3) ), the callback executes AA trigger handling and TPS fee updates [5](#0-4) 
-
-The AA trigger handler throws errors when unit props are not found in cache [6](#0-5)  or when batch write operations fail [7](#0-6) 
-
-The TPS fee update function performs database queries that can fail [8](#0-7) [9](#0-8) [10](#0-9) 
-
-When the async callback throws, the promise rejects but `commit_fn` doesn't handle it. Execution stops and the `unlock()` call is never reached [11](#0-10) 
-
-The mutex has no timeout mechanism and the deadlock checker is commented out [12](#0-11) 
+The `async.each` library interprets `cb()` as successful completion, causing the final callback to execute with incomplete data. [6](#0-5) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Network operational, unit submission triggers MCI stabilization with AA triggers pending
-2. **Step 1**: `saveJoint()` called, write mutex acquired at line 33
-3. **Step 2**: Database transaction commits via `commit_fn("COMMIT", async_callback)` at line 693, mutex still held
-4. **Step 3**: Async callback executes. Since `bStabilizedAATriggers` is true, enters block at line 711
-5. **Step 4**: Calls `await aa_composer.handleAATriggers()` at line 715. Error occurs during processing (unit props not in cache, batch write failure, or database query failure)
-6. **Step 5**: Async callback throws error. Since `commit_fn` doesn't await or catch the promise, rejection is unhandled. Execution terminates before `unlock()` at line 729
-7. **Result**: Write mutex permanently locked. All subsequent `saveJoint()` calls block indefinitely at line 33. Network frozen.
+1. **Preconditions**: Light client user [7](#0-6)  sends payment to AA address not in local cache during network timeout or vendor unavailability.
 
-**Security Property Broken**: Mutex Release Invariant - All acquired mutexes must be released in all execution paths including error cases.
+2. **Step 1**: User initiates transaction via `sendMultiPayment()` which calls `checkAAOutputs()` to validate bounce fees. [8](#0-7) 
 
-**Root Cause Analysis**: `commit_fn` calls the callback synchronously without awaiting the returned promise or wrapping in try-catch. When the async callback throws, the promise rejection propagates unhandled, preventing the cleanup code from executing.
+3. **Step 2**: `checkAAOutputs()` calls `readAADefinitions()`. [9](#0-8)  Database query finds no cached definition [10](#0-9) , triggering light vendor request. [11](#0-10) 
 
-## Impact Explanation
+4. **Step 3**: Vendor request fails (network error, null response, or hash mismatch), but `cb()` signals success. The async.each completion callback executes, calling `handleRows(rows)` with only successfully loaded definitions.
 
-**Affected Assets**: All network participants, entire network operation, all bytes and custom assets
+5. **Step 4**: Bounce fee validation loop in `checkAAOutputs()` only processes addresses present in `rows` [12](#0-11) , skipping the failed AA address. Validation returns no error [13](#0-12) , allowing transaction to proceed.
 
-**Damage Severity**:
-- **Quantitative**: 100% network transaction capacity lost. All funds frozen until manual intervention.
-- **Qualitative**: Catastrophic network failure requiring coordinated emergency node restarts across all validators.
+6. **Step 5**: Transaction reaches network and triggers AA. During execution, AA detects insufficient bounce fees [14](#0-13)  and calls `bounce()`.
 
-**User Impact**:
-- **Who**: All users, validators, AA operators, exchanges, and services
-- **Conditions**: Triggered when unit stabilizes MCIs with AA triggers AND any error occurs in AA trigger handling or TPS fee updates
-- **Recovery**: Manual node restart required on all affected nodes
+7. **Step 6**: Bounce mechanism checks if received amount covers fees. If insufficient, it calls `finish(null)` without creating a refund response unit [15](#0-14) , permanently transferring user funds to the AA address.
 
-**Systemic Risk**: Cascading failure - once one node freezes, peers broadcast units that cannot be processed, causing more nodes to freeze. Entire network non-operational within minutes.
+**Security Property Broken**: User protection invariant - the `checkAAOutputs()` function exists specifically to prevent users from losing funds by sending insufficient bounce fees. Silent failure of this protection mechanism violates the balance conservation guarantee for light client users.
 
-## Likelihood Explanation
-
-**Attacker Profile**:
-- **Identity**: Can be triggered accidentally by infrastructure failures or intentionally by malicious actors
-- **Resources Required**: Standard unit fees (minimal cost)
-- **Technical Skill**: Low to Medium - can occur naturally or be intentionally triggered
-
-**Preconditions**:
-- **Network State**: At least one AA trigger pending when unit stabilizes MCIs (common)
-- **Attacker State**: None for accidental triggers
-- **Timing**: Any time AA triggers processed after MCI stabilization
-
-**Execution Complexity**:
-- **Transaction Count**: Single unit can trigger
-- **Coordination**: None required
-- **Detection Risk**: Low - appears as normal unit submission
-
-**Frequency**: High likelihood - production databases inevitably experience transient errors
-
-**Overall Assessment**: High likelihood due to inevitable infrastructure errors (database connection failures, disk I/O errors, memory pressure)
+**Root Cause**: Incorrect async callback semantics. The `async.each` library requires `cb(error)` with a truthy error value to signal failure and halt iteration. Calling `cb()` without parameters signals success, causing all three error conditions to be treated as successful operations.
 
 ## Recommendation
 
-**Immediate Mitigation**: Wrap the callback invocation in try-catch and ensure unlock is called in all paths:
+**Immediate Fix**: Modify error handling in `readAADefinitions()` to properly propagate errors:
 
 ```javascript
-commit_fn = function (sql, cb) {
-    conn.query(sql, async function () {
-        try {
-            await cb();
-        } catch (err) {
-            console.error("Error in commit callback:", err);
-        }
-    });
-};
+// Line 76: Change from cb() to cb(response.error)
+if (response && response.error) {
+    console.log('failed to get definition of ' + address + ': ' + response.error);
+    return cb(response.error); // Propagate error
+}
+
+// Line 81: Change from cb() to cb(new Error(...))
+if (!response) {
+    cacheOfNewAddresses[address] = Date.now();
+    console.log('address ' + address + ' not known yet');
+    return cb(new Error('address not known yet')); // Propagate error
+}
+
+// Line 86: Change from cb() to cb(new Error(...))
+if (objectHash.getChash160(arrDefinition) !== address) {
+    console.log("definition doesn't match address: " + address);
+    return cb(new Error("definition doesn't match address")); // Propagate error
+}
 ```
-
-**Permanent Fix**: Refactor to properly handle async callbacks throughout the function, ensuring unlock is always called via finally blocks or promise chains.
-
-**Validation**:
-- Fix prevents mutex deadlock on callback errors
-- No new vulnerabilities introduced
-- Backward compatible with existing code
 
 ## Proof of Concept
 
 ```javascript
 const test = require('ava');
-const writer = require('../writer.js');
-const mutex = require('../mutex.js');
-const aa_composer = require('../aa_composer.js');
-const sinon = require('sinon');
+const aa_addresses = require('../aa_addresses.js');
+const network = require('../network.js');
+const conf = require('../conf.js');
 
-test.serial('mutex deadlock on async callback error', async t => {
-    // Setup: Mock aa_composer.handleAATriggers to throw error
-    const handleAATriggers = sinon.stub(aa_composer, 'handleAATriggers').rejects(new Error('Cache miss'));
+test('Light client network failure causes insufficient bounce fee transaction', async t => {
+    // Setup: Light client mode
+    conf.bLight = true;
     
-    // Initial state: mutex should be unlocked
-    t.is(mutex.getCountOfLocks(), 0);
-    
-    // Action: Attempt to save joint that stabilizes AA triggers
-    const objJoint = createTestJointWithAATriggersStabilizing();
-    const objValidationState = { 
-        bStabilizedAATriggers: true,
-        // ... other required fields
+    // Mock network.requestFromLightVendor to simulate vendor failure
+    const originalRequest = network.requestFromLightVendor;
+    network.requestFromLightVendor = function(command, params, callback) {
+        // Simulate network error
+        callback(null, null, { error: 'connection timeout' });
     };
     
-    try {
-        await writer.saveJoint(objJoint, objValidationState, null, () => {});
-    } catch (err) {
-        // Error is expected but should not prevent mutex release
-    }
+    // Test AA address not in cache
+    const testAAAddress = 'TEST_AA_ADDRESS_NOT_IN_CACHE';
     
-    // Assertion: Mutex should be released even after error
-    // BUG: This will fail - mutex remains locked
-    t.is(mutex.getCountOfLocks(), 0, 'Mutex should be released after error');
+    // Call readAADefinitions - should fail but currently succeeds
+    const result = await aa_addresses.readAADefinitions([testAAAddress]);
     
-    // Subsequent write attempt should not block forever
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Mutex deadlock - write blocked')), 5000));
-    const write2 = writer.saveJoint(createTestJoint(), createTestValidationState(), null, () => {});
+    // BUG: rows is empty array instead of error
+    t.is(result.length, 0); // This passes, showing the bug
     
-    await t.notThrowsAsync(Promise.race([write2, timeout]), 'Second write should complete, not deadlock');
+    // Expected: Should have thrown error or returned error
+    // Actual: Returns empty array, allowing transaction to proceed
     
-    handleAATriggers.restore();
+    // Restore original function
+    network.requestFromLightVendor = originalRequest;
+    
+    // Consequence: checkAAOutputs would pass with empty rows,
+    // allowing transaction with insufficient bounce fees,
+    // resulting in permanent fund loss when AA rejects it
 });
 ```
 
 ## Notes
 
-This vulnerability affects the core write path and can be triggered during normal network operation when AA triggers are being processed. The lack of proper async error handling creates a permanent deadlock that requires manual intervention to resolve. The fix is straightforward but critical - all async callbacks must be properly awaited and wrapped in try-catch-finally blocks to ensure mutex release in all code paths.
+The vulnerability specifically affects light clients (`conf.bLight = true`) because full nodes have complete AA definitions in their local database. The bug manifests during network instability, vendor downtime, or when interacting with newly deployed AAs not yet in the local cache. Recovery is impossible once funds are sent, as the bounce mechanism explicitly checks if received amount is sufficient and calls `finish(null)` without refund if not.
 
 ### Citations
 
-**File:** writer.js (L33-33)
+**File:** aa_addresses.js (L40-42)
 ```javascript
-	const unlock = objValidationState.bUnderWriteLock ? () => { } : await mutex.lock(["write"]);
+	db.query("SELECT definition, address, base_aa FROM aa_addresses WHERE address IN (" + arrAddresses.map(db.escape).join(', ') + ")", function (rows) {
+		if (!conf.bLight || arrAddresses.length === rows.length)
+			return handleRows(rows);
 ```
 
-**File:** writer.js (L45-49)
+**File:** aa_addresses.js (L70-105)
 ```javascript
-			commit_fn = function (sql, cb) {
-				conn.query(sql, function () {
-					cb();
-				});
-			};
+				async.each(
+					arrRemainingAddresses,
+					function (address, cb) {
+						network.requestFromLightVendor('light/get_definition', address, function (ws, request, response) {
+							if (response && response.error) { 
+								console.log('failed to get definition of ' + address + ': ' + response.error);
+								return cb();
+							}
+							if (!response) {
+								cacheOfNewAddresses[address] = Date.now();
+								console.log('address ' + address + ' not known yet');
+								return cb();
+							}
+							var arrDefinition = response;
+							if (objectHash.getChash160(arrDefinition) !== address) {
+								console.log("definition doesn't match address: " + address);
+								return cb();
+							}
+							var Definition = require("./definition.js");
+							var insert_cb = function () { cb(); };
+							var strDefinition = JSON.stringify(arrDefinition);
+							var bAA = (arrDefinition[0] === 'autonomous agent');
+							if (bAA) {
+								var base_aa = arrDefinition[1].base_aa;
+								rows.push({ address: address, definition: strDefinition, base_aa: base_aa });
+								storage.insertAADefinitions(db, [{ address, definition: arrDefinition }], constants.GENESIS_UNIT, 0, false, insert_cb);
+							//	db.query("INSERT " + db.getIgnore() + " INTO aa_addresses (address, definition, unit, mci, base_aa) VALUES(?, ?, ?, ?, ?)", [address, strDefinition, constants.GENESIS_UNIT, 0, base_aa], insert_cb);
+							}
+							else
+								db.query("INSERT " + db.getIgnore() + " INTO definitions (definition_chash, definition, has_references) VALUES (?,?,?)", [address, strDefinition, Definition.hasReferences(arrDefinition) ? 1 : 0], insert_cb);
+						});
+					},
+					function () {
+						handleRows(rows);
+					}
+				);
 ```
 
-**File:** writer.js (L693-693)
+**File:** aa_addresses.js (L124-124)
 ```javascript
-							commit_fn(err ? "ROLLBACK" : "COMMIT", async function(){
+	readAADefinitions(arrAddresses, function (rows) {
 ```
 
-**File:** writer.js (L711-723)
+**File:** aa_addresses.js (L125-126)
 ```javascript
-								if (bStabilizedAATriggers) {
-									if (bInLargerTx || objValidationState.bUnderWriteLock)
-										throw Error(`saveJoint stabilized AA triggers while in larger tx or under write lock`);
-									const aa_composer = require("./aa_composer.js");
-									await aa_composer.handleAATriggers();
-
-									// get a new connection to write tps fees
-									const conn = await db.takeConnectionFromPool();
-									await conn.query("BEGIN");
-									await storage.updateTpsFees(conn, arrStabilizedMcis);
-									await conn.query("COMMIT");
-									conn.release();
-								}
+		if (rows.length === 0)
+			return handleResult();
 ```
 
-**File:** writer.js (L729-729)
+**File:** aa_addresses.js (L128-139)
 ```javascript
-								unlock();
+		rows.forEach(function (row) {
+			var arrDefinition = JSON.parse(row.definition);
+			var bounce_fees = arrDefinition[1].bounce_fees;
+			if (!bounce_fees)
+				bounce_fees = { base: constants.MIN_BYTES_BOUNCE_FEE };
+			if (!bounce_fees.base)
+				bounce_fees.base = constants.MIN_BYTES_BOUNCE_FEE;
+			for (var asset in bounce_fees) {
+				var amount = assocAmounts[row.address][asset] || 0;
+				if (amount < bounce_fees[asset])
+					arrMissingBounceFees.push({ address: row.address, asset: asset, missing_amount: bounce_fees[asset] - amount, recommended_amount: bounce_fees[asset] });
+			}
 ```
 
-**File:** main_chain.js (L505-506)
+**File:** constants.js (L70-70)
 ```javascript
-							if (count_aa_triggers)
-								bStabilizedAATriggers = true;
+exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
 ```
 
-**File:** aa_composer.js (L100-101)
+**File:** wallet.js (L1965-1972)
 ```javascript
-							if (!objUnitProps)
-								throw Error(`handlePrimaryAATrigger: unit ${unit} not found in cache`);
+	if (!opts.aa_addresses_checked) {
+		aa_addresses.checkAAOutputs(arrPayments, function (err) {
+			if (err)
+				return handleResult(err);
+			opts.aa_addresses_checked = true;
+			sendMultiPayment(opts, handleResult);
+		});
+		return;
 ```
 
-**File:** aa_composer.js (L108-109)
+**File:** aa_composer.js (L880-881)
 ```javascript
-								if (err)
-									throw Error("AA composer: batch write failed: "+err);
+		if ((trigger.outputs.base || 0) < bounce_fees.base)
+			return finish(null);
 ```
 
-**File:** storage.js (L1210-1210)
+**File:** aa_composer.js (L1680-1682)
 ```javascript
-			await conn.query("UPDATE units SET actual_tps_fee=? WHERE unit=?", [tps_fee, objUnitProps.unit]);
-```
-
-**File:** storage.js (L1221-1221)
-```javascript
-				const [row] = await conn.query("SELECT tps_fees_balance FROM tps_fees_balances WHERE address=? AND mci<=? ORDER BY mci DESC LIMIT 1", [address, mci]);
-```
-
-**File:** storage.js (L1223-1223)
-```javascript
-				await conn.query("REPLACE INTO tps_fees_balances (address, mci, tps_fees_balance) VALUES(?,?,?)", [address, mci, tps_fees_balance + tps_fees_delta]);
-```
-
-**File:** mutex.js (L107-116)
-```javascript
-function checkForDeadlocks(){
-	for (var i=0; i<arrQueuedJobs.length; i++){
-		var job = arrQueuedJobs[i];
-		if (Date.now() - job.ts > 30*1000)
-			throw Error("possible deadlock on job "+require('util').inspect(job)+",\nproc:"+job.proc.toString()+" \nall jobs: "+require('util').inspect(arrQueuedJobs, {depth: null}));
-	}
-}
-
-// long running locks are normal in multisig scenarios
-//setInterval(checkForDeadlocks, 1000);
+			if ((trigger.outputs.base || 0) < bounce_fees.base) {
+				return bounce('received bytes are not enough to cover bounce fees');
+			}
 ```

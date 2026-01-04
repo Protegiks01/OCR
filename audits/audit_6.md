@@ -1,290 +1,215 @@
-# Audit Report: Uncaught Exception in Divisible Asset Private Payment Duplicate Check
+# Audit Report
+
+## Title
+Inconsistent Ball Property Handling in Witness Proof Preparation Causes Light Client Sync Failure
 
 ## Summary
-
-The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, causing it to return all outputs for the same unit and message. The code incorrectly interprets multiple rows as database corruption and throws inside an async callback, terminating the Node.js process.
+The `prepareWitnessProof()` function uses `storage.readJoint()` instead of `storage.readJointWithBall()` when retrieving stable witness definition change units, causing the `.ball` property to be omitted for retrievable units. [1](#0-0)  This creates an inconsistency with `processWitnessProof()` which strictly requires this property [2](#0-1) , resulting in complete light client synchronization failure.
 
 ## Impact
-
 **Severity**: Medium  
-**Category**: Temporary Transaction Delay / Node Availability
+**Category**: Temporary Transaction Delay
 
-Individual nodes crash when processing resent divisible asset private payments. Each crash requires manual restart, causing downtime that delays private payment processing for that node's users. Persistent attacks targeting multiple nodes could delay private payment processing network-wide for ≥1 hour, meeting Immunefi's Medium severity criteria.
+All light clients network-wide experience complete inability to sync transaction history or submit new transactions during the period when a witness definition change unit is stable but still retrievable (main_chain_index >= min_retrievable_mci). This affects 100% of light wallet users simultaneously whenever any of the 12 witnesses performs legitimate security operations such as key rotation or multi-signature updates. Duration ranges from hours to days until the unit's MCI falls below min_retrievable_mci.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/private_payment.js:70-71`, function `validateAndSavePrivatePaymentChain()`
+**Location**: `byteball/ocore/witness_proof.js:139`, function `prepareWitnessProof()`
 
-**Intended Logic**: The duplicate check should detect already-processed private payments and return early via the `ifOk()` callback at line 74.
+**Intended Logic**: Witness proof preparation should collect all stable witness definition change units with complete metadata including `.ball` properties to enable light client verification of witness list evolution.
 
-**Actual Logic**: For divisible assets, the duplicate check query omits `output_index` from the WHERE clause. When multiple outputs exist (standard for payment + change), the query returns multiple rows. Line 70 checks `if (rows.length > 1)`, and line 71 throws an exception before the proper duplicate handling at line 72 executes.
+**Actual Logic**: The function uses `storage.readJoint()` for stable witness definition changes [3](#0-2) , but `readJoint()` optimizes by skipping ball queries for retrievable units [4](#0-3) . The retrievability check determines units with main_chain_index >= min_retrievable_mci are retrievable [5](#0-4) , and for such units, the ball query is skipped entirely.
 
-**Code Evidence**:
-
-The duplicate check for divisible assets (NOT `fixed_denominations`) omits `output_index`: [1](#0-0) 
-
-The throw occurs in async callback before proper duplicate handling: [2](#0-1) 
-
-Divisible assets save multiple outputs with same `unit` and `message_index` but different `output_index`: [3](#0-2) 
+In contrast, `readJointWithBall()` explicitly ensures the ball property is always present by querying it separately if not already included [6](#0-5) . The unstable MC units correctly use this function at line 31 [7](#0-6) .
 
 **Exploitation Path**:
 
-1. **Preconditions**: Node has processed a divisible asset private payment with 2+ outputs (e.g., payment to recipient + change back to sender).
+1. **Preconditions**: 
+   - A witness changes their address definition (legitimate key rotation/multi-sig update)
+   - The definition change unit becomes stable (is_stable=1)
+   - The unit remains retrievable (main_chain_index >= min_retrievable_mci)
 
-2. **Step 1 - Initial Processing**:
-   - Divisible asset private payment processed normally
-   - Multiple outputs saved: `output_index=0` (payment), `output_index=1` (change)
-   - All share the same `(unit, message_index)` pair
+2. **Step 1**: Light client requests witness proof via network protocol
+   - Light client calls history refresh triggering `prepareWitnessProof()`
 
-3. **Step 2 - Resend Attack**:
-   - Attacker resends identical private payment message
-   - Entry point: [4](#0-3) 
-   - Unit existence check: [5](#0-4) 
-   - Returns `ifKnown` callback, calls `validateAndSavePrivatePaymentChain()`: [6](#0-5) 
+3. **Step 2**: Full node executes `prepareWitnessProof()`
+   - SQL query at lines 120-135 selects stable witness definition changes [8](#0-7) 
+   - Query filters `is_stable=1` but does NOT filter out retrievable MCIs
+   - Returns witness definition change unit that is stable but retrievable
 
-4. **Step 3 - Crash**:
-   - Duplicate check query executes: `SELECT address FROM outputs WHERE unit=? AND message_index=?`
-   - Returns 2 rows (both outputs from step 1)
-   - Line 70: `if (rows.length > 1)` evaluates to `true`
-   - Line 71: `throw Error(...)` executes inside async database callback
-   - Database wrapper calls user callback without try-catch: [7](#0-6) 
-   - Exception becomes uncaught (no global handlers exist)
-   - Node.js process terminates immediately
+4. **Step 3**: `storage.readJoint()` called at line 139
+   - Flows to `readJointDirectly()`
+   - Retrievability check: `bRetrievable = true` (MCI >= min_retrievable_mci)
+   - Ball query skipped at lines 198-200 of storage.js
+   - Returns `objJoint` WITHOUT `.ball` property
 
-5. **Step 4 - Impact**:
-   - Node crashes, stops processing all transactions
-   - Requires manual restart
-   - Attacker can repeat after restart, causing repeated downtime
+5. **Step 4**: Incomplete joint added to `arrWitnessChangeAndDefinitionJoints` array
+   - Joint lacks required ball property
+   - Returned to light client in witness proof response
 
-**Security Property Broken**: Process availability and proper async error handling. The code violates the expectation that duplicate private payments are handled gracefully without process termination.
+6. **Step 5**: Light client validates proof via `processWitnessProof()` [9](#0-8) 
+   - Validation at line 206 fails with strict check [2](#0-1) 
+   - Returns error: "witness_change_and_definition_joints: joint without ball"
+   - Light client sync completely fails [10](#0-9) 
 
 **Root Cause Analysis**:
-- Divisible assets inherently create multiple outputs per message (payment + change)
-- Duplicate check incorrectly omits `output_index` for divisible assets, unlike indivisible assets which include it conditionally
-- Code assumes `rows.length > 1` indicates database corruption rather than expected multiple outputs
-- Using synchronous `throw` in async callback bypasses the error callback mechanism
-- Line 70 check executes BEFORE line 72's proper duplicate handling can run
+
+The developer correctly used `readJointWithBall()` at line 31 for unstable MC units but inconsistently used `readJoint()` at line 139 for stable definition changes. The faulty assumption was that stable units would automatically have balls in their returned objects. However, `readJoint()` optimizes by skipping ball queries for retrievable units regardless of stability status, while the validation requirement at line 206 expects ALL witness definition change joints to have balls.
 
 ## Impact Explanation
 
-**Affected Assets**: All divisible asset private payments (native bytes and custom divisible assets)
+**Affected Assets**: Light client synchronization infrastructure, network accessibility for all mobile/lightweight wallet users
 
 **Damage Severity**:
-- **Quantitative**: Single resend crashes one node in <1 second with no automatic recovery. Attacker can target multiple nodes sequentially or concurrently.
-- **Qualitative**: DoS against individual nodes' private payment processing capability. Node operators must manually monitor and restart affected nodes.
+- **Quantitative**: 100% of light clients network-wide affected simultaneously for hours to days
+- **Qualitative**: Complete denial of service for light wallet functionality—no transaction viewing, balance checking, or transaction submission possible
 
 **User Impact**:
-- **Who**: Users running nodes that have processed divisible asset private payments with 2+ outputs
-- **Conditions**: Exploitable immediately after any such private payment is processed (common scenario)
-- **Recovery**: Manual node restart required per incident
+- **Who**: All light wallet users (mobile wallets, browser wallets, lightweight nodes)
+- **Conditions**: Automatically triggered when any witness performs definition change while unit remains retrievable
+- **Recovery**: Self-resolving once unit becomes non-retrievable OR requires connecting to patched full node
 
-**Systemic Risk**: Limited to private payment functionality. Main DAG consensus and public transactions continue normally on the affected node until process termination. If attackers persistently target multiple nodes, aggregate private payment processing could be delayed ≥1 hour network-wide.
+**Systemic Risk**:
+- Temporary availability issue only
+- No permanent damage or fund loss
+- No cascading consensus effects on full nodes
+- Self-correcting once min_retrievable_mci advances beyond the unit's MCI
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network participant with P2P connectivity
-- **Resources**: One divisible asset private payment (minimal cost), ability to resend P2P messages
-- **Technical Skill**: Low - basic understanding of private payment protocol and message resending
+- **Identity**: No attacker required—triggered by legitimate witness operational security
+- **Resources Required**: None
+- **Technical Skill**: N/A (protocol bug, not attack)
 
 **Preconditions**:
-- **Network State**: Target node has processed divisible asset private payment with 2+ outputs (common scenario for any payment with change)
-- **Attacker State**: One legitimate private payment (easily obtainable)
-- **Timing**: No special timing required
+- **Network State**: Normal operation
+- **Event**: Witness performs legitimate definition change (key rotation, multi-sig update)
+- **Timing**: Definition change stable but within retrievable window
 
 **Execution Complexity**:
-- **Transaction Count**: One legitimate transaction, then resend the private payload
+- **Triggered Automatically**: 100% reproducible when preconditions met
 - **Coordination**: None required
-- **Detection Risk**: Low - appears as normal duplicate message initially
+- **Detection**: Immediately observable via light client error logs
 
 **Frequency**:
-- **Repeatability**: Unlimited (attacker can repeat after each node restart)
-- **Scale**: Per-node targeting (each node with relevant history is vulnerable)
+- **Repeatability**: Every witness definition change during retrievable window
+- **Scale**: Network-wide impact on all light clients
 
-**Overall Assessment**: High likelihood - trivially exploitable with minimal resources and no special timing requirements.
+**Overall Assessment**: High likelihood when witness definition changes occur (rare but legitimate events with deterministic 100% impact)
 
 ## Recommendation
 
 **Immediate Mitigation**:
-
-Replace the throw with proper error callback to prevent process termination and allow the duplicate handling logic at line 72 to execute.
+Change line 139 to use `storage.readJointWithBall()` instead of `storage.readJoint()` to ensure ball property is always included for witness definition change units.
 
 **Permanent Fix**:
-
-Add `output_index` to the duplicate check query for divisible assets, consistent with indivisible asset handling. Modify the query construction to include output_index for both asset types when available.
-
-**Additional Measures**:
-- Add test case verifying resent divisible asset private payments with multiple outputs don't crash the process
-- Add monitoring to detect repeated duplicate private payment processing attempts
-- Consider logging duplicate attempts for security analysis
-
-**Validation**:
-- Fix prevents process crashes on legitimate duplicate private payments
-- No performance degradation (query remains efficient with additional WHERE clause parameter)
-- Backward compatible (existing valid private payments continue processing correctly)
-
-## Proof of Concept
-
 ```javascript
-const test = require('ava');
-const db = require('../db.js');
-const privatePayment = require('../private_payment.js');
-const divisibleAsset = require('../divisible_asset.js');
-
-test.serial('resending divisible asset private payment with multiple outputs should not crash', async t => {
-    // Setup: Create and process initial divisible asset private payment with 2 outputs
-    const arrPrivateElements = [{
-        unit: 'test_unit_hash_12345678901234567890123456789012345678901234',
-        message_index: 0,
-        payload: {
-            asset: 'test_asset_hash_1234567890123456789012345678901234567890',
-            inputs: [{
-                unit: 'input_unit_hash_123456789012345678901234567890123456789',
-                message_index: 0,
-                output_index: 0,
-                amount: 200,
-                serial_number: 1
-            }],
-            outputs: [
-                { address: 'RECIPIENT_ADDRESS', amount: 100, blinding: 'blinding1' },
-                { address: 'CHANGE_ADDRESS', amount: 100, blinding: 'blinding2' }
-            ]
-        }
-    }];
-
-    // First processing - should succeed
-    await new Promise((resolve, reject) => {
-        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-            ifOk: resolve,
-            ifError: reject,
-            ifWaitingForChain: () => reject(new Error('Should not wait for chain'))
-        });
-    });
-
-    // Resend same private payment - should handle gracefully without crashing
-    const processExited = await new Promise((resolve) => {
-        const originalExit = process.exit;
-        let exited = false;
-        
-        process.exit = () => {
-            exited = true;
-            process.exit = originalExit;
-            resolve(true);
-        };
-
-        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-            ifOk: () => {
-                process.exit = originalExit;
-                resolve(false);
-            },
-            ifError: (err) => {
-                process.exit = originalExit;
-                resolve(false);
-            },
-            ifWaitingForChain: () => {
-                process.exit = originalExit;
-                resolve(false);
-            }
-        });
-
-        // Timeout after 1 second
-        setTimeout(() => {
-            process.exit = originalExit;
-            if (!exited) resolve(false);
-        }, 1000);
-    });
-
-    t.false(processExited, 'Process should not exit when reprocessing divisible asset private payment with multiple outputs');
+// File: byteball/ocore/witness_proof.js, line 139
+storage.readJointWithBall(db, row.unit, function(objJoint){
+    arrWitnessChangeAndDefinitionJoints.push(objJoint);
+    cb2();
 });
 ```
 
+**Additional Measures**:
+- Add test case verifying witness definition changes during retrievable window include ball properties
+- Add integration test for light client sync during witness definition changes
+- Consider adding defensive check in `processWitnessProof()` with more helpful error message
+
 ## Notes
 
-This vulnerability specifically affects divisible asset private payments because:
-
-1. **Divisible assets naturally have multiple outputs** - A typical payment includes both the payment amount to the recipient and change back to the sender, creating 2+ outputs with the same `(unit, message_index)` but different `output_index` values.
-
-2. **Query inconsistency** - The duplicate check for indivisible assets (`fixed_denominations`) correctly includes `output_index` in the WHERE clause, but divisible assets omit it. This inconsistency suggests the logic was not designed to handle divisible asset multi-output scenarios.
-
-3. **Proper duplicate handling exists but is unreachable** - Line 72 contains the correct logic to handle duplicates gracefully by checking if the address is already populated and calling `ifOk()`. However, the throw at line 71 prevents this code from ever executing when multiple outputs exist.
-
-4. **Database wrapper propagation** - The SQLite connection wrapper doesn't catch exceptions thrown in user callbacks, allowing them to propagate as uncaught exceptions that terminate the process.
-
-The fix is straightforward: either remove the `rows.length > 1` check (allowing line 72's proper handling to execute) or add `output_index` to the query for divisible assets to ensure only one row is ever returned.
+This is a legitimate protocol bug, not an attack vector. It affects network availability for light clients rather than consensus integrity or fund security. The issue self-resolves as the network progresses and units become non-retrievable, making it a temporary denial of service matching the Medium severity "Temporary Transaction Delay" category per Immunefi scope.
 
 ### Citations
 
-**File:** private_payment.js (L58-65)
+**File:** witness_proof.js (L31-31)
 ```javascript
-					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
-					var params = [headElement.unit, headElement.message_index];
-					if (objAsset.fixed_denominations){
-						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
-							return transaction_callbacks.ifError("no output index in head private element");
-						sql += " AND output_index=?";
-						params.push(headElement.output_index);
-					}
+					storage.readJointWithBall(db, row.unit, function(objJoint){
 ```
 
-**File:** private_payment.js (L69-75)
+**File:** witness_proof.js (L120-136)
 ```javascript
-						function(rows){
-							if (rows.length > 1)
-								throw Error("more than one output "+sql+' '+params.join(', '));
-							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
-								console.log("duplicate private payment "+params.join(', '));
-								return transaction_callbacks.ifOk();
+				"SELECT unit, `level` \n\
+				FROM unit_authors "+db.forceIndex('byDefinitionChash')+" \n\
+				CROSS JOIN units USING(unit) \n\
+				WHERE definition_chash IN(?) AND definition_chash=address AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
+				UNION \n\
+				SELECT unit, `level` \n\
+				FROM address_definition_changes \n\
+				CROSS JOIN units USING(unit) \n\
+				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
+				UNION \n\
+				SELECT units.unit, `level` \n\
+				FROM address_definition_changes \n\
+				CROSS JOIN unit_authors USING(address, definition_chash) \n\
+				CROSS JOIN units ON unit_authors.unit=units.unit \n\
+				WHERE address_definition_changes.address IN(?) AND "+after_last_stable_mci_cond+" AND is_stable=1 AND sequence='good' \n\
+				ORDER BY `level`", 
+				[arrWitnesses, arrWitnesses, arrWitnesses],
+```
+
+**File:** witness_proof.js (L139-147)
+```javascript
+						storage.readJoint(db, row.unit, {
+							ifNotFound: function(){
+								throw Error("prepareWitnessProof definition changes: not found "+row.unit);
+							},
+							ifFound: function(objJoint){
+								arrWitnessChangeAndDefinitionJoints.push(objJoint);
+								cb2();
 							}
+						});
 ```
 
-**File:** divisible_asset.js (L32-38)
+**File:** witness_proof.js (L206-207)
 ```javascript
-			for (var j=0; j<payload.outputs.length; j++){
-				var output = payload.outputs[j];
-				conn.addQuery(arrQueries, 
-					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
-					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
-				);
-			}
+		if (!objJoint.ball)
+			return handleResult("witness_change_and_definition_joints: joint without ball");
 ```
 
-**File:** network.js (L2113-2114)
+**File:** storage.js (L160-160)
 ```javascript
-// handles one private payload and its chain
-function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
+			var bRetrievable = (main_chain_index >= min_retrievable_mci || main_chain_index === null);
 ```
 
-**File:** network.js (L2150-2152)
+**File:** storage.js (L198-200)
 ```javascript
-	joint_storage.checkIfNewUnit(unit, {
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
+				function(callback){ // ball
+					if (bRetrievable && !isGenesisUnit(unit))
+						return callback();
 ```
 
-**File:** network.js (L2153-2166)
+**File:** storage.js (L608-624)
 ```javascript
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-				ifOk: function(){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifAccepted(unit);
-					eventBus.emit("new_my_transactions", [unit]);
-				},
-				ifError: function(error){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifValidationError(unit, error);
-				},
-				ifWaitingForChain: function(){
-					savePrivatePayment();
-				}
+// add .ball even if it is not retrievable
+function readJointWithBall(conn, unit, handleJoint) {
+	readJoint(conn, unit, {
+		ifNotFound: function(){
+			throw Error("joint not found, unit "+unit);
+		},
+		ifFound: function(objJoint){
+			if (objJoint.ball)
+				return handleJoint(objJoint);
+			conn.query("SELECT ball FROM balls WHERE unit=?", [unit], function(rows){
+				if (rows.length === 1)
+					objJoint.ball = rows[0].ball;
+				handleJoint(objJoint);
 			});
+		}
+	});
+}
 ```
 
-**File:** sqlite_pool.js (L111-116)
+**File:** light.js (L183-185)
 ```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
+	witnessProof.processWitnessProof(
+		objResponse.unstable_mc_joints, objResponse.witness_change_and_definition_joints, false, arrWitnesses,
+		function(err, arrLastBallUnits, assocLastBallByLastBallUnit){
+```
+
+**File:** light.js (L187-188)
+```javascript
+			if (err)
+				return callbacks.ifError(err);
 ```

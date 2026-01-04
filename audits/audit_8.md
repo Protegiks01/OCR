@@ -1,310 +1,302 @@
-# Audit Report: Case-Sensitivity Mismatch in AA Address Validation
+# Audit Report
 
 ## Title
-Case-Sensitivity Inconsistency Between Address Validation Functions Causes Permanent Fund Freeze for AA Payments
+Ball Hash Validation Bypass in Catchup Chain Processing Enables Synchronization Denial of Service
 
 ## Summary
-A critical architectural inconsistency exists between two address validation functions in the Obyte protocol. The bounce fee validation uses the strict uppercase-only `isValidAddress` function, while general payment validation uses the permissive `isValidAddressAnyCase` function. This allows payments to AA addresses in non-uppercase format to bypass bounce fee validation entirely, resulting in permanent fund loss when units stabilize due to database JOIN failures (SQLite) or insufficient bounce fee handling (MySQL).
+The `processCatchupChain()` function in `catchup.js` validates unit hashes but omits cryptographic validation of ball hashes for stable joints, unlike proofchain and hash tree processing which properly validate ball hashes using `getBallHash()`. Malicious P2P peers can inject fabricated ball hashes that pass internal consistency checks, causing victim nodes to enter endless retry loops when requesting non-existent hash trees from honest peers, preventing synchronization until manual database cleanup.
 
 ## Impact
-**Severity**: Critical  
-**Category**: Permanent Fund Freeze
+**Severity**: Medium  
+**Category**: Temporary Transaction Delay
 
-Funds sent to AA addresses in lowercase or mixed-case format with insufficient bounce fees become permanently inaccessible. In SQLite deployments (case-sensitive by default), the AA trigger detection JOIN fails to match lowercase output addresses with uppercase AA addresses, leaving funds locked at a non-existent address. In MySQL deployments (case-insensitive collation), the JOIN succeeds but the AA bounces without refunding due to insufficient fees. Both outcomes result in permanent, irreversible fund loss affecting all asset types (bytes, divisible, and indivisible assets) with no upper limit per transaction.
+**Affected Assets**: Node synchronization capability, network participation for new/recovering nodes
+
+**Damage Severity**:
+- **Quantitative**: Victim nodes cannot complete catchup synchronization. Attack persists across restarts as fabricated balls remain in `catchup_chain_balls` table. Multiple nodes can be affected if attacker operates well-connected peer.
+- **Qualitative**: Temporary DoS affecting only nodes performing catchup (new nodes, nodes recovering from downtime). No fund loss or impact on already-synchronized nodes, but prevents network growth and recovery from outages.
+
+**User Impact**:
+- **Who**: Full nodes performing catchup synchronization after being offline or during initial sync
+- **Conditions**: Must randomly select malicious peer for catchup response
+- **Recovery**: Requires manual database cleanup (`DELETE FROM catchup_chain_balls`) or reconnection to different peer set
+
+**Systemic Risk**: During network partitions or high node churn, multiple syncing nodes vulnerable. No cascade to synchronized nodes. Can delay network recovery if attacker controls popular peers.
 
 ## Finding Description
 
-**Location**: Multiple files in `byteball/ocore`:
-- `validation_utils.js`: Address validation function definitions
-- `aa_addresses.js`: Bounce fee validation logic
-- `validation.js`: Payment output validation
-- `main_chain.js`: AA trigger detection JOIN query
-- `writer.js`: Output storage without normalization
-- `aa_composer.js`: Bounce logic with insufficient fee handling
+**Location**: `byteball/ocore/catchup.js:173-191`, function `processCatchupChain()`
 
-**Intended Logic**: 
-The bounce fee validation system should identify all AA addresses in payment outputs and verify sufficient bounce fees (minimum 10,000 bytes for base asset) are included. [1](#0-0)  This protection prevents users from losing funds when AA execution fails, as bounce responses should refund inputs minus bounce fees.
+**Intended Logic**: Catchup chains should cryptographically validate ball hashes by computing `getBallHash(unit, parent_balls, skiplist_balls, is_nonserial)` and comparing against received values, ensuring hash trees are retrievable from honest peers.
 
-**Actual Logic**:  
-The bounce fee validation silently excludes non-uppercase addresses due to function inconsistency. The `readAADefinitions` function filters addresses using the strict uppercase-only validator [2](#0-1) , causing lowercase addresses to be removed. When the filtered array is empty, the function returns immediately without error [3](#0-2) .
-
-However, general payment validation uses the permissive validator that accepts any case [4](#0-3) , allowing the unit to enter the DAG.
+**Actual Logic**: The function validates unit hashes via `hasValidHashes()` and checks internal consistency (current ball matches previous `last_ball` field), but never cryptographically validates that `last_ball` field values match `getBallHash()` computation.
 
 **Code Evidence**:
 
-Two validation functions with different case requirements exist:
+The `hasValidHashes()` function only validates unit hash: [1](#0-0) 
 
-`isValidAddress` requires uppercase: [5](#0-4) 
+Catchup stable joint processing validates unit hash but blindly trusts `last_ball` fields: [2](#0-1) 
 
-`isValidAddressAnyCase` accepts any case: [6](#0-5) 
+In contrast, proofchain balls ARE cryptographically validated: [3](#0-2) 
 
-The bounce fee check uses the strict function and silently bypasses validation: [2](#0-1) [3](#0-2) 
+Hash tree balls are also cryptographically validated: [4](#0-3) 
 
-General validation uses the permissive function: [7](#0-6) [4](#0-3) 
+Unvalidated balls are stored for future hash tree requests: [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: User wants to send payment to an AA address with insufficient bounce fees (< 10,000 bytes for base asset)
+1. **Preconditions**: 
+   - Victim node behind network state initiates catchup
+   - Attacker operates P2P peer node
+   - Catchup request sent to attacker's peer: [6](#0-5) 
 
-2. **Step 1**: User provides AA address in lowercase format through `wallet.js:sendMultiPayment()`
-   - Entry point: [8](#0-7) 
-   - Outputs array contains lowercase AA address with amount < MIN_BYTES_BOUNCE_FEE
+2. **Step 1**: Victim sends catchup request with witness list and MCI range
 
-3. **Step 2**: Bounce fee validation invoked but silently fails
-   - Validation call: [9](#0-8) 
-   - `checkAAOutputs` extracts addresses: [10](#0-9) 
-   - `readAADefinitions` filters with uppercase-only validator: [2](#0-1) 
-   - Lowercase address filtered out, empty array causes silent return: [3](#0-2) 
+3. **Step 2**: Attacker crafts malicious catchup response containing:
+   - Units with valid unit hashes (pass `hasValidHashes()` check at line 180)
+   - Arbitrary `last_ball` and `last_ball_unit` fields not matching `getBallHash()` computation
+   - `objJoint.ball` values matching the arbitrary `last_ball` values (internally consistent)
+   - First ball as genesis or victim's last known stable ball (passes validation at lines 163-170)
 
-4. **Step 3**: Unit passes general validation and enters DAG
-   - Payment validation uses permissive validator: [4](#0-3) 
-   - Lowercase address passes checksum validation regardless of case
-   - Unit accepted and stored without normalization: [11](#0-10) 
+4. **Step 3**: Victim processes catchup chain:
+   - Unit hash validation passes (line 180)
+   - Internal consistency checks pass (lines 184-185: current ball matches previous last_ball)
+   - No validation that `last_ball = getBallHash(last_ball_unit, ...)`
+   - Fabricated balls stored in `catchup_chain_balls` table (lines 242-245)
 
-5. **Step 4**: Permanent fund loss when unit stabilizes
-   - AA trigger detection uses database JOIN: [12](#0-11) 
-   - **SQLite** (case-sensitive strings by default): [13](#0-12)  - JOIN fails to match lowercase output address with uppercase AA address → No trigger detected → Funds locked at non-existent address
-   - **MySQL** (case-insensitive by default): [14](#0-13)  - JOIN succeeds but bounce logic checks insufficient fees: [15](#0-14)  → Execution returns null with no refund: [16](#0-15)  → Funds lost
+5. **Step 4**: Victim requests hash trees using fabricated balls: [7](#0-6) 
+
+6. **Step 5**: Honest peers query for fabricated balls and return error: [8](#0-7) 
+
+7. **Step 6**: Error triggers retry loop with 100ms intervals: [9](#0-8) [10](#0-9) 
+
+8. **Result**: Endless retry as all honest peers lack fabricated balls. No automatic cleanup mechanism exists.
 
 **Security Property Broken**: 
-Balance Conservation Invariant - All funds must either reach their intended destination or be returned to sender. This vulnerability allows funds to be sent to addresses where they become permanently inaccessible, violating the protocol's fundamental guarantee that failed AA executions refund inputs minus bounce fees.
+- **Last Ball Chain Integrity**: Ball hashes must be cryptographically verifiable and retrievable from honest network peers
+- **Catchup Completeness**: Syncing nodes must complete synchronization without manual intervention under normal network conditions
 
-**Root Cause Analysis**:
-The root cause is architectural inconsistency in address validation. Two functions exist with different case requirements, but no address normalization reconciles them. The bounce fee checker uses the stricter function [2](#0-1) , while general validation uses the permissive function [4](#0-3) . Addresses are preserved in their original case throughout the system [11](#0-10) , with no normalization before database storage or JOIN operations. This creates a validation gap where addresses pass general validation but bypass AA-specific safety checks.
-
-## Impact Explanation
-
-**Affected Assets**: 
-- Bytes (native currency)
-- All custom divisible assets
-- All custom indivisible assets
-- Any funds sent to AA addresses with insufficient bounce fees in non-uppercase format
-
-**Damage Severity**:
-- **Quantitative**: Unlimited - any payment to lowercase/mixed-case AA address with insufficient bounce fees is permanently lost. A single transaction could lose arbitrary amounts. Network-wide impact: all users who provide non-uppercase AA addresses are vulnerable.
-- **Qualitative**: Permanent and irreversible without hard fork intervention. Even AA owners cannot extract locked funds as they lack the private key for the lowercase address variant (which has no corresponding definition, since `getChash160` always returns uppercase).
-
-**User Impact**:
-- **Who**: All users sending payments to AA addresses, especially those using wallet UIs that accept case-insensitive address entry, copy-pasting addresses from sources that normalize case, or manually entering addresses
-- **Conditions**: Triggered when AA address provided in non-uppercase format AND payment amount < required bounce fee (minimum 10,000 bytes for base asset) [1](#0-0) 
-- **Recovery**: None - funds permanently inaccessible without hard fork to modify outputs table or implement special recovery logic
-
-**Systemic Risk**:
-- Silent failure mode provides no error message or warning despite critical validation bypass
-- Wallet implementations that normalize addresses to lowercase would systematically trigger this vulnerability
-- Social engineering attacks possible where adversaries provide lowercase AA addresses to victims
-- Creates dangerous "footgun" scenario where honest users following normal procedures can lose funds
+**Root Cause Analysis**: Inconsistent validation - proofchain balls (lines 145-146) and hash tree balls (line 363-364) are cryptographically validated using `getBallHash()`, but stable joint balls are only validated for unit hash correctness and internal consistency. The `last_ball` field from units is user-controlled and never validated against cryptographic hash computation, allowing injection of internally consistent but cryptographically incorrect ball references.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any user with wallet access, or adversary providing addresses to victims
-- **Resources Required**: Minimal - only standard transaction fees (typically < 1000 bytes)
-- **Technical Skill**: None required - simply provide lowercase address (can occur accidentally through copy-paste or manual entry)
+- **Identity**: P2P network peer operator (untrusted actor within threat model)
+- **Resources Required**: Single peer node capable of responding to catchup protocol requests
+- **Technical Skill**: Medium - requires understanding catchup protocol, unit structure, and ability to craft internally consistent but cryptographically invalid ball references
 
 **Preconditions**:
-- **Network State**: Normal operation, no special conditions needed
-- **Attacker State**: Standard wallet with any amount of funds to send
-- **Timing**: No timing constraints - works at any time
+- **Network State**: Victim must be behind current network state and initiate catchup
+- **Attacker Position**: Victim must select attacker's peer for catchup response (random peer selection increases attack surface)
+- **First Ball Constraint**: Must use genesis or victim's last known stable ball as starting point (lines 207-224)
 
 **Execution Complexity**:
-- **Transaction Count**: Single transaction
+- **Transaction Count**: Single catchup response message
 - **Coordination**: None required
-- **Detection Risk**: Low - appears as normal payment, silent validation bypass provides no error logs
+- **Detection Risk**: Low during attack (appears as normal catchup), higher post-attack if investigated
 
 **Frequency**:
-- **Repeatability**: Unlimited - works for any payment to any AA in lowercase/mixed-case format
-- **Scale**: Per-transaction, affects individual payments
+- **Repeatability**: High - attack persists in victim database across restarts
+- **Scale**: Per-victim - each syncing node can be independently targeted
 
-**Overall Assessment**: High likelihood due to extremely low technical barrier, potential for accidental triggering through user error or UI case normalization, and complete lack of warning or error messaging during the critical validation bypass.
+**Overall Assessment**: Medium likelihood - requires victim to select malicious peer, but attack has minimal cost, low technical barrier, and high persistence once successful. Likelihood increases if attacker operates multiple well-connected peers.
 
 ## Recommendation
 
 **Immediate Mitigation**:
-Normalize all addresses to uppercase before storage in the `writer.js` module to ensure consistency with AA address format.
+Add cryptographic ball hash validation for stable joints in `processCatchupChain()`:
+
+```javascript
+// File: byteball/ocore/catchup.js
+// Lines 186-189 - Replace blind trust with validation
+
+if (objUnit.last_ball_unit){
+    // Compute expected ball hash from parent balls and skiplist balls
+    storage.readJointWithBall(db, objUnit.last_ball_unit, function(objLastBallJoint){
+        var arrParentBalls = /* retrieve parent balls */;
+        var arrSkiplistBalls = /* retrieve skiplist balls if any */;
+        var computed_ball = objectHash.getBallHash(
+            objUnit.last_ball_unit, 
+            arrParentBalls, 
+            arrSkiplistBalls, 
+            objLastBallJoint.unit.content_hash ? true : false
+        );
+        if (computed_ball !== objUnit.last_ball)
+            return callbacks.ifError("last_ball does not match getBallHash() computation");
+        
+        last_ball_unit = objUnit.last_ball_unit;
+        last_ball = objUnit.last_ball;
+        // continue processing...
+    });
+}
+```
 
 **Permanent Fix**:
-Add address normalization in the validation layer or modify `checkAAOutputs` to use `isValidAddressAnyCase` and convert addresses to uppercase for database lookup:
-
-1. **Option 1**: Normalize at storage time in `writer.js` before INSERT
-2. **Option 2**: Modify `readAADefinitions` to normalize addresses: `arrAddresses = arrAddresses.filter(isValidAddressAnyCase).map(addr => addr.toUpperCase())`
-3. **Option 3**: Reject non-uppercase addresses in payment validation to enforce canonical format
+Apply same validation pattern used for proofchain balls (lines 145-146) and hash tree balls (line 363-364) to stable joint processing. Ensure all ball hashes in catchup protocol are cryptographically validated before storage.
 
 **Additional Measures**:
-- Add validation to reject non-uppercase AA addresses with clear error message
-- Add test case verifying lowercase AA addresses are properly handled or rejected
-- Database migration: Audit existing outputs table for lowercase AA addresses and implement recovery mechanism
-- Update wallet UI to normalize addresses to uppercase before submission
+- Add automatic cleanup timeout for stale `catchup_chain_balls` entries (e.g., remove entries older than 24 hours)
+- Add monitoring to detect repeated hash tree request failures from same stored balls
+- Consider adding test coverage for catchup protocol with invalid ball hashes
 
 **Validation**:
-- Fix prevents bypass of bounce fee validation
-- No breaking changes to existing valid transactions
-- Maintains deterministic address matching in JOIN operations
-- Performance impact minimal (single `.toUpperCase()` call per address)
+- Verify fix prevents fabricated ball hashes from being stored
+- Ensure no performance regression from additional validation
+- Confirm backward compatibility with existing valid catchup chains
 
 ## Proof of Concept
 
-```javascript
-const { createDatabase } = require('./test/create_db.js');
-const composer = require('./composer.js');
-const network = require('./network.js');
-const objectHash = require('./object_hash.js');
-const db = require('./db.js');
+Due to the complexity of setting up a full P2P network environment with catchup protocol simulation, a complete runnable test would require significant test infrastructure beyond the scope of this report. However, the exploitation path is clearly demonstrable:
 
-// Test demonstrating the vulnerability
-async function testLowercaseAABypass() {
-    await createDatabase();
-    
-    // Step 1: Create AA at uppercase address
-    const aaDefinition = ['autonomous agent', {
-        bounce_fees: { base: 10000 },
-        messages: []
-    }];
-    const aaAddressUppercase = objectHash.getChash160(aaDefinition);
-    console.log('AA Address (uppercase):', aaAddressUppercase);
-    
-    // Step 2: Send payment to lowercase variant with insufficient bounce fee
-    const aaAddressLowercase = aaAddressUppercase.toLowerCase();
-    console.log('Sending to (lowercase):', aaAddressLowercase);
-    
-    const payment = {
-        outputs: [{
-            address: aaAddressLowercase,
-            amount: 5000  // Less than MIN_BYTES_BOUNCE_FEE (10000)
-        }]
-    };
-    
-    // Step 3: Verify bounce fee check is bypassed (no error thrown)
-    try {
-        const aa_addresses = require('./aa_addresses.js');
-        await new Promise(resolve => {
-            aa_addresses.checkAAOutputs([{ asset: null, outputs: payment.outputs }], (err) => {
-                console.log('Bounce fee check result:', err ? err.toString() : 'NO ERROR');
-                // Expected: NO ERROR (should have failed but bypassed due to case mismatch)
-                resolve();
-            });
-        });
-    } catch (e) {
-        console.log('Unexpected error:', e);
-    }
-    
-    // Step 4: Compose and submit unit (would succeed in validation)
-    // Step 5: After stabilization, check if AA trigger was created
-    const rows = await new Promise(resolve => {
-        db.query(
-            "SELECT * FROM outputs WHERE address=?",
-            [aaAddressLowercase],
-            resolve
-        );
-    });
-    console.log('Output stored with lowercase address:', rows.length > 0);
-    
-    // In SQLite: JOIN will fail, no trigger created, funds locked
-    // In MySQL: JOIN succeeds, but bounce with no refund, funds absorbed
-}
+1. Create catchup response with valid unit hashes but arbitrary `last_ball` values
+2. Ensure internal consistency: `objJoint.ball === last_ball` from previous unit
+3. Submit to `processCatchupChain()` 
+4. Observe: Unit hash validation passes, internal checks pass, but balls are not retrievable from network
+5. Result: Victim enters endless retry loop requesting non-existent hash trees
 
-testLowercaseAABypass().catch(console.error);
-```
+The vulnerability is confirmed by code analysis showing missing `getBallHash()` validation for stable joints (lines 173-191) while present for proofchain (lines 145-146) and hash tree processing (line 363-364).
+
+---
 
 ## Notes
 
-This vulnerability affects all users interacting with Autonomous Agents. The silent bypass of bounce fee validation combined with case-sensitive database behavior in SQLite (or insufficient fee handling in MySQL) creates a permanent fund loss scenario. The fix requires careful consideration of backward compatibility, as normalizing all existing addresses might affect historical data. A phased approach with clear deprecation warnings for non-uppercase addresses is recommended.
+This vulnerability represents an **inconsistency in validation rigor** across different parts of the catchup protocol rather than a fundamental protocol design flaw. The fix is straightforward: apply the same cryptographic validation already used for proofchain and hash tree balls to stable joint ball hashes. The impact is limited to syncing nodes and does not affect already-synchronized network participants, correctly classified as Medium severity per Immunefi scope.
 
 ### Citations
 
-**File:** constants.js (L70-70)
+**File:** validation.js (L38-49)
 ```javascript
-exports.MIN_BYTES_BOUNCE_FEE = process.env.MIN_BYTES_BOUNCE_FEE || 10000;
-```
-
-**File:** aa_addresses.js (L37-37)
-```javascript
-	arrAddresses = arrAddresses.filter(isValidAddress);
-```
-
-**File:** aa_addresses.js (L38-39)
-```javascript
-	if (arrAddresses.length === 0)
-		return handleRows([]);
-```
-
-**File:** aa_addresses.js (L123-123)
-```javascript
-	var arrAddresses = Object.keys(assocAmounts);
-```
-
-**File:** validation.js (L1945-1946)
-```javascript
-			if ("address" in output && !ValidationUtils.isValidAddressAnyCase(output.address))
-				return callback("output address "+output.address+" invalid");
-```
-
-**File:** validation.js (L1955-1956)
-```javascript
-			if (!ValidationUtils.isValidAddressAnyCase(output.address))
-				return callback("output address "+output.address+" invalid");
-```
-
-**File:** validation_utils.js (L56-58)
-```javascript
-function isValidAddressAnyCase(address){
-	return isValidChash(address, 32);
+function hasValidHashes(objJoint){
+	var objUnit = objJoint.unit;
+	try {
+		if (objectHash.getUnitHash(objUnit) !== objUnit.unit)
+			return false;
+	}
+	catch(e){
+		console.log("failed to calc unit hash: "+e);
+		return false;
+	}
+	return true;
 }
 ```
 
-**File:** validation_utils.js (L60-62)
+**File:** catchup.js (L143-146)
 ```javascript
-function isValidAddress(address){
-	return (typeof address === "string" && address === address.toUpperCase() && isValidChash(address, 32));
-}
+				for (var i=0; i<catchupChain.proofchain_balls.length; i++){
+					var objBall = catchupChain.proofchain_balls[i];
+					if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+						return callbacks.ifError("wrong ball hash: unit "+objBall.unit+", ball "+objBall.ball);
 ```
 
-**File:** wallet.js (L1894-1894)
+**File:** catchup.js (L173-191)
 ```javascript
-function sendMultiPayment(opts, handleResult)
-```
-
-**File:** wallet.js (L1965-1966)
-```javascript
-	if (!opts.aa_addresses_checked) {
-		aa_addresses.checkAAOutputs(arrPayments, function (err) {
-```
-
-**File:** writer.js (L397-397)
-```javascript
-									[objUnit.unit, i, j, output.address, parseInt(output.amount), payload.asset, denomination]
-```
-
-**File:** main_chain.js (L1606-1607)
-```javascript
-			CROSS JOIN outputs USING(unit) \n\
-			CROSS JOIN aa_addresses USING(address) \n\
-```
-
-**File:** initial-db/byteball-sqlite.sql (L325-325)
-```sql
-	address CHAR(32) NULL,  -- NULL if hidden by output_hash
-```
-
-**File:** initial-db/byteball-mysql.sql (L803-803)
-```sql
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
-```
-
-**File:** aa_composer.js (L880-881)
-```javascript
-		if ((trigger.outputs.base || 0) < bounce_fees.base)
-			return finish(null);
-```
-
-**File:** aa_composer.js (L1680-1687)
-```javascript
-			if ((trigger.outputs.base || 0) < bounce_fees.base) {
-				return bounce('received bytes are not enough to cover bounce fees');
-			}
-			for (var asset in trigger.outputs) { // if not enough asset received to pay for bounce fees, ignore silently
-				if (bounce_fees[asset] && trigger.outputs[asset] < bounce_fees[asset]) {
-					return bounce('received ' + asset + ' is not enough to cover bounce fees');
+			// stable joints
+			var arrChainBalls = [];
+			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
+				var objJoint = catchupChain.stable_last_ball_joints[i];
+				var objUnit = objJoint.unit;
+				if (!objJoint.ball)
+					return callbacks.ifError("stable but no ball");
+				if (!validation.hasValidHashes(objJoint))
+					return callbacks.ifError("invalid hash");
+				if (objUnit.unit !== last_ball_unit)
+					return callbacks.ifError("not the last ball unit");
+				if (objJoint.ball !== last_ball)
+					return callbacks.ifError("not the last ball");
+				if (objUnit.last_ball_unit){
+					last_ball_unit = objUnit.last_ball_unit;
+					last_ball = objUnit.last_ball;
 				}
+				arrChainBalls.push(objJoint.ball);
 			}
+```
+
+**File:** catchup.js (L241-245)
+```javascript
+				function(cb){ // validation complete, now write the chain for future downloading of hash trees
+					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
+					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
+						cb();
+					});
+```
+
+**File:** catchup.js (L268-273)
+```javascript
+	db.query(
+		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
+		[from_ball, to_ball], 
+		function(rows){
+			if (rows.length !== 2)
+				return callbacks.ifError("some balls not found");
+```
+
+**File:** catchup.js (L363-364)
+```javascript
+							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
+```
+
+**File:** network.js (L1975-1982)
+```javascript
+					storage.readLastStableMcIndex(db, function(last_stable_mci){
+						storage.readLastMainChainIndex(function(last_known_mci){
+							myWitnesses.readMyWitnesses(function(arrWitnesses){
+								var params = {witnesses: arrWitnesses, last_stable_mci: last_stable_mci, last_known_mci: last_known_mci};
+								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
+							}, 'wait');
+						});
+					});
+```
+
+**File:** network.js (L2018-2039)
+```javascript
+function requestNextHashTree(ws){
+	eventBus.emit('catchup_next_hash_tree');
+	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
+		if (rows.length === 0)
+			return comeOnline();
+		if (rows.length === 1){
+			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+				comeOnline();
+			});
+			return;
+		}
+		var from_ball = rows[0].ball;
+		var to_ball = rows[1].ball;
+		
+		// don't send duplicate requests
+		for (var tag in ws.assocPendingRequests)
+			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
+				console.log("already requested hash tree from this peer");
+				return;
+			}
+		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+	});
+```
+
+**File:** network.js (L2042-2046)
+```javascript
+function handleHashTree(ws, request, response){
+	if (response.error){
+		console.log('get_hash_tree got error response: '+response.error);
+		waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		return;
+```
+
+**File:** network.js (L2075-2088)
+```javascript
+function waitTillHashTreeFullyProcessedAndRequestNext(ws){
+	setTimeout(function(){
+	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
+				findNextPeer(ws, function(next_ws){
+					requestNextHashTree(next_ws);
+				});
+			}
+			else
+				waitTillHashTreeFullyProcessedAndRequestNext(ws);
+	//	});
+	}, 100);
+}
 ```

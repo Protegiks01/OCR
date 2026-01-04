@@ -1,290 +1,302 @@
-# Audit Report: Uncaught Exception in Divisible Asset Private Payment Duplicate Check
+# Audit Report
+
+## Title
+Ball Hash Validation Bypass in Catchup Chain Processing Enables Synchronization Denial of Service
 
 ## Summary
-
-The `validateAndSavePrivatePaymentChain()` function in `private_payment.js` throws an uncaught exception when reprocessing divisible asset private payments with multiple outputs. The duplicate check query omits `output_index` for divisible assets, causing it to return all outputs for the same unit and message. The code incorrectly interprets multiple rows as database corruption and throws inside an async callback, terminating the Node.js process.
+The `processCatchupChain()` function in `catchup.js` validates unit hashes but omits cryptographic validation of ball hashes for stable joints, unlike proofchain and hash tree processing which properly validate ball hashes using `getBallHash()`. Malicious P2P peers can inject fabricated ball hashes that pass internal consistency checks, causing victim nodes to enter endless retry loops when requesting non-existent hash trees from honest peers, preventing synchronization until manual database cleanup.
 
 ## Impact
-
 **Severity**: Medium  
-**Category**: Temporary Transaction Delay / Node Availability
+**Category**: Temporary Transaction Delay
 
-Individual nodes crash when processing resent divisible asset private payments. Each crash requires manual restart, causing downtime that delays private payment processing for that node's users. Persistent attacks targeting multiple nodes could delay private payment processing network-wide for ≥1 hour, meeting Immunefi's Medium severity criteria.
+**Affected Assets**: Node synchronization capability, network participation for new/recovering nodes
+
+**Damage Severity**:
+- **Quantitative**: Victim nodes cannot complete catchup synchronization. Attack persists across restarts as fabricated balls remain in `catchup_chain_balls` table. Multiple nodes can be affected if attacker operates well-connected peer.
+- **Qualitative**: Temporary DoS affecting only nodes performing catchup (new nodes, nodes recovering from downtime). No fund loss or impact on already-synchronized nodes, but prevents network growth and recovery from outages.
+
+**User Impact**:
+- **Who**: Full nodes performing catchup synchronization after being offline or during initial sync
+- **Conditions**: Must randomly select malicious peer for catchup response
+- **Recovery**: Requires manual database cleanup (`DELETE FROM catchup_chain_balls`) or reconnection to different peer set
+
+**Systemic Risk**: During network partitions or high node churn, multiple syncing nodes vulnerable. No cascade to synchronized nodes. Can delay network recovery if attacker controls popular peers.
 
 ## Finding Description
 
-**Location**: `byteball/ocore/private_payment.js:70-71`, function `validateAndSavePrivatePaymentChain()`
+**Location**: `byteball/ocore/catchup.js:173-191`, function `processCatchupChain()`
 
-**Intended Logic**: The duplicate check should detect already-processed private payments and return early via the `ifOk()` callback at line 74.
+**Intended Logic**: Catchup chains should cryptographically validate ball hashes by computing `getBallHash(unit, parent_balls, skiplist_balls, is_nonserial)` and comparing against received values, ensuring hash trees are retrievable from honest peers.
 
-**Actual Logic**: For divisible assets, the duplicate check query omits `output_index` from the WHERE clause. When multiple outputs exist (standard for payment + change), the query returns multiple rows. Line 70 checks `if (rows.length > 1)`, and line 71 throws an exception before the proper duplicate handling at line 72 executes.
+**Actual Logic**: The function validates unit hashes via `hasValidHashes()` and checks internal consistency (current ball matches previous `last_ball` field), but never cryptographically validates that `last_ball` field values match `getBallHash()` computation.
 
 **Code Evidence**:
 
-The duplicate check for divisible assets (NOT `fixed_denominations`) omits `output_index`: [1](#0-0) 
+The `hasValidHashes()` function only validates unit hash: [1](#0-0) 
 
-The throw occurs in async callback before proper duplicate handling: [2](#0-1) 
+Catchup stable joint processing validates unit hash but blindly trusts `last_ball` fields: [2](#0-1) 
 
-Divisible assets save multiple outputs with same `unit` and `message_index` but different `output_index`: [3](#0-2) 
+In contrast, proofchain balls ARE cryptographically validated: [3](#0-2) 
+
+Hash tree balls are also cryptographically validated: [4](#0-3) 
+
+Unvalidated balls are stored for future hash tree requests: [5](#0-4) 
 
 **Exploitation Path**:
 
-1. **Preconditions**: Node has processed a divisible asset private payment with 2+ outputs (e.g., payment to recipient + change back to sender).
+1. **Preconditions**: 
+   - Victim node behind network state initiates catchup
+   - Attacker operates P2P peer node
+   - Catchup request sent to attacker's peer: [6](#0-5) 
 
-2. **Step 1 - Initial Processing**:
-   - Divisible asset private payment processed normally
-   - Multiple outputs saved: `output_index=0` (payment), `output_index=1` (change)
-   - All share the same `(unit, message_index)` pair
+2. **Step 1**: Victim sends catchup request with witness list and MCI range
 
-3. **Step 2 - Resend Attack**:
-   - Attacker resends identical private payment message
-   - Entry point: [4](#0-3) 
-   - Unit existence check: [5](#0-4) 
-   - Returns `ifKnown` callback, calls `validateAndSavePrivatePaymentChain()`: [6](#0-5) 
+3. **Step 2**: Attacker crafts malicious catchup response containing:
+   - Units with valid unit hashes (pass `hasValidHashes()` check at line 180)
+   - Arbitrary `last_ball` and `last_ball_unit` fields not matching `getBallHash()` computation
+   - `objJoint.ball` values matching the arbitrary `last_ball` values (internally consistent)
+   - First ball as genesis or victim's last known stable ball (passes validation at lines 163-170)
 
-4. **Step 3 - Crash**:
-   - Duplicate check query executes: `SELECT address FROM outputs WHERE unit=? AND message_index=?`
-   - Returns 2 rows (both outputs from step 1)
-   - Line 70: `if (rows.length > 1)` evaluates to `true`
-   - Line 71: `throw Error(...)` executes inside async database callback
-   - Database wrapper calls user callback without try-catch: [7](#0-6) 
-   - Exception becomes uncaught (no global handlers exist)
-   - Node.js process terminates immediately
+4. **Step 3**: Victim processes catchup chain:
+   - Unit hash validation passes (line 180)
+   - Internal consistency checks pass (lines 184-185: current ball matches previous last_ball)
+   - No validation that `last_ball = getBallHash(last_ball_unit, ...)`
+   - Fabricated balls stored in `catchup_chain_balls` table (lines 242-245)
 
-5. **Step 4 - Impact**:
-   - Node crashes, stops processing all transactions
-   - Requires manual restart
-   - Attacker can repeat after restart, causing repeated downtime
+5. **Step 4**: Victim requests hash trees using fabricated balls: [7](#0-6) 
 
-**Security Property Broken**: Process availability and proper async error handling. The code violates the expectation that duplicate private payments are handled gracefully without process termination.
+6. **Step 5**: Honest peers query for fabricated balls and return error: [8](#0-7) 
 
-**Root Cause Analysis**:
-- Divisible assets inherently create multiple outputs per message (payment + change)
-- Duplicate check incorrectly omits `output_index` for divisible assets, unlike indivisible assets which include it conditionally
-- Code assumes `rows.length > 1` indicates database corruption rather than expected multiple outputs
-- Using synchronous `throw` in async callback bypasses the error callback mechanism
-- Line 70 check executes BEFORE line 72's proper duplicate handling can run
+7. **Step 6**: Error triggers retry loop with 100ms intervals: [9](#0-8) [10](#0-9) 
 
-## Impact Explanation
+8. **Result**: Endless retry as all honest peers lack fabricated balls. No automatic cleanup mechanism exists.
 
-**Affected Assets**: All divisible asset private payments (native bytes and custom divisible assets)
+**Security Property Broken**: 
+- **Last Ball Chain Integrity**: Ball hashes must be cryptographically verifiable and retrievable from honest network peers
+- **Catchup Completeness**: Syncing nodes must complete synchronization without manual intervention under normal network conditions
 
-**Damage Severity**:
-- **Quantitative**: Single resend crashes one node in <1 second with no automatic recovery. Attacker can target multiple nodes sequentially or concurrently.
-- **Qualitative**: DoS against individual nodes' private payment processing capability. Node operators must manually monitor and restart affected nodes.
-
-**User Impact**:
-- **Who**: Users running nodes that have processed divisible asset private payments with 2+ outputs
-- **Conditions**: Exploitable immediately after any such private payment is processed (common scenario)
-- **Recovery**: Manual node restart required per incident
-
-**Systemic Risk**: Limited to private payment functionality. Main DAG consensus and public transactions continue normally on the affected node until process termination. If attackers persistently target multiple nodes, aggregate private payment processing could be delayed ≥1 hour network-wide.
+**Root Cause Analysis**: Inconsistent validation - proofchain balls (lines 145-146) and hash tree balls (line 363-364) are cryptographically validated using `getBallHash()`, but stable joint balls are only validated for unit hash correctness and internal consistency. The `last_ball` field from units is user-controlled and never validated against cryptographic hash computation, allowing injection of internally consistent but cryptographically incorrect ball references.
 
 ## Likelihood Explanation
 
 **Attacker Profile**:
-- **Identity**: Any network participant with P2P connectivity
-- **Resources**: One divisible asset private payment (minimal cost), ability to resend P2P messages
-- **Technical Skill**: Low - basic understanding of private payment protocol and message resending
+- **Identity**: P2P network peer operator (untrusted actor within threat model)
+- **Resources Required**: Single peer node capable of responding to catchup protocol requests
+- **Technical Skill**: Medium - requires understanding catchup protocol, unit structure, and ability to craft internally consistent but cryptographically invalid ball references
 
 **Preconditions**:
-- **Network State**: Target node has processed divisible asset private payment with 2+ outputs (common scenario for any payment with change)
-- **Attacker State**: One legitimate private payment (easily obtainable)
-- **Timing**: No special timing required
+- **Network State**: Victim must be behind current network state and initiate catchup
+- **Attacker Position**: Victim must select attacker's peer for catchup response (random peer selection increases attack surface)
+- **First Ball Constraint**: Must use genesis or victim's last known stable ball as starting point (lines 207-224)
 
 **Execution Complexity**:
-- **Transaction Count**: One legitimate transaction, then resend the private payload
+- **Transaction Count**: Single catchup response message
 - **Coordination**: None required
-- **Detection Risk**: Low - appears as normal duplicate message initially
+- **Detection Risk**: Low during attack (appears as normal catchup), higher post-attack if investigated
 
 **Frequency**:
-- **Repeatability**: Unlimited (attacker can repeat after each node restart)
-- **Scale**: Per-node targeting (each node with relevant history is vulnerable)
+- **Repeatability**: High - attack persists in victim database across restarts
+- **Scale**: Per-victim - each syncing node can be independently targeted
 
-**Overall Assessment**: High likelihood - trivially exploitable with minimal resources and no special timing requirements.
+**Overall Assessment**: Medium likelihood - requires victim to select malicious peer, but attack has minimal cost, low technical barrier, and high persistence once successful. Likelihood increases if attacker operates multiple well-connected peers.
 
 ## Recommendation
 
 **Immediate Mitigation**:
+Add cryptographic ball hash validation for stable joints in `processCatchupChain()`:
 
-Replace the throw with proper error callback to prevent process termination and allow the duplicate handling logic at line 72 to execute.
+```javascript
+// File: byteball/ocore/catchup.js
+// Lines 186-189 - Replace blind trust with validation
+
+if (objUnit.last_ball_unit){
+    // Compute expected ball hash from parent balls and skiplist balls
+    storage.readJointWithBall(db, objUnit.last_ball_unit, function(objLastBallJoint){
+        var arrParentBalls = /* retrieve parent balls */;
+        var arrSkiplistBalls = /* retrieve skiplist balls if any */;
+        var computed_ball = objectHash.getBallHash(
+            objUnit.last_ball_unit, 
+            arrParentBalls, 
+            arrSkiplistBalls, 
+            objLastBallJoint.unit.content_hash ? true : false
+        );
+        if (computed_ball !== objUnit.last_ball)
+            return callbacks.ifError("last_ball does not match getBallHash() computation");
+        
+        last_ball_unit = objUnit.last_ball_unit;
+        last_ball = objUnit.last_ball;
+        // continue processing...
+    });
+}
+```
 
 **Permanent Fix**:
-
-Add `output_index` to the duplicate check query for divisible assets, consistent with indivisible asset handling. Modify the query construction to include output_index for both asset types when available.
+Apply same validation pattern used for proofchain balls (lines 145-146) and hash tree balls (line 363-364) to stable joint processing. Ensure all ball hashes in catchup protocol are cryptographically validated before storage.
 
 **Additional Measures**:
-- Add test case verifying resent divisible asset private payments with multiple outputs don't crash the process
-- Add monitoring to detect repeated duplicate private payment processing attempts
-- Consider logging duplicate attempts for security analysis
+- Add automatic cleanup timeout for stale `catchup_chain_balls` entries (e.g., remove entries older than 24 hours)
+- Add monitoring to detect repeated hash tree request failures from same stored balls
+- Consider adding test coverage for catchup protocol with invalid ball hashes
 
 **Validation**:
-- Fix prevents process crashes on legitimate duplicate private payments
-- No performance degradation (query remains efficient with additional WHERE clause parameter)
-- Backward compatible (existing valid private payments continue processing correctly)
+- Verify fix prevents fabricated ball hashes from being stored
+- Ensure no performance regression from additional validation
+- Confirm backward compatibility with existing valid catchup chains
 
 ## Proof of Concept
 
-```javascript
-const test = require('ava');
-const db = require('../db.js');
-const privatePayment = require('../private_payment.js');
-const divisibleAsset = require('../divisible_asset.js');
+Due to the complexity of setting up a full P2P network environment with catchup protocol simulation, a complete runnable test would require significant test infrastructure beyond the scope of this report. However, the exploitation path is clearly demonstrable:
 
-test.serial('resending divisible asset private payment with multiple outputs should not crash', async t => {
-    // Setup: Create and process initial divisible asset private payment with 2 outputs
-    const arrPrivateElements = [{
-        unit: 'test_unit_hash_12345678901234567890123456789012345678901234',
-        message_index: 0,
-        payload: {
-            asset: 'test_asset_hash_1234567890123456789012345678901234567890',
-            inputs: [{
-                unit: 'input_unit_hash_123456789012345678901234567890123456789',
-                message_index: 0,
-                output_index: 0,
-                amount: 200,
-                serial_number: 1
-            }],
-            outputs: [
-                { address: 'RECIPIENT_ADDRESS', amount: 100, blinding: 'blinding1' },
-                { address: 'CHANGE_ADDRESS', amount: 100, blinding: 'blinding2' }
-            ]
-        }
-    }];
+1. Create catchup response with valid unit hashes but arbitrary `last_ball` values
+2. Ensure internal consistency: `objJoint.ball === last_ball` from previous unit
+3. Submit to `processCatchupChain()` 
+4. Observe: Unit hash validation passes, internal checks pass, but balls are not retrievable from network
+5. Result: Victim enters endless retry loop requesting non-existent hash trees
 
-    // First processing - should succeed
-    await new Promise((resolve, reject) => {
-        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-            ifOk: resolve,
-            ifError: reject,
-            ifWaitingForChain: () => reject(new Error('Should not wait for chain'))
-        });
-    });
+The vulnerability is confirmed by code analysis showing missing `getBallHash()` validation for stable joints (lines 173-191) while present for proofchain (lines 145-146) and hash tree processing (line 363-364).
 
-    // Resend same private payment - should handle gracefully without crashing
-    const processExited = await new Promise((resolve) => {
-        const originalExit = process.exit;
-        let exited = false;
-        
-        process.exit = () => {
-            exited = true;
-            process.exit = originalExit;
-            resolve(true);
-        };
-
-        privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-            ifOk: () => {
-                process.exit = originalExit;
-                resolve(false);
-            },
-            ifError: (err) => {
-                process.exit = originalExit;
-                resolve(false);
-            },
-            ifWaitingForChain: () => {
-                process.exit = originalExit;
-                resolve(false);
-            }
-        });
-
-        // Timeout after 1 second
-        setTimeout(() => {
-            process.exit = originalExit;
-            if (!exited) resolve(false);
-        }, 1000);
-    });
-
-    t.false(processExited, 'Process should not exit when reprocessing divisible asset private payment with multiple outputs');
-});
-```
+---
 
 ## Notes
 
-This vulnerability specifically affects divisible asset private payments because:
-
-1. **Divisible assets naturally have multiple outputs** - A typical payment includes both the payment amount to the recipient and change back to the sender, creating 2+ outputs with the same `(unit, message_index)` but different `output_index` values.
-
-2. **Query inconsistency** - The duplicate check for indivisible assets (`fixed_denominations`) correctly includes `output_index` in the WHERE clause, but divisible assets omit it. This inconsistency suggests the logic was not designed to handle divisible asset multi-output scenarios.
-
-3. **Proper duplicate handling exists but is unreachable** - Line 72 contains the correct logic to handle duplicates gracefully by checking if the address is already populated and calling `ifOk()`. However, the throw at line 71 prevents this code from ever executing when multiple outputs exist.
-
-4. **Database wrapper propagation** - The SQLite connection wrapper doesn't catch exceptions thrown in user callbacks, allowing them to propagate as uncaught exceptions that terminate the process.
-
-The fix is straightforward: either remove the `rows.length > 1` check (allowing line 72's proper handling to execute) or add `output_index` to the query for divisible assets to ensure only one row is ever returned.
+This vulnerability represents an **inconsistency in validation rigor** across different parts of the catchup protocol rather than a fundamental protocol design flaw. The fix is straightforward: apply the same cryptographic validation already used for proofchain and hash tree balls to stable joint ball hashes. The impact is limited to syncing nodes and does not affect already-synchronized network participants, correctly classified as Medium severity per Immunefi scope.
 
 ### Citations
 
-**File:** private_payment.js (L58-65)
+**File:** validation.js (L38-49)
 ```javascript
-					var sql = "SELECT address FROM outputs WHERE unit=? AND message_index=?";
-					var params = [headElement.unit, headElement.message_index];
-					if (objAsset.fixed_denominations){
-						if (!ValidationUtils.isNonnegativeInteger(headElement.output_index))
-							return transaction_callbacks.ifError("no output index in head private element");
-						sql += " AND output_index=?";
-						params.push(headElement.output_index);
-					}
+function hasValidHashes(objJoint){
+	var objUnit = objJoint.unit;
+	try {
+		if (objectHash.getUnitHash(objUnit) !== objUnit.unit)
+			return false;
+	}
+	catch(e){
+		console.log("failed to calc unit hash: "+e);
+		return false;
+	}
+	return true;
+}
 ```
 
-**File:** private_payment.js (L69-75)
+**File:** catchup.js (L143-146)
 ```javascript
-						function(rows){
-							if (rows.length > 1)
-								throw Error("more than one output "+sql+' '+params.join(', '));
-							if (rows.length > 0 && rows[0].address){ // we could have this output already but the address is still hidden
-								console.log("duplicate private payment "+params.join(', '));
-								return transaction_callbacks.ifOk();
-							}
+				for (var i=0; i<catchupChain.proofchain_balls.length; i++){
+					var objBall = catchupChain.proofchain_balls[i];
+					if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+						return callbacks.ifError("wrong ball hash: unit "+objBall.unit+", ball "+objBall.ball);
 ```
 
-**File:** divisible_asset.js (L32-38)
+**File:** catchup.js (L173-191)
 ```javascript
-			for (var j=0; j<payload.outputs.length; j++){
-				var output = payload.outputs[j];
-				conn.addQuery(arrQueries, 
-					"INSERT INTO outputs (unit, message_index, output_index, address, amount, blinding, asset) VALUES (?,?,?,?,?,?,?)",
-					[unit, message_index, j, output.address, parseInt(output.amount), output.blinding, payload.asset]
-				);
+			// stable joints
+			var arrChainBalls = [];
+			for (var i=0; i<catchupChain.stable_last_ball_joints.length; i++){
+				var objJoint = catchupChain.stable_last_ball_joints[i];
+				var objUnit = objJoint.unit;
+				if (!objJoint.ball)
+					return callbacks.ifError("stable but no ball");
+				if (!validation.hasValidHashes(objJoint))
+					return callbacks.ifError("invalid hash");
+				if (objUnit.unit !== last_ball_unit)
+					return callbacks.ifError("not the last ball unit");
+				if (objJoint.ball !== last_ball)
+					return callbacks.ifError("not the last ball");
+				if (objUnit.last_ball_unit){
+					last_ball_unit = objUnit.last_ball_unit;
+					last_ball = objUnit.last_ball;
+				}
+				arrChainBalls.push(objJoint.ball);
 			}
 ```
 
-**File:** network.js (L2113-2114)
+**File:** catchup.js (L241-245)
 ```javascript
-// handles one private payload and its chain
-function handleOnlinePrivatePayment(ws, arrPrivateElements, bViaHub, callbacks){
+				function(cb){ // validation complete, now write the chain for future downloading of hash trees
+					var arrValues = arrChainBalls.map(function(ball){ return "("+db.escape(ball)+")"; });
+					db.query("INSERT INTO catchup_chain_balls (ball) VALUES "+arrValues.join(', '), function(){
+						cb();
+					});
 ```
 
-**File:** network.js (L2150-2152)
+**File:** catchup.js (L268-273)
 ```javascript
-	joint_storage.checkIfNewUnit(unit, {
-		ifKnown: function(){
-			//assocUnitsInWork[unit] = true;
+	db.query(
+		"SELECT is_stable, is_on_main_chain, main_chain_index, ball FROM balls JOIN units USING(unit) WHERE ball IN(?,?)", 
+		[from_ball, to_ball], 
+		function(rows){
+			if (rows.length !== 2)
+				return callbacks.ifError("some balls not found");
 ```
 
-**File:** network.js (L2153-2166)
+**File:** catchup.js (L363-364)
 ```javascript
-			privatePayment.validateAndSavePrivatePaymentChain(arrPrivateElements, {
-				ifOk: function(){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifAccepted(unit);
-					eventBus.emit("new_my_transactions", [unit]);
-				},
-				ifError: function(error){
-					//delete assocUnitsInWork[unit];
-					callbacks.ifValidationError(unit, error);
-				},
-				ifWaitingForChain: function(){
-					savePrivatePayment();
-				}
+							if (objBall.ball !== objectHash.getBallHash(objBall.unit, objBall.parent_balls, objBall.skiplist_balls, objBall.is_nonserial))
+								return cb("wrong ball hash, ball "+objBall.ball+", unit "+objBall.unit);
+```
+
+**File:** network.js (L1975-1982)
+```javascript
+					storage.readLastStableMcIndex(db, function(last_stable_mci){
+						storage.readLastMainChainIndex(function(last_known_mci){
+							myWitnesses.readMyWitnesses(function(arrWitnesses){
+								var params = {witnesses: arrWitnesses, last_stable_mci: last_stable_mci, last_known_mci: last_known_mci};
+								sendRequest(ws, 'catchup', params, true, handleCatchupChain);
+							}, 'wait');
+						});
+					});
+```
+
+**File:** network.js (L2018-2039)
+```javascript
+function requestNextHashTree(ws){
+	eventBus.emit('catchup_next_hash_tree');
+	db.query("SELECT ball FROM catchup_chain_balls ORDER BY member_index LIMIT 2", function(rows){
+		if (rows.length === 0)
+			return comeOnline();
+		if (rows.length === 1){
+			db.query("DELETE FROM catchup_chain_balls WHERE ball=?", [rows[0].ball], function(){
+				comeOnline();
 			});
+			return;
+		}
+		var from_ball = rows[0].ball;
+		var to_ball = rows[1].ball;
+		
+		// don't send duplicate requests
+		for (var tag in ws.assocPendingRequests)
+			if (ws.assocPendingRequests[tag].request.command === 'get_hash_tree'){
+				console.log("already requested hash tree from this peer");
+				return;
+			}
+		sendRequest(ws, 'get_hash_tree', {from_ball: from_ball, to_ball: to_ball}, true, handleHashTree);
+	});
 ```
 
-**File:** sqlite_pool.js (L111-116)
+**File:** network.js (L2042-2046)
 ```javascript
-				new_args.push(function(err, result){
-					//console.log("query done: "+sql);
-					if (err){
-						console.error("\nfailed query:", new_args);
-						throw Error(err+"\n"+sql+"\n"+new_args[1].map(function(param){ if (param === null) return 'null'; if (param === undefined) return 'undefined'; return param;}).join(', '));
-					}
+function handleHashTree(ws, request, response){
+	if (response.error){
+		console.log('get_hash_tree got error response: '+response.error);
+		waitTillHashTreeFullyProcessedAndRequestNext(ws); // after 1 sec, it'll request the same hash tree, likely from another peer
+		return;
+```
+
+**File:** network.js (L2075-2088)
+```javascript
+function waitTillHashTreeFullyProcessedAndRequestNext(ws){
+	setTimeout(function(){
+	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
+				findNextPeer(ws, function(next_ws){
+					requestNextHashTree(next_ws);
+				});
+			}
+			else
+				waitTillHashTreeFullyProcessedAndRequestNext(ws);
+	//	});
+	}, 100);
+}
 ```
